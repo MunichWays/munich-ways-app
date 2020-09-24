@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/ui/map/map_app_bar.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 import 'control/geojsonroutes.dart';
 
@@ -60,7 +61,6 @@ class _MyAppState extends State<MyApp> with Routes {
         await for (var i in getNetworks(networkKey, networkValue)) {
           _polylines_vorrangnetz = i;
         }
-        ;
       }
     });
     GEOJSONENDPOINTS.forEach((networkKey, networkValue) async {
@@ -68,7 +68,6 @@ class _MyAppState extends State<MyApp> with Routes {
         await for (var i in getNetworks(networkKey, networkValue)) {
           _polylines_gesamtnetz = i;
         }
-        ;
       }
     });
   }
@@ -99,14 +98,6 @@ class _MyAppState extends State<MyApp> with Routes {
             isChecked = newValue;
           });
           break;
-        case "Ändere Kartenstil":
-          break;
-        case "MunichWays Webseite":
-          break;
-        case "Spende":
-          break;
-        case "Bewertungskriterien":
-          break;
       }
     });
   }
@@ -116,7 +107,45 @@ class _MyAppState extends State<MyApp> with Routes {
     return MaterialApp(
         home: Scaffold(
       drawer: Drawer(
-        child: Text("Hier gibts bald mehr zu lesen ..."),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              child: Image(image: AssetImage('images/logo.png')),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(
+                  color: AppColors.munichWaysBlue,
+                  width: 1,
+                ))
+              ),
+            ),
+            ListTile(
+              title: Text('Karte'),
+              leading: Icon(Icons.map),
+              onTap: () {
+              },
+            ),
+            ListTile(
+              title: Text('Über MunichWays'),
+              leading: Icon(Icons.bookmark_border),
+              onTap: () {
+              },
+            ),
+            ListTile(
+              title: Text('Einstellungen'),
+              leading: Icon(Icons.settings),
+              onTap: () {
+              },
+            ),
+            ListTile(
+              title: Text('Info'),
+              leading: Icon(Icons.info_outline),
+              onTap: () {
+              },
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: Stack(
@@ -132,77 +161,22 @@ class _MyAppState extends State<MyApp> with Routes {
               ),
               mapType: MapType.normal,
               mapToolbarEnabled: true,
-              zoomControlsEnabled: true,
+              zoomControlsEnabled: false,
             ),
             MapAppBar(
               actions: <Widget>[
-                PopupMenuButton<String>(
-                    onSelected: _select,
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[0].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                          textScaleFactor: 1,
-                        ),
-                        enabled: true,
-                        value: choices[0],
-                        checked: true,
-                      ),
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[1].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                        ),
-                        enabled: true,
-                        value: choices[1],
-                        checked: isChecked,
-                      ),
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[2].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                        ),
-                        enabled: false,
-                        value: choices[2],
-                      ),
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[3].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                        ),
-                        enabled: false,
-                        value: choices[3],
-                      ),
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[4].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                        ),
-                        enabled: false,
-                        value: choices[4],
-                      ),
-                      CheckedPopupMenuItem<String>(
-                        child: Text(
-                          choices[5].toString(),
-                          style: Theme.of(context).textTheme.bodyText1,
-                          textAlign: TextAlign.left,
-                          strutStyle: StrutStyle(fontSize: 1.2),
-                        ),
-                        enabled: false,
-                        value: choices[5],
-                      ),
-                    ]),
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  tooltip: 'Legende',
+                  onPressed: () {
+                    //TODO display information about map
+                    setState(() {
+                      //display vorrangnetz
+                      //TODO introduce button on map for changing layers
+                      _polylines = _polylines_vorrangnetz;
+                    });
+                  },
+                ),
               ],
             ),
           ],
@@ -211,12 +185,3 @@ class _MyAppState extends State<MyApp> with Routes {
     ));
   }
 }
-
-final List<String> choices = <String>[
-  "RadlvorrangNetz",
-  "Gesamtnetz",
-  "Ändere Kartenstil",
-  "MunichWays Webseite",
-  "Spende",
-  "Bewertungskriterien"
-];
