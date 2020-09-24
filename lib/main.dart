@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:munich_ways/ui/map/map_app_bar.dart';
+
 import 'control/geojsonroutes.dart';
-import 'control/maptype.dart';
-import 'onOpen.dart';
 
 const STACHUS = [48.14, 11.5652];
 
@@ -46,6 +46,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with Routes {
   GoogleMapController mapController;
   final LatLng _center = LatLng(STACHUS[0], STACHUS[1]);
+
   void _onMapCreated(GoogleMapController controller) {
     setState(() {
       mapController = controller;
@@ -73,6 +74,7 @@ class _MyAppState extends State<MyApp> with Routes {
   }
 
   String _selectedChoice;
+
   void _select(String choice) {
     setState(() {
       _selectedChoice = choice;
@@ -116,91 +118,95 @@ class _MyAppState extends State<MyApp> with Routes {
       drawer: Drawer(
         child: Text("Hier gibts bald mehr zu lesen ..."),
       ),
-      appBar: AppBar(
-        title: Text('Munich Ways'),
-        backgroundColor: Colors.lightBlue,
-        actions: <Widget>[
-          PopupMenuButton<String>(
-              onSelected: _select,
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[0].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
-                        textScaleFactor: 1,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            GoogleMap(
+              polylines: _polylines,
+              myLocationButtonEnabled: true,
+              myLocationEnabled: false,
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: CameraPosition(
+                target: _center,
+                zoom: 14.0,
+              ),
+              mapType: MapType.normal,
+              mapToolbarEnabled: true,
+              zoomControlsEnabled: true,
+            ),
+            MapAppBar(
+              actions: <Widget>[
+                PopupMenuButton<String>(
+                    onSelected: _select,
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[0].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                          textScaleFactor: 1,
+                        ),
+                        enabled: true,
+                        value: choices[0],
+                        checked: true,
                       ),
-                      enabled: true,
-                      value: choices[0],
-                      checked: true,
-                    ),
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[1].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[1].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                        ),
+                        enabled: true,
+                        value: choices[1],
+                        checked: isChecked,
                       ),
-                      enabled: true,
-                      value: choices[1],
-                      checked: isChecked,
-                    ),
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[2].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[2].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                        ),
+                        enabled: false,
+                        value: choices[2],
                       ),
-                      enabled: false,
-                      value: choices[2],
-                    ),
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[3].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[3].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                        ),
+                        enabled: false,
+                        value: choices[3],
                       ),
-                      enabled: false,
-                      value: choices[3],
-                    ),
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[4].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[4].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                        ),
+                        enabled: false,
+                        value: choices[4],
                       ),
-                      enabled: false,
-                      value: choices[4],
-                    ),
-                    CheckedPopupMenuItem<String>(
-                      child: Text(
-                        choices[5].toString(),
-                        style: Theme.of(context).textTheme.bodyText1,
-                        textAlign: TextAlign.left,
-                        strutStyle: StrutStyle(fontSize: 1.2),
+                      CheckedPopupMenuItem<String>(
+                        child: Text(
+                          choices[5].toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                          textAlign: TextAlign.left,
+                          strutStyle: StrutStyle(fontSize: 1.2),
+                        ),
+                        enabled: false,
+                        value: choices[5],
                       ),
-                      enabled: false,
-                      value: choices[5],
-                    ),
-                  ]),
-        ],
-      ),
-      body: GoogleMap(
-        polylines: _polylines,
-        myLocationButtonEnabled: true,
-        myLocationEnabled: false,
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(
-          target: _center,
-          zoom: 14.0,
+                    ]),
+              ],
+            ),
+          ],
         ),
-        mapType: MapType.normal,
-        mapToolbarEnabled: true,
-        zoomControlsEnabled: true,
       ),
     ));
   }
