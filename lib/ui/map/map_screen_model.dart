@@ -6,17 +6,35 @@ import 'package:munich_ways/ui/map/munichways_api.dart';
 class MapScreenViewModel extends ChangeNotifier {
   Set<Polyline> get polylines {
     Set<Polyline> tempPolylines = {};
-    if(isRadlvorrangnetzVisible){
+    if(_isRadlvorrangnetzVisible){
       tempPolylines.addAll(_polylines_vorrangnetz);
     }
-    if(isGesamtnetzVisible){
+    if(_isGesamtnetzVisible){
       tempPolylines.addAll(_polylines_gesamtnetz);
     }
     return tempPolylines;
   }
 
-  bool isRadlvorrangnetzVisible = true;
-  bool isGesamtnetzVisible = true;
+  bool _isRadlvorrangnetzVisible = true;
+  bool _isGesamtnetzVisible = false;
+
+  bool get isRadlvorrangnetzVisible {
+    return _isRadlvorrangnetzVisible;
+  }
+
+  bool get isGesamtnetzVisible {
+    return _isGesamtnetzVisible;
+  }
+
+  void toggleGesamtnetzVisible(){
+    _isGesamtnetzVisible = !_isGesamtnetzVisible;
+    notifyListeners();
+  }
+
+  void toggleRadvorrangnetzVisible(){
+    _isRadlvorrangnetzVisible = !_isRadlvorrangnetzVisible;
+    notifyListeners();
+  }
 
   Set<Polyline> _polylines_vorrangnetz;
   Set<Polyline> _polylines_gesamtnetz;

@@ -45,6 +45,81 @@ class _MapScreenState extends State<MapScreen> {
                     mapToolbarEnabled: true,
                     zoomControlsEnabled: false,
                   ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: RawMaterialButton(
+                        onPressed: () {
+                          showModalBottomSheet<void>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return StatefulBuilder(
+                                builder: (context, StateSetter setModalState) {
+                                  return Container(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: <Widget>[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 0),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "Fahrradnetz auswählen",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headline6,
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.close),
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        CheckboxListTile(
+                                          title: Text("Radvorrangnetz"),
+                                          value: model.isRadlvorrangnetzVisible,
+                                          onChanged: (bool value) {
+                                            model.toggleRadvorrangnetzVisible();
+                                            setModalState(() {});
+                                          },
+                                        ),
+                                        CheckboxListTile(
+                                          title: Text("Gesamtnetz"),
+                                          value: model.isGesamtnetzVisible,
+                                          onChanged: (bool value) {
+                                            model.toggleGesamtnetzVisible();
+                                            setModalState(() {});
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                        elevation: 2.0,
+                        fillColor: Colors.white,
+                        constraints:
+                            BoxConstraints.expand(width: 56, height: 56),
+                        child: Icon(
+                          Icons.layers,
+                          color: Colors.black54,
+                        ),
+                        padding: EdgeInsets.all(15.0),
+                        shape: CircleBorder(),
+                      ),
+                    ),
+                  ),
                   MapAppBar(
                     actions: <Widget>[
                       IconButton(
