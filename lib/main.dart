@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/Routes.dart';
+import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
-
-import 'control/geojsonroutes.dart';
 
 void main() => runApp(MunichWaysApp());
 
