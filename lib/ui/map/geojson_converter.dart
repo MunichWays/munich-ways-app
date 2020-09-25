@@ -3,11 +3,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 /// Converts geojson to google maps polylines
 class GeojsonConverter {
-  static final List<PatternItem> DOTTED = [
+  static final List<PatternItem> dotted = [
     PatternItem.dot,
     PatternItem.gap(1),
   ];
-  static final List<PatternItem> DASHED = [
+  static final List<PatternItem> dashed = [
     PatternItem.dash(3),
     PatternItem.gap(5)
   ];
