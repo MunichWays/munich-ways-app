@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/ui/map/geojson_converter.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
+import 'package:munich_ways/ui/map/street_details.dart';
 
-class MapScreenViewModel extends ChangeNotifier {
+class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   GoogleMapController mapController;
 
   Set<Polyline> get polylines {
@@ -41,15 +43,19 @@ class MapScreenViewModel extends ChangeNotifier {
   Stream<String> errorMsgs;
   StreamController<String> _errorMsgsController;
 
-
   Stream showLocationPermissionDialog;
   StreamController _permissionStreamController;
+
+  Stream showStreetDetails;
+  StreamController showStreetDetailsController;
 
   MapScreenViewModel() {
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
     _permissionStreamController = StreamController();
     showLocationPermissionDialog = _permissionStreamController.stream;
+    showStreetDetailsController = StreamController();
+    showStreetDetails = showStreetDetailsController.stream;
 
     refreshVorrangnetz();
     refreshGesamtznetz();
@@ -79,8 +85,7 @@ class MapScreenViewModel extends ChangeNotifier {
         if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
           currentLocationVisible = false;
-          _displayErrorMsg(
-              "Standort Berechtigung fehlt.");
+          _displayErrorMsg("Standort Berechtigung fehlt.");
           return;
         }
         break;
@@ -116,13 +121,20 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<void> refreshVorrangnetz() async {
     log.d('refreshVorrangnetz');
-    _polylinesVorrangnetz = await netzRepo.getRadlvorrangnetz();
+    _polylinesVorrangnetz = await netzRepo.getRadlvorrangnetz(this);
     notifyListeners();
   }
 
   Future<void> refreshGesamtznetz() async {
     log.d('refreshGesamtnetz');
-    _polylinesGesamtnetz = await netzRepo.getGesamtnetz();
+    _polylinesGesamtnetz = await netzRepo.getGesamtnetz(this);
     notifyListeners();
   }
+
+  @override
+  void onTap(feature) {
+    log.d(feature['properties']);
+    showStreetDetailsController.add(StreetDetails(feature['properties']));
+  }
+
 }

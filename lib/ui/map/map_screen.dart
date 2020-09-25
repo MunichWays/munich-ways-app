@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/street_details.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:provider/provider.dart';
 
@@ -26,7 +27,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     log.d("didChangeAppLifecycleState $state");
-    if(displayCurrentLocationOnResume && state == AppLifecycleState.resumed) {
+    if (displayCurrentLocationOnResume && state == AppLifecycleState.resumed) {
       displayCurrentLocationOnResume = false;
       mapViewModel.displayCurrentLocation(permissionCheck: false);
     }
@@ -36,6 +37,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> showStreetDetails(StreetDetails details) async {
+    return scaffoldKey.currentState.showBottomSheet((context) => Container(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(details.getName()),
+              ),
+              Text("$details"),
+            ],
+          ),
+        ));
   }
 
   Future<void> _askForLocationPermission() async {
@@ -77,8 +92,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool displayCurrentLocationOnResume = false;
   MapScreenViewModel mapViewModel;
 
-
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MapScreenViewModel>(
@@ -94,6 +107,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.showLocationPermissionDialog.listen((_) {
           _askForLocationPermission();
+        });
+        model.showStreetDetails.listen((details) {
+          showStreetDetails(details);
         });
         return model;
       },
@@ -115,6 +131,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     target: _stachus,
                     zoom: 14.0,
                   ),
+                  onTap: (latlng) {
+                    log.d("onTap MAP $latlng");
+                  },
                   mapType: MapType.normal,
                   mapToolbarEnabled: true,
                   zoomControlsEnabled: false,
@@ -222,8 +241,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 constraints: BoxConstraints.expand(
                                     width: 56, height: 56),
                                 child: Icon(
-                                  model.currentLocationVisible ? Icons.my_location : Icons.location_searching,
-                                  color: model.currentLocationVisible ? Colors.black54 : Colors.black26,
+                                  model.currentLocationVisible
+                                      ? Icons.my_location
+                                      : Icons.location_searching,
+                                  color: model.currentLocationVisible
+                                      ? Colors.black54
+                                      : Colors.black26,
                                 ),
                                 padding: EdgeInsets.all(15.0),
                                 shape: CircleBorder(),

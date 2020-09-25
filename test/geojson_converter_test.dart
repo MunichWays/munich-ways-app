@@ -14,7 +14,7 @@ void main() {
 
     //WHEN
     var polylines = converter.getPolylines(
-        json: json.decode(jsonString), pattern: GeojsonConverter.dashed);
+        geojson: json.decode(jsonString), pattern: GeojsonConverter.dashed);
 
     //THEN
     expect(polylines.length, 794);
