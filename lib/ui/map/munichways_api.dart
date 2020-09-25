@@ -19,11 +19,11 @@ class MunichwaysApi {
   GeojsonConverter _converter = GeojsonConverter();
 
   Future<Set<Polyline>> getRadlvorrangnetz() async {
-    return _getNetz(_radlvorrangnetzName, GeojsonConverter.DOTTED);
+    return _getNetz(_radlvorrangnetzName, GeojsonConverter.dotted);
   }
 
   Future<Set<Polyline>> getGesamtnetz() async {
-    return _getNetz(_gesamtnetzName, GeojsonConverter.DASHED);
+    return _getNetz(_gesamtnetzName, GeojsonConverter.dashed);
   }
 
   Future<Set<Polyline>> _getNetz(String filename, List<PatternItem> pattern) async {
