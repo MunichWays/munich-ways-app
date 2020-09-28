@@ -18,9 +18,9 @@ class SideDrawer extends StatelessWidget {
                 color: Colors.white,
                 border: Border(
                     bottom: BorderSide(
-                      color: AppColors.munichWaysBlue,
-                      width: 1,
-                    ))),
+                  color: AppColors.munichWaysBlue,
+                  width: 1,
+                ))),
           ),
           ListTile(
             title: Text('Karte'),
