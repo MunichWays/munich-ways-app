@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/map/street_details_sheet.dart';
+import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
+import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:provider/provider.dart';
 
@@ -140,6 +141,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               RawMaterialButton(
+                                onPressed: () async {
+                                  if (!model.loading) {
+                                    model.refreshRadlnetze();
+                                  }
+                                },
+                                elevation: 2.0,
+                                fillColor: Colors.white,
+                                padding: EdgeInsets.all(15.0),
+                                shape: CircleBorder(),
+                                constraints: BoxConstraints.expand(
+                                    width: 56, height: 56),
+                                child: model.loading
+                                    ? SizedBox(
+                                        width: 20.0,
+                                        height: 20.0,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.refresh,
+                                        color: Colors.black54,
+                                      ),
+                              ),
+                              SizedBox(
+                                height: 16,
+                              ),
+                              RawMaterialButton(
                                 onPressed: () {
                                   showModalBottomSheet<void>(
                                     context: context,
@@ -255,6 +284,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                         ],
                       ),
+                      Visibility(
+                        visible: model.displayMissingPolylinesMsg,
+                        child: MissingRadnetzeCard(
+                          loading: model.loading,
+                          onPressed: () {
+                            model.refreshRadlnetze();
+                          },
+                        ),
+                      )
                     ],
                   ),
                 ),
@@ -266,3 +304,5 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 }
+
+
