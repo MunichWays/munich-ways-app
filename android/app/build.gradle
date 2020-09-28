@@ -27,6 +27,23 @@ if(mapsApiKey == null){
     project.logger.error('Google Maps Api Key not configured. Set it in `local_maps.properties` or in the environment variable `MAPS_API_KEY`')
 }
 
+def keystorePropertiesFile = file('release_keystore.properties')
+def keystoreProperties = new Properties()
+if(keystorePropertiesFile.exists()) {
+    project.logger.info('Load keystore properties from local file')
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else {
+    project.logger.info('Load keystore properties from environment')
+    try {
+        keystoreProperties['storePassword'] = System.getenv('ANDROID_RELEASE_STORE_PASSWORD')
+        keystoreProperties['alias'] = System.getenv('ANDROID_RELEASE_ALIAS')
+        keystoreProperties['aliasPassword'] = System.getenv('ANDROID_RELEASE_ALIAS_PASSWORD')
+    } catch(NullPointerException e) {
+        project.logger.warn('Failed to load keystore properties from environment.', e)
+    }
+}
+
+
 def flutterRoot = localProperties.getProperty('flutter.sdk')
 if (flutterRoot == null) {
     throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
@@ -66,10 +83,18 @@ android {
         manifestPlaceholders = [MAPS_API_KEY: mapsApiKey]
     }
 
+    signingConfigs {
+        release {
+            keyAlias "munichways"
+            keyPassword keystoreProperties['storePassword']
+            storeFile file("release-keystore.jks")
+            storePassword keystoreProperties['storePassword']
+        }
+
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.debug
         }
     }
