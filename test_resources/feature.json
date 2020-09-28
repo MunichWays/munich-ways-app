@@ -1,0 +1,81 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+      [
+        [
+          11.553315,
+          48.132019
+        ],
+        [
+          11.55317,
+          48.131973
+        ],
+        [
+          11.553074,
+          48.131901
+        ],
+        [
+          11.553031,
+          48.13178
+        ],
+        [
+          11.553036,
+          48.131636
+        ],
+        [
+          11.553025,
+          48.13149
+        ],
+        [
+          11.55302,
+          48.131332
+        ],
+        [
+          11.552988,
+          48.131174
+        ],
+        [
+          11.55295,
+          48.130942
+        ],
+        [
+          11.552891,
+          48.130705
+        ],
+        [
+          11.552821,
+          48.130462
+        ],
+        [
+          11.552768,
+          48.130304
+        ],
+        [
+          11.552725,
+          48.130218
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "cartodb_id": 1161,
+    "name": "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
+    "description": "neuralgischer Punkt",
+    "netztyp": "1_RadlVorrang",
+    "munichways_id": "RV03S.01.000-01.100",
+    "ist": "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
+    "soll": "Fahrbahn erneuern",
+    "kategorie": "<a href=\"https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg\" target=\"_blank\"> ebener Radweg</a>",
+    "farbe": "schwarz",
+    "links": "<p><a href=\"https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing\" target=\"_blank\">  RadlVorrangProfil</a></p>\n<p>_____ </p><br> </br>\n<p><a href=\"https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing\" target=\"_blank\">  Maßnahmenkatalog </a> </p>\n<p><a href=\"https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf\" target=\"_blank\">  RIS Antrag SPD 19.09.2019 </a> </p>\n<p>_____ </p><br> </br>",
+    "strecke": "RV3S - Fürstenrieder-Radlroute",
+    "quartal": "Q4_2020",
+    "bild": "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
+    "ba": "BA02",
+    "gs": "LHM-Mitte",
+    "netztyp_id": 1,
+    "kategorie_id": 9
+  }
+}

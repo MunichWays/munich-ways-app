@@ -134,7 +134,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   @override
   void onTap(feature) {
     log.d(feature['properties']);
-    showStreetDetailsController.add(StreetDetails(feature['properties']));
+    showStreetDetailsController.add(StreetDetails.fromJson(feature));
   }
 
 }
