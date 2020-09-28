@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/map/street_details.dart';
+import 'package:munich_ways/ui/map/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:provider/provider.dart';
 
@@ -37,20 +37,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  Future<void> showStreetDetails(StreetDetails details) async {
-    return scaffoldKey.currentState.showBottomSheet((context) => Container(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(details.getName()),
-              ),
-              Text("$details"),
-            ],
-          ),
-        ));
   }
 
   Future<void> _askForLocationPermission() async {
@@ -109,7 +95,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           _askForLocationPermission();
         });
         model.showStreetDetails.listen((details) {
-          showStreetDetails(details);
+          return scaffoldKey.currentState
+              .showBottomSheet((context) => StreetDetailsSheet(
+                    details: details,
+                  ));
         });
         return model;
       },
