@@ -13,11 +13,14 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
 
   bool loading = false;
 
+  bool firstLoad = true;
+
   bool get displayMissingPolylinesMsg {
-    return _polylinesVorrangnetz == null ||
-        _polylinesVorrangnetz.isEmpty ||
-        _polylinesGesamtnetz == null ||
-        _polylinesGesamtnetz.isEmpty;
+    return !firstLoad &&
+        (_polylinesVorrangnetz == null ||
+            _polylinesVorrangnetz.isEmpty ||
+            _polylinesGesamtnetz == null ||
+            _polylinesGesamtnetz.isEmpty);
   }
 
   Set<Polyline> get polylines {
@@ -129,6 +132,9 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
 
   Future<void> refreshRadlnetze() async {
     log.d("refresh");
+    if (firstLoad) {
+      firstLoad = false;
+    }
     loading = true;
     notifyListeners();
 
