@@ -11,6 +11,15 @@ import 'package:munich_ways/ui/map/street_details.dart';
 class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   GoogleMapController mapController;
 
+  bool loading = false;
+
+  bool get displayMissingPolylinesMsg {
+    return _polylinesVorrangnetz == null ||
+        _polylinesVorrangnetz.isEmpty ||
+        _polylinesGesamtnetz == null ||
+        _polylinesGesamtnetz.isEmpty;
+  }
+
   Set<Polyline> get polylines {
     Set<Polyline> tempPolylines = {};
     if (_isRadlvorrangnetzVisible) {
@@ -57,8 +66,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     showStreetDetailsController = StreamController();
     showStreetDetails = showStreetDetailsController.stream;
 
-    refreshVorrangnetz();
-    refreshGesamtznetz();
+    refreshRadlnetze();
   }
 
   void _displayErrorMsg(String msg) {
@@ -119,15 +127,19 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     notifyListeners();
   }
 
-  Future<void> refreshVorrangnetz() async {
-    log.d('refreshVorrangnetz');
-    _polylinesVorrangnetz = await netzRepo.getRadlvorrangnetz(this);
+  Future<void> refreshRadlnetze() async {
+    log.d("refresh");
+    loading = true;
     notifyListeners();
-  }
 
-  Future<void> refreshGesamtznetz() async {
-    log.d('refreshGesamtnetz');
-    _polylinesGesamtnetz = await netzRepo.getGesamtnetz(this);
+    try {
+      _polylinesVorrangnetz = await netzRepo.getRadlvorrangnetz(this);
+      _polylinesGesamtnetz = await netzRepo.getGesamtnetz(this);
+    } catch (e) {
+      _displayErrorMsg(e.toString());
+      log.e("Error loading Netze", e);
+    }
+    loading = false;
     notifyListeners();
   }
 
@@ -136,5 +148,4 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     log.d(feature['properties']);
     showStreetDetailsController.add(StreetDetails.fromJson(feature));
   }
-
 }

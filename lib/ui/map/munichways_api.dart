@@ -18,23 +18,32 @@ class MunichwaysApi {
   GeojsonConverter _converter = GeojsonConverter();
 
   Future<Set<Polyline>> getRadlvorrangnetz(OnTapListener onTapListener) async {
-    return _getNetz(_radlvorrangnetzName, GeojsonConverter.dotted, onTapListener);
+    return _getNetz(
+        _radlvorrangnetzName, GeojsonConverter.dotted, onTapListener);
   }
 
   Future<Set<Polyline>> getGesamtnetz(OnTapListener onTapListener) async {
     return _getNetz(_gesamtnetzName, GeojsonConverter.dashed, onTapListener);
   }
 
-  Future<Set<Polyline>> _getNetz(String filename, List<PatternItem> pattern, OnTapListener onTapListener) async {
+  Future<Set<Polyline>> _getNetz(String filename, List<PatternItem> pattern,
+      OnTapListener onTapListener) async {
     var response = await _client.get("$_baseUrl$filename");
     switch (response.statusCode) {
       case 200:
         return _converter.getPolylines(
-            geojson: response.jsonBody(), pattern: pattern, onTapListener: onTapListener);
+            geojson: response.jsonBody(),
+            pattern: pattern,
+            onTapListener: onTapListener);
       default:
-        //TODO throw exception
         log.d("Failed to retrieve $filename ${response.body}");
-        return null;
+        throw ApiException(response);
     }
   }
+}
+
+class ApiException implements Exception {
+  final Response response;
+
+  ApiException(this.response);
 }
