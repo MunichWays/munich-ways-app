@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
 import 'package:http_interceptor/http_client_with_interceptor.dart';
+import 'package:munich_ways/common/json_body_extension.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/common/logging_interceptor.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
@@ -31,7 +30,7 @@ class MunichwaysApi {
     switch (response.statusCode) {
       case 200:
         return _converter.getPolylines(
-            geojson: json.decode(response.body), pattern: pattern, onTapListener: onTapListener);
+            geojson: response.jsonBody(), pattern: pattern, onTapListener: onTapListener);
       default:
         //TODO throw exception
         log.d("Failed to retrieve $filename ${response.body}");
