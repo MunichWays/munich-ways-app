@@ -17,9 +17,11 @@ class GeojsonConverter {
     PatternItem.gap(5)
   ];
 
-  Set<Polyline> getPolylines({@required geojson, width = 5, @required List<
-      PatternItem> pattern, @required OnTapListener onTapListener}) {
-
+  Set<Polyline> getPolylines(
+      {@required geojson,
+      width = 5,
+      @required List<PatternItem> pattern,
+      @required OnTapListener onTapListener}) {
     Set<Polyline> polylineCollection = {};
     var _features;
     if (geojson['type'].toString() == "FeatureCollection") {
@@ -31,14 +33,11 @@ class GeojsonConverter {
             List<LatLng> polylineCoordinates = [];
             lCoordinates.forEach((eCoordinate) {
               polylineCoordinates.add(LatLng(
-                  LatLng
-                      .fromJson(eCoordinate)
-                      .longitude,
-                  LatLng
-                      .fromJson(eCoordinate)
-                      .latitude));
+                  LatLng.fromJson(eCoordinate).longitude,
+                  LatLng.fromJson(eCoordinate).latitude));
             });
-            polylineCollection.add(_createPolyline(feature, polylineCoordinates, width, pattern, onTapListener));
+            polylineCollection.add(_createPolyline(
+                feature, polylineCoordinates, width, pattern, onTapListener));
             break;
           case "MultiLineString":
             List<dynamic> mlCoordinates = feature['geometry']['coordinates'];
@@ -46,15 +45,12 @@ class GeojsonConverter {
             mlCoordinates.forEach((eeCoordinate) {
               eeCoordinate.forEach((eCoordinate) {
                 polylineCoordinates.add(LatLng(
-                    LatLng
-                        .fromJson(eCoordinate)
-                        .longitude,
-                    LatLng
-                        .fromJson(eCoordinate)
-                        .latitude));
+                    LatLng.fromJson(eCoordinate).longitude,
+                    LatLng.fromJson(eCoordinate).latitude));
               });
             });
-            polylineCollection.add(_createPolyline(feature, polylineCoordinates, width, pattern, onTapListener));
+            polylineCollection.add(_createPolyline(
+                feature, polylineCoordinates, width, pattern, onTapListener));
             break;
           default:
             log.d("unknown geometry ${feature['geometry']['type']}");
@@ -64,10 +60,10 @@ class GeojsonConverter {
     return polylineCollection;
   }
 
-  Polyline _createPolyline(dynamic feature, List<LatLng> coordinates, int width, List<PatternItem> pattern, OnTapListener onTap) {
+  Polyline _createPolyline(dynamic feature, List<LatLng> coordinates, int width,
+      List<PatternItem> pattern, OnTapListener onTap) {
     return Polyline(
-      polylineId:
-      PolylineId(feature['properties']['munichways_id'].toString()),
+      polylineId: PolylineId(feature['properties']['munichways_id'].toString()),
       points: coordinates,
       width: width,
       color: _getColor(feature['properties']['farbe'].toString()),

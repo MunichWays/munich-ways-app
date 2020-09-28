@@ -15,11 +15,12 @@ class MapAppBar extends StatelessWidget {
       right: 10,
       left: 10,
       child: AppBar(
-          iconTheme: IconThemeData(color: Colors.black54),
-          title: Text('Munich Ways', style: TextStyle(color: Colors.black54)),
-          backgroundColor: Colors.white,
-          shape: RoundedAppBarShape(),
-      actions: actions,),
+        iconTheme: IconThemeData(color: Colors.black54),
+        title: Text('Munich Ways', style: TextStyle(color: Colors.black54)),
+        backgroundColor: Colors.white,
+        shape: RoundedAppBarShape(),
+        actions: actions,
+      ),
     );
   }
 }

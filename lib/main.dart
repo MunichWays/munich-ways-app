@@ -10,7 +10,6 @@ class MunichWaysApp extends StatefulWidget {
 }
 
 class _MunichWaysAppState extends State<MunichWaysApp> {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

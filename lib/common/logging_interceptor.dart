@@ -22,5 +22,4 @@ class LoggingInterceptor implements InterceptorContract {
     log.d(data.headers);
     return data;
   }
-
 }
