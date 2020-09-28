@@ -2,6 +2,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
@@ -279,7 +280,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             icon: const Icon(Icons.info_outline),
                             tooltip: 'Legende',
                             onPressed: () {
-                              //TODO display legende or infos about munichways map
+                              showDialog(
+                                  context: context,
+                                  builder: (_) => MapInfoDialog());
                             },
                           ),
                         ],
@@ -304,5 +307,3 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 }
-
-
