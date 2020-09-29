@@ -15,8 +15,10 @@ class MapAppBar extends StatelessWidget {
       right: 10,
       left: 10,
       child: AppBar(
+        centerTitle: true,
         iconTheme: IconThemeData(color: Colors.black54),
-        title: Text('Munich Ways', style: TextStyle(color: Colors.black54)),
+        title: SizedBox(
+            height: 48, child: Image(image: AssetImage('images/logo.png'))),
         backgroundColor: Colors.white,
         shape: RoundedAppBarShape(),
         actions: actions,
