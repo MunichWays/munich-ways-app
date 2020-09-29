@@ -2,24 +2,6 @@
 
 Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For more information see: munichways.com
 
-## Release
-
-### Android
-
-#### Local
-
-1. Get release.keystore from Sven and place it in `android/app/`
-2. Get Credentials for keystore from Sven and add them to `android/release_keystore.properties`:
-```
-# Do not add to version control!
-# This contains the credentials to sign the android app and should only be on your local machine
-# or the build server
-ANDROID_RELEASE_STORE_PASSWORD=<PASSWORD>
-ANDROID_RELEASE_ALIAS=<ALIAS>
-ANDROID_RELEASE_ALIAS_PASSWORD=<ALIAS_PASSWORD>
-```
-3. Run `flutter build apk` or see the other output options
-
 ## Development Setup
 
 ### Google Maps - Add API Key for development
@@ -32,3 +14,25 @@ ANDROID_RELEASE_ALIAS_PASSWORD=<ALIAS_PASSWORD>
 # Do not add to version control, this contains your local development configurations
 MAPS_API_KEY=<YOUR-API-KEY>
 ```
+
+## Release
+
+### Android
+
+#### Local
+
+1. Get release.keystore from Sven and place it in `android/app/`
+2. Get Credentials for keystore from Sven and add them to `android/release_keystore.properties`:
+```
+# Do not add to version control!
+# This contains the credentials to sign the android app and should only be on your local machine
+# or the build server
+# Do not add to version control!
+# This contains the credentials to sign the android app and should only be on your local machine
+# or the build server
+storePassword=<Password>
+alias=<Alias>
+aliasPassword=<Password>
+```
+3. Add googls Maps Production key, see Development > Google Maps Setup
+3. Run `flutter build apk` or see the other output options
