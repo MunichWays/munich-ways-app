@@ -1,0 +1,21 @@
+name: Android Release
+
+on:
+  push:
+    branches: [ master, develop_sven ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: cirrusci/flutter:stable
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Create Appbundle
+        run: flutter build appbundle --release
+      - name: Create APK
+        run: flutter build apk --release
