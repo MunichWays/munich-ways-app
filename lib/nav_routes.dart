@@ -1,4 +1,5 @@
 class NavRoutes {
-  static const root = "/";
-  static const map = "/map";
+  static const String root = "/";
+  static const String map = "/map";
+  static const String info = "/info";
 }
