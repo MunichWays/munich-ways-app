@@ -68,8 +68,6 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     showLocationPermissionDialog = _permissionStreamController.stream;
     showStreetDetailsController = StreamController();
     showStreetDetails = showStreetDetailsController.stream;
-
-    refreshRadlnetze();
   }
 
   void _displayErrorMsg(String msg) {
@@ -78,6 +76,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
 
   void onMapCreated(GoogleMapController controller) {
     mapController = controller;
+    refreshRadlnetze();
     displayCurrentLocation();
   }
 
@@ -131,10 +130,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   }
 
   Future<void> refreshRadlnetze() async {
-    log.d("refresh");
-    if (firstLoad) {
-      firstLoad = false;
-    }
+
     loading = true;
     notifyListeners();
 
@@ -144,6 +140,9 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
+    }
+    if(firstLoad){
+      firstLoad = false;
     }
     loading = false;
     notifyListeners();
