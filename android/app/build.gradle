@@ -27,7 +27,7 @@ if(mapsApiKey == null){
     project.logger.error('Google Maps Api Key not configured. Set it in `local_maps.properties` or in the environment variable `MAPS_API_KEY`')
 }
 
-def keystorePropertiesFile = file('release_keystore.properties')
+def keystorePropertiesFile = file('../release_keystore.properties')
 def keystoreProperties = new Properties()
 if(keystorePropertiesFile.exists()) {
     project.logger.info('Load keystore properties from local file')
@@ -85,11 +85,12 @@ android {
 
     signingConfigs {
         release {
-            keyAlias "munichways"
+            keyAlias keystoreProperties['alias']
             keyPassword keystoreProperties['aliasPassword']
-            storeFile file("release-keystore.jks")
+            storeFile file("release.keystore")
             storePassword keystoreProperties['storePassword']
         }
+
     }
 
     buildTypes {

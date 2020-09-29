@@ -120,4 +120,5 @@ app.*.symbols
 
 # Release Keys
 release.keystore
+release.keystore.asc
 release_keystore.properties
