@@ -130,7 +130,6 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   }
 
   Future<void> refreshRadlnetze() async {
-
     loading = true;
     notifyListeners();
 
@@ -141,7 +140,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
     }
-    if(firstLoad){
+    if (firstLoad) {
       firstLoad = false;
     }
     loading = false;
