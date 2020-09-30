@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:munich_ways/ui/map/kategorie.dart';
 import 'package:munich_ways/ui/map/street_details.dart';
 
 import 'test_utils.dart';
@@ -28,8 +29,10 @@ void main() {
             ist:
                 "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
             soll: "Fahrbahn erneuern",
-            kategorie:
-                "<a href=\"https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg\" target=\"_blank\"> ebener Radweg</a>",
+            kategorie: Kategorie(
+                title: "ebener Radweg",
+                url:
+                    'https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg'),
             farbe: "schwarz",
             links:
                 "<p><a href=\"https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing\" target=\"_blank\">  RadlVorrangProfil</a></p>\n<p>_____ </p><br> </br>\n<p><a href=\"https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing\" target=\"_blank\">  Maßnahmenkatalog </a> </p>\n<p><a href=\"https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf\" target=\"_blank\">  RIS Antrag SPD 19.09.2019 </a> </p>\n<p>_____ </p><br> </br>",

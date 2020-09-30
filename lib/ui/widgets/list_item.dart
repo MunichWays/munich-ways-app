@@ -3,29 +3,64 @@ import 'package:flutter/material.dart';
 class ListItem extends StatelessWidget {
   final String label;
   final String value;
+  final VoidCallback onTap;
 
   const ListItem({
     Key key,
     @required this.label,
     @required this.value,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (value == null || value.isEmpty) {
+      return SizedBox.shrink();
+    } else {
+      return Column(
         children: [
-          Text(
-            this.label,
-            style: Theme.of(context).textTheme.overline,
+          Divider(
+            height: 0,
           ),
-          Text(this.value, style: Theme.of(context).textTheme.subtitle1)
+          Material(
+            child: InkWell(
+              child: Ink(
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              this.label,
+                              style: Theme.of(context).textTheme.overline,
+                            ),
+                            SizedBox(
+                              height: 6,
+                            ),
+                            Text(this.value,
+                                style: Theme.of(context).textTheme.subtitle1)
+                          ],
+                        ),
+                      ),
+                      onTap != null
+                          ? Icon(Icons.open_in_browser)
+                          : SizedBox.shrink(),
+                    ],
+                  ),
+                ),
+              ),
+              onTap: this.onTap,
+            ),
+          ),
         ],
-      ),
-    );
+      );
+    }
   }
 }

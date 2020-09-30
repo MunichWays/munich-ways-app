@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 abstract class OnTapListener {
   void onTap(dynamic feature);
@@ -66,7 +67,8 @@ class GeojsonConverter {
       polylineId: PolylineId(feature['properties']['munichways_id'].toString()),
       points: coordinates,
       width: width,
-      color: _getColor(feature['properties']['farbe'].toString()),
+      color:
+          AppColors.getPolylineColor(feature['properties']['farbe'].toString()),
       patterns: pattern,
       onTap: () {
         log.d("onTap Polyline $feature");
@@ -76,22 +78,4 @@ class GeojsonConverter {
     );
   }
 
-  Color _getColor(_color) {
-    switch (_color) {
-      case "schwarz":
-        return Colors.black;
-        break;
-      case "grün":
-        return Colors.green;
-        break;
-      case "gelb":
-        return Colors.orange;
-        break;
-      case "rot":
-        return Colors.red;
-        break;
-      default:
-        return Colors.blueGrey;
-    }
-  }
 }
