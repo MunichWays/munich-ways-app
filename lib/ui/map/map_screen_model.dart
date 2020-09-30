@@ -35,7 +35,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   }
 
   bool _isRadlvorrangnetzVisible = true;
-  bool _isGesamtnetzVisible = false;
+  bool _isGesamtnetzVisible = true;
 
   bool get isRadlvorrangnetzVisible {
     return _isRadlvorrangnetzVisible;
