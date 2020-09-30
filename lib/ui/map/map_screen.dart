@@ -97,10 +97,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           _askForLocationPermission();
         });
         model.showStreetDetails.listen((details) {
-          return scaffoldKey.currentState
-              .showBottomSheet((context) => StreetDetailsSheet(
+          return scaffoldKey.currentState.showBottomSheet(
+              (context) => StreetDetailsSheet(
                     details: details,
-                  ));
+                  ),
+              backgroundColor: Colors.transparent);
         });
         return model;
       },
