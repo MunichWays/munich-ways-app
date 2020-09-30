@@ -77,5 +77,4 @@ class GeojsonConverter {
       consumeTapEvents: true,
     );
   }
-
 }
