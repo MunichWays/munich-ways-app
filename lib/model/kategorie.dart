@@ -10,6 +10,9 @@ class Kategorie extends Equatable {
   Kategorie({@required this.title, this.url});
 
   factory Kategorie.fromString(String value) {
+    if (value == null) {
+      return null;
+    }
     var document = parseFragment(value);
     var aTag = document.querySelector('a');
     if (aTag != null) {

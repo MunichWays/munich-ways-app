@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:munich_ways/ui/map/kategorie.dart';
+import 'package:munich_ways/model/kategorie.dart';
 
 void main() {
   test('fromString valid a-element', () {
@@ -28,5 +28,16 @@ void main() {
 
     //THEN
     expect(kategorie, Kategorie(title: "Lücke schließen", url: null));
+  });
+
+  test('fromString null', () {
+    //GIVEN
+    String kategorieString = null;
+
+    //WHEN
+    Kategorie kategorie = Kategorie.fromString(kategorieString);
+
+    //THEN
+    expect(kategorie, isNull);
   });
 }

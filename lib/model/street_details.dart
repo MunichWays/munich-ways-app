@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:munich_ways/ui/map/kategorie.dart';
+import 'package:munich_ways/model/kategorie.dart';
+import 'package:munich_ways/model/links.dart';
 
 /// Details for a street taken from the properties of a geojson feature
 class StreetDetails extends Equatable {
@@ -14,7 +15,7 @@ class StreetDetails extends Equatable {
   final Kategorie kategorie;
   final int kategorieId;
   final String farbe;
-  final String links;
+  final List<Link> links;
   final String strecke;
   final String quartal;
   final String bild;
@@ -52,7 +53,7 @@ class StreetDetails extends Equatable {
       soll: properties['soll'],
       kategorie: Kategorie.fromString(properties['kategorie']),
       farbe: properties['farbe'],
-      links: properties['links'],
+      links: LinksParser.parse(properties['links']),
       strecke: properties['strecke'],
       quartal: properties['quartal'],
       bild: properties['bild'],

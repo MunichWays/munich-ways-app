@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/info_screen.dart';
 import 'package:munich_ways/nav_routes.dart';
+import 'package:munich_ways/ui/info_screen.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/theme.dart';
 
