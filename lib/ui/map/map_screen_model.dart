@@ -110,11 +110,15 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
           position =
               await getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         }
-        mapController.animateCamera(CameraUpdate.newCameraPosition(
-            CameraPosition(
-                zoom: await mapController.getZoomLevel(),
-                target: LatLng(position.latitude, position.longitude))));
-        notifyListeners();
+        if (position != null) {
+          mapController.animateCamera(CameraUpdate.newCameraPosition(
+              CameraPosition(
+                  zoom: await mapController.getZoomLevel(),
+                  target: LatLng(position.latitude, position.longitude))));
+          notifyListeners();
+        } else {
+          _displayErrorMsg("Aktuelle Position konnte nicht bestimmt werden");
+        }
         break;
     }
   }
