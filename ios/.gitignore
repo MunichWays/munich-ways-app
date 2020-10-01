@@ -30,3 +30,7 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+#Secrets
+credentials/add_credentials_to_env.sh
+Credentials.generated.swift
