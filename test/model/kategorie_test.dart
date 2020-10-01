@@ -32,7 +32,7 @@ void main() {
 
   test('fromString null', () {
     //GIVEN
-    String kategorieString = null;
+    String kategorieString;
 
     //WHEN
     Kategorie kategorie = Kategorie.fromString(kategorieString);
