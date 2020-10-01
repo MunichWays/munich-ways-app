@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
-import 'package:munich_ways/ui/map/street_details.dart';
+import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -103,6 +103,18 @@ class StreetDetailsSheet extends StatelessWidget {
                           }
                         }
                       : null),
+              for (var link in details.links)
+                ListItem(
+                  label: "Link",
+                  value: link.title,
+                  onTap: () async {
+                    if (await canLaunch(link.url)) {
+                      await launch(link.url);
+                    } else {
+                      log.e("Could not launch ${link.url}");
+                    }
+                  },
+                ),
             ],
           ),
         ));

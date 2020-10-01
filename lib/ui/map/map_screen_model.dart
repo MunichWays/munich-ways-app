@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
-import 'package:munich_ways/ui/map/street_details.dart';
 
 class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   GoogleMapController mapController;
