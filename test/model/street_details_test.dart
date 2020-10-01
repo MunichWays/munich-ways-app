@@ -23,17 +23,17 @@ void main() {
         StreetDetails(
             cartoDbId: 1161,
             name:
-            "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
+                "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
             description: "neuralgischer Punkt",
             netztyp: "1_RadlVorrang",
             munichwaysId: "RV03S.01.000-01.100",
             ist:
-            "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
+                "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
             soll: "Fahrbahn erneuern",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
-                'https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg'),
+                    'https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg'),
             farbe: "schwarz",
             links: [
               Link("RadlVorrangProfil",
@@ -46,7 +46,7 @@ void main() {
             strecke: "RV3S - Fürstenrieder-Radlroute",
             quartal: "Q4_2020",
             bild:
-            "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
+                "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
             ba: "BA02",
             gs: "LHM-Mitte",
             netztypId: 1,

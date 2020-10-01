@@ -4,6 +4,11 @@ Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For mor
 
 ## Development Setup
 
+### Setup Git hooks for formatting
+
+The build server checks if all files are formatted correctly with `flutter format`. If not it will fail.
+To ensure that the formatter is run locally before a commit set the hooksPath property: `git config --local core.hooksPath ./githooks`
+
 ### Google Maps - Add API Key for development
 
 * Set up project in Google Cloud Platform e.g. MunichWaysDev
