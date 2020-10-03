@@ -19,6 +19,12 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 # Do not add to version control, this contains your local development configurations
 MAPS_API_KEY=<YOUR-API-KEY>
 ```
+* For iOS add `add_credentials_to_env.sh` to `./ios/credentials` with following content:
+```bash
+#!/bin/bash
+# DO NOT CHECK INTO VERSION CONTROL
+export MAPS_API_KEY=<YOUR-KEY>
+```
 
 ## Release
 
