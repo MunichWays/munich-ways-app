@@ -31,6 +31,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     if (_isGesamtnetzVisible) {
       tempPolylines.addAll(_polylinesGesamtnetz);
     }
+    log.d("Number of polylines: ${tempPolylines.length}");
     return tempPolylines;
   }
 
@@ -50,7 +51,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
   Set<Polyline> _polylinesVorrangnetz = {};
   Set<Polyline> _polylinesGesamtnetz = {};
 
-  MunichwaysApi netzRepo = MunichwaysApi();
+  MunichwaysApi _netzRepo = MunichwaysApi();
 
   Stream<String> errorMsgs;
   StreamController<String> _errorMsgsController;
@@ -138,8 +139,8 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     notifyListeners();
 
     try {
-      _polylinesVorrangnetz = await netzRepo.getRadlvorrangnetz(this);
-      _polylinesGesamtnetz = await netzRepo.getGesamtnetz(this);
+      _polylinesVorrangnetz = await _netzRepo.getRadlvorrangnetz(this);
+      _polylinesGesamtnetz = await _netzRepo.getGesamtnetz(this);
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
