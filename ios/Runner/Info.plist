@@ -25,8 +25,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position anzuzeigen.
-		</string>
+	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position anzuzeigen.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

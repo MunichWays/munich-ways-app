@@ -5,6 +5,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
+import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:provider/provider.dart';
@@ -175,65 +176,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   showModalBottomSheet<void>(
                                     context: context,
                                     builder: (BuildContext context) {
-                                      return StatefulBuilder(
-                                        builder: (context,
-                                            StateSetter setModalState) {
-                                          return Container(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: <Widget>[
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                          16.0, 8, 16, 0),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        "Fahrradnetz auswählen",
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .headline6,
-                                                      ),
-                                                      IconButton(
-                                                        icon: Icon(Icons.close),
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                                context),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                CheckboxListTile(
-                                                  title: Text("Radvorrangnetz"),
-                                                  value: model
-                                                      .isRadlvorrangnetzVisible,
-                                                  onChanged: (bool value) {
-                                                    model
-                                                        .toggleRadvorrangnetzVisible();
-                                                    setModalState(() {});
-                                                  },
-                                                ),
-                                                CheckboxListTile(
-                                                  title: Text("Gesamtnetz"),
-                                                  value:
-                                                      model.isGesamtnetzVisible,
-                                                  onChanged: (bool value) {
-                                                    model
-                                                        .toggleGesamtnetzVisible();
-                                                    setModalState(() {});
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
+                                      return BikenetSelectionSheet(
+                                        model: model,
                                       );
                                     },
                                   );
