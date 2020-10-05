@@ -38,9 +38,6 @@ export MAPS_API_KEY=<YOUR-KEY>
 # Do not add to version control!
 # This contains the credentials to sign the android app and should only be on your local machine
 # or the build server
-# Do not add to version control!
-# This contains the credentials to sign the android app and should only be on your local machine
-# or the build server
 storePassword=<Password>
 alias=<Alias>
 aliasPassword=<Password>
