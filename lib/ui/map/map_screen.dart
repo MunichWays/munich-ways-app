@@ -98,11 +98,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           _askForLocationPermission();
         });
         model.showStreetDetails.listen((details) {
+          double statusBarHeight = MediaQuery.of(context).padding.top;
           return scaffoldKey.currentState.showBottomSheet(
-              (context) => StreetDetailsSheet(
-                    details: details,
-                  ),
-              backgroundColor: Colors.transparent);
+            (context) => StreetDetailsSheet(
+              details: details,
+              statusBarHeight: statusBarHeight,
+            ),
+            backgroundColor: Colors.transparent,
+          );
         });
         return model;
       },

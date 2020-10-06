@@ -5,103 +5,80 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class StreetDetailsSheet extends StatelessWidget {
+class StreetDetailsSheet extends StatefulWidget {
   final StreetDetails details;
+
+  final double statusBarHeight;
 
   const StreetDetailsSheet({
     Key key,
     @required this.details,
+    @required this.statusBarHeight,
   })  : assert(details != null),
+        assert(statusBarHeight != null),
         super(key: key);
 
   @override
+  _StreetDetailsSheetState createState() => _StreetDetailsSheetState();
+}
+
+class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
+  @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-        maxChildSize: 0.6,
-        initialChildSize: 0.35,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: new BorderRadius.only(
-                topLeft: const Radius.circular(15.0),
-                topRight: const Radius.circular(15.0),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 1,
-                  blurRadius: 4,
-                  offset: Offset(0, 0), // changes position of shadow
-                ),
-              ],
+    return Padding(
+      padding: EdgeInsets.only(top: widget.statusBarHeight),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: new BorderRadius.only(
+            topLeft: const Radius.circular(15.0),
+            topRight: const Radius.circular(15.0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 0), // changes position of shadow
             ),
-            child: ListView(
-              controller: scrollController,
+          ],
+        ),
+        child: Stack(
+          children: [
+            ListView(
+              shrinkWrap: true,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 8),
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: ShapeDecoration(
-                            color: AppColors.getPolylineColor(details.farbe),
-                            shape: CircleBorder(),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          details.name ?? "Unbekannte Straße",
-                          style: Theme.of(context).textTheme.headline6,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: IconButton(
-                          icon: Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _Header(farbe: widget.details.farbe, name: widget.details.name),
                 ListItem(
                   label: "Strecke",
-                  value: details.strecke,
+                  value: widget.details.strecke,
                 ),
                 ListItem(
                   label: "Ist-Zustand",
-                  value: details.ist,
+                  value: widget.details.ist,
                 ),
                 ListItem(
                   label: "Soll-Maßnahmen",
-                  value: details.soll,
+                  value: widget.details.soll,
                 ),
                 ListItem(
                   label: "Beschreibung",
-                  value: details.description,
+                  value: widget.details.description,
                 ),
                 ListItem(
                   label: "Beschreibung",
-                  value: details.description,
+                  value: widget.details.description,
                 ),
                 ListItem(
                   label: "Beschreibung",
-                  value: details.description,
+                  value: widget.details.description,
                 ),
                 ListItem(
                     label: "Kategorie",
-                    value: details.kategorie.title,
-                    onTap: details.kategorie.url != null
+                    value: widget.details.kategorie.title,
+                    onTap: widget.details.kategorie.url != null
                         ? () async {
-                            var url = details.kategorie.url;
+                            var url = widget.details.kategorie.url;
                             if (await canLaunch(url)) {
                               await launch(url);
                             } else {
@@ -109,7 +86,7 @@ class StreetDetailsSheet extends StatelessWidget {
                             }
                           }
                         : null),
-                for (var link in details.links)
+                for (var link in widget.details.links)
                   ListItem(
                     label: "Link",
                     value: link.title,
@@ -123,8 +100,71 @@ class StreetDetailsSheet extends StatelessWidget {
                   ),
               ],
             ),
-          );
-        });
+            // overlays the first item in the ListView - the height of header is dynamic therefore could not use a fixed height
+            // workaround to have a header which is draggable, I assume there
+            // should be a nicer solution with DraggableScrollableSheet and
+            // Slivers but I couldn't get it to work with dynamic list height.
+            _Header(farbe: widget.details.farbe, name: widget.details.name),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final String farbe;
+  final String name;
+
+  const _Header({
+    Key key,
+    this.farbe,
+    this.name,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: new BorderRadius.only(
+            topLeft: const Radius.circular(15.0),
+            topRight: const Radius.circular(15.0),
+          )),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8.0, bottom: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 8),
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: ShapeDecoration(
+                  color: AppColors.getPolylineColor(farbe),
+                  shape: CircleBorder(),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                name ?? "Unbekannte Straße",
+                style: Theme.of(context).textTheme.headline6,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
