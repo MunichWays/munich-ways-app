@@ -178,6 +178,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 onPressed: () {
                                   showModalBottomSheet<void>(
                                     context: context,
+                                    backgroundColor: Colors.transparent,
                                     builder: (BuildContext context) {
                                       return BikenetSelectionSheet(
                                         model: model,
