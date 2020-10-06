@@ -11,113 +11,120 @@ class StreetDetailsSheet extends StatelessWidget {
   const StreetDetailsSheet({
     Key key,
     @required this.details,
-  }) : super(key: key);
+  })  : assert(details != null),
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: new BorderRadius.only(
-            topLeft: const Radius.circular(15.0),
-            topRight: const Radius.circular(15.0),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.5),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: Offset(0, 0), // changes position of shadow
-            ),
-          ],
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: double.infinity),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 8,
+    return DraggableScrollableSheet(
+        maxChildSize: 0.6,
+        initialChildSize: 0.35,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: new BorderRadius.only(
+                topLeft: const Radius.circular(15.0),
+                topRight: const Radius.circular(15.0),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 8),
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: ShapeDecoration(
-                        color: AppColors.getPolylineColor(details.farbe),
-                        shape: CircleBorder(),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      details.name ?? "Unbekannte Straße",
-                      style: Theme.of(context).textTheme.headline6,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 8,
-              ),
-              ListItem(
-                label: "Strecke",
-                value: details.strecke,
-              ),
-              ListItem(
-                label: "Ist-Zustand",
-                value: details.ist,
-              ),
-              ListItem(
-                label: "Soll-Maßnahmen",
-                value: details.soll,
-              ),
-              ListItem(
-                label: "Beschreibung",
-                value: details.description,
-              ),
-              ListItem(
-                  label: "Kategorie",
-                  value: details.kategorie.title,
-                  onTap: details.kategorie.url != null
-                      ? () async {
-                          var url = details.kategorie.url;
-                          if (await canLaunch(url)) {
-                            await launch(url);
-                          } else {
-                            log.e("Could not launch $url");
-                          }
-                        }
-                      : null),
-              for (var link in details.links)
-                ListItem(
-                  label: "Link",
-                  value: link.title,
-                  onTap: () async {
-                    if (await canLaunch(link.url)) {
-                      await launch(link.url);
-                    } else {
-                      log.e("Could not launch ${link.url}");
-                    }
-                  },
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: Offset(0, 0), // changes position of shadow
                 ),
-            ],
-          ),
-        ));
+              ],
+            ),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16.0, right: 8),
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: ShapeDecoration(
+                            color: AppColors.getPolylineColor(details.farbe),
+                            shape: CircleBorder(),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          details.name ?? "Unbekannte Straße",
+                          style: Theme.of(context).textTheme.headline6,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ListItem(
+                  label: "Strecke",
+                  value: details.strecke,
+                ),
+                ListItem(
+                  label: "Ist-Zustand",
+                  value: details.ist,
+                ),
+                ListItem(
+                  label: "Soll-Maßnahmen",
+                  value: details.soll,
+                ),
+                ListItem(
+                  label: "Beschreibung",
+                  value: details.description,
+                ),
+                ListItem(
+                  label: "Beschreibung",
+                  value: details.description,
+                ),
+                ListItem(
+                  label: "Beschreibung",
+                  value: details.description,
+                ),
+                ListItem(
+                    label: "Kategorie",
+                    value: details.kategorie.title,
+                    onTap: details.kategorie.url != null
+                        ? () async {
+                            var url = details.kategorie.url;
+                            if (await canLaunch(url)) {
+                              await launch(url);
+                            } else {
+                              log.e("Could not launch $url");
+                            }
+                          }
+                        : null),
+                for (var link in details.links)
+                  ListItem(
+                    label: "Link",
+                    value: link.title,
+                    onTap: () async {
+                      if (await canLaunch(link.url)) {
+                        await launch(link.url);
+                      } else {
+                        log.e("Could not launch ${link.url}");
+                      }
+                    },
+                  ),
+              ],
+            ),
+          );
+        });
   }
 }
 
