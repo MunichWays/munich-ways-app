@@ -66,14 +66,6 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   value: widget.details.description,
                 ),
                 ListItem(
-                  label: "Beschreibung",
-                  value: widget.details.description,
-                ),
-                ListItem(
-                  label: "Beschreibung",
-                  value: widget.details.description,
-                ),
-                ListItem(
                     label: "Kategorie",
                     value: widget.details.kategorie.title,
                     onTap: widget.details.kategorie.url != null
