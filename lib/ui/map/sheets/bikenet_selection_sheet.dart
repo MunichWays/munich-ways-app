@@ -4,10 +4,7 @@ import 'package:munich_ways/ui/map/map_screen_model.dart';
 class BikenetSelectionSheet extends StatefulWidget {
   final MapScreenViewModel model;
 
-  const BikenetSelectionSheet({
-    Key key,
-    this.model,
-  }) : super(key: key);
+  BikenetSelectionSheet({Key key, this.model}) : super(key: key);
 
   @override
   _BikenetSelectionSheetState createState() => _BikenetSelectionSheetState();
@@ -17,13 +14,28 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: new BorderRadius.only(
+          topLeft: const Radius.circular(15.0),
+          topRight: const Radius.circular(15.0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 0), // changes position of shadow
+          ),
+        ],
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -38,6 +50,9 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
               ],
             ),
           ),
+          Divider(
+            height: 0,
+          ),
           CheckboxListTile(
             title: Text("Radvorrangnetz"),
             value: widget.model.isRadlvorrangnetzVisible,
@@ -45,6 +60,9 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
               widget.model.toggleRadvorrangnetzVisible();
               setState(() {});
             },
+          ),
+          Divider(
+            height: 0,
           ),
           CheckboxListTile(
             title: Text("Gesamtnetz"),
