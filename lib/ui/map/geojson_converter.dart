@@ -9,18 +9,15 @@ abstract class OnTapListener {
 
 /// Converts geojson to google maps polylines
 class GeojsonConverter {
-  static final List<PatternItem> dotted = [
-    PatternItem.dot,
-    PatternItem.gap(1),
-  ];
-  static final List<PatternItem> dashed = [
-    PatternItem.dash(3),
+  static final List<PatternItem> radlvorrangnetzPattern = [];
+  static final List<PatternItem> gesamtnetzPattern = [
+    PatternItem.dash(20),
     PatternItem.gap(5)
   ];
 
   Set<Polyline> getPolylines(
       {@required geojson,
-      width = 5,
+      width = 3,
       @required List<PatternItem> pattern,
       @required OnTapListener onTapListener}) {
     Set<Polyline> polylineCollection = {};
