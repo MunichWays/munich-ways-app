@@ -15,7 +15,7 @@ void main() {
     //WHEN
     var polylines = converter.getPolylines(
         geojson: json.decode(jsonString),
-        pattern: GeojsonConverter.dashed,
+        pattern: GeojsonConverter.gesamtnetzPattern,
         onTapListener: null);
 
     //THEN
