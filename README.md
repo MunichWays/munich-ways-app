@@ -30,6 +30,13 @@ export MAPS_API_KEY=<YOUR-KEY>
 
 ### Android
 
+#### Gitlab Actions
+
+* tag current state and push the tags
+    * `git tag -a 0.0.3+5 -m "0.0.3+5"`
+    * `git push --tags`
+* this will trigger the workflow, see `workflows/android-release`
+
 #### Local
 
 1. Get release.keystore from Sven and place it in `android/app/`
