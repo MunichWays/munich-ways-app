@@ -1,4 +1,4 @@
-name: Flutter CI
+name: Pull Request Checks
 
 on:
   push:
