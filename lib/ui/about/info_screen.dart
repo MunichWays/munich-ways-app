@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,8 +21,6 @@ class _InfoScreenState extends State<InfoScreen> {
   @override
   void initState() {
     super.initState();
-
-    log.d("init");
 
     PackageInfo.fromPlatform().then((PackageInfo packageInfo) {
       log.d(packageInfo);
@@ -50,7 +49,7 @@ class _InfoScreenState extends State<InfoScreen> {
       key: scaffoldKey,
       drawer: SideDrawer(),
       appBar: AppBar(
-        title: Text("Info"),
+        title: Text("Über die App"),
       ),
       body: ListView(
         children: ListTile.divideTiles(
@@ -93,6 +92,14 @@ class _InfoScreenState extends State<InfoScreen> {
                 } else {
                   _displayError(("Keine Email App gefunden"));
                 }
+              },
+            ),
+            ListTile(
+              title: Text('Impressum & Datenschutz'),
+              subtitle: Text('munichways.com/datenschutzerklaerung'),
+              trailing: Icon(Icons.info_outline),
+              onTap: () async {
+                Navigator.of(context).pushNamed(NavRoutes.imprint);
               },
             ),
           ],
