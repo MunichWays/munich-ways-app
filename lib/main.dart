@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/nav_routes.dart';
-import 'package:munich_ways/ui/info_screen.dart';
+import 'package:munich_ways/ui/about/imprint_screen.dart';
+import 'package:munich_ways/ui/about/info_screen.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/theme.dart';
 
@@ -27,6 +28,8 @@ class _MunichWaysAppState extends State<MunichWaysApp> {
             return MaterialPageRoute(
                 settings: RouteSettings(name: settings.name),
                 builder: (context) => InfoScreen());
+          case NavRoutes.imprint:
+            return MaterialPageRoute(builder: (context) => ImprintScreen());
           default:
             throw Exception("unknown route ${settings.name}");
         }
