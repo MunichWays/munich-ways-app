@@ -54,7 +54,20 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             height: 0,
           ),
           CheckboxListTile(
-            title: Text("Radvorrangnetz"),
+            title: Text("Radlvorrangnetz"),
+            subtitle: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 4,
+                  color: Colors.black54,
+                ),
+                SizedBox(
+                  width: 4,
+                ),
+                Text('durchgezogen')
+              ],
+            ),
             value: widget.model.isRadlvorrangnetzVisible,
             onChanged: (bool value) {
               widget.model.toggleRadvorrangnetzVisible();
@@ -66,6 +79,27 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           ),
           CheckboxListTile(
             title: Text("Gesamtnetz"),
+            subtitle: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 4,
+                  color: Colors.black54,
+                ),
+                SizedBox(
+                  width: 2,
+                ),
+                Container(
+                  width: 10,
+                  height: 4,
+                  color: Colors.black54,
+                ),
+                SizedBox(
+                  width: 4,
+                ),
+                Text('gestrichelt')
+              ],
+            ),
             value: widget.model.isGesamtnetzVisible,
             onChanged: (bool value) {
               widget.model.toggleGesamtnetzVisible();
