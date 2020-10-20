@@ -54,7 +54,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             height: 0,
           ),
           CheckboxListTile(
-            title: Text("Radlvorrangnetz"),
+            title: Text("RadlVorrang-Netz"),
             subtitle: Row(
               children: [
                 Container(
