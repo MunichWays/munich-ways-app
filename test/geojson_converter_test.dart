@@ -21,4 +21,20 @@ void main() {
     //THEN
     expect(polylines.length, 794);
   });
+
+  test('parse with grey lines', () async {
+    //GIVEN
+    var jsonString = await TestUtils.readStringFromFile(
+        'test_resources/20201027_radlvorrangnetz.geojson');
+    GeojsonConverter converter = GeojsonConverter();
+
+    //WHEN
+    var polylines = converter.getPolylines(
+        geojson: json.decode(jsonString),
+        pattern: GeojsonConverter.gesamtnetzPattern,
+        onTapListener: null);
+
+    //THEN
+    expect(polylines.length, 882);
+  });
 }
