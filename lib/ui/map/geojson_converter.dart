@@ -34,8 +34,8 @@ class GeojsonConverter {
                   LatLng.fromJson(eCoordinate).longitude,
                   LatLng.fromJson(eCoordinate).latitude));
             });
-            polylineCollection.add(_createPolyline(
-                feature, polylineCoordinates, width, pattern, onTapListener));
+            _addPolyline(polylineCollection, feature, polylineCoordinates,
+                width, pattern, onTapListener);
             break;
           case "MultiLineString":
             List<dynamic> mlCoordinates = feature['geometry']['coordinates'];
@@ -47,8 +47,8 @@ class GeojsonConverter {
                     LatLng.fromJson(eCoordinate).latitude));
               });
             });
-            polylineCollection.add(_createPolyline(
-                feature, polylineCoordinates, width, pattern, onTapListener));
+            _addPolyline(polylineCollection, feature, polylineCoordinates,
+                width, pattern, onTapListener);
             break;
           default:
             log.d("unknown geometry ${feature['geometry']['type']}");
@@ -58,9 +58,20 @@ class GeojsonConverter {
     return polylineCollection;
   }
 
-  Polyline _createPolyline(dynamic feature, List<LatLng> coordinates, int width,
-      List<PatternItem> pattern, OnTapListener onTap) {
-    return Polyline(
+  void _addPolyline(
+      Set<Polyline> polylines,
+      dynamic feature,
+      List<LatLng> coordinates,
+      int width,
+      List<PatternItem> pattern,
+      OnTapListener onTap) {
+    String color = feature['properties']['farbe'].toString();
+    if ('grau' == color) {
+      log.d('ignore ${feature['properties']['munichways_id']}');
+      return;
+    }
+
+    polylines.add(Polyline(
       polylineId: PolylineId(feature['properties']['munichways_id'].toString()),
       points: coordinates,
       width: width,
@@ -72,6 +83,6 @@ class GeojsonConverter {
         onTap.onTap(feature);
       },
       consumeTapEvents: true,
-    );
+    ));
   }
 }

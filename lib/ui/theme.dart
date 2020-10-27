@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 
 class AppColors {
   static const munichWaysBlue = Color(0xff61A1D8);
@@ -17,7 +18,11 @@ class AppColors {
       case "rot":
         return Colors.red;
         break;
+      case "grau":
+        return Colors.grey;
+        break;
       default:
+        log.d("unknown color $_color");
         return Colors.blueGrey;
     }
   }
