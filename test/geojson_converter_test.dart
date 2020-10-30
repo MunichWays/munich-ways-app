@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong/latlong.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 
 import 'test_utils.dart';
@@ -13,13 +14,13 @@ void main() {
     GeojsonConverter converter = GeojsonConverter();
 
     //WHEN
-    var polylines = converter.getPolylines(
-        geojson: json.decode(jsonString),
-        pattern: GeojsonConverter.gesamtnetzPattern,
-        onTapListener: null);
+    Set<MPolyline> polylines = converter.getPolylines(
+      geojson: json.decode(jsonString),
+    );
 
     //THEN
     expect(polylines.length, 794);
+    expect(polylines.first.points[0], LatLng(48.132019, 11.553315));
   });
 
   test('parse with grey lines', () async {
@@ -30,9 +31,8 @@ void main() {
 
     //WHEN
     var polylines = converter.getPolylines(
-        geojson: json.decode(jsonString),
-        pattern: GeojsonConverter.gesamtnetzPattern,
-        onTapListener: null);
+      geojson: json.decode(jsonString),
+    );
 
     //THEN
     expect(polylines.length, 882);

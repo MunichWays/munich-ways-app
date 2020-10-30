@@ -2,15 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 
 class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
-  GoogleMapController mapController;
-
   bool loading = false;
 
   bool firstLoad = true;
@@ -23,8 +20,8 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
             _polylinesGesamtnetz.isEmpty);
   }
 
-  Set<Polyline> get polylines {
-    Set<Polyline> tempPolylines = {};
+  Set<MPolyline> get polylines {
+    Set<MPolyline> tempPolylines = {};
     if (_isRadlvorrangnetzVisible) {
       tempPolylines.addAll(_polylinesVorrangnetz);
     }
@@ -48,8 +45,8 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
 
   bool currentLocationVisible = false;
 
-  Set<Polyline> _polylinesVorrangnetz = {};
-  Set<Polyline> _polylinesGesamtnetz = {};
+  Set<MPolyline> _polylinesVorrangnetz = {};
+  Set<MPolyline> _polylinesGesamtnetz = {};
 
   MunichwaysApi _netzRepo = MunichwaysApi();
 
@@ -75,8 +72,7 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     _errorMsgsController.add(msg);
   }
 
-  void onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  void onMapCreated() {
     refreshRadlnetze();
     displayCurrentLocation();
   }
@@ -112,10 +108,11 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
               await getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         }
         if (position != null) {
-          mapController.animateCamera(CameraUpdate.newCameraPosition(
+          //TODO move to position
+/*          mapController.animateCamera(CameraUpdate.newCameraPosition(
               CameraPosition(
                   zoom: await mapController.getZoomLevel(),
-                  target: LatLng(position.latitude, position.longitude))));
+                  target: LatLng(position.latitude, position.longitude))));*/
           notifyListeners();
         } else {
           _displayErrorMsg("Aktuelle Position konnte nicht bestimmt werden");
