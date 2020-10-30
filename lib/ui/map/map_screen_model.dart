@@ -7,7 +7,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 
-class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
+class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool firstLoad = true;
@@ -136,8 +136,8 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     notifyListeners();
 
     try {
-      _polylinesVorrangnetz = await _netzRepo.getRadlvorrangnetz(this);
-      _polylinesGesamtnetz = await _netzRepo.getGesamtnetz(this);
+      _polylinesVorrangnetz = await _netzRepo.getRadlvorrangnetz();
+      _polylinesGesamtnetz = await _netzRepo.getGesamtnetz();
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
@@ -149,9 +149,8 @@ class MapScreenViewModel extends ChangeNotifier implements OnTapListener {
     notifyListeners();
   }
 
-  @override
-  void onTap(feature) {
-    log.d(feature['properties']);
-    showStreetDetailsController.add(StreetDetails.fromJson(feature));
+  void onTap(StreetDetails details) {
+    log.d(details);
+    showStreetDetailsController.add(details);
   }
 }
