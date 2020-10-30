@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
@@ -59,6 +60,9 @@ class MapScreenViewModel extends ChangeNotifier {
   Stream showStreetDetails;
   StreamController showStreetDetailsController;
 
+  Stream<LatLng> currentLocationStream;
+  StreamController<LatLng> currentLocationController;
+
   MapScreenViewModel() {
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
@@ -66,13 +70,15 @@ class MapScreenViewModel extends ChangeNotifier {
     showLocationPermissionDialog = _permissionStreamController.stream;
     showStreetDetailsController = StreamController();
     showStreetDetails = showStreetDetailsController.stream;
+    currentLocationController = StreamController();
+    currentLocationStream = currentLocationController.stream;
   }
 
   void _displayErrorMsg(String msg) {
     _errorMsgsController.add(msg);
   }
 
-  void onMapCreated() {
+  void onMapReady() {
     refreshRadlnetze();
     displayCurrentLocation();
   }
@@ -108,12 +114,8 @@ class MapScreenViewModel extends ChangeNotifier {
               await getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         }
         if (position != null) {
-          //TODO move to position
-/*          mapController.animateCamera(CameraUpdate.newCameraPosition(
-              CameraPosition(
-                  zoom: await mapController.getZoomLevel(),
-                  target: LatLng(position.latitude, position.longitude))));*/
-          notifyListeners();
+          currentLocationController
+              .add(LatLng(position.latitude, position.longitude));
         } else {
           _displayErrorMsg("Aktuelle Position konnte nicht bestimmt werden");
         }
@@ -138,6 +140,9 @@ class MapScreenViewModel extends ChangeNotifier {
     try {
       _polylinesVorrangnetz = await _netzRepo.getRadlvorrangnetz();
       _polylinesGesamtnetz = await _netzRepo.getGesamtnetz();
+      _polylinesGesamtnetz.forEach((e) {
+        e.isGesamtnetz = true;
+      });
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);

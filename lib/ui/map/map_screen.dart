@@ -25,10 +25,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final LatLng _stachus = LatLng(48.14, 11.5652);
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
 
+  bool displayCurrentLocationOnResume = false;
+  MapScreenViewModel mapViewModel;
+  bool firstBuild = true;
+  MapController mapController;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    mapController = MapController();
   }
 
   @override
@@ -82,10 +88,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  bool displayCurrentLocationOnResume = false;
-  MapScreenViewModel mapViewModel;
-  bool firstBuild = false;
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MapScreenViewModel>(
@@ -112,6 +114,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             backgroundColor: Colors.transparent,
           );
         });
+        model.currentLocationStream.listen((LatLng location) {
+          log.d("onUpdateLocation");
+          mapController.move(location, mapController.zoom);
+        });
         return model;
       },
       child: Consumer<MapScreenViewModel>(
@@ -126,8 +132,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             body: Stack(
               children: [
                 FlutterMap(
+                  mapController: mapController,
                   options: MapOptions(
-                    center: LatLng(_stachus.latitude, _stachus.longitude),
+                    center: _stachus,
                     zoom: 14,
                   ),
                   children: [
@@ -149,7 +156,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                           latlng.latitude, latlng.longitude))
                                       .toList(),
                                   strokeWidth: 3.0,
-                                  isDotted: false,
+                                  isDotted: polyline.isGesamtnetz,
                                   color: AppColors.getPolylineColor(
                                       polyline.details.farbe),
                                   onTap: () {

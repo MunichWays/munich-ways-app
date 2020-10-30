@@ -60,6 +60,7 @@ class GeojsonConverter {
 class MPolyline {
   List<LatLng> points;
   StreetDetails details;
+  bool isGesamtnetz;
 
-  MPolyline({this.points, this.details, feature});
+  MPolyline({this.points, this.details, this.isGesamtnetz = false});
 }
