@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong/latlong.dart';
+import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 
 import 'test_utils.dart';

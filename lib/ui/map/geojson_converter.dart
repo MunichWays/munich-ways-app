@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
 
 /// Converts geojson to google maps polylines
@@ -54,13 +55,4 @@ class GeojsonConverter {
       points: coordinates,
     ));
   }
-}
-
-/// Map framework independet Polyline data class
-class MPolyline {
-  List<LatLng> points;
-  StreetDetails details;
-  bool isGesamtnetz;
-
-  MPolyline({this.points, this.details, this.isGesamtnetz = false});
 }

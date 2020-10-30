@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
-import 'package:munich_ways/ui/map/geojson_converter.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 
 class MapScreenViewModel extends ChangeNotifier {
