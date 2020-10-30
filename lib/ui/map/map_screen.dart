@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/flutter_map/clickable_polyline_layer_widget.dart';
+import 'package:munich_ways/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
@@ -125,26 +127,39 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               children: [
                 FlutterMap(
                   options: MapOptions(
-                      center: LatLng(_stachus.latitude, _stachus.longitude),
-                      zoom: 14),
-                  layers: [
-                    TileLayerOptions(
-                      urlTemplate:
-                          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                      subdomains: ['a', 'b', 'c'],
+                    center: LatLng(_stachus.latitude, _stachus.longitude),
+                    zoom: 14,
+                  ),
+                  children: [
+                    TileLayerWidget(
+                      options: TileLayerOptions(
+                        urlTemplate:
+                            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        subdomains: ['a', 'b', 'c'],
+                      ),
                     ),
-                    PolylineLayerOptions(
-                      polylines: model.polylines
-                          .map((e) => Polyline(
-                              points: e.points
-                                  .map((latlng) =>
-                                      LatLng(latlng.latitude, latlng.longitude))
-                                  .toList(),
-                              strokeWidth: 3.0,
-                              color:
-                                  AppColors.getPolylineColor(e.details.farbe)))
-                          .toList(),
+                    ClickablePolylineLayerWidget(
+                      options: ClickablePolylineLayerOptions(
+                        polylineCulling: true,
+                        polylines: model.polylines
+                            .map(
+                              (polyline) => ClickablePolyline(
+                                  points: polyline.points
+                                      .map((latlng) => LatLng(
+                                          latlng.latitude, latlng.longitude))
+                                      .toList(),
+                                  strokeWidth: 3.0,
+                                  isDotted: false,
+                                  color: AppColors.getPolylineColor(
+                                      polyline.details.farbe),
+                                  onTap: () {
+                                    model.onTap(polyline.details);
+                                  }),
+                            )
+                            .toList(),
+                      ),
                     ),
+                    OSMCreditsWidget(),
                   ],
                 ),
                 SafeArea(

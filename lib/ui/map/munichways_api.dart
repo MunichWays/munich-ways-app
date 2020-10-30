@@ -16,13 +16,11 @@ class MunichwaysApi {
 
   GeojsonConverter _converter = GeojsonConverter();
 
-  Future<Set<MPolyline>> getRadlvorrangnetz(OnTapListener onTapListener) async {
-    return _getNetz(
-      _radlvorrangnetzName,
-    );
+  Future<Set<MPolyline>> getRadlvorrangnetz() async {
+    return _getNetz(_radlvorrangnetzName);
   }
 
-  Future<Set<MPolyline>> getGesamtnetz(OnTapListener onTapListener) async {
+  Future<Set<MPolyline>> getGesamtnetz() async {
     return _getNetz(_gesamtnetzName);
   }
 

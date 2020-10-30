@@ -3,10 +3,6 @@ import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 
-abstract class OnTapListener {
-  void onTap(dynamic feature);
-}
-
 /// Converts geojson to google maps polylines
 class GeojsonConverter {
   Set<MPolyline> getPolylines({@required geojson}) {
