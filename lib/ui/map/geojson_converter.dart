@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
-import 'package:munich_ways/ui/theme.dart';
+import 'package:munich_ways/model/street_details.dart';
 
 abstract class OnTapListener {
   void onTap(dynamic feature);
@@ -9,18 +9,8 @@ abstract class OnTapListener {
 
 /// Converts geojson to google maps polylines
 class GeojsonConverter {
-  static final List<PatternItem> radlvorrangnetzPattern = [];
-  static final List<PatternItem> gesamtnetzPattern = [
-    PatternItem.dash(20),
-    PatternItem.gap(5)
-  ];
-
-  Set<Polyline> getPolylines(
-      {@required geojson,
-      width = 3,
-      @required List<PatternItem> pattern,
-      @required OnTapListener onTapListener}) {
-    Set<Polyline> polylineCollection = {};
+  Set<MPolyline> getPolylines({@required geojson}) {
+    Set<MPolyline> polylines = {};
     var _features;
     if (geojson['type'].toString() == "FeatureCollection") {
       _features = geojson['features'];
@@ -30,59 +20,50 @@ class GeojsonConverter {
             List<dynamic> lCoordinates = feature['geometry']['coordinates'];
             List<LatLng> polylineCoordinates = [];
             lCoordinates.forEach((eCoordinate) {
-              polylineCoordinates.add(LatLng(
-                  LatLng.fromJson(eCoordinate).longitude,
-                  LatLng.fromJson(eCoordinate).latitude));
+              polylineCoordinates.add(LatLng(eCoordinate[1], eCoordinate[0]));
             });
-            _addPolyline(polylineCollection, feature, polylineCoordinates,
-                width, pattern, onTapListener);
+            _addPolyline(polylines, feature, polylineCoordinates);
             break;
           case "MultiLineString":
             List<dynamic> mlCoordinates = feature['geometry']['coordinates'];
             List<LatLng> polylineCoordinates = [];
             mlCoordinates.forEach((eeCoordinate) {
               eeCoordinate.forEach((eCoordinate) {
-                polylineCoordinates.add(LatLng(
-                    LatLng.fromJson(eCoordinate).longitude,
-                    LatLng.fromJson(eCoordinate).latitude));
+                polylineCoordinates.add(LatLng(eCoordinate[1], eCoordinate[0]));
               });
             });
-            _addPolyline(polylineCollection, feature, polylineCoordinates,
-                width, pattern, onTapListener);
+            _addPolyline(polylines, feature, polylineCoordinates);
             break;
           default:
             log.d("unknown geometry ${feature['geometry']['type']}");
         }
       });
     }
-    return polylineCollection;
+    return polylines;
   }
 
   void _addPolyline(
-      Set<Polyline> polylines,
-      dynamic feature,
-      List<LatLng> coordinates,
-      int width,
-      List<PatternItem> pattern,
-      OnTapListener onTap) {
+    Set<MPolyline> polylines,
+    dynamic feature,
+    List<LatLng> coordinates,
+  ) {
     String color = feature['properties']['farbe'].toString();
     if ('grau' == color) {
       log.d('ignore ${feature['properties']['munichways_id']}');
       return;
     }
 
-    polylines.add(Polyline(
-      polylineId: PolylineId(feature['properties']['munichways_id'].toString()),
+    polylines.add(MPolyline(
+      details: StreetDetails.fromJson(feature),
       points: coordinates,
-      width: width,
-      color:
-          AppColors.getPolylineColor(feature['properties']['farbe'].toString()),
-      patterns: pattern,
-      onTap: () {
-        log.d("onTap Polyline $feature");
-        onTap.onTap(feature);
-      },
-      consumeTapEvents: true,
     ));
   }
+}
+
+/// Map framework independet Polyline data class
+class MPolyline {
+  List<LatLng> points;
+  StreetDetails details;
+
+  MPolyline({this.points, this.details, feature});
 }

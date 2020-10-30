@@ -1,4 +1,3 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
 import 'package:http_interceptor/http_client_with_interceptor.dart';
 import 'package:munich_ways/common/json_body_extension.dart';
@@ -17,25 +16,21 @@ class MunichwaysApi {
 
   GeojsonConverter _converter = GeojsonConverter();
 
-  Future<Set<Polyline>> getRadlvorrangnetz(OnTapListener onTapListener) async {
-    return _getNetz(_radlvorrangnetzName,
-        GeojsonConverter.radlvorrangnetzPattern, onTapListener);
-  }
-
-  Future<Set<Polyline>> getGesamtnetz(OnTapListener onTapListener) async {
+  Future<Set<MPolyline>> getRadlvorrangnetz(OnTapListener onTapListener) async {
     return _getNetz(
-        _gesamtnetzName, GeojsonConverter.gesamtnetzPattern, onTapListener);
+      _radlvorrangnetzName,
+    );
   }
 
-  Future<Set<Polyline>> _getNetz(String filename, List<PatternItem> pattern,
-      OnTapListener onTapListener) async {
+  Future<Set<MPolyline>> getGesamtnetz(OnTapListener onTapListener) async {
+    return _getNetz(_gesamtnetzName);
+  }
+
+  Future<Set<MPolyline>> _getNetz(String filename) async {
     var response = await _client.get("$_baseUrl$filename");
     switch (response.statusCode) {
       case 200:
-        return _converter.getPolylines(
-            geojson: response.jsonBody(),
-            pattern: pattern,
-            onTapListener: onTapListener);
+        return _converter.getPolylines(geojson: response.jsonBody());
       default:
         log.d("Failed to retrieve $filename ${response.body}");
         throw ApiException(response);

@@ -1,6 +1,7 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -8,6 +9,7 @@ import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
 import 'map_app_bar.dart';
@@ -80,6 +82,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   bool displayCurrentLocationOnResume = false;
   MapScreenViewModel mapViewModel;
+  bool firstBuild = false;
 
   @override
   Widget build(BuildContext context) {
@@ -111,30 +114,38 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          if (firstBuild) {
+            firstBuild = !firstBuild;
+            model.refreshRadlnetze();
+          }
           return Scaffold(
             key: scaffoldKey,
             drawer: SideDrawer(),
             body: Stack(
               children: [
-                GoogleMap(
-                  polylines: model.polylines,
-                  myLocationButtonEnabled: false,
-                  myLocationEnabled: model.currentLocationVisible,
-                  onMapCreated: (controller) {
-                    model.onMapCreated(controller);
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: _stachus,
-                    zoom: 14.0,
-                  ),
-                  onTap: (latlng) {
-                    log.d("onTap MAP $latlng");
-                  },
-                  mapType: MapType.normal,
-                  mapToolbarEnabled: true,
-                  zoomControlsEnabled: false,
-                  compassEnabled: true,
-                  padding: EdgeInsets.only(top: 88),
+                FlutterMap(
+                  options: MapOptions(
+                      center: LatLng(_stachus.latitude, _stachus.longitude),
+                      zoom: 14),
+                  layers: [
+                    TileLayerOptions(
+                      urlTemplate:
+                          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      subdomains: ['a', 'b', 'c'],
+                    ),
+                    PolylineLayerOptions(
+                      polylines: model.polylines
+                          .map((e) => Polyline(
+                              points: e.points
+                                  .map((latlng) =>
+                                      LatLng(latlng.latitude, latlng.longitude))
+                                  .toList(),
+                              strokeWidth: 3.0,
+                              color:
+                                  AppColors.getPolylineColor(e.details.farbe)))
+                          .toList(),
+                    ),
+                  ],
                 ),
                 SafeArea(
                   child: Stack(
