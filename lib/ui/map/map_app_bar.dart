@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 
 class MapAppBar extends StatelessWidget {
   final List<Widget> actions;
@@ -38,7 +39,7 @@ class RoundedAppBarShape extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection textDirection}) {
-    print(rect.height);
+    log.d(rect.height);
     return Path()
       ..addRRect(
           RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 10)))

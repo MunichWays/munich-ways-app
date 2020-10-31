@@ -132,7 +132,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   mapController: mapController,
                   options: MapOptions(
                     center: _stachus,
-                    zoom: 14,
+                    zoom: 15,
+                    maxZoom: 18,
+                    minZoom: 10,
                   ),
                   children: [
                     TileLayerWidget(
