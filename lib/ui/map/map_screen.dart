@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/flutter_map/clickable_polyline_layer_widget.dart';
+import 'package:munich_ways/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -27,7 +28,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   bool displayCurrentLocationOnResume = false;
   MapScreenViewModel mapViewModel;
-  bool firstBuild = true;
   MapController mapController;
 
   @override
@@ -118,14 +118,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           log.d("onUpdateLocation");
           mapController.move(location, mapController.zoom);
         });
+        mapController.onReady.then((_) => model.onMapReady());
         return model;
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
-          if (firstBuild) {
-            firstBuild = !firstBuild;
-            model.refreshRadlnetze();
-          }
           return Scaffold(
             key: scaffoldKey,
             drawer: SideDrawer(),
@@ -166,6 +163,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             .toList(),
                       ),
                     ),
+                    LocationLayerWidget(enabled: model.currentLocationVisible),
                     OSMCreditsWidget(),
                   ],
                 ),
