@@ -11,10 +11,10 @@ import 'package:munich_ways/ui/map/munichways_api.dart';
 class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
-  bool firstLoad = true;
+  bool _firstLoad = true;
 
   bool get displayMissingPolylinesMsg {
-    return !firstLoad &&
+    return !_firstLoad &&
         (_polylinesVorrangnetz == null ||
             _polylinesVorrangnetz.isEmpty ||
             _polylinesGesamtnetz == null ||
@@ -84,7 +84,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   Future<void> displayCurrentLocation({bool permissionCheck = true}) async {
-    LocationPermission permission = await checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     log.d(permission);
     if (!permissionCheck &&
         (permission == LocationPermission.denied ||
@@ -94,12 +94,13 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     switch (permission) {
       case LocationPermission.denied:
-        permission = await requestPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
+        permission = await Geolocator.requestPermission();
+        log.d(permission);
+        if (permission == LocationPermission.denied) {
           currentLocationVisible = false;
           _displayErrorMsg("Standort Berechtigung fehlt.");
-          return;
+        } else if (permission == LocationPermission.deniedForever) {
+          _permissionStreamController.add("");
         }
         break;
       case LocationPermission.deniedForever:
@@ -108,10 +109,11 @@ class MapScreenViewModel extends ChangeNotifier {
       case LocationPermission.whileInUse:
       case LocationPermission.always:
         currentLocationVisible = true;
-        Position position = await getLastKnownPosition();
+        notifyListeners();
+        Position position = await Geolocator.getLastKnownPosition();
         if (position != null) {
-          position =
-              await getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+          position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
         }
         if (position != null) {
           currentLocationController
@@ -147,8 +149,8 @@ class MapScreenViewModel extends ChangeNotifier {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
     }
-    if (firstLoad) {
-      firstLoad = false;
+    if (_firstLoad) {
+      _firstLoad = false;
     }
     loading = false;
     notifyListeners();
