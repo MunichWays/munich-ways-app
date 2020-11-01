@@ -81,23 +81,19 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             title: Text("Gesamtnetz"),
             subtitle: Row(
               children: [
-                Container(
-                  width: 10,
-                  height: 4,
-                  color: Colors.black54,
-                ),
+                Dot(),
                 SizedBox(
                   width: 2,
                 ),
-                Container(
-                  width: 10,
-                  height: 4,
-                  color: Colors.black54,
+                Dot(),
+                SizedBox(
+                  width: 2,
                 ),
+                Dot(),
                 SizedBox(
                   width: 4,
                 ),
-                Text('gestrichelt')
+                Text('gepunktet')
               ],
             ),
             value: widget.model.isGesamtnetzVisible,
@@ -108,6 +104,21 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class Dot extends StatelessWidget {
+  const Dot({
+    Key key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 4,
+      height: 4,
+      decoration: ShapeDecoration(color: Colors.black54, shape: CircleBorder()),
     );
   }
 }
