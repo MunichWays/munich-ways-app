@@ -67,6 +67,10 @@ class ClickablePolylineLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+        onDoubleTap: () {
+          log.d("onDoubleTap");
+          map.move(map.center, map.zoom + 1);
+        },
         onTapUp: (TapUpDetails details) {
           //Detect nearest polyline to the tapped point
           polylineOpts.polylines.forEach((polyline) {
@@ -105,7 +109,7 @@ class ClickablePolylineLayer extends StatelessWidget {
               double threshold = 20;
 
               if (height < threshold && distanceToA < threshold) {
-                log.d("Click found on $polyline");
+                log.d("Click found");
                 if (polyline is ClickablePolyline) {
                   ClickablePolyline clickable = polyline;
                   if (clickable.onTap != null) {
