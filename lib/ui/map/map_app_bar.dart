@@ -18,8 +18,14 @@ class MapAppBar extends StatelessWidget {
       child: AppBar(
         centerTitle: true,
         iconTheme: IconThemeData(color: Colors.black54),
-        title: SizedBox(
-            height: 48, child: Image(image: AssetImage('images/logo.png'))),
+        title: Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2.0),
+            child: SizedBox(
+                height: 38,
+                child: Image(image: AssetImage('images/logo_long.png'))),
+          ),
+        ),
         backgroundColor: Colors.white,
         shape: RoundedAppBarShape(),
         actions: actions,
