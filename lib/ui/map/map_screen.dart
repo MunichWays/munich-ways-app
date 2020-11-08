@@ -179,6 +179,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 SafeArea(
                   child: Stack(
                     children: [
+                      Visibility(
+                        visible: model.loading,
+                        child: Center(
+                          child: RawMaterialButton(
+                              elevation: 2.0,
+                              fillColor: Colors.white,
+                              padding: EdgeInsets.all(15.0),
+                              shape: CircleBorder(),
+                              constraints:
+                                  BoxConstraints.expand(width: 56, height: 56),
+                              onPressed: () {},
+                              child: SizedBox(
+                                width: 20.0,
+                                height: 20.0,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                ),
+                              )),
+                        ),
+                      ),
                       Align(
                         alignment: Alignment.bottomRight,
                         child: Padding(
@@ -186,34 +206,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              RawMaterialButton(
-                                onPressed: () async {
-                                  if (!model.loading) {
-                                    model.refreshRadlnetze();
-                                  }
-                                },
-                                elevation: 2.0,
-                                fillColor: Colors.white,
-                                padding: EdgeInsets.all(15.0),
-                                shape: CircleBorder(),
-                                constraints: BoxConstraints.expand(
-                                    width: 56, height: 56),
-                                child: model.loading
-                                    ? SizedBox(
-                                        width: 20.0,
-                                        height: 20.0,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 3,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.refresh,
-                                        color: Colors.black54,
-                                      ),
-                              ),
-                              SizedBox(
-                                height: 16,
-                              ),
                               RawMaterialButton(
                                 onPressed: () {
                                   showModalBottomSheet<void>(
