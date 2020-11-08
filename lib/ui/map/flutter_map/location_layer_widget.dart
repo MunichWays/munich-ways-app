@@ -9,8 +9,10 @@ import 'package:munich_ways/common/logger_setup.dart';
 
 class LocationLayerWidget extends StatefulWidget {
   final bool enabled;
+  final bool moveMapAlong;
 
-  LocationLayerWidget({Key key, this.enabled = true}) : super(key: key);
+  LocationLayerWidget({Key key, this.enabled = true, this.moveMapAlong = false})
+      : super(key: key);
 
   @override
   _LocationLayerWidgetState createState() => _LocationLayerWidgetState();
@@ -41,8 +43,8 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
             return Container();
           }
 
-          if (!liveLocationEnabled()) {
-            startLiveLocation();
+          if (!_liveLocationEnabled()) {
+            _startLiveLocation(MapState.of(context));
           }
 
           return _buildLiveLocationLayer(context);
@@ -76,25 +78,32 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
         MarkerLayerOptions(markers: markers), mapState, mapState.onMoved);
   }
 
-  bool liveLocationEnabled() {
+  bool _liveLocationEnabled() {
     return _positionStreamSubscription != null;
   }
 
-  void startLiveLocation() {
+  void _startLiveLocation(MapState mapState) {
     if (_positionStreamSubscription == null) {
       final positionStream = Geolocator.getPositionStream();
       _positionStreamSubscription = positionStream.handleError((error) {
         _positionStreamSubscription.cancel();
         _positionStreamSubscription = null;
-      }).listen((event) {
+      }).listen((position) {
+        log.d("New Pos: $position");
         setState(() {
-          this.currentPosition = event;
+          this.currentPosition = position;
+          if (widget.moveMapAlong) {
+            log.d("Move along");
+            mapState.move(
+                LatLng(currentPosition.latitude, currentPosition.longitude),
+                mapState.zoom);
+          }
         });
       });
     }
   }
 
-  void stopLiveLocation() {
+  void _stopLiveLocation() {
     if (_positionStreamSubscription != null) {
       _positionStreamSubscription.cancel();
       _positionStreamSubscription = null;
@@ -103,7 +112,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
 
   @override
   void dispose() {
-    stopLiveLocation();
+    _stopLiveLocation();
     super.dispose();
   }
 }
