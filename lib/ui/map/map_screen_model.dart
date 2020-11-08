@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -44,7 +45,7 @@ class MapScreenViewModel extends ChangeNotifier {
     return _isGesamtnetzVisible;
   }
 
-  bool currentLocationVisible = false;
+  LocationState locationState = LocationState.NOT_AVAILABLE;
 
   Set<MPolyline> _polylinesVorrangnetz = {};
   Set<MPolyline> _polylinesGesamtnetz = {};
@@ -80,10 +81,11 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void onMapReady() {
     refreshRadlnetze();
-    displayCurrentLocation();
+    onPressLocationBtn();
   }
 
-  Future<void> displayCurrentLocation({bool permissionCheck = true}) async {
+  Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
+    log.d("onPressLocationBtn");
     LocationPermission permission = await Geolocator.checkPermission();
     log.d(permission);
     if (!permissionCheck &&
@@ -97,7 +99,7 @@ class MapScreenViewModel extends ChangeNotifier {
         permission = await Geolocator.requestPermission();
         log.d(permission);
         if (permission == LocationPermission.denied) {
-          currentLocationVisible = false;
+          locationState = LocationState.NOT_AVAILABLE;
           _displayErrorMsg("Standort Berechtigung fehlt.");
         } else if (permission == LocationPermission.deniedForever) {
           _permissionStreamController.add("");
@@ -108,18 +110,12 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        currentLocationVisible = true;
+        locationState = LocationState.FOLLOW;
         notifyListeners();
         Position position = await Geolocator.getLastKnownPosition();
         if (position != null) {
-          position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high);
-        }
-        if (position != null) {
           currentLocationController
               .add(LatLng(position.latitude, position.longitude));
-        } else {
-          _displayErrorMsg("Aktuelle Position konnte nicht bestimmt werden");
         }
         break;
     }
@@ -160,4 +156,19 @@ class MapScreenViewModel extends ChangeNotifier {
     log.d(details);
     showStreetDetailsController.add(details);
   }
+
+  void onMapPositionChanged(MapPosition position, bool hasGesture) {
+    if (locationState == LocationState.FOLLOW && hasGesture) {
+      log.d(locationState);
+      locationState = LocationState.DISPLAY;
+      log.d(locationState);
+      notifyListeners();
+    }
+  }
+}
+
+enum LocationState {
+  NOT_AVAILABLE, // due to missing permission or support of hardware
+  DISPLAY, // display current location on map
+  FOLLOW //move map along current location
 }

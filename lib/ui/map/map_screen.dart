@@ -42,7 +42,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     log.d("didChangeAppLifecycleState $state");
     if (displayCurrentLocationOnResume && state == AppLifecycleState.resumed) {
       displayCurrentLocationOnResume = false;
-      mapViewModel.displayCurrentLocation(permissionCheck: false);
+      mapViewModel.onPressLocationBtn(permissionCheck: false);
     }
   }
 
@@ -131,11 +131,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 FlutterMap(
                   mapController: mapController,
                   options: MapOptions(
-                    center: _stachus,
-                    zoom: 15,
-                    maxZoom: 18,
-                    minZoom: 10,
-                  ),
+                      center: _stachus,
+                      zoom: 15,
+                      maxZoom: 18,
+                      minZoom: 10,
+                      onPositionChanged:
+                          (MapPosition position, bool hasGesture) {
+                        model.onMapPositionChanged(position, hasGesture);
+                      }),
                   children: [
                     TileLayerWidget(
                       options: TileLayerOptions(
@@ -165,7 +168,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             .toList(),
                       ),
                     ),
-                    LocationLayerWidget(enabled: model.currentLocationVisible),
+                    LocationLayerWidget(
+                      enabled:
+                          model.locationState != LocationState.NOT_AVAILABLE,
+                      moveMapAlong: model.locationState == LocationState.FOLLOW,
+                    ),
                     OSMCreditsWidget(),
                   ],
                 ),
@@ -233,24 +240,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               SizedBox(
                                 height: 16,
                               ),
-                              RawMaterialButton(
+                              LocationActionButton(
                                 onPressed: () async {
-                                  model.displayCurrentLocation();
+                                  model.onPressLocationBtn();
                                 },
-                                elevation: 2.0,
-                                fillColor: Colors.white,
-                                constraints: BoxConstraints.expand(
-                                    width: 56, height: 56),
-                                child: Icon(
-                                  model.currentLocationVisible
-                                      ? Icons.my_location
-                                      : Icons.location_searching,
-                                  color: model.currentLocationVisible
-                                      ? Colors.black54
-                                      : Colors.black26,
-                                ),
-                                padding: EdgeInsets.all(15.0),
-                                shape: CircleBorder(),
+                                locationState: model.locationState,
                               ),
                             ],
                           ),
@@ -287,5 +281,55 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         },
       ),
     );
+  }
+}
+
+class LocationActionButton extends StatelessWidget {
+  final Function onPressed;
+  final LocationState locationState;
+
+  const LocationActionButton({
+    Key key,
+    @required this.onPressed,
+    @required this.locationState,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return RawMaterialButton(
+      onPressed: this.onPressed,
+      elevation: 2.0,
+      fillColor: Colors.white,
+      constraints: BoxConstraints.expand(width: 56, height: 56),
+      child: _buildIcon(),
+      padding: EdgeInsets.all(15.0),
+      shape: CircleBorder(),
+    );
+  }
+
+  Icon _buildIcon() {
+    log.d(this.locationState);
+    switch (this.locationState) {
+      case LocationState.NOT_AVAILABLE:
+        return Icon(
+          Icons.location_searching,
+          color: Colors.black26,
+        );
+      case LocationState.DISPLAY:
+        return Icon(
+          Icons.my_location,
+          color: Colors.black54,
+        );
+      case LocationState.FOLLOW:
+        return Icon(
+          Icons.my_location,
+          color: Colors.blueAccent,
+        );
+      default:
+        return Icon(
+          Icons.location_searching,
+          color: Colors.black26,
+        );
+    }
   }
 }
