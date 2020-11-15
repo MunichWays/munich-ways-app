@@ -16,6 +16,7 @@ class _MunichWaysAppState extends State<MunichWaysApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       theme: themeData,
       onGenerateRoute: (settings) {
         switch (settings.name) {
