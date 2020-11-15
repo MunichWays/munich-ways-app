@@ -11,6 +11,17 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 
 ## Release
 
+### iOS
+
+* `flutter build ios`
+* in XCode `Procuct -> Archive`
+
+#### Screenshots
+
+* 6,5" - iPhone 12 Pro Max
+* 5,5" - iPhone 8 Plus
+* iPad - iPadPro (12.9-inch)
+
 ### Android
 
 #### Gitlab Actions
