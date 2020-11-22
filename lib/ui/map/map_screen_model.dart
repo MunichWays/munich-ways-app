@@ -16,20 +16,15 @@ class MapScreenViewModel extends ChangeNotifier {
 
   bool get displayMissingPolylinesMsg {
     return !_firstLoad &&
-        (_polylinesVorrangnetz == null ||
-            _polylinesVorrangnetz.isEmpty ||
-            _polylinesGesamtnetz == null ||
-            _polylinesGesamtnetz.isEmpty);
+        (_polylinesGesamtnetz == null || _polylinesGesamtnetz.isEmpty);
   }
 
   Set<MPolyline> get polylines {
-    Set<MPolyline> tempPolylines = {};
-    if (_isRadlvorrangnetzVisible) {
-      tempPolylines.addAll(_polylinesVorrangnetz);
-    }
-    if (_isGesamtnetzVisible) {
-      tempPolylines.addAll(_polylinesGesamtnetz);
-    }
+    Set<MPolyline> tempPolylines = _polylinesGesamtnetz
+        .where((polyline) =>
+            (polyline.isGesamtnetz && _isGesamtnetzVisible) ||
+            (polyline.isRadlVorrangNetz && _isRadlvorrangnetzVisible))
+        .toSet();
     log.d("Number of polylines: ${tempPolylines.length}");
     return tempPolylines;
   }
@@ -47,7 +42,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   LocationState locationState = LocationState.NOT_AVAILABLE;
 
-  Set<MPolyline> _polylinesVorrangnetz = {};
   Set<MPolyline> _polylinesGesamtnetz = {};
 
   MunichwaysApi _netzRepo = MunichwaysApi();
@@ -136,11 +130,7 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _polylinesVorrangnetz = await _netzRepo.getRadlvorrangnetz();
       _polylinesGesamtnetz = await _netzRepo.getGesamtnetz();
-      _polylinesGesamtnetz.forEach((e) {
-        e.isGesamtnetz = true;
-      });
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);

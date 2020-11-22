@@ -38,4 +38,19 @@ void main() {
     //THEN
     expect(polylines.length, 882);
   });
+
+  test('parse gesamtnetzV2', () async {
+    //GIVEN
+    var jsonString = await TestUtils.readStringFromFile(
+        'test_resources/20201121_gesamtnetz_V02.geojson');
+    GeojsonConverter converter = GeojsonConverter();
+
+    //WHEN
+    var polylines = converter.getPolylines(
+      geojson: json.decode(jsonString),
+    );
+
+    //THEN
+    expect(polylines.length, 2726);
+  });
 }
