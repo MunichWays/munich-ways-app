@@ -7,9 +7,8 @@ import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 
 class MunichwaysApi {
-  final String _baseUrl = "https://www.munichways.com/App/";
-  final String _radlvorrangnetzName = "radlvorrangnetz.geojson";
-  final String _gesamtnetzName = "gesamtnetz.geojson";
+  final String _gesamtnetzV2Url =
+      "https://www.munichways.com/App/gesamtnetz_V02.geojson";
 
   Client _client = HttpClientWithInterceptor.build(interceptors: [
     LoggingInterceptor(),
@@ -17,21 +16,13 @@ class MunichwaysApi {
 
   GeojsonConverter _converter = GeojsonConverter();
 
-  Future<Set<MPolyline>> getRadlvorrangnetz() async {
-    return _getNetz(_radlvorrangnetzName);
-  }
-
   Future<Set<MPolyline>> getGesamtnetz() async {
-    return _getNetz(_gesamtnetzName);
-  }
-
-  Future<Set<MPolyline>> _getNetz(String filename) async {
-    var response = await _client.get("$_baseUrl$filename");
+    var response = await _client.get(_gesamtnetzV2Url);
     switch (response.statusCode) {
       case 200:
         return _converter.getPolylines(geojson: response.jsonBody());
       default:
-        log.d("Failed to retrieve $filename ${response.body}");
+        log.d("Failed to retrieve $_gesamtnetzV2Url ${response.body}");
         throw ApiException(response);
     }
   }

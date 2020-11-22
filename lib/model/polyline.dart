@@ -5,7 +5,15 @@ import 'package:munich_ways/model/street_details.dart';
 class MPolyline {
   List<LatLng> points;
   StreetDetails details;
-  bool isGesamtnetz;
 
-  MPolyline({this.points, this.details, this.isGesamtnetz = false});
+  /// true if gesamtnetz, false if Radlvorrangnetz
+  bool get isGesamtnetz {
+    return [3, 4].contains(details.netztypId);
+  }
+
+  bool get isRadlVorrangNetz {
+    return !isGesamtnetz;
+  }
+
+  MPolyline({this.points, this.details});
 }
