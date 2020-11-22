@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.7+9
+* Update Logo
+* Move map along current position
+* Remove refresh button on map
+* Update API to gesamtnetz_V02.geojson
+
 ## 0.0.6+8
 * Fix missing internet permission on android
 
