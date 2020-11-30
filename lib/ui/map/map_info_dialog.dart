@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 class MapInfoDialog extends StatelessWidget {
   const MapInfoDialog({
@@ -16,19 +17,19 @@ class MapInfoDialog extends StatelessWidget {
             ColorListItem(
               text:
                   "Grün: Gemütlich und komfortabel, Radweg ist breit, sicher, eben",
-              color: Colors.green,
+              color: AppColors.mapGreen,
             ),
             ColorListItem(
               text: "Gelb: Durchschnittlich, Radweg ist verbesserungswürdig",
-              color: Colors.yellow,
+              color: AppColors.mapYellow,
             ),
             ColorListItem(
               text: "Rot: Stressig, Radweg ist sehr schmal, nicht komfortabel",
-              color: Colors.red,
+              color: AppColors.mapRed,
             ),
             ColorListItem(
               text: "Schwarz: Lücke im Radnetz, kein Radweg",
-              color: Colors.black,
+              color: AppColors.mapBlack,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),

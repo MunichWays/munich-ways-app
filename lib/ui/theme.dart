@@ -3,23 +3,28 @@ import 'package:munich_ways/common/logger_setup.dart';
 
 class AppColors {
   static const munichWaysBlue = Color(0xff61A1D8);
+  static const mapBlack = Colors.black;
+  static const mapGreen = Color(0xff298a63);
+  static const mapYellow = Color(0xfffbba00);
+  static const mapRed = Color(0xfff44336);
+  static const mapGrey = Color(0xff9c9d9f);
 
   static Color getPolylineColor(_color) {
     switch (_color) {
       case "schwarz":
-        return Colors.black;
+        return mapBlack;
         break;
       case "grün":
-        return Colors.green;
+        return mapGreen;
         break;
       case "gelb":
-        return Colors.orange;
+        return mapYellow;
         break;
       case "rot":
-        return Colors.red;
+        return mapRed;
         break;
       case "grau":
-        return Colors.grey;
+        return mapGrey;
         break;
       default:
         log.d("unknown color $_color");
