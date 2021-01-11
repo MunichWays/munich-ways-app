@@ -53,4 +53,17 @@ void main() {
     //THEN
     expect(polylines.length, 2726);
   });
+
+  test('parse radlvorrangnetz_V03', () async {
+    //GIVEN
+    var jsonString = await TestUtils.readStringFromFile(
+        'test_resources/20210111_radlvorrangnetz_V03.geojson');
+    GeojsonConverter converter = GeojsonConverter();
+
+    //WHEN
+    var polylines = converter.getPolylines(geojson: json.decode(jsonString));
+
+    //THEN
+    expect(polylines.length, 2726);
+  });
 }

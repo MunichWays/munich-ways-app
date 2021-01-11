@@ -12,6 +12,10 @@ class GeojsonConverter {
     if (geojson['type'].toString() == "FeatureCollection") {
       _features = geojson['features'];
       _features.forEach((feature) {
+        if (feature['geometry'] == null) {
+          log.d('missing geometry property: $feature');
+          return;
+        }
         switch (feature['geometry']['type']) {
           case "LineString":
             List<dynamic> lCoordinates = feature['geometry']['coordinates'];
