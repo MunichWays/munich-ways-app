@@ -15,7 +15,7 @@ void main() {
 
   test('parse link is null', () {
     //GIVEN
-    String link = null;
+    String link;
 
     //WHEN
     String imgId = ImgIdParser().parse(link, null);
@@ -38,7 +38,7 @@ void main() {
 
   test('parse invalid link and valid strassenansicht', () {
     //GIVEN
-    String link = null;
+    String link;
     String strassenansicht =
         '<a href="https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg" target="_blank"> <img src="https://www.munichways.com/img/Offen_Odeonsplatz.jpg" width=175></a>';
 
