@@ -59,7 +59,7 @@ void main() {
             rsvStrecke: "-",
             alternative: "-",
             vielKfz: false,
-            mapillaryLink: "",
+            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
