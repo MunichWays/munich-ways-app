@@ -50,7 +50,7 @@ void main() {
 
   test('fromProps link is null', () {
     //GIVEN
-    String link = null;
+    String link;
 
     //WHEN
     Bezirk bezirk = Bezirk.fromProps(

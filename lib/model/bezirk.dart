@@ -20,7 +20,7 @@ class Bezirk extends Equatable {
 
   factory Bezirk.fromProps(
       {@required name, @required nummer, @required link, @required region}) {
-    var aTag = null;
+    var aTag;
     if (link != null) {
       var document = parseFragment(link);
       aTag = document.querySelector('a');
