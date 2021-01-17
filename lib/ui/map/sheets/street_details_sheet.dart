@@ -54,19 +54,19 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   value: widget.details.strecke,
                 ),
                 ListItem(
-                  label: "Ist-Zustand",
+                  label: "Ist-Situation",
                   value: widget.details.ist,
+                ),
+                ListItem(
+                  label: "Happy Bike Level",
+                  value: widget.details.happyBikeLevel,
                 ),
                 ListItem(
                   label: "Soll-Maßnahmen",
                   value: widget.details.soll,
                 ),
                 ListItem(
-                  label: "Beschreibung",
-                  value: widget.details.description,
-                ),
-                ListItem(
-                    label: "Kategorie",
+                    label: "Maßnahmen-Kategorie",
                     value: widget.details.kategorie.title,
                     onTap: widget.details.kategorie.url != null
                         ? () async {
@@ -78,6 +78,30 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                             }
                           }
                         : null),
+                ListItem(
+                  label: "Beschreibung",
+                  value: widget.details.description,
+                ),
+                ListItem(
+                  label: "Munichways-Id",
+                  value: widget.details.munichwaysId,
+                ),
+                ListItem(
+                  label: "Status-Umsetzung",
+                  value: widget.details.statusUmsetzung,
+                ),
+                ListItem(
+                  label: "Bezirk",
+                  value: widget.details.bezirk.name,
+                  onTap: () async {
+                    if (await canLaunch(widget.details.bezirk.link.url)) {
+                      await launch(widget.details.bezirk.link.url);
+                    } else {
+                      log.e(
+                          "Could not launch ${widget.details.bezirk.link.url}");
+                    }
+                  },
+                ),
                 for (var link in widget.details.links)
                   ListItem(
                     label: "Link",

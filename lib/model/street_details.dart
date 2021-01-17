@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:munich_ways/model/bezirk.dart';
 import 'package:munich_ways/model/kategorie.dart';
 import 'package:munich_ways/model/links.dart';
 
@@ -18,10 +19,7 @@ class StreetDetails extends Equatable {
   final List<Link> links;
   final String strecke;
   final String streetview;
-  final String bezirkLink;
-  final String bezirkRegion;
-  final String bezirkName;
-  final String bezirkNummer;
+  final Bezirk bezirk;
   final String statusUmsetzung;
   final int statusId;
   final String happyBikeLevel;
@@ -50,22 +48,19 @@ class StreetDetails extends Equatable {
       this.links,
       this.strecke,
       this.streetview,
-      this.bezirkLink,
-      this.bezirkRegion,
       this.statusUmsetzung,
       this.statusId,
       this.happyBikeLevel,
       this.lastUpdated,
       this.alternative,
       this.rsvStrecke,
-      this.bezirkName,
       this.planNetztypId,
       this.mapillaryLink,
       this.massnahmenKategorie,
       this.prioGesamt,
       this.neuralgischerPunkt,
       this.vielKfz,
-      this.bezirkNummer});
+      this.bezirk});
 
   factory StreetDetails.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> properties = json['properties'];
@@ -84,8 +79,6 @@ class StreetDetails extends Equatable {
         links: LinksParser.parse(properties['links']),
         strecke: properties['strecke'],
         streetview: properties['strassenansicht_klick_mich'],
-        bezirkLink: properties['bezirk_link'],
-        bezirkRegion: properties['bezirk_region'],
         netztypId: properties['netztyp_id'] as int,
         kategorieId: properties['kategorie_id'] as int,
         statusUmsetzung: properties['status_umsetzung'],
@@ -97,17 +90,20 @@ class StreetDetails extends Equatable {
         planNetztypId: properties['plan_netztyp_id'] as int,
         mapillaryLink: properties['mapillary_link'],
         massnahmenKategorie: properties['massnahmen_kategorie'],
-        bezirkName: properties['bezirk_name'],
         prioGesamt: double.tryParse(
             (properties['prio_gesamt'] as String).replaceAll(',', '.')),
         neuralgischerPunkt: properties['neuralgischer_punkt'],
         vielKfz: 'ja' == (properties['viel_kfz'] as String).toLowerCase(),
-        bezirkNummer: properties['bezirk_nummer']);
+        bezirk: Bezirk.fromProps(
+            name: properties['bezirk_name'],
+            nummer: properties['bezirk_nummer'],
+            region: properties['bezirk_region'],
+            link: properties['bezirk_link']));
   }
 
   @override
   String toString() {
-    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, bild: $streetview, bezirkLink: $bezirkLink, bezirkRegion: $bezirkRegion, bezirkName: $bezirkName, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, mapillaryLink: $mapillaryLink, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz}';
+    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, streetview: $streetview, bezirk: $bezirk, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, mapillaryLink: $mapillaryLink, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz}';
   }
 
   @override
@@ -126,20 +122,18 @@ class StreetDetails extends Equatable {
         this.links,
         this.strecke,
         this.streetview,
-        this.bezirkLink,
-        this.bezirkRegion,
         this.statusUmsetzung,
         this.statusId,
         this.happyBikeLevel,
         this.lastUpdated,
         this.alternative,
         this.rsvStrecke,
-        this.bezirkName,
         this.planNetztypId,
         this.mapillaryLink,
         this.massnahmenKategorie,
         this.prioGesamt,
         this.neuralgischerPunkt,
         this.vielKfz,
+        this.bezirk
       ];
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:munich_ways/model/bezirk.dart';
 import 'package:munich_ways/model/kategorie.dart';
 import 'package:munich_ways/model/links.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -36,8 +37,12 @@ void main() {
                 "neuralgischer Punkt - Neue Radverkehrsroute Sendlinger-Tor-Platz zum Harras",
             munichwaysId: "RV03S.01.000-01.100",
             statusUmsetzung: "beantragt",
-            bezirkLink:
-                '<a href="https://www.munichways.com/bezirksausschuesse/" target="_blank"> BA02 Ludwigsvorstadt-Isarvorstadt</a>',
+            bezirk: Bezirk(
+                region: "LHM-Mitte",
+                nummer: "BA02",
+                name: "Ludwigsvorstadt-Isarvorstadt",
+                link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
+                    "https://www.munichways.com/bezirksausschuesse/")),
             links: [
               Link("RadlVorrang-Profil",
                   "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
@@ -55,9 +60,6 @@ void main() {
             alternative: "-",
             vielKfz: false,
             mapillaryLink: "",
-            bezirkRegion: "LHM-Mitte",
-            bezirkNummer: "BA02",
-            bezirkName: "Ludwigsvorstadt-Isarvorstadt",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
