@@ -22,34 +22,51 @@ void main() {
         details,
         StreetDetails(
             cartoDbId: 1161,
+            streetview:
+                "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
             name:
                 "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
-            description: "neuralgischer Punkt",
-            netztyp: "1_RadlVorrang",
-            munichwaysId: "RV03S.01.000-01.100",
+            strecke: "RV3S - Fürstenrieder-Radlroute",
             ist:
                 "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
+            happyBikeLevel: "sehr stressig",
             soll: "Fahrbahn erneuern",
+            massnahmenKategorie: "ebener Radweg",
+            description:
+                "neuralgischer Punkt - Neue Radverkehrsroute Sendlinger-Tor-Platz zum Harras",
+            munichwaysId: "RV03S.01.000-01.100",
+            statusUmsetzung: "beantragt",
+            bezirkLink:
+                '<a href="https://www.munichways.com/bezirksausschuesse/" target="_blank"> BA02 Ludwigsvorstadt-Isarvorstadt</a>',
+            links: [
+              Link("RadlVorrang-Profil",
+                  "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+              Link("Maßnahmenkatalog",
+                  "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
+              Link("RIS Antrag SPD 12.09.2019",
+                  "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+              Link("RIS Beschluss zur Prüfung 09.12.2020",
+                  "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf")
+            ],
+            netztyp: "1_RadlVorrang-Strecke",
+            planNetztypId: 1,
+            farbe: "schwarz",
+            rsvStrecke: "-",
+            alternative: "-",
+            vielKfz: false,
+            mapillaryLink: "",
+            bezirkRegion: "LHM-Mitte",
+            bezirkNummer: "BA02",
+            bezirkName: "Ludwigsvorstadt-Isarvorstadt",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
                     'https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg'),
-            farbe: "schwarz",
-            links: [
-              Link("RadlVorrangProfil",
-                  "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
-              Link("Maßnahmenkatalog",
-                  "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
-              Link("RIS Antrag SPD 19.09.2019",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
-            ],
-            strecke: "RV3S - Fürstenrieder-Radlroute",
-            quartal: "Q4_2020",
-            bild:
-                "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
-            ba: "BA02",
-            gs: "LHM-Mitte",
+            prioGesamt: 0.93,
+            neuralgischerPunkt: "Neuralgischer Punkt",
             netztypId: 1,
-            kategorieId: 9));
+            kategorieId: 9,
+            statusId: 3,
+            lastUpdated: DateTime.utc(2021, 1, 11, 20, 28, 37)));
   });
 }
