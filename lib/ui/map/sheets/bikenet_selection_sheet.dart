@@ -54,20 +54,23 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             height: 0,
           ),
           CheckboxListTile(
-            title: Text("RadlVorrang-Netz"),
-            subtitle: Row(
+            title: Row(
               children: [
+                Text('RadlVorrang-Netz'),
+                SizedBox(
+                  width: 8,
+                ),
                 Container(
                   width: 24,
                   height: 4,
                   color: Colors.black54,
                 ),
-                SizedBox(
-                  width: 4,
-                ),
-                Text('durchgezogen')
               ],
             ),
+            contentPadding: EdgeInsets.all(16),
+            isThreeLine: true,
+            subtitle: Text(
+                "Radentscheid München Ziel 2. Es basiert auf den ausgeschilderten Radwegen und wird gemäß den Zielen des Radentscheides entsprechend aktualisiert und erweitert."),
             value: widget.model.isRadlvorrangnetzVisible,
             onChanged: (bool value) {
               widget.model.toggleRadvorrangnetzVisible();
@@ -78,9 +81,18 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             height: 0,
           ),
           CheckboxListTile(
-            title: Text("Gesamtnetz"),
-            subtitle: Row(
+            isThreeLine: true,
+            contentPadding: EdgeInsets.all(16),
+            title: Row(
               children: [
+                Text("Anbindung alle Strecken"),
+                SizedBox(
+                  width: 8,
+                ),
+                Dot(),
+                SizedBox(
+                  width: 2,
+                ),
                 Dot(),
                 SizedBox(
                   width: 2,
@@ -90,12 +102,10 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
                   width: 2,
                 ),
                 Dot(),
-                SizedBox(
-                  width: 4,
-                ),
-                Text('gepunktet')
               ],
             ),
+            subtitle: Text(
+                'Alle Straßen und Wege, auf denen man mit dem Rad fahren kann.'),
             value: widget.model.isGesamtnetzVisible,
             onChanged: (bool value) {
               widget.model.toggleGesamtnetzVisible();
