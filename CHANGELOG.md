@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.8+10
+* Upgrade to flutter 1.22.4
+* Fix route color
+* Fix iOS App icon
+* Migrate to Radl-Vorrangnetz V03
+* Update StreetDetails
+* Update Bikenetselection
+* Add Mapillary Image to Streetdetails
+
 ## 0.0.7+9
 * Update Logo
 * Move map along current position
