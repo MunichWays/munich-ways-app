@@ -8,6 +8,11 @@ class Link extends Equatable {
   Link(this.title, this.url);
 
   @override
+  String toString() {
+    return 'Link{title: $title, url: $url}';
+  }
+
+  @override
   List<Object> get props => [title, url];
 }
 

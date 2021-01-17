@@ -8,7 +8,7 @@ import 'package:munich_ways/ui/map/geojson_converter.dart';
 
 class MunichwaysApi {
   final String _gesamtnetzV2Url =
-      "https://www.munichways.com/App/gesamtnetz_V02.geojson";
+      "https://www.munichways.com/App/radlvorrangnetz_masterliste_V03.geojson";
 
   Client _client = HttpClientWithInterceptor.build(interceptors: [
     LoggingInterceptor(),
