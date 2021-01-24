@@ -122,3 +122,5 @@ app.*.symbols
 release.keystore
 release.keystore.asc
 release_keystore.properties
+
+test/missing_imgs_retriever/local_properties.dart
