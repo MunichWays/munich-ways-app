@@ -89,13 +89,19 @@ class StreetDetails extends Equatable {
         rsvStrecke: properties['rsv_strecke'],
         alternative: properties['alternative'],
         planNetztypId: properties['plan_netztyp_id'] as int,
-        mapillaryImgId: ImgIdParser().parse(properties['mapillary_link'],
+        mapillaryImgId: ImgIdParser().parse(
+            properties['mapillary_img_id'],
+            properties['mapillary_link'],
             properties['strassenansicht_klick_mich']),
         massnahmenKategorie: properties['massnahmen_kategorie'],
-        prioGesamt: double.tryParse(
-            (properties['prio_gesamt'] as String).replaceAll(',', '.')),
+        prioGesamt: properties['prio_gesamt'] != null
+            ? double.tryParse(
+                (properties['prio_gesamt'] as String).replaceAll(',', '.'))
+            : null,
         neuralgischerPunkt: properties['neuralgischer_punkt'],
-        vielKfz: 'ja' == (properties['viel_kfz'] as String).toLowerCase(),
+        vielKfz: properties['viel_kfz'] != null
+            ? 'ja' == (properties['viel_kfz'] as String).toLowerCase()
+            : null,
         bezirk: Bezirk.fromProps(
             name: properties['bezirk_name'],
             nummer: properties['bezirk_nummer'],

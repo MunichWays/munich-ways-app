@@ -7,6 +7,7 @@ class LoggingInterceptor implements InterceptorContract {
   @override
   Future<RequestData> interceptRequest({RequestData data}) async {
     log.d("REQUEST");
+    log.d(data.url);
     log.d(data.baseUrl);
     log.d(data.headers);
     log.d(data.body);
