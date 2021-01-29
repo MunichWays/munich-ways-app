@@ -1,0 +1,81 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+      [
+        [
+          11.553315,
+          48.132019
+        ],
+        [
+          11.55317,
+          48.131973
+        ],
+        [
+          11.553074,
+          48.131901
+        ],
+        [
+          11.553031,
+          48.13178
+        ],
+        [
+          11.553036,
+          48.131636
+        ],
+        [
+          11.553025,
+          48.13149
+        ],
+        [
+          11.55302,
+          48.131332
+        ],
+        [
+          11.552988,
+          48.131174
+        ],
+        [
+          11.55295,
+          48.130942
+        ],
+        [
+          11.552891,
+          48.130705
+        ],
+        [
+          11.552821,
+          48.130462
+        ],
+        [
+          11.552768,
+          48.130304
+        ],
+        [
+          11.552725,
+          48.130218
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "cartodb_id": 1161,
+    "name": "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
+    "strecke": "RV3S - Fürstenrieder-Radlroute",
+    "ist_situation": "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
+    "happy_bike_level": "sehr stressig",
+    "soll_massnahmen": "Fahrbahn erneuern",
+    "massnahmen_kategorie_link": "<a href=\"https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg\" target=\"_blank\">ebener Radweg </a>",
+    "beschreibung": "neuralgischer Punkt - Neue Radverkehrsroute Sendlinger-Tor-Platz zum Harras",
+    "munichways_id": "RV03S.01.000-01.100",
+    "status_umsetzung": "beantragt",
+    "links": "<p><a href=\"https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing\" target=\"_blank\">  RadlVorrang-Profil</a></p>\n<p>_____ </p><br> </br>\n<p><a href=\"https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf\" target=\"_blank\">  RIS Antrag SPD 12.09.2019 </a> </p>\n<p><a href=\"https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf\" target=\"_blank\">  RIS Beschluss zur Prüfung 09.12.2020 </a> </p>\n<p><a href=\"https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682\" target=\"_blank\">  SZ 12.01.2021 Leuchtendes Prestigeprojekt </a> </p>\n<p>_____ </p><br> </br>",
+    "farbe": "schwarz",
+    "mapillary_img_id": "MoDbKpzUOr9tcd5Gx22gyE",
+    "bezirk_nummer": "BA02",
+    "bezirk_name": "Ludwigsvorstadt-Isarvorstadt",
+    "netztyp_id": 1,
+    "last_updated": "2021-01-24T21:04:38Z"
+  }
+}

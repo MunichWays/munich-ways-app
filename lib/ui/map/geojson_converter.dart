@@ -50,7 +50,7 @@ class GeojsonConverter {
   ) {
     String color = feature['properties']['farbe'].toString();
     if ('grau' == color) {
-      log.d('ignore ${feature['properties']['munichways_id']}');
+      log.d('ignore grau ${feature['properties']['munichways_id']}');
       return;
     }
 

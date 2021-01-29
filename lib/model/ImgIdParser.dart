@@ -1,7 +1,12 @@
 import 'package:html/parser.dart';
 
 class ImgIdParser {
-  String parse(String mapillaryLink, String strassenansicht) {
+  String parse(
+      String mapillaryImgId, String mapillaryLink, String strassenansicht) {
+    if (mapillaryImgId != null) {
+      return mapillaryImgId;
+    }
+
     if (!_validMapillaryLink(mapillaryLink) && strassenansicht != null) {
       var document = parseFragment(strassenansicht);
       var aTag = document.querySelector('a');

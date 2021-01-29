@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:html/parser.dart';
-import 'package:munich_ways/common/logger_setup.dart';
 
 import 'links.dart';
 
@@ -33,7 +32,6 @@ class Bezirk extends Equatable {
           region: region,
           link: Link(aTag.text?.trim(), aTag.attributes['href']));
     } else {
-      log.d("Could not parse link for $nummer $name $link");
       return Bezirk(
           name: name,
           nummer: nummer,
