@@ -6,10 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/ui/map/geojson_converter.dart';
 
-import 'file:///Users/sven/development/munich_ways/test/missing_imgs_retriever/mapillary_api.dart';
-
 import '../test_utils.dart';
 import 'local_properties.dart'; //you need to add this file yourself, containing a `String mapillaryClientId = <YOUR_CLIENTID>`
+import 'mapillary_api.dart';
 
 Future<void> main() async {
   // Is no test - should be transferred into a script but was to lazy to set it up, for a one time run.
