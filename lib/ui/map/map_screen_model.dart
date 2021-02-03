@@ -130,7 +130,7 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _polylinesGesamtnetz = await _netzRepo.getGesamtnetz();
+      _polylinesGesamtnetz = await _netzRepo.getRadlvorrangnetz();
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);

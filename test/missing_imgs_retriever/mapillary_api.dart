@@ -29,7 +29,7 @@ class MapillaryApi {
         return null;
       default:
         log.d("Failed to searchImages for $latLng - ${response.body}");
-        throw ApiException(response);
+        throw ApiException(response.toString());
     }
   }
 }
