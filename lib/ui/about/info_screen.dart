@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/nav_routes.dart';
+import 'package:munich_ways/ui/map/munichways_api.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -100,6 +101,15 @@ class _InfoScreenState extends State<InfoScreen> {
               trailing: Icon(Icons.info_outline),
               onTap: () async {
                 Navigator.of(context).pushNamed(NavRoutes.imprint);
+              },
+            ),
+            ListTile(
+              title: Text('Radlnetz löschen'),
+              subtitle:
+                  Text('Das Radlnetz wird beim Karte öffnen erneut geladen.'),
+              trailing: Icon(Icons.delete),
+              onTap: () {
+                MunichwaysApi().emptyCache();
               },
             ),
           ],
