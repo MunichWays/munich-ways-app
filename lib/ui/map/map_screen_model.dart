@@ -52,6 +52,9 @@ class MapScreenViewModel extends ChangeNotifier {
   Stream showLocationPermissionDialog;
   StreamController _permissionStreamController;
 
+  Stream showEnableLocationServiceDialog;
+  StreamController _showEnableLocationServiceDialogController;
+
   Stream showStreetDetails;
   StreamController showStreetDetailsController;
 
@@ -63,6 +66,9 @@ class MapScreenViewModel extends ChangeNotifier {
     errorMsgs = _errorMsgsController.stream;
     _permissionStreamController = StreamController();
     showLocationPermissionDialog = _permissionStreamController.stream;
+    _showEnableLocationServiceDialogController = StreamController();
+    showEnableLocationServiceDialog =
+        _showEnableLocationServiceDialogController.stream;
     showStreetDetailsController = StreamController();
     showStreetDetails = showStreetDetailsController.stream;
     currentLocationController = StreamController();
@@ -80,6 +86,19 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
     log.d("onPressLocationBtn");
+    bool isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (permissionCheck && !permissionCheck) {
+      log.d("ignore disable location service after return from settings");
+      return;
+    }
+
+    if (!isLocationServiceEnabled) {
+      locationState = LocationState.NOT_AVAILABLE;
+      notifyListeners();
+      _showEnableLocationServiceDialogController.add("");
+      return;
+    }
+
     LocationPermission permission = await Geolocator.checkPermission();
     log.d(permission);
     if (!permissionCheck &&
