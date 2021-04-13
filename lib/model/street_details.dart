@@ -63,7 +63,7 @@ class StreetDetails extends Equatable {
       this.vielKfz,
       this.bezirk,
       this.mapillaryImgId,
-      this.isMunichWaysRadlVorrangNetz});
+      this.isMunichWaysRadlVorrangNetz = false});
 
   factory StreetDetails.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> properties = json['properties'];
