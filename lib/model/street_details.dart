@@ -33,6 +33,7 @@ class StreetDetails extends Equatable {
   final String neuralgischerPunkt;
   final bool vielKfz;
   final String mapillaryImgId;
+  final bool isMunichWaysRadlVorrangNetz;
 
   StreetDetails(
       {this.cartoDbId,
@@ -61,7 +62,8 @@ class StreetDetails extends Equatable {
       this.neuralgischerPunkt,
       this.vielKfz,
       this.bezirk,
-      this.mapillaryImgId});
+      this.mapillaryImgId,
+      this.isMunichWaysRadlVorrangNetz});
 
   factory StreetDetails.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> properties = json['properties'];
@@ -106,12 +108,14 @@ class StreetDetails extends Equatable {
             name: properties['bezirk_name'],
             nummer: properties['bezirk_nummer'],
             region: properties['bezirk_region'],
-            link: properties['bezirk_link']));
+            link: properties['bezirk_link']),
+        isMunichWaysRadlVorrangNetz:
+            !['-', null, ''].contains(properties['mw_rv_strecke']));
   }
 
   @override
   String toString() {
-    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, streetview: $streetview, bezirk: $bezirk, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz, mapillaryImgId: $mapillaryImgId}';
+    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, streetview: $streetview, bezirk: $bezirk, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz, mapillaryImgId: $mapillaryImgId, mwRvStrecke: $isMunichWaysRadlVorrangNetz}';
   }
 
   @override
@@ -142,6 +146,7 @@ class StreetDetails extends Equatable {
         this.prioGesamt,
         this.neuralgischerPunkt,
         this.vielKfz,
-        this.bezirk
+        this.bezirk,
+        this.isMunichWaysRadlVorrangNetz
       ];
 }
