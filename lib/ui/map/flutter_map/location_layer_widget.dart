@@ -43,11 +43,25 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
             return Container();
           }
 
-          if (!_liveLocationEnabled()) {
-            _startLiveLocation(MapState.of(context));
-          }
+          return FutureBuilder<bool>(
+              future: Geolocator.isLocationServiceEnabled(),
+              builder: (context, snapshot1) {
+                if (!snapshot1.hasData) {
+                  log.d("loading isLocationServiceEnabled check");
+                  return Container();
+                }
 
-          return _buildLiveLocationLayer(context);
+                if (!snapshot1.data) {
+                  log.d("locationService is not enabled");
+                  return Container();
+                }
+
+                if (!_liveLocationEnabled()) {
+                  _startLiveLocation(MapState.of(context));
+                }
+
+                return _buildLiveLocationLayer(context);
+              });
         });
   }
 

@@ -1,6 +1,7 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
@@ -50,6 +51,42 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _askToEnableLocationService() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Standort aktivieren'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(
+                    'Zur Anzeige des aktuellen Standorts muss die Standortbestimmung aktiviert sein.'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('Abbrechen'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            FlatButton(
+              child: Text('Standorteinstellungen'),
+              onPressed: () {
+                Geolocator.openLocationSettings();
+                displayCurrentLocationOnResume = true;
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _askForLocationPermission() async {
@@ -103,6 +140,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.showLocationPermissionDialog.listen((_) {
           _askForLocationPermission();
+        });
+        model.showEnableLocationServiceDialog.listen((_) {
+          _askToEnableLocationService();
         });
         model.showStreetDetails.listen((details) {
           double statusBarHeight = MediaQuery.of(context).padding.top;
