@@ -4,36 +4,18 @@ import 'package:munich_ways/model/street_details.dart';
 
 void main() {
   group('isGesamtnetz', () {
-    test('true for netzid 3', () {
+    test('true for isMunichWaysRadlVorrangNetz false', () {
       //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 3);
+      StreetDetails details = StreetDetails(isMunichWaysRadlVorrangNetz: false);
       MPolyline polyline = MPolyline(details: details);
 
       //WHEN/THEN
       expect(polyline.isGesamtnetz, true);
     });
 
-    test('true for netzid 4', () {
+    test('false for isMunichWaysRadlVorrangNetz true', () {
       //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 4);
-      MPolyline polyline = MPolyline(details: details);
-
-      //WHEN/THEN
-      expect(polyline.isGesamtnetz, true);
-    });
-
-    test('false for netzid 1', () {
-      //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 1);
-      MPolyline polyline = MPolyline(details: details);
-
-      //WHEN/THEN
-      expect(polyline.isGesamtnetz, false);
-    });
-
-    test('false for netzid 2', () {
-      //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 2);
+      StreetDetails details = StreetDetails(isMunichWaysRadlVorrangNetz: true);
       MPolyline polyline = MPolyline(details: details);
 
       //WHEN/THEN
@@ -42,22 +24,22 @@ void main() {
   });
 
   group('isRadlvorrangnetz', () {
-    test('true for netzid 1', () {
+    test('true for isMunichWaysRadlVorrangNetz true', () {
       //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 1);
+      StreetDetails details = StreetDetails(isMunichWaysRadlVorrangNetz: true);
       MPolyline polyline = MPolyline(details: details);
 
       //WHEN/THEN
       expect(polyline.isRadlVorrangNetz, true);
     });
 
-    test('true for netzid 2', () {
+    test('false for isMunichWaysRadlVorrangNetz false', () {
       //GIVEN
-      StreetDetails details = StreetDetails(netztypId: 2);
+      StreetDetails details = StreetDetails(isMunichWaysRadlVorrangNetz: false);
       MPolyline polyline = MPolyline(details: details);
 
       //WHEN/THEN
-      expect(polyline.isRadlVorrangNetz, true);
+      expect(polyline.isRadlVorrangNetz, false);
     });
   });
 }
