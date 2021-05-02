@@ -56,7 +56,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           CheckboxListTile(
             title: Row(
               children: [
-                Text('RadlVorrang-Netz'),
+                Text('RadlVorrang MunichWays'),
                 SizedBox(
                   width: 8,
                 ),
@@ -85,7 +85,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             contentPadding: EdgeInsets.all(16),
             title: Row(
               children: [
-                Text("Anbindung alle Strecken"),
+                Text("Alle Strecken"),
                 SizedBox(
                   width: 8,
                 ),
