@@ -6,13 +6,13 @@ class MPolyline {
   List<LatLng> points;
   StreetDetails details;
 
-  /// true if gesamtnetz, false if Radlvorrangnetz
+  /// true if gesamtnetz, false if RadlVorrang Munichways
   bool get isGesamtnetz {
-    return [3, 4].contains(details.netztypId);
+    return !isRadlVorrangNetz;
   }
 
   bool get isRadlVorrangNetz {
-    return !isGesamtnetz;
+    return details.isMunichWaysRadlVorrangNetz;
   }
 
   MPolyline({this.points, this.details});
