@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.9+11
+* Adjust to geojson changes
+* Add caching to improve data consumption
+* Fix asking repeatedly for enable location services on Android
+
 ## 0.0.8+10
 * Upgrade to flutter 1.22.4
 * Fix route color
