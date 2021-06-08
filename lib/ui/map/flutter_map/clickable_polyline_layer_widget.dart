@@ -13,7 +13,7 @@ class ClickablePolylineLayerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mapState = MapState.of(context);
+    final mapState = MapState.maybeOf(context);
     return ClickablePolylineLayer(options, mapState, mapState.onMoved);
   }
 }

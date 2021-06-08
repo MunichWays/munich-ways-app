@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:latlong/latlong.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
