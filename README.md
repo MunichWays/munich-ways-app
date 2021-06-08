@@ -43,5 +43,4 @@ storePassword=<Password>
 alias=<Alias>
 aliasPassword=<Password>
 ```
-3. Add googls Maps Production key, see Development > Google Maps Setup
 3. Run `flutter build apk` or see the other output options

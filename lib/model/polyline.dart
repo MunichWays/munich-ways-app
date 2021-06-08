@@ -1,4 +1,4 @@
-import 'package:latlong/latlong.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/street_details.dart';
 
 /// Map framework independent polyline data class

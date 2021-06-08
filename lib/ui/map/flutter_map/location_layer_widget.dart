@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong/latlong.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class LocationLayerWidget extends StatefulWidget {
@@ -57,7 +57,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
                 }
 
                 if (!_liveLocationEnabled()) {
-                  _startLiveLocation(MapState.of(context));
+                  _startLiveLocation(MapState.maybeOf(context));
                 }
 
                 return _buildLiveLocationLayer(context);
@@ -70,7 +70,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
       return Container();
     }
 
-    final mapState = MapState.of(context);
+    final mapState = MapState.maybeOf(context);
 
     var markers = <Marker>[
       Marker(
