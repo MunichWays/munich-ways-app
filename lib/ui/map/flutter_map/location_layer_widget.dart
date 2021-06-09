@@ -110,7 +110,8 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
             log.d("Move along");
             mapState.move(
                 LatLng(currentPosition.latitude, currentPosition.longitude),
-                mapState.zoom);
+                mapState.zoom,
+                source: MapEventSource.custom);
           }
         });
       });

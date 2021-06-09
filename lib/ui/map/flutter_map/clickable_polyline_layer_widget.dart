@@ -69,7 +69,7 @@ class ClickablePolylineLayer extends StatelessWidget {
     return GestureDetector(
         onDoubleTap: () {
           log.d("onDoubleTap");
-          map.move(map.center, map.zoom + 1);
+          map.move(map.center, map.zoom + 1, source: MapEventSource.custom);
         },
         onTapUp: (TapUpDetails details) {
           //Detect nearest polyline to the tapped point

@@ -172,7 +172,7 @@ class _MapillaryImage extends StatelessWidget {
       Positioned(
         bottom: 0,
         right: 4,
-        child: RaisedButton(
+        child: ElevatedButton(
           onPressed: () async {
             var url = mapillaryImgId != null
                 ? 'https://www.mapillary.com/map/im/$mapillaryImgId'
@@ -184,7 +184,10 @@ class _MapillaryImage extends StatelessWidget {
             }
           },
           child: const Text('Mapillary öffnen'),
-          color: Colors.white70,
+          style: ElevatedButton.styleFrom(
+            primary: Colors.white70, // background
+            onPrimary: Colors.black87, // foreground
+          ),
         ),
       ),
     ]);
