@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
@@ -11,6 +12,7 @@ import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
+import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -247,6 +249,30 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               RawMaterialButton(
+                                elevation: 2.0,
+                                fillColor: Colors.white,
+                                constraints: BoxConstraints.expand(
+                                    width: 56, height: 56),
+                                child: Icon(
+                                  Icons.search,
+                                  color: Colors.black54,
+                                ),
+                                shape: CircleBorder(),
+                                onPressed: () async {
+                                  log.d("onSearchStreet");
+                                  Place selectedPlace = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            SearchLocationScreen()),
+                                  ) as Place;
+                                  log.d(selectedPlace);
+                                },
+                              ),
+                              SizedBox(
+                                height: 16,
+                              ),
+                              RawMaterialButton(
                                 onPressed: () {
                                   showModalBottomSheet<void>(
                                     context: context,
@@ -266,7 +292,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   Icons.layers,
                                   color: Colors.black54,
                                 ),
-                                padding: EdgeInsets.all(15.0),
                                 shape: CircleBorder(),
                               ),
                               SizedBox(
