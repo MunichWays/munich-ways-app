@@ -71,13 +71,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
           ),
           actions: <Widget>[
-            FlatButton(
+            TextButton(
               child: Text('Abbrechen'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
-            FlatButton(
+            TextButton(
               child: Text('Standorteinstellungen'),
               onPressed: () {
                 Geolocator.openLocationSettings();
@@ -107,13 +107,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
           ),
           actions: <Widget>[
-            FlatButton(
+            TextButton(
               child: Text('Abbrechen'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
-            FlatButton(
+            TextButton(
               child: Text('Appeinstellungen'),
               onPressed: () {
                 AppSettings.openAppSettings();

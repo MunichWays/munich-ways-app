@@ -37,7 +37,7 @@ class MissingRadnetzeCard extends StatelessWidget {
                 ),
                 this.loading
                     ? CircularProgressIndicator()
-                    : FlatButton.icon(
+                    : TextButton.icon(
                         onPressed: onPressed,
                         icon: Icon(
                           Icons.refresh,

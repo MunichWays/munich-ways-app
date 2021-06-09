@@ -53,11 +53,9 @@ class _SearchAppBarState extends State<SearchAppBar> {
 }
 
 class SearchAppBarShape extends ShapeBorder {
-  double statusBarHeight;
+  final double statusBarHeight;
 
-  SearchAppBarShape(double statusBarHeight) {
-    this.statusBarHeight = statusBarHeight;
-  }
+  SearchAppBarShape(this.statusBarHeight) {}
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
