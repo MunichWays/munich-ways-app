@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
+import 'package:munich_ways/ui/map/flutter_map/destination_bearing_layer.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_marker_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
@@ -214,13 +215,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             .toList(),
                       ),
                     ),
+                    DestinationBearingLayerWidget(
+                      visible: model.destination != null,
+                      bearing: model.bearing,
+                    ),
+                    DestinationMarkerLayerWidget(
+                      destination: model.destination,
+                    ),
                     LocationLayerWidget(
                       enabled:
                           model.locationState != LocationState.NOT_AVAILABLE,
                       moveMapAlong: model.locationState == LocationState.FOLLOW,
-                    ),
-                    DestinationMarkerLayerWidget(
-                      destination: model.destination,
                     ),
                     OSMCreditsWidget(),
                   ],

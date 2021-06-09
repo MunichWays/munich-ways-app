@@ -15,6 +15,8 @@ class MapScreenViewModel extends ChangeNotifier {
 
   bool _firstLoad = true;
 
+  double bearing;
+
   bool get displayMissingPolylinesMsg {
     return !_firstLoad &&
         (_polylinesGesamtnetz == null || _polylinesGesamtnetz.isEmpty);
@@ -174,11 +176,24 @@ class MapScreenViewModel extends ChangeNotifier {
     showStreetDetailsController.add(details);
   }
 
-  void onMapPositionChanged(MapPosition position, bool hasGesture) {
+  Future<void> onMapPositionChanged(
+      MapPosition position, bool hasGesture) async {
+    log.d("onMapPositionChanged");
+
     if (locationState == LocationState.FOLLOW && hasGesture) {
       log.d(locationState);
       locationState = LocationState.DISPLAY;
       log.d(locationState);
+      notifyListeners();
+    }
+
+    if (destination != null && position != null) {
+      this.bearing = Geolocator.bearingBetween(
+          position.center.latitude,
+          position.center.longitude,
+          destination.latLng.latitude,
+          destination.latLng.longitude);
+      this.bearing = (bearing + 360) % 360;
       notifyListeners();
     }
   }
