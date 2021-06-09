@@ -6,13 +6,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
+import 'package:munich_ways/ui/map/flutter_map/destination_marker_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
-import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
+import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -160,6 +161,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           log.d("onUpdateLocation");
           mapController.move(location, mapController.zoom);
         });
+        model.destinationStream.listen((Place place) {
+          mapController.move(place.latLng, mapController.zoom);
+        });
         mapController.onReady.then((_) => model.onMapReady());
         return model;
       },
@@ -215,6 +219,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           model.locationState != LocationState.NOT_AVAILABLE,
                       moveMapAlong: model.locationState == LocationState.FOLLOW,
                     ),
+                    DestinationMarkerLayerWidget(
+                      destination: model.destination,
+                    ),
                     OSMCreditsWidget(),
                   ],
                 ),
@@ -248,27 +255,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              RawMaterialButton(
-                                elevation: 2.0,
-                                fillColor: Colors.white,
-                                constraints: BoxConstraints.expand(
-                                    width: 56, height: 56),
-                                child: Icon(
-                                  Icons.search,
-                                  color: Colors.black54,
-                                ),
-                                shape: CircleBorder(),
-                                onPressed: () async {
-                                  log.d("onSearchStreet");
-                                  Place selectedPlace = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            SearchLocationScreen()),
-                                  ) as Place;
-                                  log.d(selectedPlace);
-                                },
-                              ),
+                              SearchLocationActionButton(model: model),
                               SizedBox(
                                 height: 16,
                               ),
@@ -337,6 +324,40 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           );
         },
       ),
+    );
+  }
+}
+
+class SearchLocationActionButton extends StatelessWidget {
+  final MapScreenViewModel model;
+
+  const SearchLocationActionButton({
+    Key key,
+    @required this.model,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return RawMaterialButton(
+      elevation: 2.0,
+      fillColor: Colors.white,
+      constraints: BoxConstraints.expand(width: 56, height: 56),
+      child: Icon(
+        model.destination != null ? Icons.search_off : Icons.search,
+        color: model.destination != null ? Colors.blueAccent : Colors.black45,
+      ),
+      shape: CircleBorder(),
+      onPressed: () async {
+        if (model.destination == null) {
+          Place place = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => SearchLocationScreen()),
+          ) as Place;
+          model.setDestination(place);
+        } else {
+          model.clearDestination();
+        }
+      },
     );
   }
 }

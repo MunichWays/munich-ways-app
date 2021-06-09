@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
@@ -29,6 +30,8 @@ class MapScreenViewModel extends ChangeNotifier {
     return tempPolylines;
   }
 
+  Place destination = null;
+
   bool _isRadlvorrangnetzVisible = true;
   bool _isGesamtnetzVisible = true;
 
@@ -44,7 +47,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Set<MPolyline> _polylinesGesamtnetz = {};
 
-  MunichwaysApi _netzRepo = MunichwaysApi();
+  MunichwaysApi _munichwaysApi = MunichwaysApi();
 
   Stream<String> errorMsgs;
   StreamController<String> _errorMsgsController;
@@ -61,6 +64,9 @@ class MapScreenViewModel extends ChangeNotifier {
   Stream<LatLng> currentLocationStream;
   StreamController<LatLng> currentLocationController;
 
+  Stream<Place> destinationStream;
+  StreamController<Place> _destinationStreamController;
+
   MapScreenViewModel() {
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
@@ -73,6 +79,8 @@ class MapScreenViewModel extends ChangeNotifier {
     showStreetDetails = showStreetDetailsController.stream;
     currentLocationController = StreamController();
     currentLocationStream = currentLocationController.stream;
+    _destinationStreamController = StreamController();
+    destinationStream = _destinationStreamController.stream;
   }
 
   void _displayErrorMsg(String msg) {
@@ -149,7 +157,7 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _polylinesGesamtnetz = await _netzRepo.getRadlvorrangnetz();
+      _polylinesGesamtnetz = await _munichwaysApi.getRadlvorrangnetz();
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", e);
@@ -173,6 +181,23 @@ class MapScreenViewModel extends ChangeNotifier {
       log.d(locationState);
       notifyListeners();
     }
+  }
+
+  void setDestination(Place place) {
+    if (place == null) {
+      return;
+    }
+    if (locationState == LocationState.FOLLOW) {
+      locationState = LocationState.DISPLAY;
+    }
+    this.destination = place;
+    notifyListeners();
+    _destinationStreamController.add(place);
+  }
+
+  void clearDestination() {
+    this.destination = null;
+    notifyListeners();
   }
 }
 
