@@ -9,6 +9,8 @@ class AppColors {
   static const mapRed = Color(0xfff44336);
   static const mapGrey = Color(0xff9c9d9f);
 
+  static const mapAccentColor = Color(0xFF2196F3);
+
   static Color getPolylineColor(_color) {
     switch (_color) {
       case "schwarz":

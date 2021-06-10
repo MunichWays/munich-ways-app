@@ -178,8 +178,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<void> onMapPositionChanged(
       MapPosition position, bool hasGesture) async {
-    log.d("onMapPositionChanged");
-
     if (locationState == LocationState.FOLLOW && hasGesture) {
       log.d(locationState);
       locationState = LocationState.DISPLAY;
