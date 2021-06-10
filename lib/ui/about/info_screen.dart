@@ -17,7 +17,8 @@ class _InfoScreenState extends State<InfoScreen> {
   String appVersion = "";
   String appName = "";
   String packageName = "";
-  GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
+  GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -37,8 +38,8 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _displayError(String errorMsg) {
-    scaffoldKey.currentState.hideCurrentSnackBar();
-    scaffoldKey.currentState.showSnackBar(SnackBar(
+    scaffoldMessengerKey.currentState.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState.showSnackBar(SnackBar(
       content: Text(errorMsg),
       duration: Duration(seconds: 3),
     ));
@@ -46,74 +47,76 @@ class _InfoScreenState extends State<InfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: scaffoldKey,
-      drawer: SideDrawer(),
-      appBar: AppBar(
-        title: Text("Über die App"),
-      ),
-      body: ListView(
-        children: ListTile.divideTiles(
-          context: context,
-          tiles: [
-            ListTile(
-              title: Text("$appName $appVersion"),
-              subtitle: Text(packageName),
-            ),
-            ListTile(
-              title: Text('Webseite'),
-              subtitle: Text('munichways.com'),
-              trailing: Icon(Icons.link),
-              onTap: () async {
-                const url = 'https://munichways.com';
-                if (await canLaunch(url)) {
-                  await launch(url);
-                } else {
-                  _displayError(
-                      'Keine App zum öffnen von munichways.com gefunden');
-                }
-              },
-            ),
-            ListTile(
-              title: Text('Feedback'),
-              trailing: Icon(Icons.mail),
-              subtitle: Text(
-                  'Du hast einen Fehler entdeckt? oder eine Verbesserungsidee? Sende uns Feedback per Email.'),
-              onTap: () async {
-                final Uri _emailLaunchUri = Uri(
-                    scheme: 'mailto',
-                    path: 'mail@munichways.com',
-                    queryParameters: {
-                      'subject': 'Feedback Munichways App',
-                      'body': 'Appversion: $appVersion\n'
-                    });
-                String emailUriString = _emailLaunchUri.toString();
-                if (await canLaunch(emailUriString)) {
-                  await launch(emailUriString);
-                } else {
-                  _displayError(("Keine Email App gefunden"));
-                }
-              },
-            ),
-            ListTile(
-              title: Text('Impressum & Datenschutz'),
-              subtitle: Text('munichways.com/datenschutzerklaerung'),
-              trailing: Icon(Icons.info_outline),
-              onTap: () async {
-                Navigator.of(context).pushNamed(NavRoutes.imprint);
-              },
-            ),
-            ListTile(
-              title: Text('Radlnetz löschen'),
-              subtitle:
-                  Text('Das Radlnetz wird beim Karte öffnen erneut geladen.'),
-              trailing: Icon(Icons.delete),
-              onTap: () {
-                MunichwaysApi().emptyCache();
-              },
-            ),
-          ],
-        ).toList(),
+    return ScaffoldMessenger(
+      key: scaffoldMessengerKey,
+      child: Scaffold(
+        drawer: SideDrawer(),
+        appBar: AppBar(
+          title: Text("Über die App"),
+        ),
+        body: ListView(
+          children: ListTile.divideTiles(
+            context: context,
+            tiles: [
+              ListTile(
+                title: Text("$appName $appVersion"),
+                subtitle: Text(packageName),
+              ),
+              ListTile(
+                title: Text('Webseite'),
+                subtitle: Text('munichways.com'),
+                trailing: Icon(Icons.link),
+                onTap: () async {
+                  const url = 'https://munichways.com';
+                  if (await canLaunch(url)) {
+                    await launch(url);
+                  } else {
+                    _displayError(
+                        'Keine App zum öffnen von munichways.com gefunden');
+                  }
+                },
+              ),
+              ListTile(
+                title: Text('Feedback'),
+                trailing: Icon(Icons.mail),
+                subtitle: Text(
+                    'Du hast einen Fehler entdeckt? oder eine Verbesserungsidee? Sende uns Feedback per Email.'),
+                onTap: () async {
+                  final Uri _emailLaunchUri = Uri(
+                      scheme: 'mailto',
+                      path: 'mail@munichways.com',
+                      queryParameters: {
+                        'subject': 'Feedback Munichways App',
+                        'body': 'Appversion: $appVersion\n'
+                      });
+                  String emailUriString = _emailLaunchUri.toString();
+                  if (await canLaunch(emailUriString)) {
+                    await launch(emailUriString);
+                  } else {
+                    _displayError(("Keine Email App gefunden"));
+                  }
+                },
+              ),
+              ListTile(
+                title: Text('Impressum & Datenschutz'),
+                subtitle: Text('munichways.com/datenschutzerklaerung'),
+                trailing: Icon(Icons.info_outline),
+                onTap: () async {
+                  Navigator.of(context).pushNamed(NavRoutes.imprint);
+                },
+              ),
+              ListTile(
+                title: Text('Radlnetz löschen'),
+                subtitle:
+                    Text('Das Radlnetz wird beim Karte öffnen erneut geladen.'),
+                trailing: Icon(Icons.delete),
+                onTap: () {
+                  MunichwaysApi().emptyCache();
+                },
+              ),
+            ],
+          ).toList(),
+        ),
       ),
     );
   }

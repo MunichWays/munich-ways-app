@@ -30,6 +30,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final LatLng _stachus = LatLng(48.14, 11.5652);
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
+  GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
 
   bool displayCurrentLocationOnResume = false;
   MapScreenViewModel mapViewModel;
@@ -136,8 +137,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         MapScreenViewModel model = MapScreenViewModel();
         mapViewModel = model;
         model.errorMsgs.listen((errorMsg) async {
-          scaffoldKey.currentState.hideCurrentSnackBar();
-          scaffoldKey.currentState.showSnackBar(SnackBar(
+          scaffoldMessengerKey.currentState.hideCurrentSnackBar();
+          scaffoldMessengerKey.currentState.showSnackBar(SnackBar(
             content: Text(errorMsg),
             duration: Duration(seconds: 2),
           ));
@@ -170,167 +171,171 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
-          return Scaffold(
-            key: scaffoldKey,
-            drawer: SideDrawer(),
-            body: Stack(
-              children: [
-                FlutterMap(
-                  mapController: mapController,
-                  options: MapOptions(
-                      center: _stachus,
-                      zoom: 15,
-                      maxZoom: 18,
-                      minZoom: 10,
-                      onPositionChanged:
-                          (MapPosition position, bool hasGesture) {
-                        model.onMapPositionChanged(position, hasGesture);
-                      }),
-                  children: [
-                    TileLayerWidget(
-                      options: TileLayerOptions(
-                        urlTemplate:
-                            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        subdomains: ['a', 'b', 'c'],
-                      ),
-                    ),
-                    ClickablePolylineLayerWidget(
-                      options: ClickablePolylineLayerOptions(
-                        polylineCulling: true,
-                        polylines: model.polylines
-                            .map(
-                              (polyline) => ClickablePolyline(
-                                  points: polyline.points
-                                      .map((latlng) => LatLng(
-                                          latlng.latitude, latlng.longitude))
-                                      .toList(),
-                                  strokeWidth: 3.0,
-                                  isDotted: polyline.isGesamtnetz,
-                                  color: AppColors.getPolylineColor(
-                                      polyline.details.farbe),
-                                  onTap: () {
-                                    model.onTap(polyline.details);
-                                  }),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    DestinationBearingLayerWidget(
-                      visible: model.destination != null,
-                      bearing: model.bearing,
-                      onTap: () {
-                        if (model.destination != null) {
-                          mapController.move(
-                              model.destination.latLng, mapController.zoom);
-                        }
-                      },
-                    ),
-                    DestinationMarkerLayerWidget(
-                      destination: model.destination,
-                    ),
-                    LocationLayerWidget(
-                      enabled:
-                          model.locationState != LocationState.NOT_AVAILABLE,
-                      moveMapAlong: model.locationState == LocationState.FOLLOW,
-                    ),
-                    OSMCreditsWidget(),
-                  ],
-                ),
-                SafeArea(
-                  child: Stack(
+          return ScaffoldMessenger(
+            key: scaffoldMessengerKey,
+            child: Scaffold(
+              key: scaffoldKey,
+              drawer: SideDrawer(),
+              body: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: mapController,
+                    options: MapOptions(
+                        center: _stachus,
+                        zoom: 15,
+                        maxZoom: 18,
+                        minZoom: 10,
+                        onPositionChanged:
+                            (MapPosition position, bool hasGesture) {
+                          model.onMapPositionChanged(position, hasGesture);
+                        }),
                     children: [
-                      Visibility(
-                        visible: model.loading,
-                        child: Center(
-                          child: RawMaterialButton(
-                              elevation: 2.0,
-                              fillColor: Colors.white,
-                              padding: EdgeInsets.all(15.0),
-                              shape: CircleBorder(),
-                              constraints:
-                                  BoxConstraints.expand(width: 56, height: 56),
-                              onPressed: () {},
-                              child: SizedBox(
-                                width: 20.0,
-                                height: 20.0,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                ),
-                              )),
+                      TileLayerWidget(
+                        options: TileLayerOptions(
+                          urlTemplate:
+                              "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                          subdomains: ['a', 'b', 'c'],
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SearchLocationActionButton(model: model),
-                              SizedBox(
-                                height: 16,
-                              ),
-                              RawMaterialButton(
-                                onPressed: () {
-                                  showModalBottomSheet<void>(
-                                    context: context,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (BuildContext context) {
-                                      return BikenetSelectionSheet(
-                                        model: model,
-                                      );
-                                    },
-                                  );
-                                },
-                                elevation: 2.0,
-                                fillColor: Colors.white,
-                                constraints: BoxConstraints.expand(
-                                    width: 56, height: 56),
-                                child: Icon(
-                                  Icons.layers,
-                                  color: Colors.black54,
-                                ),
-                                shape: CircleBorder(),
-                              ),
-                              SizedBox(
-                                height: 16,
-                              ),
-                              LocationActionButton(
-                                onPressed: () async {
-                                  model.onPressLocationBtn();
-                                },
-                                locationState: model.locationState,
-                              ),
-                            ],
-                          ),
+                      ClickablePolylineLayerWidget(
+                        options: ClickablePolylineLayerOptions(
+                          polylineCulling: true,
+                          polylines: model.polylines
+                              .map(
+                                (polyline) => ClickablePolyline(
+                                    points: polyline.points
+                                        .map((latlng) => LatLng(
+                                            latlng.latitude, latlng.longitude))
+                                        .toList(),
+                                    strokeWidth: 3.0,
+                                    isDotted: polyline.isGesamtnetz,
+                                    color: AppColors.getPolylineColor(
+                                        polyline.details.farbe),
+                                    onTap: () {
+                                      model.onTap(polyline.details);
+                                    }),
+                              )
+                              .toList(),
                         ),
                       ),
-                      MapAppBar(
-                        actions: <Widget>[
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            tooltip: 'Legende',
-                            onPressed: () {
-                              showDialog(
-                                  context: context,
-                                  builder: (_) => MapInfoDialog());
-                            },
-                          ),
-                        ],
+                      DestinationBearingLayerWidget(
+                        visible: model.destination != null,
+                        bearing: model.bearing,
+                        onTap: () {
+                          if (model.destination != null) {
+                            mapController.move(
+                                model.destination.latLng, mapController.zoom);
+                          }
+                        },
                       ),
-                      Visibility(
-                        visible: model.displayMissingPolylinesMsg,
-                        child: MissingRadnetzeCard(
-                          loading: model.loading,
-                          onPressed: () {
-                            model.refreshRadlnetze();
-                          },
-                        ),
-                      )
+                      DestinationMarkerLayerWidget(
+                        destination: model.destination,
+                      ),
+                      LocationLayerWidget(
+                        enabled:
+                            model.locationState != LocationState.NOT_AVAILABLE,
+                        moveMapAlong:
+                            model.locationState == LocationState.FOLLOW,
+                      ),
+                      OSMCreditsWidget(),
                     ],
                   ),
-                ),
-              ],
+                  SafeArea(
+                    child: Stack(
+                      children: [
+                        Visibility(
+                          visible: model.loading,
+                          child: Center(
+                            child: RawMaterialButton(
+                                elevation: 2.0,
+                                fillColor: Colors.white,
+                                padding: EdgeInsets.all(15.0),
+                                shape: CircleBorder(),
+                                constraints: BoxConstraints.expand(
+                                    width: 56, height: 56),
+                                onPressed: () {},
+                                child: SizedBox(
+                                  width: 20.0,
+                                  height: 20.0,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                  ),
+                                )),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SearchLocationActionButton(model: model),
+                                SizedBox(
+                                  height: 16,
+                                ),
+                                RawMaterialButton(
+                                  onPressed: () {
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (BuildContext context) {
+                                        return BikenetSelectionSheet(
+                                          model: model,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  elevation: 2.0,
+                                  fillColor: Colors.white,
+                                  constraints: BoxConstraints.expand(
+                                      width: 56, height: 56),
+                                  child: Icon(
+                                    Icons.layers,
+                                    color: Colors.black54,
+                                  ),
+                                  shape: CircleBorder(),
+                                ),
+                                SizedBox(
+                                  height: 16,
+                                ),
+                                LocationActionButton(
+                                  onPressed: () async {
+                                    model.onPressLocationBtn();
+                                  },
+                                  locationState: model.locationState,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        MapAppBar(
+                          actions: <Widget>[
+                            IconButton(
+                              icon: const Icon(Icons.info_outline),
+                              tooltip: 'Legende',
+                              onPressed: () {
+                                showDialog(
+                                    context: context,
+                                    builder: (_) => MapInfoDialog());
+                              },
+                            ),
+                          ],
+                        ),
+                        Visibility(
+                          visible: model.displayMissingPolylinesMsg,
+                          child: MissingRadnetzeCard(
+                            loading: model.loading,
+                            onPressed: () {
+                              model.refreshRadlnetze();
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
