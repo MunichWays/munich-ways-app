@@ -218,6 +218,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     DestinationBearingLayerWidget(
                       visible: model.destination != null,
                       bearing: model.bearing,
+                      onTap: () {
+                        if (model.destination != null) {
+                          mapController.move(
+                              model.destination.latLng, mapController.zoom);
+                        }
+                      },
                     ),
                     DestinationMarkerLayerWidget(
                       destination: model.destination,
