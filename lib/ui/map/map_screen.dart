@@ -355,7 +355,9 @@ class SearchLocationActionButton extends StatelessWidget {
       constraints: BoxConstraints.expand(width: 56, height: 56),
       child: Icon(
         model.destination != null ? Icons.search_off : Icons.search,
-        color: model.destination != null ? Colors.blueAccent : Colors.black45,
+        color: model.destination != null
+            ? AppColors.mapAccentColor
+            : Colors.black45,
       ),
       shape: CircleBorder(),
       onPressed: () async {
@@ -412,7 +414,7 @@ class LocationActionButton extends StatelessWidget {
       case LocationState.FOLLOW:
         return Icon(
           Icons.my_location,
-          color: Colors.blueAccent,
+          color: AppColors.mapAccentColor,
         );
       default:
         return Icon(

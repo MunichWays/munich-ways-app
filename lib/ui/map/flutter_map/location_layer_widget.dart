@@ -7,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
+import '../../theme.dart';
+
 class LocationLayerWidget extends StatefulWidget {
   final bool enabled;
   final bool moveMapAlong;
@@ -79,10 +81,12 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
         point: LatLng(currentPosition.latitude, currentPosition.longitude),
         builder: (ctx) => Container(
           decoration: ShapeDecoration(
-            color: Colors.blue,
+            color: AppColors.mapAccentColor,
             shape: CircleBorder(
                     side: BorderSide(width: 3, color: Colors.white)) +
-                CircleBorder(side: BorderSide(width: 1, color: Colors.blue)),
+                CircleBorder(
+                    side:
+                        BorderSide(width: 1, color: AppColors.mapAccentColor)),
           ),
         ),
       ),
