@@ -14,7 +14,7 @@ Future<void> main() async {
   // Is no test - should be transferred into a script but was to lazy to set it up, for a one time run.
   test('retrieve_missing_img_ids', () async {
     var jsonString = await TestUtils.readStringFromFile(
-        'test_resources/20210117_radlvorrangnetz_masterliste_V03.geojson');
+        'test_resources/20210520_radlvorrangnetz_app_V04.geojson');
     GeojsonConverter converter = GeojsonConverter();
     var polylines = converter.getPolylines(geojson: json.decode(jsonString));
     MapillaryApi api = MapillaryApi(clientId: mapillaryClientId);
@@ -30,8 +30,10 @@ Future<void> main() async {
         if (p.points.isNotEmpty) {
           LatLng latLng = p.points[p.points.length ~/ 2];
           String key = await api.searchImages(latLng, radius: 10);
-          sink.writeln(
-              "${p.details.cartoDbId},${p.details.munichwaysId},$key,https://www.mapillary.com/map/im/$key");
+          if (key != null) {
+            sink.writeln(
+                "${p.details.cartoDbId},${p.details.munichwaysId},$key,https://www.mapillary.com/map/im/$key");
+          }
         }
       }
     }
