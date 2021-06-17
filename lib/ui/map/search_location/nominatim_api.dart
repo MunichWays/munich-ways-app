@@ -10,7 +10,9 @@ class NominatimApi {
   Client client;
   final String baseUrl;
 
-  NominatimApi({this.baseUrl = "nominatim.openstreetmap.org", this.client}) {
+  static const String NOMINATIM_PROXY_URL = "nominatim.svendroid.net";
+
+  NominatimApi({this.baseUrl = NOMINATIM_PROXY_URL, this.client}) {
     if (client == null) {
       client = Client();
     }
@@ -25,7 +27,7 @@ class NominatimApi {
     Uri uri = Uri.https(baseUrl, 'search', queryParameters);
     Response response = await client.get(uri, headers: {
       "Accept": "application/json",
-      "User-Agent": "munichways/mobile app"
+      "User-Agent": "com.munichways.app/flutter"
     });
     switch (response.statusCode) {
       case 200:
