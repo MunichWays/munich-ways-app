@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0+13
+
+* Fix Radlvorrang description
+
 ## 0.0.10+12
 
 * Add Location Search
