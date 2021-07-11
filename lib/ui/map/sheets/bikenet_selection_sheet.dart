@@ -70,7 +70,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             contentPadding: EdgeInsets.all(16),
             isThreeLine: true,
             subtitle: Text(
-                "Radentscheid München Ziel 2. Es basiert auf den ausgeschilderten Radwegen und wird gemäß den Zielen des Radentscheides entsprechend aktualisiert und erweitert."),
+                "Ausgesuchte RadlVorrang-Strecken von MunichWays. Mit dem Rad stressfrei durch München auf Wegen weitestgehend abseits vielbefahrener Straßen."),
             value: widget.model.isRadlvorrangnetzVisible,
             onChanged: (bool value) {
               widget.model.toggleRadvorrangnetzVisible();
