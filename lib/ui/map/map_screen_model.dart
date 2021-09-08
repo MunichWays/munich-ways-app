@@ -9,6 +9,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
+import 'package:wakelock/wakelock.dart';
 
 class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
@@ -206,11 +207,17 @@ class MapScreenViewModel extends ChangeNotifier {
     this.destination = place;
     notifyListeners();
     _destinationStreamController.add(place);
+
+    // keep screen on while locating destination is on
+    Wakelock.enable();
   }
 
   void clearDestination() {
     this.destination = null;
     notifyListeners();
+
+    // turn screen off when locating destination is off
+    Wakelock.disable();
   }
 }
 
