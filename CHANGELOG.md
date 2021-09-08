@@ -1,11 +1,13 @@
 # Changelog
 
-## 1.0.0+13
+## 1.0.1+14
+* Keep screen awake while destination locating is active
+* Allow to display App when screen is locked on Android
 
+## 1.0.0+13
 * Fix Radlvorrang description
 
 ## 0.0.10+12
-
 * Add Location Search
 * Update flutter to 2.2.1
 
