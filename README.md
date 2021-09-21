@@ -1,6 +1,6 @@
 # MunichWays App
 
-Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For more information see: munichways.com
+Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For more information see: munichways.de
 
 ## Development Setup
 
