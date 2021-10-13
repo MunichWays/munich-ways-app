@@ -5,6 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/plugin_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
+import 'mw_polyline_layer.dart';
+
 class ClickablePolylineLayerWidget extends StatelessWidget {
   final ClickablePolylineLayerOptions options;
 
@@ -18,7 +20,7 @@ class ClickablePolylineLayerWidget extends StatelessWidget {
   }
 }
 
-class ClickablePolylineLayerOptions extends PolylineLayerOptions {
+class ClickablePolylineLayerOptions extends MW_PolylineLayerOptions {
   ClickablePolylineLayerOptions({
     Key key,
     polylines = const [],
@@ -31,7 +33,7 @@ class ClickablePolylineLayerOptions extends PolylineLayerOptions {
             rebuild: rebuild);
 }
 
-class ClickablePolyline extends Polyline {
+class ClickablePolyline extends MW_Polyline {
   VoidCallback onTap;
 
   ClickablePolyline(
@@ -57,7 +59,7 @@ class ClickablePolyline extends Polyline {
 }
 
 class ClickablePolylineLayer extends StatelessWidget {
-  final PolylineLayerOptions polylineOpts;
+  final MW_PolylineLayerOptions polylineOpts;
   final MapState map;
   final Stream<Null> stream;
 
@@ -73,7 +75,7 @@ class ClickablePolylineLayer extends StatelessWidget {
         },
         onTapUp: (TapUpDetails details) {
           //Detect nearest polyline to the tapped point
-          polylineOpts.polylines.forEach((polyline) {
+          polylineOpts.visiblePolylines.forEach((polyline) {
             for (var i = 0; i < polyline.offsets.length - 1; i++) {
               Offset x = polyline.offsets[i];
               Offset y = polyline.offsets[i + 1];
@@ -121,7 +123,7 @@ class ClickablePolylineLayer extends StatelessWidget {
             }
           });
         },
-        child: PolylineLayer(polylineOpts, map, stream).build(context));
+        child: MW_PolylineLayer(polylineOpts, map, stream).build(context));
   }
 
   double _dist(Offset v, Offset w) {

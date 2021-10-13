@@ -181,6 +181,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   FlutterMap(
                     mapController: mapController,
                     options: MapOptions(
+                        interactiveFlags:
+                            InteractiveFlag.all & ~InteractiveFlag.rotate,
                         center: _stachus,
                         zoom: 15,
                         maxZoom: 18,
