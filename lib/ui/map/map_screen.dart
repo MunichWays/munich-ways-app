@@ -237,12 +237,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         moveMapAlong:
                             model.locationState == LocationState.FOLLOW,
                       ),
-                      OSMCreditsWidget(),
                     ],
                   ),
                   SafeArea(
                     child: Stack(
                       children: [
+                        OSMCreditsWidget(),
                         Visibility(
                           visible: model.loading,
                           child: Center(
