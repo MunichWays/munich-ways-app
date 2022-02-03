@@ -38,5 +38,4 @@ class AppColors {
 var themeData = ThemeData(
   primaryColor: AppColors.munichWaysBlue,
   visualDensity: VisualDensity.adaptivePlatformDensity,
-  buttonColor: AppColors.munichWaysBlue,
 );
