@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Pre commit hook
 
-# Check formatting before commiting
+# Check formatting before committing
 flutter format --set-exit-if-changed .
