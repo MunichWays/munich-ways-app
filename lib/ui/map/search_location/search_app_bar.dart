@@ -35,12 +35,16 @@ class _SearchAppBarState extends State<SearchAppBar> {
             border: InputBorder.none,
           ),
           style: TextStyle(fontSize: 18.0),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (text) {
+            widget.onSearch(_searchQueryController.value.text);
+          },
         ),
         backgroundColor: Colors.white,
         shape: SearchAppBarShape(statusBarHeight),
         actions: [
           IconButton(
-            icon: const Icon(Icons.send),
+            icon: const Icon(Icons.search),
             tooltip: 'Starte Suche',
             onPressed: () {
               widget.onSearch(_searchQueryController.value.text);
