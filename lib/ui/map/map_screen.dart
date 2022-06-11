@@ -14,7 +14,6 @@ import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
-import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -269,39 +268,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                            padding: const EdgeInsets.only(top: 72.0, left: 8.0, right: 8.0, bottom: 8.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.max,
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 SearchLocationActionButton(model: model),
+                                Space(),
                                 SizedBox(
-                                  height: 16,
-                                ),
-                                RawMaterialButton(
-                                  onPressed: () {
-                                    showModalBottomSheet<void>(
-                                      context: context,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (BuildContext context) {
-                                        return BikenetSelectionSheet(
-                                          model: model,
-                                        );
+                                  height: 40,
+                                  child: FittedBox(
+                                    child: FloatingActionButton.extended(
+                                      onPressed: () {
+                                        model.toggleGesamtnetzVisible();
                                       },
-                                    );
-                                  },
-                                  elevation: 2.0,
-                                  fillColor: Colors.white,
-                                  constraints: BoxConstraints.expand(
-                                      width: 56, height: 56),
-                                  child: Icon(
-                                    Icons.layers,
-                                    color: Colors.black54,
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: model.isGesamtnetzVisible ? AppColors.mapAccentColor : Colors.black45,
+                                      icon: Icon(
+                                        model.isGesamtnetzVisible
+                                            ? Icons.layers
+                                            : Icons.layers_clear,
+                                      ),
+                                      label: Text("Alle"),
+                                      tooltip: "Alle Strecken ausblenden",
+                                    ),
                                   ),
-                                  shape: CircleBorder(),
                                 ),
-                                SizedBox(
-                                  height: 16,
-                                ),
+                                Space(),
                                 LocationActionButton(
                                   onPressed: () async {
                                     model.onPressLocationBtn();
@@ -347,6 +340,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 }
 
+class Space extends StatelessWidget {
+  const Space({Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 8,
+      width: 8,
+    );
+  }
+}
+
 class SearchLocationActionButton extends StatelessWidget {
   final MapScreenViewModel model;
 
@@ -357,17 +362,14 @@ class SearchLocationActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RawMaterialButton(
-      elevation: 2.0,
-      fillColor: Colors.white,
-      constraints: BoxConstraints.expand(width: 56, height: 56),
+    return FloatingActionButton.small(
+      backgroundColor: Colors.white,
       child: Icon(
         model.destination != null ? Icons.search_off : Icons.search,
         color: model.destination != null
             ? AppColors.mapAccentColor
             : Colors.black45,
       ),
-      shape: CircleBorder(),
       onPressed: () async {
         if (model.destination == null) {
           Place place = await Navigator.push(
@@ -395,14 +397,10 @@ class LocationActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RawMaterialButton(
+    return FloatingActionButton.small(
+      backgroundColor: Colors.white,
       onPressed: this.onPressed,
-      elevation: 2.0,
-      fillColor: Colors.white,
-      constraints: BoxConstraints.expand(width: 56, height: 56),
       child: _buildIcon(),
-      padding: EdgeInsets.all(15.0),
-      shape: CircleBorder(),
     );
   }
 
