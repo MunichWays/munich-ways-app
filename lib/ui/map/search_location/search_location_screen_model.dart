@@ -8,6 +8,8 @@ import 'package:munich_ways/ui/map/search_location/nominatim_api.dart';
 class SearchLocationScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
+  bool isFirstSearch = true;
+
   List<Place> places = [];
 
   NominatimApi api = NominatimApi();
@@ -15,6 +17,7 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
   String errorMsg = null;
 
   Future<void> startSearch(String query) async {
+    isFirstSearch = false;
     log.d("startSearch " + query);
     clearErrorMsg();
 

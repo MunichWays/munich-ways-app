@@ -99,7 +99,9 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
             height: 16,
           ),
           Text(
-            "Keine Ergebnisse vorhanden.\nBitte gebe einen Suchbegriff z.B. eine Straße in München ein..",
+            model.isFirstSearch
+                ? "Bitte gebe einen Suchbegriff z.B. eine Straße in München ein."
+                : "Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.",
             style: TextStyle(fontSize: 18.0),
             textAlign: TextAlign.center,
           )
