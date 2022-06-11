@@ -13,9 +13,11 @@ class MunichwaysApi {
   GeojsonConverter _converter = GeojsonConverter();
 
   Future<Set<MPolyline>> getRadlvorrangnetz() async {
-    if (await DefaultCacheManager().getFileFromCache(_radlvorrangnetzUrl) !=
-        null) {
-      log.d("cached");
+    FileInfo geoJsonFileInfo =
+        await DefaultCacheManager().getFileFromCache(_radlvorrangnetzUrl);
+
+    if (geoJsonFileInfo != null) {
+      log.d("cached till ${geoJsonFileInfo.validTill.toIso8601String()}");
     } else {
       log.d("not cached");
     }
