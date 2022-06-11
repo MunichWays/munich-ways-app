@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
@@ -10,7 +9,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
-  GlobalKey<ScaffoldMessengerState>();
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +25,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context: context,
             tiles: [
               ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                 title: Text('Radnetz neu laden'),
-                subtitle: Text('Das Radlnetz wird beim Karte öffnen erneut geladen.'),
+                subtitle:
+                    Text('Das Radlnetz wird beim Karte öffnen erneut geladen.'),
                 trailing: Icon(Icons.delete),
                 onTap: () {
                   MunichwaysApi().emptyCache();

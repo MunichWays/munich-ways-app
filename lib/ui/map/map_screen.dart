@@ -268,7 +268,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 72.0, left: 8.0, right: 8.0, bottom: 8.0),
+                            padding: const EdgeInsets.only(
+                                top: 72.0, left: 8.0, right: 8.0, bottom: 8.0),
                             child: Row(
                               mainAxisSize: MainAxisSize.max,
                               mainAxisAlignment: MainAxisAlignment.end,
@@ -283,7 +284,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                         model.toggleGesamtnetzVisible();
                                       },
                                       backgroundColor: Colors.white,
-                                      foregroundColor: model.isGesamtnetzVisible ? AppColors.mapAccentColor : Colors.black45,
+                                      foregroundColor: model.isGesamtnetzVisible
+                                          ? AppColors.mapAccentColor
+                                          : Colors.black45,
                                       icon: Icon(
                                         model.isGesamtnetzVisible
                                             ? Icons.layers
