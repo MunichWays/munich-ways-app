@@ -37,6 +37,12 @@ class SideDrawer extends StatelessWidget {
             route: NavRoutes.info,
             currentRoute: currentRoute,
           ),
+          NavigationDrawerItem(
+            title: 'Einstellungen',
+            icon: Icons.settings,
+            route: NavRoutes.settings,
+            currentRoute: currentRoute,
+          ),
         ],
       ),
     );
