@@ -2,8 +2,8 @@ name: Android Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - 'master'
 
 jobs:
   assembleRelease:
