@@ -197,7 +197,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                       Container(
-                        color: Colors.black45,
+                        color: Colors.black26,
                       ),
                       ClickablePolylineLayerWidget(
                         options: ClickablePolylineLayerOptions(
@@ -209,7 +209,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                         .map((latlng) => LatLng(
                                             latlng.latitude, latlng.longitude))
                                         .toList(),
-                                    strokeWidth: 4.0,
+                                    strokeWidth: 3.0,
                                     isDotted: polyline.isGesamtnetz,
                                     color: AppColors.getPolylineColor(
                                         polyline.details.farbe),
