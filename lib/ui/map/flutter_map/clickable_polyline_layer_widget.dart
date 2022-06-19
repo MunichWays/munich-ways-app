@@ -58,7 +58,7 @@ class ClickablePolyline extends Polyline {
 class ClickablePolylineLayer extends StatelessWidget {
   final PolylineLayerOptions polylineOpts;
   final MapState map;
-  final Stream<Null> stream;
+  final Stream<void> stream;
 
   ClickablePolylineLayer(this.polylineOpts, this.map, this.stream)
       : super(key: polylineOpts.key);
