@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.1+17 - In Progress
+
+## 1.1.0+16
+* Add custom text for first search #52
+* Add Gesamtznetz quick toggle #55
+* Adjust display of lines on map to improve visibility #44
+* Move delete radlnetz to settings #56
+* Fix Trigger search action over keyboard #53
+* Fix zoom/rotation of OSMCreditsWidget
+* flutter_map update to improve performance
+* flutter update to 2.10.0
+
 ## 1.0.1+14
 * Keep screen awake while destination locating is active
 * Allow to display App when screen is locked on Android
