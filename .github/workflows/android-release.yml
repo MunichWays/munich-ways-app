@@ -48,8 +48,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files:  |
-            build/app/outputs/apk/release
+          files: |
+            build/app/outputs/apk/release/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
 
       
