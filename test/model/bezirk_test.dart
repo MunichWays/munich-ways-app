@@ -6,7 +6,7 @@ void main() {
   test('fromProps valid link', () {
     //GIVEN
     String link =
-        '<a href="https://www.munichways.com/bezirksausschuesse/#toggle-id-2" target="_blank">BA 02 Ludwigsvorstadt-Isarvorstadt</a>';
+        '<a href="https://www.munichways.de/bezirksausschuesse/#toggle-id-2" target="_blank">BA 02 Ludwigsvorstadt-Isarvorstadt</a>';
 
     //WHEN
     Bezirk bezirk = Bezirk.fromProps(
@@ -22,7 +22,7 @@ void main() {
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
             link: Link("BA 02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.com/bezirksausschuesse/#toggle-id-2"),
+                "https://www.munichways.de/bezirksausschuesse/#toggle-id-2"),
             region: "LK-M"));
   });
 
@@ -44,7 +44,7 @@ void main() {
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
             link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.com/bezirksausschuesse/"),
+                "https://www.munichways.de/bezirksausschuesse/"),
             region: "LK-M"));
   });
 
@@ -66,7 +66,7 @@ void main() {
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
             link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.com/bezirksausschuesse/"),
+                "https://www.munichways.de/bezirksausschuesse/"),
             region: "LK-M"));
   });
 }

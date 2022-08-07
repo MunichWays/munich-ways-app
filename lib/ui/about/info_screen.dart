@@ -63,15 +63,15 @@ class _InfoScreenState extends State<InfoScreen> {
               ),
               ListTile(
                 title: Text('Webseite'),
-                subtitle: Text('munichways.com'),
+                subtitle: Text('munichways.de'),
                 trailing: Icon(Icons.link),
                 onTap: () async {
-                  const url = 'https://munichways.com';
+                  const url = 'https://munichways.de';
                   if (await canLaunch(url)) {
                     await launch(url);
                   } else {
                     _displayError(
-                        'Keine App zum öffnen von munichways.com gefunden');
+                        'Keine App zum öffnen von munichways.de gefunden');
                   }
                 },
               ),
@@ -83,7 +83,7 @@ class _InfoScreenState extends State<InfoScreen> {
                 onTap: () async {
                   final Uri _emailLaunchUri = Uri(
                       scheme: 'mailto',
-                      path: 'mail@munichways.com',
+                      path: 'mail@munichways.de',
                       queryParameters: {
                         'subject': 'Feedback Munichways App',
                         'body': 'Appversion: $appVersion\n'
@@ -98,7 +98,7 @@ class _InfoScreenState extends State<InfoScreen> {
               ),
               ListTile(
                 title: Text('Impressum & Datenschutz'),
-                subtitle: Text('munichways.com/datenschutzerklaerung'),
+                subtitle: Text('munichways.de/datenschutzerklaerung'),
                 trailing: Icon(Icons.info_outline),
                 onTap: () async {
                   Navigator.of(context).pushNamed(NavRoutes.imprint);

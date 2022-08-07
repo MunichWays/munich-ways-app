@@ -102,7 +102,7 @@ void main() {
                 nummer: "BA02",
                 name: "Ludwigsvorstadt-Isarvorstadt",
                 link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                    "https://www.munichways.com/bezirksausschuesse/")),
+                    "https://www.munichways.de/bezirksausschuesse/")),
             links: [
               Link("RadlVorrang-Profil",
                   "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
@@ -153,7 +153,7 @@ void main() {
                 nummer: "BA02",
                 name: "Ludwigsvorstadt-Isarvorstadt",
                 link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                    "https://www.munichways.com/bezirksausschuesse/")),
+                    "https://www.munichways.de/bezirksausschuesse/")),
             links: [
               Link("RadlVorrang-Profil",
                   "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),

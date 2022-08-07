@@ -37,7 +37,7 @@ class Bezirk extends Equatable {
           nummer: nummer,
           region: region,
           link: Link("$nummer $name",
-              "https://www.munichways.com/bezirksausschuesse/"));
+              "https://www.munichways.de/bezirksausschuesse/"));
     }
   }
 
