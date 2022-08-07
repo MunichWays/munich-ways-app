@@ -22,7 +22,7 @@ class _ImprintScreenState extends State<ImprintScreen> {
         title: Text("Impressum"),
       ),
       body: WebView(
-        initialUrl: 'https://www.munichways.com/datenschutzerklaerung/',
+        initialUrl: 'https://www.munichways.de/datenschutzerklaerung/',
       ),
     );
   }

@@ -51,7 +51,7 @@ void main() {
     //GIVEN
     String link;
     String strassenansicht =
-        '<a href="https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg" target="_blank"> <img src="https://www.munichways.com/img/Offen_Odeonsplatz.jpg" width=175></a>';
+        '<a href="https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg" target="_blank"> <img src="https://www.munichways.de/img/Offen_Odeonsplatz.jpg" width=175></a>';
 
     //WHEN
     String imgId = ImgIdParser().parse(null, link, strassenansicht);
