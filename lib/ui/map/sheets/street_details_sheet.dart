@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -129,69 +128,69 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
   }
 }
 
-class _MapillaryImage extends StatelessWidget {
-  const _MapillaryImage({
-    Key key,
-    @required this.mapillaryImgId,
-  }) : super(key: key);
-
-  final String mapillaryImgId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(children: [
-      Container(
-        color: Colors.black87,
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: mapillaryImgId != null
-              ? CachedNetworkImage(
-                  imageUrl:
-                      'https://images.mapillary.com/$mapillaryImgId/thumb-640.jpg',
-                  placeholder: (context, url) =>
-                      Center(child: CircularProgressIndicator()),
-                  errorWidget: (context, url, error) => Icon(Icons.error),
-                )
-              : Container(
-                  child: Center(
-                      child: Text(
-                    'Kein Bild hinterlegt',
-                    style: TextStyle(color: Colors.white),
-                  )),
-                ),
-        ),
-      ),
-      Positioned(
-          bottom: 2,
-          left: 2,
-          child: Text(
-            "CC BY-SA 4.0 Mapillary",
-            style: TextStyle(fontSize: 10, color: Colors.black87),
-          )),
-      Positioned(
-        bottom: 0,
-        right: 4,
-        child: ElevatedButton(
-          onPressed: () async {
-            var url = mapillaryImgId != null
-                ? 'https://www.mapillary.com/map/im/$mapillaryImgId'
-                : 'https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg';
-            if (await canLaunch(url)) {
-              await launch(url);
-            } else {
-              log.e("Could not launch $url");
-            }
-          },
-          child: const Text('Mapillary öffnen'),
-          style: ElevatedButton.styleFrom(
-            primary: Colors.white70, // background
-            onPrimary: Colors.black87, // foreground
-          ),
-        ),
-      ),
-    ]);
-  }
-}
+// class _MapillaryImage extends StatelessWidget {
+//   const _MapillaryImage({
+//     Key key,
+//     @required this.mapillaryImgId,
+//   }) : super(key: key);
+//
+//   final String mapillaryImgId;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Stack(children: [
+//       Container(
+//         color: Colors.black87,
+//         child: AspectRatio(
+//           aspectRatio: 16 / 9,
+//           child: mapillaryImgId != null
+//               ? CachedNetworkImage(
+//                   imageUrl:
+//                       'https://images.mapillary.com/$mapillaryImgId/thumb-640.jpg',
+//                   placeholder: (context, url) =>
+//                       Center(child: CircularProgressIndicator()),
+//                   errorWidget: (context, url, error) => Icon(Icons.error),
+//                 )
+//               : Container(
+//                   child: Center(
+//                       child: Text(
+//                     'Kein Bild hinterlegt',
+//                     style: TextStyle(color: Colors.white),
+//                   )),
+//                 ),
+//         ),
+//       ),
+//       Positioned(
+//           bottom: 2,
+//           left: 2,
+//           child: Text(
+//             "CC BY-SA 4.0 Mapillary",
+//             style: TextStyle(fontSize: 10, color: Colors.black87),
+//           )),
+//       Positioned(
+//         bottom: 0,
+//         right: 4,
+//         child: ElevatedButton(
+//           onPressed: () async {
+//             var url = mapillaryImgId != null
+//                 ? 'https://www.mapillary.com/map/im/$mapillaryImgId'
+//                 : 'https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg';
+//             if (await canLaunch(url)) {
+//               await launch(url);
+//             } else {
+//               log.e("Could not launch $url");
+//             }
+//           },
+//           child: const Text('Mapillary öffnen'),
+//           style: ElevatedButton.styleFrom(
+//             primary: Colors.white70, // background
+//             onPrimary: Colors.black87, // foreground
+//           ),
+//         ),
+//       ),
+//     ]);
+//   }
+// }
 
 class _Header extends StatelessWidget {
   final String farbe;
