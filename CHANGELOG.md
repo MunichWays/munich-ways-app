@@ -1,6 +1,9 @@
 # Changelog
 
-## 1.1.1+17 - In Progress
+## 1.1.2+18 - in Progress
+
+## 1.1.1+17
+* Update munichways.com url to munichways.de url
 
 ## 1.1.0+16
 * Add custom text for first search #52
