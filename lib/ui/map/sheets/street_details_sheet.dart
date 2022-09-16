@@ -50,7 +50,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
               shrinkWrap: true,
               children: [
                 _Header(farbe: widget.details.farbe, name: widget.details.name),
-                _MapillaryImage(mapillaryImgId: widget.details.mapillaryImgId),
+                // see #57 - hide till we switch to mapillary api v4 _MapillaryImage(mapillaryImgId: widget.details.mapillaryImgId),
                 ListItem(
                   label: "Strecke",
                   value: widget.details.strecke,
