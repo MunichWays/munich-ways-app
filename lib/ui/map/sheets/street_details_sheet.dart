@@ -72,12 +72,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                     value: widget.details.kategorie.title,
                     onTap: widget.details.kategorie.url != null
                         ? () async {
-                            var url = widget.details.kategorie.url;
-                            if (await canLaunch(url)) {
-                              await launch(url);
-                            } else {
-                              log.e("Could not launch $url");
-                            }
+                            launchWebsite(widget.details.kategorie.url);
                           }
                         : null),
                 ListItem(
@@ -96,12 +91,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   label: "Bezirk",
                   value: widget.details.bezirk.name,
                   onTap: () async {
-                    if (await canLaunch(widget.details.bezirk.link.url)) {
-                      await launch(widget.details.bezirk.link.url);
-                    } else {
-                      log.e(
-                          "Could not launch ${widget.details.bezirk.link.url}");
-                    }
+                    launchWebsite(widget.details.bezirk.link.url);
                   },
                 ),
                 for (var link in widget.details.links)
@@ -109,11 +99,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                     label: "Link",
                     value: link.title,
                     onTap: () async {
-                      if (await canLaunch(link.url)) {
-                        await launch(link.url);
-                      } else {
-                        log.e("Could not launch ${link.url}");
-                      }
+                      launchWebsite(link.url);
                     },
                   ),
               ],
@@ -127,6 +113,19 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> launchWebsite(String url) async {
+    if (url == null) {
+      log.e("url is null");
+      return;
+    }
+    var encodedUrl = Uri.encodeFull(url);
+    if (await canLaunch(encodedUrl)) {
+      await launch(encodedUrl);
+    } else {
+      log.e("Could not launch ${encodedUrl}");
+    }
   }
 }
 
