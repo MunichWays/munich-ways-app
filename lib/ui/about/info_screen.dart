@@ -5,7 +5,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:package_info/package_info.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class InfoScreen extends StatefulWidget {
   @override
@@ -67,8 +67,8 @@ class _InfoScreenState extends State<InfoScreen> {
                 trailing: Icon(Icons.link),
                 onTap: () async {
                   const url = 'https://munichways.de';
-                  if (await canLaunch(url)) {
-                    await launch(url);
+                  if (await canLaunchUrlString(url)) {
+                    await launchUrlString(url);
                   } else {
                     _displayError(
                         'Keine App zum öffnen von munichways.de gefunden');
@@ -89,8 +89,8 @@ class _InfoScreenState extends State<InfoScreen> {
                         'body': 'Appversion: $appVersion\n'
                       });
                   String emailUriString = _emailLaunchUri.toString();
-                  if (await canLaunch(emailUriString)) {
-                    await launch(emailUriString);
+                  if (await canLaunchUrlString(emailUriString)) {
+                    await launchUrlString(emailUriString);
                   } else {
                     _displayError(("Keine Email App gefunden"));
                   }
