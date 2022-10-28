@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class MapAppBar extends StatelessWidget {
-  final List<Widget> actions;
+  final List<Widget>? actions;
 
   const MapAppBar({
-    Key key,
+    Key? key,
     this.actions,
   }) : super(key: key);
 
@@ -41,10 +41,12 @@ class RoundedAppBarShape extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) => null;
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
+    return Path();
+  }
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     log.d(rect.height);
     return Path()
       ..addRRect(
@@ -53,7 +55,7 @@ class RoundedAppBarShape extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;

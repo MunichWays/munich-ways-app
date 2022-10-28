@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class SearchAppBar extends StatefulWidget implements PreferredSizeWidget {
-  SearchAppBar({Key key, Function(String query) this.onSearch})
+  SearchAppBar({Key? key, Function(String query)? this.onSearch})
       : preferredSize = Size.fromHeight(kToolbarHeight + 24),
         super(key: key);
 
   @override
   final Size preferredSize;
 
-  final Function onSearch;
+  final Function? onSearch;
 
   @override
   _SearchAppBarState createState() => _SearchAppBarState();
@@ -37,7 +37,7 @@ class _SearchAppBarState extends State<SearchAppBar> {
           style: TextStyle(fontSize: 18.0),
           textInputAction: TextInputAction.search,
           onSubmitted: (text) {
-            widget.onSearch(_searchQueryController.value.text);
+            widget.onSearch!(_searchQueryController.value.text);
           },
         ),
         backgroundColor: Colors.white,
@@ -47,7 +47,7 @@ class _SearchAppBarState extends State<SearchAppBar> {
             icon: const Icon(Icons.search),
             tooltip: 'Starte Suche',
             onPressed: () {
-              widget.onSearch(_searchQueryController.value.text);
+              widget.onSearch!(_searchQueryController.value.text);
             },
           ),
         ],
@@ -65,10 +65,12 @@ class SearchAppBarShape extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) => null;
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
+    return Path();
+  }
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     log.d(rect.height);
     return Path()
       ..addRRect(RRect.fromLTRBR(rect.left, rect.top + statusBarHeight,
@@ -77,7 +79,7 @@ class SearchAppBarShape extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;

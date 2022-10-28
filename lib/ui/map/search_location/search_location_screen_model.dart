@@ -14,14 +14,14 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
 
   NominatimApi api = NominatimApi();
 
-  String errorMsg = null;
+  String? errorMsg = null;
 
   Future<void> startSearch(String query) async {
     isFirstSearch = false;
     log.d("startSearch " + query);
     clearErrorMsg();
 
-    if (query == null || query.isEmpty) {
+    if (query.isEmpty) {
       _displayErrorMsg(
           "Suchanfrage ist leer.\nBitte gebe ein Suchbegriff z.B. eine Straße in München ein.");
       return;

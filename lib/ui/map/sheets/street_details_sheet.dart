@@ -11,12 +11,10 @@ class StreetDetailsSheet extends StatefulWidget {
   final double statusBarHeight;
 
   const StreetDetailsSheet({
-    Key key,
-    @required this.details,
-    @required this.statusBarHeight,
-  })  : assert(details != null),
-        assert(statusBarHeight != null),
-        super(key: key);
+    Key? key,
+    required this.details,
+    required this.statusBarHeight,
+  }) : super(key: key);
 
   @override
   _StreetDetailsSheetState createState() => _StreetDetailsSheetState();
@@ -68,10 +66,10 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                 ),
                 ListItem(
                     label: "Maßnahmen-Kategorie",
-                    value: widget.details.kategorie.title,
-                    onTap: widget.details.kategorie.url != null
+                    value: widget.details.kategorie!.title,
+                    onTap: widget.details.kategorie!.url != null
                         ? () async {
-                            launchWebsite(widget.details.kategorie.url);
+                            launchWebsite(widget.details.kategorie!.url);
                           }
                         : null),
                 ListItem(
@@ -88,12 +86,12 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                 ),
                 ListItem(
                   label: "Bezirk",
-                  value: widget.details.bezirk.name,
+                  value: widget.details.bezirk!.name,
                   onTap: () async {
-                    launchWebsite(widget.details.bezirk.link.url);
+                    launchWebsite(widget.details.bezirk!.link.url);
                   },
                 ),
-                for (var link in widget.details.links)
+                for (var link in widget.details.links!)
                   ListItem(
                     label: "Link",
                     value: link.title,
@@ -114,7 +112,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
     );
   }
 
-  Future<void> launchWebsite(String url) async {
+  Future<void> launchWebsite(String? url) async {
     if (url == null) {
       log.e("url is null");
       return;
@@ -193,11 +191,11 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
 // }
 
 class _Header extends StatelessWidget {
-  final String farbe;
-  final String name;
+  final String? farbe;
+  final String? name;
 
   const _Header({
-    Key key,
+    Key? key,
     this.farbe,
     this.name,
   }) : super(key: key);
@@ -251,18 +249,18 @@ class _Header extends StatelessWidget {
 class DetailItem extends StatelessWidget {
   final String label;
   final String value;
-  final String url;
+  final String? url;
 
   const DetailItem({
-    Key key,
-    @required this.label,
-    @required this.value,
+    Key? key,
+    required this.label,
+    required this.value,
     this.url,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (value == null || value.isEmpty) {
+    if (value.isEmpty) {
       return SizedBox.shrink();
     } else {
       return ListItem(

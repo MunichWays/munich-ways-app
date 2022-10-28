@@ -37,8 +37,8 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _displayError(String errorMsg) {
-    scaffoldMessengerKey.currentState.hideCurrentSnackBar();
-    scaffoldMessengerKey.currentState.showSnackBar(SnackBar(
+    scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
       content: Text(errorMsg),
       duration: Duration(seconds: 3),
     ));

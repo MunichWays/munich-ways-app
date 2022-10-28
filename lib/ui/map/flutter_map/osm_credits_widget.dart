@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class OSMCreditsWidget extends StatelessWidget {
   const OSMCreditsWidget({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override

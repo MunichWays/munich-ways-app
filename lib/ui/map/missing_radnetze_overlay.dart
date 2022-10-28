@@ -6,7 +6,7 @@ class MissingRadnetzeCard extends StatelessWidget {
   final VoidCallback onPressed;
 
   const MissingRadnetzeCard(
-      {Key key, @required this.loading, @required this.onPressed})
+      {Key? key, required this.loading, required this.onPressed})
       : super(key: key);
 
   @override
@@ -45,7 +45,7 @@ class MissingRadnetzeCard extends StatelessWidget {
                         ),
                         label: Text(
                           "Radlnetze laden",
-                          style: Theme.of(context).textTheme.button.copyWith(
+                          style: Theme.of(context).textTheme.button!.copyWith(
                               fontSize: 18, color: AppColors.munichWaysBlue),
                         ),
                       )

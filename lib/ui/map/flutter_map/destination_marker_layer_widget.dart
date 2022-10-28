@@ -3,9 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:munich_ways/model/place.dart';
 
 class DestinationMarkerLayerWidget extends StatelessWidget {
-  final Place destination;
+  final Place? destination;
 
-  const DestinationMarkerLayerWidget({Key key, this.destination})
+  const DestinationMarkerLayerWidget({Key? key, this.destination})
       : super(key: key);
 
   @override
@@ -17,7 +17,7 @@ class DestinationMarkerLayerWidget extends StatelessWidget {
               Marker(
                   width: 35.0,
                   height: 48.0,
-                  point: destination.latLng,
+                  point: destination!.latLng,
                   builder: (ctx) => Container(
                         child: Image(image: AssetImage('images/pin.png')),
                       ),

@@ -54,7 +54,7 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
             height: 16,
           ),
           Text(
-            model.errorMsg,
+            model.errorMsg!,
             style: TextStyle(fontSize: 18.0),
             textAlign: TextAlign.center,
           )
@@ -78,7 +78,7 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
               );
             } else {
               return ListTile(
-                title: Text(model.places.elementAt(index).displayName),
+                title: Text(model.places.elementAt(index).displayName!),
                 trailing: Icon(Icons.arrow_forward),
                 onTap: () {
                   Navigator.pop(context, model.places.elementAt(index));

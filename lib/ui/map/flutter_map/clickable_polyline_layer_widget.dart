@@ -7,19 +7,19 @@ import 'package:munich_ways/common/logger_setup.dart';
 class ClickablePolylineLayerWidget extends StatelessWidget {
   final ClickablePolylineLayerOptions options;
 
-  ClickablePolylineLayerWidget({@required this.options})
+  ClickablePolylineLayerWidget({required this.options})
       : super(key: options.key);
 
   @override
   Widget build(BuildContext context) {
-    final mapState = MapState.maybeOf(context);
+    final mapState = MapState.maybeOf(context)!;
     return ClickablePolylineLayer(options, mapState, mapState.onMoved);
   }
 }
 
 class ClickablePolylineLayerOptions extends PolylineLayerOptions {
   ClickablePolylineLayerOptions({
-    Key key,
+    Key? key,
     polylines = const [],
     polylineCulling = false,
     rebuild,
@@ -31,10 +31,10 @@ class ClickablePolylineLayerOptions extends PolylineLayerOptions {
 }
 
 class ClickablePolyline extends Polyline {
-  VoidCallback onTap;
+  VoidCallback? onTap;
 
   ClickablePolyline(
-      {points,
+      {required points,
       strokeWidth = 1.0,
       color = const Color(0xFF00FF00),
       borderStrokeWidth = 0.0,
@@ -112,7 +112,7 @@ class ClickablePolylineLayer extends StatelessWidget {
                 if (polyline is ClickablePolyline) {
                   ClickablePolyline clickable = polyline;
                   if (clickable.onTap != null) {
-                    clickable.onTap();
+                    clickable.onTap!();
                   }
                 }
                 return;

@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 class ListItem extends StatelessWidget {
   final String label;
-  final String value;
-  final VoidCallback onTap;
+  final String? value;
+  final VoidCallback? onTap;
 
   const ListItem({
-    Key key,
-    @required this.label,
-    @required this.value,
+    Key? key,
+    required this.label,
+    required this.value,
     this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (value == null || value.isEmpty) {
+    if (value == null || value!.isEmpty) {
       return SizedBox.shrink();
     } else {
       return Column(
@@ -44,7 +44,7 @@ class ListItem extends StatelessWidget {
                             SizedBox(
                               height: 6,
                             ),
-                            Text(this.value,
+                            Text(this.value!,
                                 style: Theme.of(context).textTheme.subtitle1)
                           ],
                         ),

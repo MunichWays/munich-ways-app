@@ -26,11 +26,11 @@ class TestUtils {
 
   /// Get HTTP response with content of given file as body
   static Future<Response> readResponseFromFile(String filePath, int statusCode,
-      {BaseRequest request,
+      {BaseRequest? request,
       Map<String, String> headers = const {},
       bool isRedirect = false,
       bool persistentConnection = true,
-      String reasonPhrase}) async {
+      String? reasonPhrase}) async {
     return Response.bytes(await readBytesFromFile(filePath), statusCode,
         request: request,
         headers: headers,

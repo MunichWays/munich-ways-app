@@ -23,7 +23,7 @@ void main() {
 
   test('LinksParser parse null', () {
     //GIVEN
-    String linksString;
+    String? linksString;
 
     //WHEN
     List<Link> links = LinksParser.parse(linksString);

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
 class BikenetSelectionSheet extends StatefulWidget {
-  final MapScreenViewModel model;
+  final MapScreenViewModel? model;
 
-  BikenetSelectionSheet({Key key, this.model}) : super(key: key);
+  BikenetSelectionSheet({Key? key, this.model}) : super(key: key);
 
   @override
   _BikenetSelectionSheetState createState() => _BikenetSelectionSheetState();
@@ -71,9 +71,9 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             isThreeLine: true,
             subtitle: Text(
                 "Ausgesuchte RadlVorrang-Strecken von MunichWays. Mit dem Rad stressfrei durch München auf Wegen weitestgehend abseits vielbefahrener Straßen."),
-            value: widget.model.isRadlvorrangnetzVisible,
-            onChanged: (bool value) {
-              widget.model.toggleRadvorrangnetzVisible();
+            value: widget.model!.isRadlvorrangnetzVisible,
+            onChanged: (bool? value) {
+              widget.model!.toggleRadvorrangnetzVisible();
               setState(() {});
             },
           ),
@@ -106,9 +106,9 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             ),
             subtitle: Text(
                 'Alle Straßen und Wege, auf denen man mit dem Rad fahren kann.'),
-            value: widget.model.isGesamtnetzVisible,
-            onChanged: (bool value) {
-              widget.model.toggleGesamtnetzVisible();
+            value: widget.model!.isGesamtnetzVisible,
+            onChanged: (bool? value) {
+              widget.model!.toggleGesamtnetzVisible();
               setState(() {});
             },
           ),
@@ -120,7 +120,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
 
 class Dot extends StatelessWidget {
   const Dot({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override
