@@ -141,6 +141,9 @@ class MapScreenViewModel extends ChangeNotifier {
               .add(LatLng(position.latitude, position.longitude));
         }
         break;
+      case LocationPermission.unableToDetermine:
+        _permissionStreamController.add("");
+        break;
     }
   }
 

@@ -3,7 +3,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class StreetDetailsSheet extends StatefulWidget {
   final StreetDetails details;
@@ -118,8 +118,8 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
       return;
     }
     var encodedUrl = Uri.encodeFull(url);
-    if (await canLaunch(encodedUrl)) {
-      await launch(encodedUrl);
+    if (await canLaunchUrlString(encodedUrl)) {
+      await launchUrlString(encodedUrl);
     } else {
       log.e("Could not launch ${encodedUrl}");
     }

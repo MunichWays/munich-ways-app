@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class OSMCreditsWidget extends StatelessWidget {
   const OSMCreditsWidget({
@@ -14,8 +14,8 @@ class OSMCreditsWidget extends StatelessWidget {
       child: GestureDetector(
         onTap: () async {
           const url = 'https://www.openstreetmap.org/copyright';
-          if (await canLaunch(url)) {
-            await launch(url);
+          if (await canLaunchUrlString(url)) {
+            await launchUrlString(url);
           } else {
             log.e("No browser found");
           }
