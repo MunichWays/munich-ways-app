@@ -1,6 +1,7 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -165,7 +166,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           mapController!.move(place.latLng, mapController!.zoom);
         });
-        mapController!.onReady.then((_) => model.onMapReady());
         return model;
       },
       child: Consumer<MapScreenViewModel>(
@@ -187,38 +187,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         onPositionChanged:
                             (MapPosition position, bool hasGesture) {
                           model.onMapPositionChanged(position, hasGesture);
+                        },
+                        onMapReady: () {
+                          model.onMapReady();
                         }),
                     children: [
-                      TileLayerWidget(
-                        options: TileLayerOptions(
-                          urlTemplate:
-                              "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          subdomains: ['a', 'b', 'c'],
-                        ),
+                      TileLayer(
+                        urlTemplate:
+                            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        subdomains: ['a', 'b', 'c'],
                       ),
                       Container(
                         color: Colors.black26,
                       ),
-                      ClickablePolylineLayerWidget(
-                        options: ClickablePolylineLayerOptions(
-                          polylineCulling: true,
-                          polylines: model.polylines
-                              .map(
-                                (polyline) => ClickablePolyline(
-                                    points: polyline.points!
-                                        .map((latlng) => LatLng(
-                                            latlng.latitude, latlng.longitude))
-                                        .toList(),
-                                    strokeWidth: 3.0,
-                                    isDotted: polyline.isGesamtnetz,
-                                    color: AppColors.getPolylineColor(
-                                        polyline.details!.farbe),
-                                    onTap: () {
-                                      model.onTap(polyline.details);
-                                    }),
-                              )
-                              .toList(),
-                        ),
+                      ClickablePolylineLayer(
+                        polylineCulling: true,
+                        polylines: model.polylines
+                            .map(
+                              (polyline) => ClickablePolyline(
+                                  points: polyline.points!
+                                      .map((latlng) => LatLng(
+                                          latlng.latitude, latlng.longitude))
+                                      .toList(),
+                                  strokeWidth: 3.0,
+                                  isDotted: polyline.isGesamtnetz,
+                                  color: AppColors.getPolylineColor(
+                                      polyline.details!.farbe),
+                                  onTap: () {
+                                    model.onTap(polyline.details);
+                                  }),
+                            )
+                            .toList(),
                       ),
                       DestinationBearingLayerWidget(
                         visible: model.destination != null,
