@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: cirrusci/flutter:2.10.0
+      image: cirrusci/flutter:3.3.6
 
     steps:
       - uses: actions/checkout@v2
