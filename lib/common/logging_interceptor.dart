@@ -5,7 +5,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 
 class LoggingInterceptor implements InterceptorContract {
   @override
-  Future<RequestData> interceptRequest({RequestData data}) async {
+  Future<RequestData> interceptRequest({required RequestData data}) async {
     log.d("REQUEST");
     log.d(data.url);
     log.d(data.baseUrl);
@@ -16,7 +16,7 @@ class LoggingInterceptor implements InterceptorContract {
   }
 
   @override
-  Future<ResponseData> interceptResponse({ResponseData data}) async {
+  Future<ResponseData> interceptResponse({required ResponseData data}) async {
     log.d("RESPONSE");
     log.d(data.statusCode);
     log.d(data.body);

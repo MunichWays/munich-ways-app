@@ -15,19 +15,14 @@ class AppColors {
     switch (_color) {
       case "schwarz":
         return mapBlack;
-        break;
       case "grün":
         return mapGreen;
-        break;
       case "gelb":
         return mapYellow;
-        break;
       case "rot":
         return mapRed;
-        break;
       case "grau":
         return mapGrey;
-        break;
       default:
         log.d("unknown color $_color");
         return Colors.blueGrey;

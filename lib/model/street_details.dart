@@ -6,33 +6,33 @@ import 'package:munich_ways/model/links.dart';
 
 /// Details for a street taken from the properties of a geojson feature
 class StreetDetails extends Equatable {
-  final int cartoDbId;
-  final String name;
-  final String description;
-  final String netztyp;
-  final int netztypId;
-  final String munichwaysId;
-  final String ist;
-  final String soll;
-  final Kategorie kategorie;
-  final int kategorieId;
-  final String farbe;
-  final List<Link> links;
-  final String strecke;
-  final String streetview;
-  final Bezirk bezirk;
-  final String statusUmsetzung;
-  final int statusId;
-  final String happyBikeLevel;
-  final DateTime lastUpdated;
-  final String alternative;
-  final String rsvStrecke;
-  final int planNetztypId;
-  final String massnahmenKategorie;
-  final num prioGesamt;
-  final String neuralgischerPunkt;
-  final bool vielKfz;
-  final String mapillaryImgId;
+  final int? cartoDbId;
+  final String? name;
+  final String? description;
+  final String? netztyp;
+  final int? netztypId;
+  final String? munichwaysId;
+  final String? ist;
+  final String? soll;
+  final Kategorie? kategorie;
+  final int? kategorieId;
+  final String? farbe;
+  final List<Link>? links;
+  final String? strecke;
+  final String? streetview;
+  final Bezirk? bezirk;
+  final String? statusUmsetzung;
+  final int? statusId;
+  final String? happyBikeLevel;
+  final DateTime? lastUpdated;
+  final String? alternative;
+  final String? rsvStrecke;
+  final int? planNetztypId;
+  final String? massnahmenKategorie;
+  final num? prioGesamt;
+  final String? neuralgischerPunkt;
+  final bool? vielKfz;
+  final String? mapillaryImgId;
   final bool isMunichWaysRadlVorrangNetz;
 
   StreetDetails(
@@ -69,28 +69,29 @@ class StreetDetails extends Equatable {
     Map<String, dynamic> properties = json['properties'];
 
     return StreetDetails(
-        cartoDbId: properties['cartodb_id'] as int,
+        cartoDbId: properties['cartodb_id'] as int?,
         name: properties['name'],
         description: properties['beschreibung'],
         netztyp: properties['netztyp'],
         munichwaysId: properties['munichways_id'],
         ist: properties['ist_situation'],
         soll: properties['soll_massnahmen'],
-        kategorie:
-            Kategorie.fromString(properties['massnahmen_kategorie_link']),
+        kategorie: properties['massnahmen_kategorie_link'] != null
+            ? Kategorie.fromString(properties['massnahmen_kategorie_link'])
+            : null,
         farbe: properties['farbe'],
         links: LinksParser.parse(properties['links']),
         strecke: properties['strecke'],
         streetview: properties['strassenansicht_klick_mich'],
-        netztypId: properties['netztyp_id'] as int,
-        kategorieId: properties['kategorie_id'] as int,
+        netztypId: properties['netztyp_id'] as int?,
+        kategorieId: properties['kategorie_id'] as int?,
         statusUmsetzung: properties['status_umsetzung'],
-        statusId: properties['status_id'] as int,
+        statusId: properties['status_id'] as int?,
         happyBikeLevel: properties['happy_bike_level'],
         lastUpdated: DateTime.tryParse(properties['last_updated']),
         rsvStrecke: properties['rsv_strecke'],
         alternative: properties['alternative'],
-        planNetztypId: properties['plan_netztyp_id'] as int,
+        planNetztypId: properties['plan_netztyp_id'] as int?,
         mapillaryImgId: ImgIdParser().parse(
             properties['mapillary_img_id'],
             properties['mapillary_link'],
@@ -119,7 +120,7 @@ class StreetDetails extends Equatable {
   }
 
   @override
-  List<Object> get props => [
+  List<Object?> get props => [
         this.cartoDbId,
         this.name,
         this.description,

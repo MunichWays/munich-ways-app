@@ -1,8 +1,8 @@
 import 'package:html/parser.dart';
 
 class ImgIdParser {
-  String parse(
-      String mapillaryImgId, String mapillaryLink, String strassenansicht) {
+  String? parse(
+      String? mapillaryImgId, String? mapillaryLink, String? strassenansicht) {
     if (mapillaryImgId != null) {
       return mapillaryImgId;
     }
@@ -19,10 +19,10 @@ class ImgIdParser {
       return null;
     }
 
-    return mapillaryLink.split('/').last;
+    return mapillaryLink!.split('/').last;
   }
 
-  bool _validMapillaryLink(String link) {
+  bool _validMapillaryLink(String? link) {
     return link != null && link.startsWith("https://www.mapillary.com/map/im/");
   }
 }

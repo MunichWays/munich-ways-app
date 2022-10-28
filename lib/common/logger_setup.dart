@@ -25,7 +25,7 @@ class CustomPrinter extends PrettyPrinter {
   List<String> log(LogEvent event) {
     var messageStr = stringifyMessage(event.message);
 
-    String stackTraceStr;
+    String? stackTraceStr;
     if (event.stackTrace == null) {
       if (methodCount > 0) {
         stackTraceStr = formatStackTrace(StackTrace.current, methodCount);
@@ -36,7 +36,7 @@ class CustomPrinter extends PrettyPrinter {
 
     var errorStr = event.error?.toString();
 
-    String timeStr;
+    String? timeStr;
     if (printTime) {
       timeStr = getTime();
     }
@@ -45,7 +45,7 @@ class CustomPrinter extends PrettyPrinter {
     ];
   }
 
-  String formatStackTrace(StackTrace stackTrace, int methodCount) {
+  String? formatStackTrace(StackTrace? stackTrace, int methodCount) {
     var lines = stackTrace.toString().split("\n");
 
     var formatted = <String>[];
@@ -53,9 +53,9 @@ class CustomPrinter extends PrettyPrinter {
     for (var line in lines) {
       var match = stackTraceRegex.matchAsPrefix(line);
       if (match != null) {
-        if (match.group(2).startsWith('package:logger') ||
+        if (match.group(2)!.startsWith('package:logger') ||
             match
-                .group(2)
+                .group(2)!
                 .startsWith('package:munich_ways/common/logger_setup.dart')) {
           continue;
         }

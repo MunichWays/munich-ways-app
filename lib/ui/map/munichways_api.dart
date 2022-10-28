@@ -13,7 +13,7 @@ class MunichwaysApi {
   GeojsonConverter _converter = GeojsonConverter();
 
   Future<Set<MPolyline>> getRadlvorrangnetz() async {
-    FileInfo geoJsonFileInfo =
+    FileInfo? geoJsonFileInfo =
         await DefaultCacheManager().getFileFromCache(_radlvorrangnetzUrl);
 
     if (geoJsonFileInfo != null) {
@@ -24,15 +24,12 @@ class MunichwaysApi {
 
     File geojsonFile =
         await DefaultCacheManager().getSingleFile(_radlvorrangnetzUrl);
-    if (geojsonFile == null) {
-      throw ApiException("Could not load geojson from server.");
-    }
 
     try {
       return _converter.getPolylines(
           geojson: json.decode(await geojsonFile.readAsString()));
     } catch (e) {
-      throw ApiException(e);
+      throw ApiException(e.toString());
     }
   }
 

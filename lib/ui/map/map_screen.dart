@@ -32,13 +32,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
 
   bool displayCurrentLocationOnResume = false;
-  MapScreenViewModel mapViewModel;
-  MapController mapController;
+  late MapScreenViewModel mapViewModel;
+  MapController? mapController;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance!.addObserver(this);
     mapController = MapController();
   }
 
@@ -53,7 +53,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
 
@@ -136,8 +136,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         MapScreenViewModel model = MapScreenViewModel();
         mapViewModel = model;
         model.errorMsgs.listen((errorMsg) async {
-          scaffoldMessengerKey.currentState.hideCurrentSnackBar();
-          scaffoldMessengerKey.currentState.showSnackBar(SnackBar(
+          scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
+          scaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
             content: Text(errorMsg),
             duration: Duration(seconds: 2),
           ));
@@ -150,7 +150,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.showStreetDetails.listen((details) {
           double statusBarHeight = MediaQuery.of(context).padding.top;
-          return scaffoldKey.currentState.showBottomSheet(
+          scaffoldKey.currentState!.showBottomSheet(
             (context) => StreetDetailsSheet(
               details: details,
               statusBarHeight: statusBarHeight,
@@ -160,12 +160,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.currentLocationStream.listen((LatLng location) {
           log.d("onUpdateLocation");
-          mapController.move(location, mapController.zoom);
+          mapController!.move(location, mapController!.zoom);
         });
         model.destinationStream.listen((Place place) {
-          mapController.move(place.latLng, mapController.zoom);
+          mapController!.move(place.latLng, mapController!.zoom);
         });
-        mapController.onReady.then((_) => model.onMapReady());
+        mapController!.onReady.then((_) => model.onMapReady());
         return model;
       },
       child: Consumer<MapScreenViewModel>(
@@ -205,14 +205,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           polylines: model.polylines
                               .map(
                                 (polyline) => ClickablePolyline(
-                                    points: polyline.points
+                                    points: polyline.points!
                                         .map((latlng) => LatLng(
                                             latlng.latitude, latlng.longitude))
                                         .toList(),
                                     strokeWidth: 3.0,
                                     isDotted: polyline.isGesamtnetz,
                                     color: AppColors.getPolylineColor(
-                                        polyline.details.farbe),
+                                        polyline.details!.farbe),
                                     onTap: () {
                                       model.onTap(polyline.details);
                                     }),
@@ -225,8 +225,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         bearing: model.bearing,
                         onTap: () {
                           if (model.destination != null) {
-                            mapController.move(
-                                model.destination.latLng, mapController.zoom);
+                            mapController!.move(
+                                model.destination!.latLng, mapController!.zoom);
                           }
                         },
                       ),
@@ -280,6 +280,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   height: 40,
                                   child: FittedBox(
                                     child: FloatingActionButton.extended(
+                                      heroTag: null,
                                       onPressed: () {
                                         model.toggleGesamtnetzVisible();
                                       },
@@ -344,7 +345,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 }
 
 class Space extends StatelessWidget {
-  const Space({Key key}) : super(key: key);
+  const Space({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -359,13 +360,14 @@ class SearchLocationActionButton extends StatelessWidget {
   final MapScreenViewModel model;
 
   const SearchLocationActionButton({
-    Key key,
-    @required this.model,
+    Key? key,
+    required this.model,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton.small(
+      heroTag: null,
       backgroundColor: Colors.white,
       child: Icon(
         model.destination != null ? Icons.search_off : Icons.search,
@@ -375,10 +377,10 @@ class SearchLocationActionButton extends StatelessWidget {
       ),
       onPressed: () async {
         if (model.destination == null) {
-          Place place = await Navigator.push(
+          Place? place = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => SearchLocationScreen()),
-          ) as Place;
+          ) as Place?;
           model.setDestination(place);
         } else {
           model.clearDestination();
@@ -393,16 +395,17 @@ class LocationActionButton extends StatelessWidget {
   final LocationState locationState;
 
   const LocationActionButton({
-    Key key,
-    @required this.onPressed,
-    @required this.locationState,
+    Key? key,
+    required this.onPressed,
+    required this.locationState,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton.small(
+      heroTag: null,
       backgroundColor: Colors.white,
-      onPressed: this.onPressed,
+      onPressed: this.onPressed as void Function()?,
       child: _buildIcon(),
     );
   }

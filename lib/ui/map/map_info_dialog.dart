@@ -3,7 +3,7 @@ import 'package:munich_ways/ui/theme.dart';
 
 class MapInfoDialog extends StatelessWidget {
   const MapInfoDialog({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override
@@ -66,9 +66,9 @@ class ColorListItem extends StatelessWidget {
   final Color color;
 
   const ColorListItem({
-    Key key,
-    @required this.text,
-    @required this.color,
+    Key? key,
+    required this.text,
+    required this.color,
   }) : super(key: key);
 
   @override

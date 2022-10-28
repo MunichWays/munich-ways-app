@@ -2,8 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:html/parser.dart';
 
 class Link extends Equatable {
-  final String title;
-  final String url;
+  final String? title;
+  final String? url;
 
   Link(this.title, this.url);
 
@@ -13,7 +13,7 @@ class Link extends Equatable {
   }
 
   @override
-  List<Object> get props => [title, url];
+  List<Object?> get props => [title, url];
 }
 
 class LinksParser {
@@ -21,7 +21,7 @@ class LinksParser {
 
   LinksParser(this.links);
 
-  static List<Link> parse(String html) {
+  static List<Link> parse(String? html) {
     List<Link> links = [];
     if (html == null) {
       return links;
@@ -30,8 +30,8 @@ class LinksParser {
     var allATags = document.querySelectorAll('a');
     for (var aTag in allATags) {
       String title = aTag.text;
-      String url = aTag.attributes['href'];
-      if (title != null && title.isNotEmpty && url != null && url.isNotEmpty) {
+      String? url = aTag.attributes['href'];
+      if (title.isNotEmpty && url != null && url.isNotEmpty) {
         links.add(Link(title.trim(), url));
       }
     }

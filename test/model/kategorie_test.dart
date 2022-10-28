@@ -29,15 +29,4 @@ void main() {
     //THEN
     expect(kategorie, Kategorie(title: "Lücke schließen", url: null));
   });
-
-  test('fromString null', () {
-    //GIVEN
-    String kategorieString;
-
-    //WHEN
-    Kategorie kategorie = Kategorie.fromString(kategorieString);
-
-    //THEN
-    expect(kategorie, isNull);
-  });
 }

@@ -12,7 +12,8 @@ class LocationLayerWidget extends StatefulWidget {
   final bool enabled;
   final bool moveMapAlong;
 
-  LocationLayerWidget({Key key, this.enabled = true, this.moveMapAlong = false})
+  LocationLayerWidget(
+      {Key? key, this.enabled = true, this.moveMapAlong = false})
       : super(key: key);
 
   @override
@@ -20,8 +21,8 @@ class LocationLayerWidget extends StatefulWidget {
 }
 
 class _LocationLayerWidgetState extends State<LocationLayerWidget> {
-  StreamSubscription<Position> _positionStreamSubscription;
-  Position currentPosition;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  Position? currentPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
                   return Container();
                 }
 
-                if (!snapshot1.data) {
+                if (!snapshot1.data!) {
                   log.d("locationService is not enabled");
                   return Container();
                 }
@@ -71,13 +72,13 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
       return Container();
     }
 
-    final mapState = MapState.maybeOf(context);
+    final mapState = MapState.maybeOf(context)!;
 
     var markers = <Marker>[
       Marker(
         width: 24.0,
         height: 24.0,
-        point: LatLng(currentPosition.latitude, currentPosition.longitude),
+        point: LatLng(currentPosition!.latitude, currentPosition!.longitude),
         builder: (ctx) => Container(
           decoration: ShapeDecoration(
             color: AppColors.mapAccentColor,
@@ -99,11 +100,11 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
     return _positionStreamSubscription != null;
   }
 
-  void _startLiveLocation(MapState mapState) {
+  void _startLiveLocation(MapState? mapState) {
     if (_positionStreamSubscription == null) {
       final positionStream = Geolocator.getPositionStream();
       _positionStreamSubscription = positionStream.handleError((error) {
-        _positionStreamSubscription.cancel();
+        _positionStreamSubscription!.cancel();
         _positionStreamSubscription = null;
       }).listen((position) {
         log.d("New Pos: $position");
@@ -111,8 +112,8 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
           this.currentPosition = position;
           if (widget.moveMapAlong) {
             log.d("Move along");
-            mapState.move(
-                LatLng(currentPosition.latitude, currentPosition.longitude),
+            mapState!.move(
+                LatLng(currentPosition!.latitude, currentPosition!.longitude),
                 mapState.zoom,
                 source: MapEventSource.custom);
           }
@@ -123,7 +124,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
 
   void _stopLiveLocation() {
     if (_positionStreamSubscription != null) {
-      _positionStreamSubscription.cancel();
+      _positionStreamSubscription!.cancel();
       _positionStreamSubscription = null;
     }
   }

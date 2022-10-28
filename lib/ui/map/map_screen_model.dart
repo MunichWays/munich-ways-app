@@ -16,11 +16,10 @@ class MapScreenViewModel extends ChangeNotifier {
 
   bool _firstLoad = true;
 
-  double bearing;
+  double? bearing;
 
   bool get displayMissingPolylinesMsg {
-    return !_firstLoad &&
-        (_polylinesGesamtnetz == null || _polylinesGesamtnetz.isEmpty);
+    return !_firstLoad && (_polylinesGesamtnetz.isEmpty);
   }
 
   Set<MPolyline> get polylines {
@@ -33,7 +32,7 @@ class MapScreenViewModel extends ChangeNotifier {
     return tempPolylines;
   }
 
-  Place destination = null;
+  Place? destination = null;
 
   bool _isRadlvorrangnetzVisible = true;
   bool _isGesamtnetzVisible = false;
@@ -52,23 +51,23 @@ class MapScreenViewModel extends ChangeNotifier {
 
   MunichwaysApi _munichwaysApi = MunichwaysApi();
 
-  Stream<String> errorMsgs;
-  StreamController<String> _errorMsgsController;
+  late Stream<String> errorMsgs;
+  late StreamController<String> _errorMsgsController;
 
-  Stream showLocationPermissionDialog;
-  StreamController _permissionStreamController;
+  late Stream showLocationPermissionDialog;
+  late StreamController _permissionStreamController;
 
-  Stream showEnableLocationServiceDialog;
-  StreamController _showEnableLocationServiceDialogController;
+  late Stream showEnableLocationServiceDialog;
+  late StreamController _showEnableLocationServiceDialogController;
 
-  Stream showStreetDetails;
-  StreamController showStreetDetailsController;
+  late Stream showStreetDetails;
+  late StreamController showStreetDetailsController;
 
-  Stream<LatLng> currentLocationStream;
-  StreamController<LatLng> currentLocationController;
+  late Stream<LatLng> currentLocationStream;
+  late StreamController<LatLng> currentLocationController;
 
-  Stream<Place> destinationStream;
-  StreamController<Place> _destinationStreamController;
+  late Stream<Place> destinationStream;
+  late StreamController<Place> _destinationStreamController;
 
   MapScreenViewModel() {
     _errorMsgsController = StreamController();
@@ -136,7 +135,7 @@ class MapScreenViewModel extends ChangeNotifier {
       case LocationPermission.always:
         locationState = LocationState.FOLLOW;
         notifyListeners();
-        Position position = await Geolocator.getLastKnownPosition();
+        Position? position = await Geolocator.getLastKnownPosition();
         if (position != null) {
           currentLocationController
               .add(LatLng(position.latitude, position.longitude));
@@ -172,7 +171,7 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void onTap(StreetDetails details) {
+  void onTap(StreetDetails? details) {
     log.d(details);
     showStreetDetailsController.add(details);
   }
@@ -186,18 +185,18 @@ class MapScreenViewModel extends ChangeNotifier {
       notifyListeners();
     }
 
-    if (destination != null && position != null) {
+    if (destination != null) {
       this.bearing = Geolocator.bearingBetween(
-          position.center.latitude,
-          position.center.longitude,
-          destination.latLng.latitude,
-          destination.latLng.longitude);
-      this.bearing = (bearing + 360) % 360;
+          position.center!.latitude,
+          position.center!.longitude,
+          destination!.latLng.latitude,
+          destination!.latLng.longitude);
+      this.bearing = (bearing! + 360) % 360;
       notifyListeners();
     }
   }
 
-  void setDestination(Place place) {
+  void setDestination(Place? place) {
     if (place == null) {
       return;
     }

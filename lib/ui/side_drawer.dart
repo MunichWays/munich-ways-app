@@ -5,12 +5,12 @@ import 'package:munich_ways/ui/theme.dart';
 
 class SideDrawer extends StatelessWidget {
   const SideDrawer({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    String currentRoute = ModalRoute.of(context).settings.name;
+    String? currentRoute = ModalRoute.of(context)!.settings.name;
     log.d(currentRoute);
     return Drawer(
       child: ListView(
@@ -53,14 +53,14 @@ class NavigationDrawerItem extends StatelessWidget {
   final String title;
   final IconData icon;
   final String route;
-  final String currentRoute;
+  final String? currentRoute;
 
   const NavigationDrawerItem({
-    Key key,
-    @required this.title,
-    @required this.icon,
-    @required this.route,
-    @required this.currentRoute,
+    Key? key,
+    required this.title,
+    required this.icon,
+    required this.route,
+    required this.currentRoute,
   }) : super(key: key);
 
   @override

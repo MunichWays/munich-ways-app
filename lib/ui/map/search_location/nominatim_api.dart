@@ -7,7 +7,7 @@ import 'package:munich_ways/model/place.dart';
 import '../munichways_api.dart';
 
 class NominatimApi {
-  Client client;
+  Client? client;
   final String baseUrl;
 
   static const String NOMINATIM_PROXY_URL = "nominatim.svendroid.net";
@@ -25,7 +25,7 @@ class NominatimApi {
       'format': 'jsonv2',
     };
     Uri uri = Uri.https(baseUrl, 'search', queryParameters);
-    Response response = await client.get(uri, headers: {
+    Response response = await client!.get(uri, headers: {
       "Accept": "application/json",
       "User-Agent": "com.munichways.app/flutter"
     });
