@@ -4,32 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
-class ClickablePolylineLayerWidget extends StatelessWidget {
-  final ClickablePolylineLayerOptions options;
-
-  ClickablePolylineLayerWidget({required this.options})
-      : super(key: options.key);
-
-  @override
-  Widget build(BuildContext context) {
-    final mapState = MapState.maybeOf(context)!;
-    return ClickablePolylineLayer(options, mapState, mapState.onMoved);
-  }
-}
-
-class ClickablePolylineLayerOptions extends PolylineLayerOptions {
-  ClickablePolylineLayerOptions({
-    Key? key,
-    polylines = const [],
-    polylineCulling = false,
-    rebuild,
-  }) : super(
-            key: key,
-            polylines: polylines,
-            polylineCulling: polylineCulling,
-            rebuild: rebuild);
-}
-
 class ClickablePolyline extends Polyline {
   VoidCallback? onTap;
 
@@ -56,15 +30,21 @@ class ClickablePolyline extends Polyline {
 }
 
 class ClickablePolylineLayer extends StatelessWidget {
-  final PolylineLayerOptions polylineOpts;
-  final MapState map;
-  final Stream<void> stream;
+  final List<ClickablePolyline> polylines;
+  final bool polylineCulling;
+  final bool saveLayers;
 
-  ClickablePolylineLayer(this.polylineOpts, this.map, this.stream)
-      : super(key: polylineOpts.key);
+  ClickablePolylineLayer(
+      {Key? key,
+      this.polylines = const [],
+      this.polylineCulling = false,
+      this.saveLayers = false})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final map = FlutterMapState.maybeOf(context)!;
+
     return GestureDetector(
         onDoubleTap: () {
           log.d("onDoubleTap");
@@ -72,7 +52,7 @@ class ClickablePolylineLayer extends StatelessWidget {
         },
         onTapUp: (TapUpDetails details) {
           //Detect nearest polyline to the tapped point
-          polylineOpts.polylines.forEach((polyline) {
+          polylines.forEach((polyline) {
             for (var i = 0; i < polyline.offsets.length - 1; i++) {
               Offset x = polyline.offsets[i];
               Offset y = polyline.offsets[i + 1];
@@ -109,18 +89,19 @@ class ClickablePolylineLayer extends StatelessWidget {
 
               if (height < threshold && distanceToA < threshold) {
                 log.d("Click found");
-                if (polyline is ClickablePolyline) {
-                  ClickablePolyline clickable = polyline;
-                  if (clickable.onTap != null) {
-                    clickable.onTap!();
-                  }
+                if (polyline.onTap != null) {
+                  polyline.onTap!();
                 }
                 return;
               }
             }
           });
         },
-        child: PolylineLayer(polylineOpts, map, stream).build(context));
+        child: PolylineLayer(
+                polylines: polylines,
+                polylineCulling: polylineCulling,
+                saveLayers: saveLayers)
+            .build(context));
   }
 
   double _dist(Offset v, Offset w) {

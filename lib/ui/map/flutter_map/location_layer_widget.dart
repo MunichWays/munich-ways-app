@@ -59,7 +59,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
                 }
 
                 if (!_liveLocationEnabled()) {
-                  _startLiveLocation(MapState.maybeOf(context));
+                  _startLiveLocation(FlutterMapState.maybeOf(context));
                 }
 
                 return _buildLiveLocationLayer(context);
@@ -71,8 +71,6 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
     if (currentPosition == null) {
       return Container();
     }
-
-    final mapState = MapState.maybeOf(context)!;
 
     var markers = <Marker>[
       Marker(
@@ -92,15 +90,14 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
       ),
     ];
 
-    return MarkerLayer(
-        MarkerLayerOptions(markers: markers), mapState, mapState.onMoved);
+    return MarkerLayer(markers: markers);
   }
 
   bool _liveLocationEnabled() {
     return _positionStreamSubscription != null;
   }
 
-  void _startLiveLocation(MapState? mapState) {
+  void _startLiveLocation(FlutterMapState? mapState) {
     if (_positionStreamSubscription == null) {
       final positionStream = Geolocator.getPositionStream();
       _positionStreamSubscription = positionStream.handleError((error) {

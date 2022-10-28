@@ -11,19 +11,16 @@ class DestinationMarkerLayerWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return destination != null
-        ? MarkerLayerWidget(
-            options: MarkerLayerOptions(
-            markers: [
-              Marker(
-                  width: 35.0,
-                  height: 48.0,
-                  point: destination!.latLng,
-                  builder: (ctx) => Container(
-                        child: Image(image: AssetImage('images/pin.png')),
-                      ),
-                  rotate: true),
-            ],
-          ))
+        ? MarkerLayer(markers: [
+            Marker(
+                width: 35.0,
+                height: 48.0,
+                point: destination!.latLng,
+                builder: (ctx) => Container(
+                      child: Image(image: AssetImage('images/pin.png')),
+                    ),
+                rotate: true),
+          ])
         : Container();
   }
 }
