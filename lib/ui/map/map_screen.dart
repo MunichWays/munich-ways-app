@@ -195,6 +195,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       TileLayer(
                         urlTemplate:
                             "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        userAgentPackageName: "de.munichways.app",
                         subdomains: ['a', 'b', 'c'],
                       ),
                       Container(
