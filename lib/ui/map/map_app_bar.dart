@@ -11,25 +11,20 @@ class MapAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 10,
-      right: 10,
-      left: 10,
-      child: AppBar(
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.black54),
-        title: Center(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 2.0),
-            child: SizedBox(
-                height: 38,
-                child: Image(image: AssetImage('images/logo_long.png'))),
-          ),
+    return AppBar(
+      centerTitle: true,
+      iconTheme: IconThemeData(color: Colors.black54),
+      title: Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 2.0),
+          child: SizedBox(
+              height: 38,
+              child: Image(image: AssetImage('images/logo_long.png'))),
         ),
-        backgroundColor: Colors.white,
-        shape: RoundedAppBarShape(),
-        actions: actions,
       ),
+      backgroundColor: Colors.white,
+      shape: RoundedAppBarShape(),
+      actions: actions,
     );
   }
 }
