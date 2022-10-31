@@ -5,6 +5,7 @@ import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/common/util.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_bearing_layer.dart';
@@ -35,6 +36,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool displayCurrentLocationOnResume = false;
   late MapScreenViewModel mapViewModel;
   MapController? mapController;
+  double? rotationInDegrees = null;
 
   @override
   void initState() {
@@ -180,17 +182,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   FlutterMap(
                     mapController: mapController,
                     options: MapOptions(
-                        center: _stachus,
-                        zoom: 15,
-                        maxZoom: 18,
-                        minZoom: 10,
-                        onPositionChanged:
-                            (MapPosition position, bool hasGesture) {
-                          model.onMapPositionChanged(position, hasGesture);
-                        },
-                        onMapReady: () {
-                          model.onMapReady();
-                        }),
+                      center: _stachus,
+                      zoom: 15,
+                      maxZoom: 18,
+                      minZoom: 10,
+                      onPositionChanged:
+                          (MapPosition position, bool hasGesture) {
+                        model.onMapPositionChanged(position, hasGesture);
+                      },
+                      onMapEvent: (evt) {
+                        setState(() {
+                          rotationInDegrees = mapController?.rotation ?? 0;
+                        });
+                      },
+                      onMapReady: () {
+                        model.onMapReady();
+                        setState(() {
+                          rotationInDegrees = mapController?.rotation ?? 0;
+                        });
+                      },
+                    ),
                     children: [
                       TileLayer(
                         urlTemplate:
@@ -309,18 +320,35 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                        MapAppBar(
-                          actions: <Widget>[
-                            IconButton(
-                              icon: const Icon(Icons.info_outline),
-                              tooltip: 'Legende',
-                              onPressed: () {
-                                showDialog(
-                                    context: context,
-                                    builder: (_) => MapInfoDialog());
-                              },
-                            ),
-                          ],
+                        Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              MapAppBar(
+                                actions: <Widget>[
+                                  IconButton(
+                                    icon: const Icon(Icons.info_outline),
+                                    tooltip: 'Legende',
+                                    onPressed: () {
+                                      showDialog(
+                                          context: context,
+                                          builder: (_) => MapInfoDialog());
+                                    },
+                                  ),
+                                ],
+                              ),
+                              Space(),
+                              CompassButton(
+                                rotationInDegrees: rotationInDegrees ?? 0,
+                                onPressed: () {
+                                  setState(() {
+                                    mapController?.rotate(0);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                         Visibility(
                           visible: model.displayMissingPolylinesMsg,
@@ -386,6 +414,35 @@ class SearchLocationActionButton extends StatelessWidget {
           model.clearDestination();
         }
       },
+    );
+  }
+}
+
+class CompassButton extends StatelessWidget {
+  final double rotationInDegrees;
+  final VoidCallback? onPressed;
+
+  const CompassButton(
+      {Key? key, required this.rotationInDegrees, required this.onPressed})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    bool isVisible = rotationInDegrees % 360 == 0;
+    return AnimatedOpacity(
+      opacity: isVisible ? 0.0 : 1.0,
+      duration: const Duration(milliseconds: 500),
+      child: FloatingActionButton.small(
+        heroTag: null,
+        backgroundColor: Colors.white,
+        child: Transform.rotate(
+            angle: convertToRadians(rotationInDegrees % 360),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image(image: AssetImage('images/compass.png')),
+            )),
+        onPressed: onPressed,
+      ),
     );
   }
 }
