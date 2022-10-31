@@ -191,9 +191,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         model.onMapPositionChanged(position, hasGesture);
                       },
                       onMapEvent: (evt) {
-                        setState(() {
-                          rotationInDegrees = mapController?.rotation ?? 0;
-                        });
+                        if (evt is MapEventLongPress) {
+                          model.setDestination(Place(null, evt.tapPosition));
+                        } else if (evt is MapEventRotate) {
+                          setState(() {
+                            rotationInDegrees = mapController?.rotation ?? 0;
+                          });
+                        }
                       },
                       onMapReady: () {
                         model.onMapReady();
