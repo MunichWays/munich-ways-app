@@ -34,13 +34,28 @@ class MapInfoDialog extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Row(children: [
-                Icon(Icons.touch_app),
+                Icon(Icons.remove),
                 SizedBox(
                   width: 8,
                 ),
                 Expanded(
                   child: Text(
-                    "Klicke auf eine Strecke um mehr Informationen anzuzeigen",
+                    "Linie durchgezogen: RadlVorrang-Netz",
+                    style: Theme.of(context).textTheme.subtitle1,
+                  ),
+                ),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(children: [
+                Icon(Icons.more_horiz),
+                SizedBox(
+                  width: 8,
+                ),
+                Expanded(
+                  child: Text(
+                    "Linie gepunktet: Alle Strecken",
                     style: Theme.of(context).textTheme.subtitle1,
                   ),
                 ),
