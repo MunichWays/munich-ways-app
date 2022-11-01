@@ -104,6 +104,12 @@ class _InfoScreenState extends State<InfoScreen> {
                   Navigator.of(context).pushNamed(NavRoutes.imprint);
                 },
               ),
+              ListTile(
+                title: Text('Details zu einer Strecke'),
+                subtitle: Text(
+                    'Klicke auf eine Strecke auf der Karte für mehr Details'),
+                trailing: Icon(Icons.touch_app),
+              ),
             ],
           ).toList(),
         ),
