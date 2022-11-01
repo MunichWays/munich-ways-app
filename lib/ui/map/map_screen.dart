@@ -5,7 +5,6 @@ import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
-import 'package:munich_ways/common/util.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_bearing_layer.dart';
@@ -20,6 +19,7 @@ import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
+import 'package:vector_math/vector_math.dart' as vector_math;
 
 import 'map_app_bar.dart';
 
@@ -440,7 +440,7 @@ class CompassButton extends StatelessWidget {
         heroTag: null,
         backgroundColor: Colors.white,
         child: Transform.rotate(
-            angle: convertToRadians(rotationInDegrees % 360),
+            angle: vector_math.radians(rotationInDegrees % 360),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Image(image: AssetImage('images/compass.png')),
