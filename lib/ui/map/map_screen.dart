@@ -37,6 +37,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   late MapScreenViewModel mapViewModel;
   MapController? mapController;
   double? rotationInDegrees = null;
+  Offset? destinationOffset = null;
 
   @override
   void initState() {
@@ -189,6 +190,29 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       onPositionChanged:
                           (MapPosition position, bool hasGesture) {
                         model.onMapPositionChanged(position, hasGesture);
+
+                        LatLng? topLeftVisibleLatLng =
+                            position.bounds?.northWest;
+
+                        if (topLeftVisibleLatLng != null &&
+                            position.zoom != null &&
+                            model.destination != null) {
+                          CustomPoint<num> northWestPoint = Epsg3857()
+                              .latLngToPoint(
+                                  topLeftVisibleLatLng, position.zoom!);
+                          CustomPoint<num> markerPoint = Epsg3857()
+                              .latLngToPoint(
+                                  model.destination!.latLng, position.zoom!);
+                          double x =
+                              (markerPoint.x - northWestPoint.x).toDouble();
+                          double y =
+                              (markerPoint.y - northWestPoint.y).toDouble();
+                          setState(() {
+                            destinationOffset = Offset(x, y);
+                          });
+                        } else {
+                          destinationOffset = null;
+                        }
                       },
                       onMapEvent: (evt) {
                         if (evt is MapEventLongPress) {
@@ -248,6 +272,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       DestinationMarkerLayerWidget(
                         destination: model.destination,
                       ),
+                      DestinationOffScreenWidget(
+                          destination: model.destination,
+                          offset: destinationOffset),
                       LocationLayerWidget(
                         enabled:
                             model.locationState != LocationState.NOT_AVAILABLE,
