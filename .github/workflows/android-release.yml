@@ -29,17 +29,6 @@ jobs:
           ANDROID_RELEASE_ALIAS_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS_PASSWORD }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_STORE_PASSWORD }}
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-      - name: Create APK
-        run: flutter build apk --release
-        env:
-          ANDROID_RELEASE_ALIAS: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS }}
-          ANDROID_RELEASE_ALIAS_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS_PASSWORD }}
-          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_STORE_PASSWORD }}
-          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-      - uses: actions/upload-artifact@v2
-        with:
-          name: apk
-          path: build/app/outputs/apk/release
       - uses: actions/upload-artifact@v2
         with:
           name: appbundle
@@ -54,6 +43,7 @@ jobs:
       - name: Load google_play_service_account.json from secrets
         run: |
           echo "${{ secrets.SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > google_play_service_account.json
+          export OPENSSL_CONF=/dev/null
       - name: Upload to GooglePlay
         uses: r0adkll/upload-google-play@v1.0.19
         with:
