@@ -55,7 +55,7 @@ jobs:
         run: |
           echo "${{ secrets.SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > google_play_service_account.json
       - name: Upload to GooglePlay
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@v1.0.19
         with:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           serviceAccountJson: google_play_service_account.json
