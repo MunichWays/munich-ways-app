@@ -3,6 +3,7 @@ import 'package:munich_ways/model/ImgIdParser.dart';
 import 'package:munich_ways/model/bezirk.dart';
 import 'package:munich_ways/model/kategorie.dart';
 import 'package:munich_ways/model/links.dart';
+import 'StreckenLink.dart';
 
 /// Details for a street taken from the properties of a geojson feature
 class StreetDetails extends Equatable {
@@ -19,6 +20,7 @@ class StreetDetails extends Equatable {
   final String? farbe;
   final List<Link>? links;
   final String? strecke;
+  final StreckenLink? streckenLink;
   final String? streetview;
   final Bezirk? bezirk;
   final String? statusUmsetzung;
@@ -49,6 +51,7 @@ class StreetDetails extends Equatable {
       this.farbe,
       this.links,
       this.strecke,
+      this.streckenLink,
       this.streetview,
       this.statusUmsetzung,
       this.statusId,
@@ -82,6 +85,9 @@ class StreetDetails extends Equatable {
         farbe: properties['farbe'],
         links: LinksParser.parse(properties['links']),
         strecke: properties['strecke'],
+        streckenLink: properties['strecken_link'] != null
+            ? StreckenLink.fromString(properties['strecken_link'])
+            : null,
         streetview: properties['strassenansicht_klick_mich'],
         netztypId: properties['netztyp_id'] as int?,
         kategorieId: properties['kategorie_id'] as int?,
@@ -116,7 +122,7 @@ class StreetDetails extends Equatable {
 
   @override
   String toString() {
-    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, streetview: $streetview, bezirk: $bezirk, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz, mapillaryImgId: $mapillaryImgId, mwRvStrecke: $isMunichWaysRadlVorrangNetz}';
+    return 'StreetDetails{cartoDbId: $cartoDbId, name: $name, description: $description, netztyp: $netztyp, netztypId: $netztypId, munichwaysId: $munichwaysId, ist: $ist, soll: $soll, kategorie: $kategorie, kategorieId: $kategorieId, farbe: $farbe, links: $links, strecke: $strecke, streckenLink: $streckenLink, streetview: $streetview, bezirk: $bezirk, statusUmsetzung: $statusUmsetzung, statusId: $statusId, happyBikeLevel: $happyBikeLevel, lastUpdated: $lastUpdated, alternative: $alternative, rsvStrecke: $rsvStrecke, planNetztypId: $planNetztypId, massnahmenKategorie: $massnahmenKategorie, prioGesamt: $prioGesamt, neuralgischerPunkt: $neuralgischerPunkt, vielKfz: $vielKfz, mapillaryImgId: $mapillaryImgId, mwRvStrecke: $isMunichWaysRadlVorrangNetz}';
   }
 
   @override
@@ -134,6 +140,7 @@ class StreetDetails extends Equatable {
         this.farbe,
         this.links,
         this.strecke,
+        this.streckenLink,
         this.streetview,
         this.statusUmsetzung,
         this.statusId,
