@@ -3,7 +3,6 @@ import 'package:munich_ways/model/ImgIdParser.dart';
 import 'package:munich_ways/model/bezirk.dart';
 import 'package:munich_ways/model/kategorie.dart';
 import 'package:munich_ways/model/links.dart';
-import 'StreckenLink.dart';
 
 /// Details for a street taken from the properties of a geojson feature
 class StreetDetails extends Equatable {
@@ -20,7 +19,7 @@ class StreetDetails extends Equatable {
   final String? farbe;
   final List<Link>? links;
   final String? strecke;
-  final StreckenLink? streckenLink;
+  final Link? streckenLink;
   final String? streetview;
   final Bezirk? bezirk;
   final String? statusUmsetzung;
@@ -86,7 +85,7 @@ class StreetDetails extends Equatable {
         links: LinksParser.parse(properties['links']),
         strecke: properties['strecke'],
         streckenLink: properties['strecken_link'] != null
-            ? StreckenLink.fromString(properties['strecken_link'])
+            ? LinksParser.parseSingleLink(properties['strecken_link'])
             : null,
         streetview: properties['strassenansicht_klick_mich'],
         netztypId: properties['netztyp_id'] as int?,

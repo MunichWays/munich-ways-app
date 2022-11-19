@@ -29,14 +29,15 @@ class Bezirk extends Equatable {
           name: name,
           nummer: nummer,
           region: region,
-          link: Link(aTag.text?.trim(), aTag.attributes['href']));
+          link: Link(title: aTag.text?.trim(), url: aTag.attributes['href']));
     } else {
       return Bezirk(
           name: name,
           nummer: nummer,
           region: region,
-          link: Link("$nummer $name",
-              "https://www.munichways.de/bezirksausschuesse/"));
+          link: Link(
+              title: "$nummer $name",
+              url: "https://www.munichways.de/bezirksausschuesse/"));
     }
   }
 

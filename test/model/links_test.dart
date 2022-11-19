@@ -12,12 +12,17 @@ void main() {
 
     //THEN
     expect(links, [
-      Link("RadlVorrangProfil",
-          "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
-      Link("Maßnahmenkatalog",
-          "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
-      Link("RIS Antrag SPD 19.09.2019",
-          "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+      Link(
+          title: "RadlVorrangProfil",
+          url:
+              "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+      Link(
+          title: "Maßnahmenkatalog",
+          url:
+              "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
+      Link(
+          title: "RIS Antrag SPD 19.09.2019",
+          url: "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
     ]);
   });
 
