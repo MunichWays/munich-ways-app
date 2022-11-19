@@ -51,11 +51,14 @@ jobs:
           files: |
             build/app/outputs/apk/release/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
+      - name: Load google_play_service_account.json from secrets
+        run: |
+          echo "${{ secrets.SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > google_play_service_account.json
       - name: Upload to GooglePlay
         uses: r0adkll/upload-google-play@v1
         with:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: google_play_service_account.json
           packageName: com.munichways.app
           track: alpha
           status: completed
