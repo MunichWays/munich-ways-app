@@ -24,7 +24,7 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 
 ### Android
 
-#### Gitlab Actions
+#### Github Actions
 
 * tag current state and push the tags
     * `git tag -a 0.0.3+5 -m "0.0.3+5"`
