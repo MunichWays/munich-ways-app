@@ -41,17 +41,26 @@ void main() {
                 region: "LHM-Mitte",
                 nummer: "BA02",
                 name: "Ludwigsvorstadt-Isarvorstadt",
-                link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                    "https://www.munichways.com/bezirksausschuesse/")),
+                link: Link(
+                    title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                    url: "https://www.munichways.com/bezirksausschuesse/")),
             links: [
-              Link("RadlVorrang-Profil",
-                  "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
-              Link("Maßnahmenkatalog",
-                  "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
-              Link("RIS Antrag SPD 12.09.2019",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
-              Link("RIS Beschluss zur Prüfung 09.12.2020",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf")
+              Link(
+                  title: "RadlVorrang-Profil",
+                  url:
+                      "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+              Link(
+                  title: "Maßnahmenkatalog",
+                  url:
+                      "https://docs.google.com/document/d/11cXxckedsvTK9OPncjArQdBjZ_gmi_mKEtMENqmjYkE/edit?usp=sharing"),
+              Link(
+                  title: "RIS Antrag SPD 12.09.2019",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+              Link(
+                  title: "RIS Beschluss zur Prüfung 09.12.2020",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf")
             ],
             netztyp: "1_RadlVorrang-Strecke",
             planNetztypId: 1,
@@ -101,17 +110,26 @@ void main() {
                 region: null,
                 nummer: "BA02",
                 name: "Ludwigsvorstadt-Isarvorstadt",
-                link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                    "https://www.munichways.de/bezirksausschuesse/")),
+                link: Link(
+                    title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                    url: "https://www.munichways.de/bezirksausschuesse/")),
             links: [
-              Link("RadlVorrang-Profil",
-                  "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
-              Link("RIS Antrag SPD 12.09.2019",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
-              Link("RIS Beschluss zur Prüfung 09.12.2020",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf"),
-              Link("SZ 12.01.2021 Leuchtendes Prestigeprojekt",
-                  "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
+              Link(
+                  title: "RadlVorrang-Profil",
+                  url:
+                      "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+              Link(
+                  title: "RIS Antrag SPD 12.09.2019",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+              Link(
+                  title: "RIS Beschluss zur Prüfung 09.12.2020",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf"),
+              Link(
+                  title: "SZ 12.01.2021 Leuchtendes Prestigeprojekt",
+                  url:
+                      "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
             ],
             farbe: "schwarz",
             mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
@@ -152,17 +170,90 @@ void main() {
                 region: null,
                 nummer: "BA02",
                 name: "Ludwigsvorstadt-Isarvorstadt",
-                link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                    "https://www.munichways.de/bezirksausschuesse/")),
+                link: Link(
+                    title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                    url: "https://www.munichways.de/bezirksausschuesse/")),
             links: [
-              Link("RadlVorrang-Profil",
-                  "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
-              Link("RIS Antrag SPD 12.09.2019",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
-              Link("RIS Beschluss zur Prüfung 09.12.2020",
-                  "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf"),
-              Link("SZ 12.01.2021 Leuchtendes Prestigeprojekt",
-                  "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
+              Link(
+                  title: "RadlVorrang-Profil",
+                  url:
+                      "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+              Link(
+                  title: "RIS Antrag SPD 12.09.2019",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+              Link(
+                  title: "RIS Beschluss zur Prüfung 09.12.2020",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf"),
+              Link(
+                  title: "SZ 12.01.2021 Leuchtendes Prestigeprojekt",
+                  url:
+                      "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
+            ],
+            farbe: "schwarz",
+            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
+            kategorie: Kategorie(
+                title: "ebener Radweg",
+                url:
+                    'https://github.com/MunichWays/bike-infrastructure/wiki/ebener-Radweg'),
+            netztypId: 1,
+            lastUpdated: DateTime.utc(2021, 04, 11, 17, 29, 08),
+            isMunichWaysRadlVorrangNetz: true));
+  });
+
+  test('fromJson app V07', () async {
+    //GIVEN
+    var jsonString = await TestUtils.readStringFromFile(
+        'test_resources/feature_app_V07.json');
+    var json = jsonDecode(jsonString);
+
+    //WHEN
+    StreetDetails details = StreetDetails.fromJson(json);
+
+    //THEN
+    expect(
+        details,
+        StreetDetails(
+            cartoDbId: 1161,
+            name:
+                "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
+            strecke: "RV3S - Fürstenrieder-Radlroute",
+            streckenLink: Link(
+                title: "Pasing-Freiham-FFB",
+                url: "https://www.munichways.de/unsere-radlvorrang-strecken/"),
+            ist:
+                "grober Schotterweg von ca. 100 Metern. fehlende Ost-West Verbindung",
+            happyBikeLevel: "sehr stressig",
+            soll: "Fahrbahn erneuern",
+            description:
+                "neuralgischer Punkt - Neue Radverkehrsroute Sendlinger-Tor-Platz zum Harras",
+            munichwaysId: "LHM-Mitte.BA02.1161",
+            statusUmsetzung: "beantragt",
+            bezirk: Bezirk(
+                region: null,
+                nummer: "BA02",
+                name: "Ludwigsvorstadt-Isarvorstadt",
+                link: Link(
+                    title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                    url: "https://www.munichways.de/bezirksausschuesse/")),
+            links: [
+              Link(
+                  title: "RadlVorrang-Profil",
+                  url:
+                      "https://docs.google.com/document/d/14HlSPaYCMvT2v00sMvJYW4j0Hbq8jHdvr9bl2sZTlbk/edit?usp=sharing"),
+              Link(
+                  title: "RIS Antrag SPD 12.09.2019",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/ANTRAG/5645187.pdf"),
+              Link(
+                  title: "RIS Beschluss zur Prüfung 09.12.2020",
+                  url:
+                      "https://www.ris-muenchen.de/RII/RII/DOK/SITZUNGSVORLAGE/6348847.pdf"),
+              Link(
+                  title: "SZ 12.01.2021 Leuchtendes Prestigeprojekt",
+                  url:
+                      "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
             ],
             farbe: "schwarz",
             mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",

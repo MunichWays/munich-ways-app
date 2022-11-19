@@ -5,7 +5,7 @@ class Link extends Equatable {
   final String? title;
   final String? url;
 
-  Link(this.title, this.url);
+  Link({required this.title, required this.url});
 
   @override
   String toString() {
@@ -32,9 +32,22 @@ class LinksParser {
       String title = aTag.text;
       String? url = aTag.attributes['href'];
       if (title.isNotEmpty && url != null && url.isNotEmpty) {
-        links.add(Link(title.trim(), url));
+        links.add(Link(title: title.trim(), url: url));
       }
     }
     return links;
+  }
+
+  static Link? parseSingleLink(String? html) {
+    if (html == null) {
+      return null;
+    }
+    var document = parseFragment(html);
+    var aTag = document.querySelector('a');
+    if (aTag != null) {
+      return Link(title: aTag.text.trim(), url: aTag.attributes['href']);
+    } else {
+      return Link(title: html, url: null);
+    }
   }
 }

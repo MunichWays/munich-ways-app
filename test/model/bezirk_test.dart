@@ -21,8 +21,10 @@ void main() {
         Bezirk(
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
-            link: Link("BA 02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.de/bezirksausschuesse/#toggle-id-2"),
+            link: Link(
+                title: "BA 02 Ludwigsvorstadt-Isarvorstadt",
+                url:
+                    "https://www.munichways.de/bezirksausschuesse/#toggle-id-2"),
             region: "LK-M"));
   });
 
@@ -43,8 +45,9 @@ void main() {
         Bezirk(
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
-            link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.de/bezirksausschuesse/"),
+            link: Link(
+                title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                url: "https://www.munichways.de/bezirksausschuesse/"),
             region: "LK-M"));
   });
 
@@ -65,8 +68,9 @@ void main() {
         Bezirk(
             name: "Ludwigsvorstadt-Isarvorstadt",
             nummer: "BA02",
-            link: Link("BA02 Ludwigsvorstadt-Isarvorstadt",
-                "https://www.munichways.de/bezirksausschuesse/"),
+            link: Link(
+                title: "BA02 Ludwigsvorstadt-Isarvorstadt",
+                url: "https://www.munichways.de/bezirksausschuesse/"),
             region: "LK-M"));
   });
 }

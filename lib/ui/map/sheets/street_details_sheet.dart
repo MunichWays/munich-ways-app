@@ -48,14 +48,15 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
               children: [
                 _Header(farbe: widget.details.farbe, name: widget.details.name),
                 // see #57 - hide till we switch to mapillary api v4 _MapillaryImage(mapillaryImgId: widget.details.mapillaryImgId),
-                ListItem(
-                    label: "Strecke",
-                    value: widget.details.streckenLink!.title,
-                    onTap: widget.details.streckenLink!.url != null
-                        ? () async {
-                            launchWebsite(widget.details.streckenLink!.url);
-                          }
-                        : null),
+                if (widget.details.streckenLink != null)
+                  ListItem(
+                      label: "Strecke",
+                      value: widget.details.streckenLink!.title,
+                      onTap: widget.details.streckenLink!.url != null
+                          ? () async {
+                              launchWebsite(widget.details.streckenLink!.url);
+                            }
+                          : null),
                 ListItem(
                   label: "Ist-Situation",
                   value: widget.details.ist,
