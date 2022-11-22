@@ -7,7 +7,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
-import 'package:munich_ways/ui/map/flutter_map/destination_bearing_layer.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_marker_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
@@ -21,6 +20,7 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
+import 'flutter_map/destination_offscreen_widget.dart';
 import 'map_app_bar.dart';
 
 class MapScreen extends StatefulWidget {
@@ -37,7 +37,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   late MapScreenViewModel mapViewModel;
   MapController? mapController;
   double? rotationInDegrees = null;
-  Offset? destinationOffset = null;
 
   @override
   void initState() {
@@ -183,6 +182,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   FlutterMap(
                     mapController: mapController,
                     options: MapOptions(
+                      interactiveFlags: InteractiveFlag.drag |
+                          InteractiveFlag.pinchZoom |
+                          InteractiveFlag.rotate,
                       center: _stachus,
                       zoom: 15,
                       maxZoom: 18,
@@ -190,29 +192,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       onPositionChanged:
                           (MapPosition position, bool hasGesture) {
                         model.onMapPositionChanged(position, hasGesture);
-
-                        LatLng? topLeftVisibleLatLng =
-                            position.bounds?.northWest;
-
-                        if (topLeftVisibleLatLng != null &&
-                            position.zoom != null &&
-                            model.destination != null) {
-                          CustomPoint<num> northWestPoint = Epsg3857()
-                              .latLngToPoint(
-                                  topLeftVisibleLatLng, position.zoom!);
-                          CustomPoint<num> markerPoint = Epsg3857()
-                              .latLngToPoint(
-                                  model.destination!.latLng, position.zoom!);
-                          double x =
-                              (markerPoint.x - northWestPoint.x).toDouble();
-                          double y =
-                              (markerPoint.y - northWestPoint.y).toDouble();
-                          setState(() {
-                            destinationOffset = Offset(x, y);
-                          });
-                        } else {
-                          destinationOffset = null;
-                        }
                       },
                       onMapEvent: (evt) {
                         if (evt is MapEventLongPress) {
@@ -259,28 +238,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             )
                             .toList(),
                       ),
-                      DestinationBearingLayerWidget(
-                        visible: model.destination != null,
-                        bearing: model.bearing,
-                        onTap: () {
-                          if (model.destination != null) {
-                            mapController!.move(
-                                model.destination!.latLng, mapController!.zoom);
-                          }
-                        },
-                      ),
                       DestinationMarkerLayerWidget(
                         destination: model.destination,
                       ),
-                      DestinationOffScreenWidget(
-                          destination: model.destination,
-                          offset: destinationOffset),
                       LocationLayerWidget(
                         enabled:
                             model.locationState != LocationState.NOT_AVAILABLE,
                         moveMapAlong:
                             model.locationState == LocationState.FOLLOW,
                       ),
+                    ],
+                    nonRotatedChildren: [
+                      if (model.destination != null)
+                        DestinationOffScreenWidget(
+                            destination: model.destination!),
                     ],
                   ),
                   SafeArea(

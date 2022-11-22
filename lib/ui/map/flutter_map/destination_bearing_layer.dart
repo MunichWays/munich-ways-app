@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/// Displays an arrow in the middle of the screen ratated by the bearing
+/// Replaced by [DestinationOffScreenWidget]
 class DestinationBearingLayerWidget extends StatelessWidget {
   final bool? visible;
   final double? bearing;
