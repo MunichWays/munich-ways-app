@@ -119,6 +119,13 @@ class PositionOutsideScreenPainter extends CustomPainter {
       }
     }
 
+    const double topPadding = 94;
+    const double bottomPadding = 54;
+    double y = math.min(math.max(topPadding, pointOnScreenBorder.dy),
+        size.height - bottomPadding);
+
+    pointOnScreenBorder = Offset(pointOnScreenBorder.dx, y);
+
     if (isOffScreen) {
       canvas.save();
       canvas.translate(pointOnScreenBorder.dx, pointOnScreenBorder.dy);
