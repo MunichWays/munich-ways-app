@@ -46,6 +46,7 @@ jobs:
       - name: Upload to GooglePlay
         uses: r0adkll/upload-google-play@v1.0.19
         if: startsWith(github.ref, 'refs/tags/')
+        # workaround, see https://github.com/r0adkll/upload-google-play/issues/129#issuecomment-1325892395
         env:
           OPENSSL_CONF: /dev/null
         with:
