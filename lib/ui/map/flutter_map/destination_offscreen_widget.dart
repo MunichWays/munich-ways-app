@@ -50,9 +50,10 @@ class _DestinationOffScreenWidgetState
         Offset(destinationPoint.x.toDouble(), destinationPoint.y.toDouble());
 
     if (image != null) {
+      double statusBarHeight = MediaQuery.of(context).padding.top;
       return CustomPaint(
-          foregroundPainter:
-              PositionOutsideScreenPainter(destinationOffset, map, image!),
+          foregroundPainter: PositionOutsideScreenPainter(
+              destinationOffset, map, image!, statusBarHeight),
           child: Container());
     } else {
       log.d("image is null");
@@ -65,8 +66,10 @@ class PositionOutsideScreenPainter extends CustomPainter {
   final Offset offset;
   final FlutterMapState map;
   final ui.Image image;
+  final double statusBarHeight;
 
-  PositionOutsideScreenPainter(this.offset, this.map, this.image);
+  PositionOutsideScreenPainter(
+      this.offset, this.map, this.image, this.statusBarHeight);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -119,7 +122,7 @@ class PositionOutsideScreenPainter extends CustomPainter {
       }
     }
 
-    const double topPadding = 94;
+    double topPadding = statusBarHeight + 66;
     const double bottomPadding = 54;
     double y = math.min(math.max(topPadding, pointOnScreenBorder.dy),
         size.height - bottomPadding);
