@@ -19,10 +19,10 @@ class ImgIdParser {
       return null;
     }
 
-    return mapillaryLink!.split('/').last;
+    return mapillaryLink!.split('=').last;
   }
 
   bool _validMapillaryLink(String? link) {
-    return link != null && link.startsWith("https://www.mapillary.com/map/im/");
+    return link != null && link.startsWith("https://www.mapillary.com/app/?pKey=");
   }
 }
