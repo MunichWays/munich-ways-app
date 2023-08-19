@@ -3,4 +3,4 @@
 # Pre commit hook
 
 # Check formatting before committing
-flutter format --set-exit-if-changed .
+dart format --set-exit-if-changed .

@@ -24,7 +24,7 @@ void main() {
         StreetDetails(
             cartoDbId: 1161,
             streetview:
-                "<a href=\"https://www.mapillary.com/map/im/MoDbKpzUOr9tcd5Gx22gyE\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
+                "<a href=\"https://www.mapillary.com/app/?pKey=233947365199559\" target=\"_blank\">\n<img src=\"https://www.munichways.com/img/Theresienwiese_175.jpg\" width=175></a>",
             name:
                 "Theresienwiese-Lücke-Beethovenstr.-Mattias-Pschorr-Str./Mozartstr.",
             strecke: "RV3S - Fürstenrieder-Radlroute",
@@ -68,7 +68,7 @@ void main() {
             rsvStrecke: "-",
             alternative: "-",
             vielKfz: false,
-            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
+            mapillaryImgId: "233947365199559",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
@@ -132,7 +132,7 @@ void main() {
                       "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
             ],
             farbe: "schwarz",
-            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
+            mapillaryImgId: "233947365199559",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
@@ -192,7 +192,7 @@ void main() {
                       "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
             ],
             farbe: "schwarz",
-            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
+            mapillaryImgId: "233947365199559",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:
@@ -256,7 +256,7 @@ void main() {
                       "https://www.sueddeutsche.de/muenchen/muenchen-theresienwiese-radweg-debatte-1.5171682")
             ],
             farbe: "schwarz",
-            mapillaryImgId: "MoDbKpzUOr9tcd5Gx22gyE",
+            mapillaryImgId: "233947365199559",
             kategorie: Kategorie(
                 title: "ebener Radweg",
                 url:

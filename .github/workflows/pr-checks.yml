@@ -20,6 +20,6 @@ jobs:
       - name: Run tests
         run: flutter test
       - name: Check Formatting
-        run: flutter format --set-exit-if-changed .
+        run: dart format --set-exit-if-changed .
       - name: Static code analyse
         run: flutter analyze .

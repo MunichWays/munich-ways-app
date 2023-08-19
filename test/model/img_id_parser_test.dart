@@ -4,24 +4,24 @@ import 'package:munich_ways/model/ImgIdParser.dart';
 void main() {
   test('parse valid img id', () {
     //GIVEN
-    String mapillaryImgId = "MoDbKpzUOr9tcd5Gx22gyE";
+    String mapillaryImgId = "765852851681051";
 
     //WHEN
     String? imgId = ImgIdParser().parse(mapillaryImgId, null, null);
 
     //THEN
-    expect(imgId, "MoDbKpzUOr9tcd5Gx22gyE");
+    expect(imgId, "765852851681051");
   });
 
   test('parse valid link', () {
     //GIVEN
-    String link = "https://www.mapillary.com/map/im/z4Up4YOvyCPsA2HRONSJ6n";
+    String link = "https://www.mapillary.com/app/?pKey=765852851681051";
 
     //WHEN
     String? imgId = ImgIdParser().parse(null, link, null);
 
     //THEN
-    expect(imgId, "z4Up4YOvyCPsA2HRONSJ6n");
+    expect(imgId, "765852851681051");
   });
 
   test('parse link is null', () {
@@ -38,7 +38,7 @@ void main() {
   test('parse invalid link', () {
     //GIVEN
     String link =
-        '<a href="https://www.mapillary.com/map/im/z4Up4YOvyCPsA2HRONSJ6n"">test</a>';
+        '<a href="https://www.mapillary.com/app/?pKey=765852851681051"">test</a>';
 
     //WHEN
     String? imgId = ImgIdParser().parse(null, link, null);
@@ -51,12 +51,12 @@ void main() {
     //GIVEN
     String? link;
     String strassenansicht =
-        '<a href="https://www.mapillary.com/map/im/vLk5t0YshakfGnl6q5fjUg" target="_blank"> <img src="https://www.munichways.de/img/Offen_Odeonsplatz.jpg" width=175></a>';
+        '<a href="https://www.mapillary.com/app/?pKey=765852851681051" target="_blank"> <img src="https://www.munichways.de/img/Offen_Odeonsplatz.jpg" width=175></a>';
 
     //WHEN
     String? imgId = ImgIdParser().parse(null, link, strassenansicht);
 
     //THEN
-    expect(imgId, 'vLk5t0YshakfGnl6q5fjUg');
+    expect(imgId, '765852851681051');
   });
 }
