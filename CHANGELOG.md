@@ -1,5 +1,14 @@
 # Changelog
 
+##  1.2.1+21
+* Version fix
+
+##  1.2.1+20
+* Switch to Mapillary API v4. Mapillary images are displayed again.
+
+##  1.2.0+19
+* Direction arrow to the destination is displayed in the edge of the screen.
+
 ## 1.1.2+18 - in Progress
 
 ## 1.1.1+17
