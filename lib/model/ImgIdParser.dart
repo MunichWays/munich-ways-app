@@ -23,6 +23,7 @@ class ImgIdParser {
   }
 
   bool _validMapillaryLink(String? link) {
-    return link != null && link.startsWith("https://www.mapillary.com/app/?pKey=");
+    return link != null &&
+        link.startsWith("https://www.mapillary.com/app/?pKey=");
   }
 }

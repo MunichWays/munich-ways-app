@@ -13,16 +13,15 @@ const String mapillaryApp = 'https://www.mapillary.com/app/?pKey=';
 const String mapillaryErrorId = '211265577336913';
 
 // MunichWays customer Id
-const String mapillaryAccessToken = 'MLY|6504546039605278|d6cd752b757343ec344d59a87a363d88';
+const String mapillaryAccessToken =
+    'MLY|6504546039605278|d6cd752b757343ec344d59a87a363d88';
 
 // image id
 const String mapillaryId = 'id';
 
-
 const String mapillaryHttpAccessToken = '?access_token=';
 
 const String mapillaryHttpFieldsParameter = '&fields=';
-
 
 // Image fields
 
@@ -94,4 +93,3 @@ const String mapillaryWidth = 'width';
 
 // detection entity, detections from the image
 const String mapillaryDetections = 'detections';
-

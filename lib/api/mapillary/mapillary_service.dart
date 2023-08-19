@@ -18,7 +18,6 @@ import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
 // Get single POST data from Mapillary endpoint for image meta data.
 // ----------------------------------------
 Future<MapillaryThumbDataModel> getSinglePostData(String imageId) async {
-  
   MapillaryThumbDataModel result;
 
   var buffer = new StringBuffer();
@@ -37,7 +36,7 @@ Future<MapillaryThumbDataModel> getSinglePostData(String imageId) async {
         HttpHeaders.contentTypeHeader: "application/json",
       },
     );
-    
+
     if (response.statusCode == 200) {
       final item = response.jsonBody();
       result = MapillaryThumbDataModel.fromJson(item);

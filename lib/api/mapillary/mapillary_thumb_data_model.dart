@@ -16,7 +16,8 @@ class MapillaryThumbDataModel {
 
   factory MapillaryThumbDataModel.fromJson(Map<String, dynamic> json) {
     return MapillaryThumbDataModel(
-        thumbUrl: json[api.mapillaryThumb1024Url], imageId: json[api.mapillaryId]);
+        thumbUrl: json[api.mapillaryThumb1024Url],
+        imageId: json[api.mapillaryId]);
   }
 
   String get thumbUrl => this._thumbUrl;
