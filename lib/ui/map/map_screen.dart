@@ -221,7 +221,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ),
                       ClickablePolylineLayer(
                         polylineCulling: true,
-                        saveLayers: true,
                         polylines: model.polylines
                             .map(
                               (polyline) => ClickablePolyline(
