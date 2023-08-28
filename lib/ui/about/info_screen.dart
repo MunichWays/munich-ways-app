@@ -79,7 +79,7 @@ class _InfoScreenState extends State<InfoScreen> {
                 title: Text('Feedback'),
                 trailing: Icon(Icons.mail),
                 subtitle: Text(
-                    'Du hast einen Fehler entdeckt? oder eine Verbesserungsidee? Sende uns Feedback per Email.'),
+                    'Du hast einen Fehler entdeckt? oder eine Verbesserungsidee? Sende uns Feedback per Email an mail@munichways.de.'),
                 onTap: () async {
                   final Uri _emailLaunchUri = Uri(
                       scheme: 'mailto',
