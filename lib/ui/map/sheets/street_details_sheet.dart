@@ -39,122 +39,112 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _postThumbData,
-      builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                '${snapshot.error} occurred',
-                style: TextStyle(fontSize: 18),
-              ),
-            );
-          } else if (snapshot.hasData) {
-            MapillaryThumbDataModel data = snapshot.data;
-            return Padding(
-              padding: EdgeInsets.only(top: widget.statusBarHeight),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: new BorderRadius.only(
-                    topLeft: const Radius.circular(15.0),
-                    topRight: const Radius.circular(15.0),
+    return Padding(
+      padding: EdgeInsets.only(top: widget.statusBarHeight),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: new BorderRadius.only(
+            topLeft: const Radius.circular(15.0),
+            topRight: const Radius.circular(15.0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 0), // changes position of shadow
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            ListView(
+              shrinkWrap: true,
+              children: [
+                _Header(farbe: widget.details.farbe, name: widget.details.name),
+                FutureBuilder(
+                  future: _postThumbData,
+                  builder: (context, AsyncSnapshot<dynamic> snapshot) {
+                    if (snapshot.hasData) {
+                      MapillaryThumbDataModel data = snapshot.data;
+                      return _MapillaryImage(
+                          mapillaryImgId: data.imageId,
+                          mapillaryThumbUrl: data.thumbUrl);
+                    } else if (snapshot.hasError) {
+                      log.e("${snapshot.error}");
+                      return Text('Fehler beim Laden.');
+                    } else {
+                      return const CircularProgressIndicator();
+                    }
+                  },
+                ),
+                if (widget.details.streckenLink != null)
+                  ListItem(
+                      label: "Strecke",
+                      value: widget.details.streckenLink!.title,
+                      onTap: widget.details.streckenLink!.url != null
+                          ? () async {
+                              launchWebsite(widget.details.streckenLink!.url);
+                            }
+                          : null),
+                ListItem(
+                  label: "Ist-Situation",
+                  value: widget.details.ist,
+                ),
+                ListItem(
+                  label: "Happy Bike Level",
+                  value: widget.details.happyBikeLevel,
+                ),
+                ListItem(
+                  label: "Soll-Maßnahmen",
+                  value: widget.details.soll,
+                ),
+                ListItem(
+                    label: "Maßnahmen-Kategorie",
+                    value: widget.details.kategorie!.title,
+                    onTap: widget.details.kategorie!.url != null
+                        ? () async {
+                            launchWebsite(widget.details.kategorie!.url);
+                          }
+                        : null),
+                ListItem(
+                  label: "Beschreibung",
+                  value: widget.details.description,
+                ),
+                ListItem(
+                  label: "Munichways-Id",
+                  value: widget.details.munichwaysId,
+                ),
+                ListItem(
+                  label: "Status-Umsetzung",
+                  value: widget.details.statusUmsetzung,
+                ),
+                ListItem(
+                  label: "Bezirk",
+                  value: widget.details.bezirk!.name,
+                  onTap: () async {
+                    launchWebsite(widget.details.bezirk!.link.url);
+                  },
+                ),
+                for (var link in widget.details.links!)
+                  ListItem(
+                    label: "Link",
+                    value: link.title,
+                    onTap: () async {
+                      launchWebsite(link.url);
+                    },
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: Offset(0, 0), // changes position of shadow
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    ListView(
-                      shrinkWrap: true,
-                      children: [
-                        _Header(
-                            farbe: widget.details.farbe,
-                            name: widget.details.name),
-                        _MapillaryImage(
-                            mapillaryImgId: widget.details.mapillaryImgId,
-                            mapillaryThumbUrl: data.thumbUrl),
-                        if (widget.details.streckenLink != null)
-                          ListItem(
-                              label: "Strecke",
-                              value: widget.details.streckenLink!.title,
-                              onTap: widget.details.streckenLink!.url != null
-                                  ? () async {
-                                      launchWebsite(
-                                          widget.details.streckenLink!.url);
-                                    }
-                                  : null),
-                        ListItem(
-                          label: "Ist-Situation",
-                          value: widget.details.ist,
-                        ),
-                        ListItem(
-                          label: "Happy Bike Level",
-                          value: widget.details.happyBikeLevel,
-                        ),
-                        ListItem(
-                          label: "Soll-Maßnahmen",
-                          value: widget.details.soll,
-                        ),
-                        ListItem(
-                            label: "Maßnahmen-Kategorie",
-                            value: widget.details.kategorie!.title,
-                            onTap: widget.details.kategorie!.url != null
-                                ? () async {
-                                    launchWebsite(
-                                        widget.details.kategorie!.url);
-                                  }
-                                : null),
-                        ListItem(
-                          label: "Beschreibung",
-                          value: widget.details.description,
-                        ),
-                        ListItem(
-                          label: "Munichways-Id",
-                          value: widget.details.munichwaysId,
-                        ),
-                        ListItem(
-                          label: "Status-Umsetzung",
-                          value: widget.details.statusUmsetzung,
-                        ),
-                        ListItem(
-                          label: "Bezirk",
-                          value: widget.details.bezirk!.name,
-                          onTap: () async {
-                            launchWebsite(widget.details.bezirk!.link.url);
-                          },
-                        ),
-                        for (var link in widget.details.links!)
-                          ListItem(
-                            label: "Link",
-                            value: link.title,
-                            onTap: () async {
-                              launchWebsite(link.url);
-                            },
-                          ),
-                      ],
-                    ),
-                    // overlays the first item in the ListView - the height of header is dynamic therefore could not use a fixed height
-                    // workaround to have a header which is draggable, I assume there
-                    // should be a nicer solution with DraggableScrollableSheet and
-                    // Slivers but I couldn't get it to work with dynamic list height.
-                    _Header(
-                        farbe: widget.details.farbe, name: widget.details.name),
-                  ],
-                ),
-              ),
-            );
-          }
-        }
-        return CircularProgressIndicator();
-      },
+              ],
+            ),
+            // overlays the first item in the ListView - the height of header is dynamic therefore could not use a fixed height
+            // workaround to have a header which is draggable, I assume there
+            // should be a nicer solution with DraggableScrollableSheet and
+            // Slivers but I couldn't get it to work with dynamic list height.
+            _Header(farbe: widget.details.farbe, name: widget.details.name),
+          ],
+        ),
+      ),
     );
   }
 
