@@ -1,7 +1,8 @@
 # Changelog
 
-##  1.2.2+22
+##  1.2.2+23
 * Fix Crash on zooming out map
+* Set Android Target SDK to API 33
 
 ##  1.2.1+21
 * Version fix
