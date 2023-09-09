@@ -1,5 +1,8 @@
 # Changelog
 
+##  1.2.2+22
+* Fix Crash on zooming out map
+
 ##  1.2.1+21
 * Version fix
 
