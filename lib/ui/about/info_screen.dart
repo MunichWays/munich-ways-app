@@ -5,6 +5,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:package_info/package_info.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class InfoScreen extends StatefulWidget {
@@ -84,14 +85,10 @@ class _InfoScreenState extends State<InfoScreen> {
                   final Uri _emailLaunchUri = Uri(
                       scheme: 'mailto',
                       path: 'mail@munichways.de',
-                      queryParameters: {
-                        'subject': 'Feedback Munichways App',
-                        'body': 'Appversion: $appVersion\n'
-                      });
-                  String emailUriString = _emailLaunchUri.toString();
-                  if (await canLaunchUrlString(emailUriString)) {
-                    await launchUrlString(emailUriString);
-                  } else {
+                      query:
+                          'subject=Feedback Munichways App&body=Appversion: $appVersion\n\n');
+                  if (!await launchUrl(_emailLaunchUri,
+                      mode: LaunchMode.externalApplication)) {
                     _displayError(("Keine Email App gefunden"));
                   }
                 },
