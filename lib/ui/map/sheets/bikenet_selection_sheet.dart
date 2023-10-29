@@ -41,7 +41,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
               children: [
                 Text(
                   "Fahrradnetz auswählen",
-                  style: Theme.of(context).textTheme.headline6,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
                 IconButton(
                   icon: Icon(Icons.close),

@@ -23,14 +23,14 @@ class MissingRadnetzeCard extends StatelessWidget {
               children: [
                 Text(
                   "Keine Radnetze gefunden",
-                  style: Theme.of(context).textTheme.headline6,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
                 SizedBox(
                   height: 16,
                 ),
                 Text(
                   "Beim Laden der Radlnetze ist ein Fehler aufgetreteten. Bitte überprüfe Deine Internetverbindung und versuche es erneut.",
-                  style: Theme.of(context).textTheme.subtitle1,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 SizedBox(
                   height: 16,
@@ -45,8 +45,12 @@ class MissingRadnetzeCard extends StatelessWidget {
                         ),
                         label: Text(
                           "Radlnetze laden",
-                          style: Theme.of(context).textTheme.button!.copyWith(
-                              fontSize: 18, color: AppColors.munichWaysBlue),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge!
+                              .copyWith(
+                                  fontSize: 18,
+                                  color: AppColors.munichWaysBlue),
                         ),
                       )
               ],
