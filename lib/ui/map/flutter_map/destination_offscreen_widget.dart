@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:math';
 import 'dart:ui' as ui show Image;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/plugin_api.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
@@ -42,10 +43,9 @@ class _DestinationOffScreenWidgetState
 
   @override
   Widget build(BuildContext context) {
-    FlutterMapState map = FlutterMapState.maybeOf(context)!;
+    MapCamera map = MapCamera.of(context);
 
-    CustomPoint destinationPoint =
-        map.latLngToScreenPoint(widget.destination.latLng);
+    Point destinationPoint = map.latLngToScreenPoint(widget.destination.latLng);
     Offset destinationOffset =
         Offset(destinationPoint.x.toDouble(), destinationPoint.y.toDouble());
 
@@ -64,7 +64,7 @@ class _DestinationOffScreenWidgetState
 
 class PositionOutsideScreenPainter extends CustomPainter {
   final Offset offset;
-  final FlutterMapState map;
+  final MapCamera map;
   final ui.Image image;
   final double statusBarHeight;
 

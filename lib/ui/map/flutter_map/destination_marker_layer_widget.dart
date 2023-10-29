@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/plugin_api.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:munich_ways/model/place.dart';
 
 const String pinPath = "images/pin_blue.png";
@@ -18,9 +18,9 @@ class DestinationMarkerLayerWidget extends StatelessWidget {
                 width: 44.0,
                 height: 57.0,
                 point: destination!.latLng,
-                builder: (ctx) => Container(
-                      child: Image(image: AssetImage(pinPath)),
-                    ),
+                child: Container(
+                  child: Image(image: AssetImage(pinPath)),
+                ),
                 rotate: true),
           ])
         : Container();

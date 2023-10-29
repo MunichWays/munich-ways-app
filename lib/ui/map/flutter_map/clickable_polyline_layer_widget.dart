@@ -1,11 +1,12 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/plugin_api.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class ClickablePolyline extends Polyline {
   VoidCallback? onTap;
+  final List<Offset> offsets = [];
 
   ClickablePolyline(
       {required points,
@@ -43,12 +44,24 @@ class ClickablePolylineLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final map = FlutterMapState.maybeOf(context)!;
+    final map = MapCamera.of(context);
+    final mapController = MapController.of(context);
+
+    for (ClickablePolyline polyline in polylines) {
+      polyline.offsets.clear();
+      for (var j = 0; j < polyline.points.length - 1; j++) {
+        var point = polyline.points[j];
+        var pos = map.project(point);
+        pos = (pos * map.getZoomScale(map.zoom, map.zoom)) -
+            map.pixelOrigin.toDoublePoint();
+        polyline.offsets.add(Offset(pos.x.toDouble(), pos.y.toDouble()));
+      }
+    }
 
     return GestureDetector(
         onDoubleTap: () {
           log.d("onDoubleTap");
-          map.move(map.center, map.zoom + 1, source: MapEventSource.custom);
+          mapController.move(map.center, map.zoom + 1, id: "doubleTapOnMap");
         },
         onTapUp: (TapUpDetails details) {
           //Detect nearest polyline to the tapped point
@@ -98,9 +111,7 @@ class ClickablePolylineLayer extends StatelessWidget {
           });
         },
         child: PolylineLayer(
-                polylines: polylines,
-                polylineCulling: polylineCulling,
-                saveLayers: saveLayers)
+                polylines: polylines, polylineCulling: polylineCulling)
             .build(context));
   }
 

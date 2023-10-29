@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/plugin_api.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -59,7 +59,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
                 }
 
                 if (!_liveLocationEnabled()) {
-                  _startLiveLocation(FlutterMapState.maybeOf(context));
+                  _startLiveLocation();
                 }
 
                 return _buildLiveLocationLayer(context);
@@ -77,7 +77,7 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
         width: 24.0,
         height: 24.0,
         point: LatLng(currentPosition!.latitude, currentPosition!.longitude),
-        builder: (ctx) => Container(
+        child: Container(
           decoration: ShapeDecoration(
             color: AppColors.mapAccentColor,
             shape: CircleBorder(
@@ -97,7 +97,9 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
     return _positionStreamSubscription != null;
   }
 
-  void _startLiveLocation(FlutterMapState? mapState) {
+  void _startLiveLocation() {
+    var mapState = MapCamera.of(context);
+    var mapController = MapController.of(context);
     if (_positionStreamSubscription == null) {
       final positionStream = Geolocator.getPositionStream();
       _positionStreamSubscription = positionStream.handleError((error) {
@@ -109,10 +111,10 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
           this.currentPosition = position;
           if (widget.moveMapAlong) {
             log.d("Move along");
-            mapState!.move(
+            mapController.move(
                 LatLng(currentPosition!.latitude, currentPosition!.longitude),
                 mapState.zoom,
-                source: MapEventSource.custom);
+                id: "MoveAlongLiveLocation");
           }
         });
       });

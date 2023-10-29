@@ -1,7 +1,6 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -163,10 +162,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.currentLocationStream.listen((LatLng location) {
           log.d("onUpdateLocation");
-          mapController!.move(location, mapController!.zoom);
+          mapController!.move(location, mapController!.camera.zoom);
         });
         model.destinationStream.listen((Place place) {
-          mapController!.move(place.latLng, mapController!.zoom);
+          mapController!.move(place.latLng, mapController!.camera.zoom);
         });
         return model;
       },
@@ -182,11 +181,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   FlutterMap(
                     mapController: mapController,
                     options: MapOptions(
-                      interactiveFlags: InteractiveFlag.drag |
-                          InteractiveFlag.pinchZoom |
-                          InteractiveFlag.rotate,
-                      center: _stachus,
-                      zoom: 15,
+                      interactionOptions: InteractionOptions(
+                        flags: InteractiveFlag.drag |
+                            InteractiveFlag.pinchZoom |
+                            InteractiveFlag.rotate,
+                      ),
+                      initialCenter: _stachus,
+                      initialZoom: 15,
                       maxZoom: 18,
                       minZoom: 10,
                       onPositionChanged:
@@ -198,23 +199,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           model.setDestination(Place(null, evt.tapPosition));
                         } else if (evt is MapEventRotate) {
                           setState(() {
-                            rotationInDegrees = mapController?.rotation ?? 0;
+                            rotationInDegrees =
+                                mapController?.camera.rotation ?? 0;
                           });
                         }
                       },
                       onMapReady: () {
                         model.onMapReady();
                         setState(() {
-                          rotationInDegrees = mapController?.rotation ?? 0;
+                          rotationInDegrees =
+                              mapController?.camera.rotation ?? 0;
                         });
                       },
                     ),
                     children: [
                       TileLayer(
                         urlTemplate:
-                            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: "de.munichways.app",
-                        subdomains: ['a', 'b', 'c'],
                       ),
                       Container(
                         color: Colors.black26,
@@ -247,8 +249,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         moveMapAlong:
                             model.locationState == LocationState.FOLLOW,
                       ),
-                    ],
-                    nonRotatedChildren: [
                       if (model.destination != null)
                         DestinationOffScreenWidget(
                             destination: model.destination!),
