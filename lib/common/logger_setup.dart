@@ -11,12 +11,12 @@ var log = Logger(
 class CustomPrinter extends PrettyPrinter {
   static final stackTraceRegex = RegExp(r'#[0-9]+[\s]+(.+) \(([^\s]+)\)');
   static final levelPrefixes = {
-    Level.verbose: '[V]',
+    Level.trace: '[T]',
     Level.debug: '[D]',
     Level.info: '[I]',
     Level.warning: '[W]',
     Level.error: '[E]',
-    Level.wtf: '[WTF]',
+    Level.fatal: '[F]',
   };
 
   CustomPrinter() : super(methodCount: 1, printTime: true);
@@ -27,25 +27,25 @@ class CustomPrinter extends PrettyPrinter {
 
     String? stackTraceStr;
     if (event.stackTrace == null) {
-      if (methodCount > 0) {
-        stackTraceStr = formatStackTrace(StackTrace.current, methodCount);
+      if ((methodCount ?? 0) > 0) {
+        stackTraceStr = formatStackTrace(StackTrace.current, methodCount ?? 0);
       }
-    } else if (errorMethodCount > 0) {
-      stackTraceStr = formatStackTrace(event.stackTrace, errorMethodCount);
+    } else if ((errorMethodCount ?? 0) > 0) {
+      stackTraceStr = formatStackTrace(event.stackTrace, errorMethodCount ?? 0);
     }
 
     var errorStr = event.error?.toString();
 
     String? timeStr;
     if (printTime) {
-      timeStr = getTime();
+      timeStr = getTime(DateTime.now());
     }
     return [
       "$timeStr${levelPrefixes[event.level]}$stackTraceStr $messageStr${errorStr ?? ''}"
     ];
   }
 
-  String? formatStackTrace(StackTrace? stackTrace, int methodCount) {
+  String? formatStackTrace(StackTrace? stackTrace, int? methodCount) {
     var lines = stackTrace.toString().split("\n");
 
     var formatted = <String>[];
@@ -77,7 +77,7 @@ class CustomPrinter extends PrettyPrinter {
   }
 
   @override
-  String getTime() {
+  String getTime(DateTime time) {
     String _threeDigits(int n) {
       if (n >= 100) return "$n";
       if (n >= 10) return "0$n";
@@ -89,11 +89,10 @@ class CustomPrinter extends PrettyPrinter {
       return "0$n";
     }
 
-    var now = DateTime.now();
-    String h = _twoDigits(now.hour);
-    String min = _twoDigits(now.minute);
-    String sec = _twoDigits(now.second);
-    String ms = _threeDigits(now.millisecond);
+    String h = _twoDigits(time.hour);
+    String min = _twoDigits(time.minute);
+    String sec = _twoDigits(time.second);
+    String ms = _threeDigits(time.millisecond);
     return "$h:$min:$sec.$ms";
   }
 }

@@ -39,13 +39,13 @@ class ListItem extends StatelessWidget {
                           children: [
                             Text(
                               this.label,
-                              style: Theme.of(context).textTheme.overline,
+                              style: Theme.of(context).textTheme.labelSmall,
                             ),
                             SizedBox(
                               height: 6,
                             ),
                             Text(this.value!,
-                                style: Theme.of(context).textTheme.subtitle1)
+                                style: Theme.of(context).textTheme.titleMedium)
                           ],
                         ),
                       ),

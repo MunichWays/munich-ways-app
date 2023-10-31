@@ -1,26 +1,35 @@
-import 'package:http_interceptor/http/interceptor_contract.dart';
-import 'package:http_interceptor/models/request_data.dart';
-import 'package:http_interceptor/models/response_data.dart';
+import 'package:http/http.dart';
+import 'package:http_interceptor/models/interceptor_contract.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class LoggingInterceptor implements InterceptorContract {
   @override
-  Future<RequestData> interceptRequest({required RequestData data}) async {
-    log.d("REQUEST");
-    log.d(data.url);
-    log.d(data.baseUrl);
-    log.d(data.headers);
-    log.d(data.body);
-    log.d(data.method);
-    return data;
+  Future<bool> shouldInterceptRequest() async {
+    return true;
   }
 
   @override
-  Future<ResponseData> interceptResponse({required ResponseData data}) async {
+  Future<BaseRequest> interceptRequest({required BaseRequest request}) async {
+    log.d("REQUEST");
+    log.d(request.url);
+    log.d(request.headers);
+    log.d(request.method);
+    log.d(request.toString());
+    return request;
+  }
+
+  @override
+  Future<bool> shouldInterceptResponse() async {
+    return true;
+  }
+
+  @override
+  Future<BaseResponse> interceptResponse(
+      {required BaseResponse response}) async {
     log.d("RESPONSE");
-    log.d(data.statusCode);
-    log.d(data.body);
-    log.d(data.headers);
-    return data;
+    log.d(response.statusCode);
+    log.d(response.headers);
+    log.d(response.toString());
+    return response;
   }
 }

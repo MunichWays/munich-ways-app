@@ -41,7 +41,7 @@ class MapInfoDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     "Linie durchgezogen: RadlVorrang-Netz",
-                    style: Theme.of(context).textTheme.subtitle1,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
               ]),
@@ -56,7 +56,7 @@ class MapInfoDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     "Linie gepunktet: Alle Strecken",
-                    style: Theme.of(context).textTheme.subtitle1,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
               ]),
@@ -105,7 +105,7 @@ class ColorListItem extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.subtitle1,
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
       ]),

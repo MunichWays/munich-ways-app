@@ -165,7 +165,7 @@ class MapScreenViewModel extends ChangeNotifier {
       _polylinesGesamtnetz = await _munichwaysApi.getRadlvorrangnetz();
     } catch (e) {
       _displayErrorMsg(e.toString());
-      log.e("Error loading Netze", e);
+      log.e("Error loading Netze", error: e);
     }
     if (_firstLoad) {
       _firstLoad = false;
