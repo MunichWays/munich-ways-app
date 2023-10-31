@@ -1,6 +1,8 @@
 import 'package:app_settings/app_settings.dart';
+import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -8,6 +10,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_marker_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
+import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -31,6 +34,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final LatLng _stachus = LatLng(48.14, 11.5652);
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
+
+  final Future<CacheStore> _mapCacheStoreFuture =
+      MapCacheStore().getMapCacheStore();
 
   bool displayCurrentLocationOnResume = false;
   late MapScreenViewModel mapViewModel;
@@ -178,82 +184,100 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               drawer: SideDrawer(),
               body: Stack(
                 children: [
-                  FlutterMap(
-                    mapController: mapController,
-                    options: MapOptions(
-                      interactionOptions: InteractionOptions(
-                        flags: InteractiveFlag.drag |
-                            InteractiveFlag.pinchZoom |
-                            InteractiveFlag.rotate,
-                      ),
-                      initialCenter: _stachus,
-                      initialZoom: 15,
-                      maxZoom: 18,
-                      minZoom: 10,
-                      onPositionChanged:
-                          (MapPosition position, bool hasGesture) {
-                        model.onMapPositionChanged(position, hasGesture);
-                      },
-                      onMapEvent: (evt) {
-                        if (evt is MapEventLongPress) {
-                          model.setDestination(Place(null, evt.tapPosition));
-                        } else if (evt is MapEventRotate) {
-                          setState(() {
-                            rotationInDegrees =
-                                mapController?.camera.rotation ?? 0;
-                          });
+                  FutureBuilder<CacheStore>(
+                      future: _mapCacheStoreFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final cacheStore = snapshot.data!;
+                          return FlutterMap(
+                            mapController: mapController,
+                            options: MapOptions(
+                              interactionOptions: InteractionOptions(
+                                flags: InteractiveFlag.drag |
+                                    InteractiveFlag.pinchZoom |
+                                    InteractiveFlag.rotate,
+                              ),
+                              initialCenter: _stachus,
+                              initialZoom: 15,
+                              maxZoom: 18,
+                              minZoom: 10,
+                              onPositionChanged:
+                                  (MapPosition position, bool hasGesture) {
+                                model.onMapPositionChanged(
+                                    position, hasGesture);
+                              },
+                              onMapEvent: (evt) {
+                                if (evt is MapEventLongPress) {
+                                  model.setDestination(
+                                      Place(null, evt.tapPosition));
+                                } else if (evt is MapEventRotate) {
+                                  setState(() {
+                                    rotationInDegrees =
+                                        mapController?.camera.rotation ?? 0;
+                                  });
+                                }
+                              },
+                              onMapReady: () {
+                                model.onMapReady();
+                                setState(() {
+                                  rotationInDegrees =
+                                      mapController?.camera.rotation ?? 0;
+                                });
+                              },
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: "de.munichways.app",
+                                tileProvider: CachedTileProvider(
+                                    store: cacheStore,
+                                    maxStale: Duration(days: 30)),
+                              ),
+                              Container(
+                                color: Colors.black26,
+                              ),
+                              ClickablePolylineLayer(
+                                polylineCulling: true,
+                                polylines: model.polylines
+                                    .map(
+                                      (polyline) => ClickablePolyline(
+                                          points: polyline.points!
+                                              .map((latlng) => LatLng(
+                                                  latlng.latitude,
+                                                  latlng.longitude))
+                                              .toList(),
+                                          strokeWidth: 3.0,
+                                          isDotted: polyline.isGesamtnetz,
+                                          color: AppColors.getPolylineColor(
+                                              polyline.details!.farbe),
+                                          onTap: () {
+                                            model.onTap(polyline.details);
+                                          }),
+                                    )
+                                    .toList(),
+                              ),
+                              DestinationMarkerLayerWidget(
+                                destination: model.destination,
+                              ),
+                              LocationLayerWidget(
+                                enabled: model.locationState !=
+                                    LocationState.NOT_AVAILABLE,
+                                moveMapAlong:
+                                    model.locationState == LocationState.FOLLOW,
+                              ),
+                              if (model.destination != null)
+                                DestinationOffScreenWidget(
+                                    destination: model.destination!),
+                            ],
+                          );
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text(snapshot.error.toString()));
+                        } else {
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
-                      },
-                      onMapReady: () {
-                        model.onMapReady();
-                        setState(() {
-                          rotationInDegrees =
-                              mapController?.camera.rotation ?? 0;
-                        });
-                      },
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: "de.munichways.app",
-                      ),
-                      Container(
-                        color: Colors.black26,
-                      ),
-                      ClickablePolylineLayer(
-                        polylineCulling: true,
-                        polylines: model.polylines
-                            .map(
-                              (polyline) => ClickablePolyline(
-                                  points: polyline.points!
-                                      .map((latlng) => LatLng(
-                                          latlng.latitude, latlng.longitude))
-                                      .toList(),
-                                  strokeWidth: 3.0,
-                                  isDotted: polyline.isGesamtnetz,
-                                  color: AppColors.getPolylineColor(
-                                      polyline.details!.farbe),
-                                  onTap: () {
-                                    model.onTap(polyline.details);
-                                  }),
-                            )
-                            .toList(),
-                      ),
-                      DestinationMarkerLayerWidget(
-                        destination: model.destination,
-                      ),
-                      LocationLayerWidget(
-                        enabled:
-                            model.locationState != LocationState.NOT_AVAILABLE,
-                        moveMapAlong:
-                            model.locationState == LocationState.FOLLOW,
-                      ),
-                      if (model.destination != null)
-                        DestinationOffScreenWidget(
-                            destination: model.destination!),
-                    ],
-                  ),
+                      }),
                   SafeArea(
                     child: Stack(
                       children: [
