@@ -235,7 +235,7 @@ class MapScreenViewModel extends ChangeNotifier {
     Position? from = await Geolocator.getLastKnownPosition();
     if (from == null) {
       _displayErrorMsg(
-          "Keine Route, da kein aktueller Standort als Ziel vorhanden");
+          "Keine Route, da kein aktueller Standort als Start vorhanden");
       return;
     }
     final to = this.destination;
