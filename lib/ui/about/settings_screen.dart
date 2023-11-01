@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
-import 'package:munich_ways/ui/map/munichways_api.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 
 class SettingsScreen extends StatefulWidget {

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:munich_ways/api/munichways/geojson_converter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/polyline.dart';
-import 'package:munich_ways/ui/map/geojson_converter.dart';
+
+import '../api_exception.dart';
 
 class MunichwaysApi {
   final String _radlvorrangnetzUrl =
@@ -36,12 +38,4 @@ class MunichwaysApi {
   Future<void> emptyCache() {
     return DefaultCacheManager().emptyCache();
   }
-}
-
-class ApiException implements Exception {
-  final String message;
-
-  ApiException([this.message = ""]);
-
-  String toString() => "ApiException: $message";
 }

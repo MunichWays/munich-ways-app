@@ -10,6 +10,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/clickable_polyline_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/destination_marker_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
+import 'package:munich_ways/ui/map/flutter_map/location_to_destination_route_layer.dart';
 import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
@@ -237,6 +238,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               Container(
                                 color: Colors.black26,
                               ),
+                              CurrentPosToDestinationRouteLayer(
+                                  route: model.routeCurrentPosToDestination),
                               ClickablePolylineLayer(
                                 polylineCulling: true,
                                 polylines: model.polylines
