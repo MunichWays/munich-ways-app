@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 
@@ -10,6 +11,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
+  Future<String> mapCacheStoreStatsFuture = MapCacheStore().getStats();
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +37,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MunichwaysApi().emptyCache();
                 },
               ),
+              FutureBuilder<String>(
+                  future: mapCacheStoreStatsFuture,
+                  builder: (context, snapshot) {
+                    String stats;
+                    if (snapshot.hasData) {
+                      stats = snapshot.data!;
+                    } else {
+                      stats = "Lade ...";
+                    }
+                    ;
+                    return ListTile(
+                      title: Text('Kartencache löschen'),
+                      subtitle: Text(stats),
+                      trailing: Icon(Icons.delete),
+                      onTap: () async {
+                        await MapCacheStore().emptyCache();
+                        setState(() {
+                          mapCacheStoreStatsFuture = MapCacheStore().getStats();
+                        });
+                      },
+                    );
+                  }),
             ],
           ).toList(),
         ),
