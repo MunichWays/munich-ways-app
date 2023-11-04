@@ -120,9 +120,9 @@ class _InfoScreenState extends State<InfoScreen> {
                   if (await canLaunchUrlString(url)) {
                     await launchUrlString(url);
                   } else {
-                      _displayError(
+                    _displayError(
                         'Keine App zum öffnen von munichways.de/nutzungbedingungen-app gefunden');
-                 }
+                  }
                 },
               ),
               ListTile(
