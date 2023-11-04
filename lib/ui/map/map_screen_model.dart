@@ -255,6 +255,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
     _routeRequest?.cancel();
     this.route = MapRoute(null, MapRouteState.LOADING);
+    notifyListeners();
     _routeRequest = CancelableOperation<CycleRoute>.fromFuture(
         _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
         onCancel: () => {log.d("canceled prev request")});
