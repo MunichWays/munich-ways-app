@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/nominatim_api.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/ui/map/search_location/nominatim_api.dart';
 
 void main() {
   test('search', () async {

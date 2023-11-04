@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:munich_ways/api/nominatim_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/ui/map/search_location/nominatim_api.dart';
 
 class SearchLocationScreenViewModel extends ChangeNotifier {
   bool loading = false;

@@ -50,10 +50,9 @@ class _DestinationOffScreenWidgetState
         Offset(destinationPoint.x.toDouble(), destinationPoint.y.toDouble());
 
     if (image != null) {
-      double statusBarHeight = MediaQuery.of(context).padding.top;
       return CustomPaint(
           foregroundPainter: PositionOutsideScreenPainter(
-              destinationOffset, map, image!, statusBarHeight),
+              destinationOffset, map, image!, MapInsets.of(context)),
           child: Container());
     } else {
       log.d("image is null");
@@ -66,10 +65,10 @@ class PositionOutsideScreenPainter extends CustomPainter {
   final Offset offset;
   final MapCamera map;
   final ui.Image image;
-  final double statusBarHeight;
+  final EdgeInsets mapInsets;
 
   PositionOutsideScreenPainter(
-      this.offset, this.map, this.image, this.statusBarHeight);
+      this.offset, this.map, this.image, this.mapInsets);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -122,8 +121,8 @@ class PositionOutsideScreenPainter extends CustomPainter {
       }
     }
 
-    double topPadding = statusBarHeight + 66;
-    const double bottomPadding = 54;
+    double topPadding = mapInsets.top;
+    double bottomPadding = mapInsets.bottom;
     double y = math.min(math.max(topPadding, pointOnScreenBorder.dy),
         size.height - bottomPadding);
 
@@ -152,5 +151,17 @@ class PositionOutsideScreenPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return false;
+  }
+}
+
+// Insets the map to the usable region which is not overlayed by other ui
+class MapInsets {
+  static const double top = 66; //appBar height
+  static const double bottom = 54; //actionButtons height
+
+  static EdgeInsets of(BuildContext context) {
+    EdgeInsets systemUiPadding = MediaQuery.of(context).padding;
+    return EdgeInsets.fromLTRB(systemUiPadding.left, systemUiPadding.top + top,
+        systemUiPadding.right, systemUiPadding.bottom + bottom);
   }
 }

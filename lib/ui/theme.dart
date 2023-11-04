@@ -11,6 +11,11 @@ class AppColors {
 
   static const mapAccentColor = Color(0xFF2196F3);
 
+  static const mapRouteColor = mapAccentColor;
+  static const mapRouteBorderColor = Color(0xFF213DF3);
+
+  static var disabledMapButton = Colors.black45;
+
   static Color getPolylineColor(_color) {
     switch (_color) {
       case "schwarz":

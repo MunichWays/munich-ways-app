@@ -4,7 +4,7 @@ import 'package:munich_ways/common/json_body_extension.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 
-import '../munichways_api.dart';
+import 'api_exception.dart';
 
 class NominatimApi {
   Client? client;
