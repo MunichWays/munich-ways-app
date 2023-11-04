@@ -21,6 +21,7 @@ class DestinationMarkerLayerWidget extends StatelessWidget {
                 child: Container(
                   child: Image(image: AssetImage(pinPath)),
                 ),
+                alignment: Alignment.topCenter,
                 rotate: true),
           ])
         : Container();

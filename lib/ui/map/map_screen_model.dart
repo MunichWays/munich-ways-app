@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,8 +10,9 @@ import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
-import 'package:munich_ways/model/route.dart' as model;
+import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/ui/map/route_button_bar.dart';
 import 'package:wakelock/wakelock.dart';
 
 class MapScreenViewModel extends ChangeNotifier {
@@ -20,7 +22,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   double? bearing;
 
-  model.Route? routeCurrentPosToDestination;
+  MapRoute route = MapRoute(null, MapRouteState.NO_ROUTE);
 
   bool get displayMissingPolylinesMsg {
     return !_firstLoad && (_polylinesGesamtnetz.isEmpty);
@@ -74,6 +76,9 @@ class MapScreenViewModel extends ChangeNotifier {
   late Stream<Place> destinationStream;
   late StreamController<Place> _destinationStreamController;
 
+  late Stream<MapRoute> routeStream;
+  late StreamController<MapRoute> _routeStreamController;
+
   MapScreenViewModel() {
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
@@ -88,6 +93,8 @@ class MapScreenViewModel extends ChangeNotifier {
     currentLocationStream = currentLocationController.stream;
     _destinationStreamController = StreamController();
     destinationStream = _destinationStreamController.stream;
+    _routeStreamController = StreamController();
+    routeStream = _routeStreamController.stream;
   }
 
   void _displayErrorMsg(String msg) {
@@ -231,6 +238,8 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearRoute();
   }
 
+  CancelableOperation<CycleRoute>? _routeRequest = null;
+
   void _requestRoute() async {
     Position? from = await Geolocator.getLastKnownPosition();
     if (from == null) {
@@ -243,19 +252,43 @@ class MapScreenViewModel extends ChangeNotifier {
       _displayErrorMsg("Keine Route, da kein Ziel vorhanden");
       return;
     }
-    try {
-      model.Route route = await _radlNaviApi
-          .route([LatLng(from.latitude, from.longitude), to.latLng]);
-      this.routeCurrentPosToDestination = route;
-    } catch (e) {
+
+    _routeRequest?.cancel();
+    this.route = MapRoute(null, MapRouteState.LOADING);
+    _routeRequest = CancelableOperation<CycleRoute>.fromFuture(
+        _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
+        onCancel: () => {log.d("canceled prev request")});
+    _routeRequest?.value.then((value) {
+      this.route = MapRoute(value, MapRouteState.SHOWN);
+      _routeStreamController.add(this.route);
+      notifyListeners();
+    }).catchError((e) {
       _displayErrorMsg("Fehler bei Routensuche $e");
-      this.routeCurrentPosToDestination = null;
-    }
-    notifyListeners();
+      this.route = MapRoute(null, MapRouteState.ERROR);
+      notifyListeners();
+    });
   }
 
   void _clearRoute() {
-    this.routeCurrentPosToDestination = null;
+    this.route = MapRoute(null, MapRouteState.NO_ROUTE);
+    notifyListeners();
+  }
+
+  void toggleRoute() {
+    switch (this.route.state) {
+      case MapRouteState.SHOWN:
+        {
+          this.route = MapRoute(this.route.route, MapRouteState.HIDDEN);
+        }
+      case MapRouteState.HIDDEN:
+        {
+          this.route = MapRoute(this.route.route, MapRouteState.SHOWN);
+        }
+      default:
+        {
+          //do nothing
+        }
+    }
     notifyListeners();
   }
 }

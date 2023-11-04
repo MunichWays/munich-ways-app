@@ -25,7 +25,7 @@ class RadlNaviApi {
   }
 
   // https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#route-service
-  Future<Route> route(List<LatLng> coordinates) async {
+  Future<CycleRoute> route(List<LatLng> coordinates) async {
     String coordinatesString = coordinates
         .map((e) => '${e.longitude.toString()},${e.latitude.toString()}')
         .join(';');
@@ -52,10 +52,15 @@ class RadlNaviApi {
         var json = response.jsonBody();
         var firstRoute = (json['routes'] as List).firstOrNull;
         var polyline = decodePolyline(firstRoute['geometry']);
+        var distance = firstRoute['distance'] as num;
+        var duration = firstRoute['duration'] as num;
 
-        return Route(polyline
-            .map((e) => LatLng(e[0].toDouble(), e[1].toDouble()))
-            .toList());
+        return CycleRoute(
+            polyline
+                .map((e) => LatLng(e[0].toDouble(), e[1].toDouble()))
+                .toList(),
+            distance.toDouble(),
+            duration.toDouble());
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }

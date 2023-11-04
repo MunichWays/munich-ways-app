@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:munich_ways/model/route.dart' as model;
+import 'package:munich_ways/ui/map/route_button_bar.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 class CurrentPosToDestinationRouteLayer extends StatelessWidget {
-  final model.Route? route;
+  final MapRoute route;
 
-  const CurrentPosToDestinationRouteLayer({Key? key, this.route})
+  const CurrentPosToDestinationRouteLayer(this.route, {Key? key})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return route != null
+    return route.state == MapRouteState.SHOWN
         ? PolylineLayer(polylines: [
             Polyline(
-                points: route!.points,
+                points: route.route!.points,
                 strokeWidth: 6.0,
                 borderColor: AppColors.mapRouteBorderColor,
                 borderStrokeWidth: 2.0,

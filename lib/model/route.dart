@@ -1,7 +1,9 @@
 import 'package:latlong2/latlong.dart';
 
-class Route {
+class CycleRoute {
   List<LatLng> points;
+  double distance;
+  double duration;
 
-  Route(this.points);
+  CycleRoute(this.points, this.distance, this.duration);
 }

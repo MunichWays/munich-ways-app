@@ -16,7 +16,7 @@ import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
+import 'package:munich_ways/ui/map/route_button_bar.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -174,6 +174,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           mapController!.move(place.latLng, mapController!.camera.zoom);
         });
+        model.routeStream.listen((MapRoute route) {
+          EdgeInsets mapInsets = MapInsets.of(context);
+          mapController!.fitCamera(CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(route.route!.points),
+              padding: EdgeInsets.fromLTRB(
+                  mapInsets.left + 16,
+                  mapInsets.top + 16,
+                  mapInsets.right + 16,
+                  mapInsets.bottom + 16)));
+        });
         return model;
       },
       child: Consumer<MapScreenViewModel>(
@@ -238,8 +248,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               Container(
                                 color: Colors.black26,
                               ),
-                              CurrentPosToDestinationRouteLayer(
-                                  route: model.routeCurrentPosToDestination),
                               ClickablePolylineLayer(
                                 polylineCulling: true,
                                 polylines: model.polylines
@@ -260,6 +268,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     )
                                     .toList(),
                               ),
+                              CurrentPosToDestinationRouteLayer(model.route),
                               DestinationMarkerLayerWidget(
                                 destination: model.destination,
                               ),
@@ -314,7 +323,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               mainAxisSize: MainAxisSize.max,
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                SearchLocationActionButton(model: model),
+                                RouteButtonBar(model: model),
                                 Space(),
                                 SizedBox(
                                   height: 40,
@@ -409,40 +418,6 @@ class Space extends StatelessWidget {
     return SizedBox(
       height: 8,
       width: 8,
-    );
-  }
-}
-
-class SearchLocationActionButton extends StatelessWidget {
-  final MapScreenViewModel model;
-
-  const SearchLocationActionButton({
-    Key? key,
-    required this.model,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton.small(
-      heroTag: null,
-      backgroundColor: Colors.white,
-      child: Icon(
-        model.destination != null ? Icons.search_off : Icons.search,
-        color: model.destination != null
-            ? AppColors.mapAccentColor
-            : Colors.black45,
-      ),
-      onPressed: () async {
-        if (model.destination == null) {
-          Place? place = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SearchLocationScreen()),
-          ) as Place?;
-          model.setDestination(place);
-        } else {
-          model.clearDestination();
-        }
-      },
     );
   }
 }
