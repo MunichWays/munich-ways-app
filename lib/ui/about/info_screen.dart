@@ -60,10 +60,6 @@ class _InfoScreenState extends State<InfoScreen> {
             tiles: [
               ListTile(
                 title: Text("$appName $appVersion"),
-                subtitle: Text(packageName),
-              ),
-              ListTile(
-                title: Text('Webseite'),
                 subtitle: Text('munichways.de'),
                 trailing: Icon(Icons.link),
                 onTap: () async {
@@ -73,6 +69,20 @@ class _InfoScreenState extends State<InfoScreen> {
                   } else {
                     _displayError(
                         'Keine App zum öffnen von munichways.de gefunden');
+                  }
+                },
+              ),
+              ListTile(
+                title: Text('RadlNavi'),
+                subtitle: Text('radlnavi.de'),
+                trailing: Icon(Icons.link),
+                onTap: () async {
+                  const url = 'https://radlnavi.de';
+                  if (await canLaunchUrlString(url)) {
+                    await launchUrlString(url);
+                  } else {
+                    _displayError(
+                        'Keine App zum öffnen von radlnavi.de gefunden');
                   }
                 },
               ),
@@ -99,6 +109,20 @@ class _InfoScreenState extends State<InfoScreen> {
                 trailing: Icon(Icons.info_outline),
                 onTap: () async {
                   Navigator.of(context).pushNamed(NavRoutes.imprint);
+                },
+              ),
+              ListTile(
+                title: Text('Nutzungsbedingungen'),
+                subtitle: Text('munichways.de/nutzungbedingungen-app'),
+                trailing: Icon(Icons.link),
+                onTap: () async {
+                  const url = 'https://munichways.de/nutzungbedingungen-app';
+                  if (await canLaunchUrlString(url)) {
+                    await launchUrlString(url);
+                  } else {
+                      _displayError(
+                        'Keine App zum öffnen von munichways.de/nutzungbedingungen-app gefunden');
+                 }
                 },
               ),
               ListTile(
