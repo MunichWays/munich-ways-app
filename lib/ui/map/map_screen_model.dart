@@ -12,7 +12,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
-import 'package:munich_ways/ui/map/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:wakelock/wakelock.dart';
 
 class MapScreenViewModel extends ChangeNotifier {

@@ -13,10 +13,12 @@ import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_to_destination_route_layer.dart';
 import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/location_button.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/show_gesamtnetz_button.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
-import 'package:munich_ways/ui/map/route_button_bar.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -318,41 +320,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           alignment: Alignment.bottomRight,
                           child: Padding(
                             padding: const EdgeInsets.only(
-                                top: 72.0, left: 8.0, right: 8.0, bottom: 8.0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.end,
+                                top: 8.0, left: 8.0, right: 8.0, bottom: 16.0),
+                            child: Wrap(
+                              alignment: WrapAlignment.end,
+                              verticalDirection: VerticalDirection.down,
+                              spacing: 8,
+                              runSpacing: 8,
+                              runAlignment: WrapAlignment.end,
+                              clipBehavior: Clip.none,
                               children: [
                                 RouteButtonBar(model: model),
-                                Space(),
-                                SizedBox(
-                                  height: 40,
-                                  child: FittedBox(
-                                    child: FloatingActionButton.extended(
-                                      heroTag: null,
-                                      onPressed: () {
-                                        model.toggleGesamtnetzVisible();
-                                      },
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: model.isGesamtnetzVisible
-                                          ? AppColors.mapAccentColor
-                                          : Colors.black45,
-                                      icon: Icon(
-                                        model.isGesamtnetzVisible
-                                            ? Icons.layers
-                                            : Icons.layers_clear,
-                                      ),
-                                      label: Text("Alle"),
-                                      tooltip: "Alle Strecken ausblenden",
-                                    ),
-                                  ),
-                                ),
-                                Space(),
-                                LocationActionButton(
+                                ShowGesamtnetzButton(model: model),
+                                LocationButton(
+                                  locationState: model.locationState,
                                   onPressed: () async {
                                     model.onPressLocationBtn();
                                   },
-                                  locationState: model.locationState,
                                 ),
                               ],
                             ),
@@ -448,52 +431,5 @@ class CompassButton extends StatelessWidget {
         onPressed: onPressed,
       ),
     );
-  }
-}
-
-class LocationActionButton extends StatelessWidget {
-  final Function onPressed;
-  final LocationState locationState;
-
-  const LocationActionButton({
-    Key? key,
-    required this.onPressed,
-    required this.locationState,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton.small(
-      heroTag: null,
-      backgroundColor: Colors.white,
-      onPressed: this.onPressed as void Function()?,
-      child: _buildIcon(),
-    );
-  }
-
-  Icon _buildIcon() {
-    log.d(this.locationState);
-    switch (this.locationState) {
-      case LocationState.NOT_AVAILABLE:
-        return Icon(
-          Icons.location_searching,
-          color: Colors.black26,
-        );
-      case LocationState.DISPLAY:
-        return Icon(
-          Icons.my_location,
-          color: Colors.black54,
-        );
-      case LocationState.FOLLOW:
-        return Icon(
-          Icons.my_location,
-          color: AppColors.mapAccentColor,
-        );
-      default:
-        return Icon(
-          Icons.location_searching,
-          color: Colors.black26,
-        );
-    }
   }
 }

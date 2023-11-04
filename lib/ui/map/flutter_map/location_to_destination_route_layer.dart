@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:munich_ways/ui/map/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 class CurrentPosToDestinationRouteLayer extends StatelessWidget {
