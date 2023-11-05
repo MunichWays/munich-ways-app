@@ -30,8 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                 title: Text('Radnetz neu laden'),
-                subtitle:
-                    Text('Die bewerteten Strecken werden beim Karte öffnen erneut geladen.'),
+                subtitle: Text(
+                    'Die bewerteten Strecken werden beim Karte öffnen erneut geladen.'),
                 trailing: Icon(Icons.delete),
                 onTap: () {
                   MunichwaysApi().emptyCache();
