@@ -206,10 +206,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             mapController: mapController,
                             options: MapOptions(
                               interactionOptions: InteractionOptions(
-                                flags: InteractiveFlag.drag |
-                                    InteractiveFlag.pinchZoom |
-                                    InteractiveFlag.rotate,
-                              ),
+                                  flags: InteractiveFlag.all,
+                                  enableMultiFingerGestureRace: true),
                               initialCenter: _stachus,
                               initialZoom: 15,
                               maxZoom: 18,
