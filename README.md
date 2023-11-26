@@ -44,3 +44,28 @@ alias=<Alias>
 aliasPassword=<Password>
 ```
 3. Run `flutter build apk` or see the other output options
+
+#### How to test
+- Handy per USB Kabel anschließen
+- Voraussetzung Handy einrichten: Einstellungen > Entwickleroptionen > USB-Debugging aktivieren
+- im Android Studion erscheint das USB Symbol bei physical device- z.B Samsung Sm F711B
+- im Visual Studio code App starten: Button run (grüner Pfeil) oder flutter run -v
+  C:\Users\Thomas\dev\flutter\munich-ways-app> flutter run -v  
+-----------
+#### How to change code 
+ Code Änderung mit Android Studio
+ - Android Studion starten
+ - Handy anschließen, siehe oben
+ - unten rechts auf den aktuellen Branch klicken
+ - ggf. auf Master klicken und mit "Update" die neueste Version holen
+ - im Scrumboard issue auswählen oder anlegen und die Nummer merken
+ - auf Master klicken und "New branch from selected" klicken
+ - Branchname <issue nummen>_<kurzer Titel>
+ - Stelle suchen und ändern
+ - oben rechts auf den grünen Run button klicken
+ - bei Fehlern ist ggf. ist ein flutter ubgrade nötig (Sven fragen)
+ - Änderung am Handy testen
+ - Links in "Change" geänderte Dateien auswählen, darunter eine kurze Commit Nachricht eingeben und unten auf "Commit and Push" klicken
+ - push mit Token wählen, ggf. Token erneuern wenn abgelaufen in github neuen Token generieren
+ - Wenn gepushed gehe im Browser zu github pulls: https://github.com/MunichWays/munich-ways-app/pulls
+ - Pull request für den Branch anstoßen, geht an Sven zum Review
