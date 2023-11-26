@@ -2,50 +2,97 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/theme.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class SideDrawer extends StatelessWidget {
-  const SideDrawer({
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+  GlobalKey<ScaffoldMessengerState>();
+
+  SideDrawer({
     Key? key,
   }) : super(key: key);
+
+  void _displayError(String errorMsg, BuildContext context) {
+    scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
+      content: Text(errorMsg),
+      duration: Duration(seconds: 3),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
     String? currentRoute = ModalRoute.of(context)!.settings.name;
     log.d(currentRoute);
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          DrawerHeader(
-            child: Image(image: AssetImage('images/logo.png')),
-            decoration: BoxDecoration(
+    return ScaffoldMessenger(
+      key: scaffoldMessengerKey,
+      child: Scaffold(
+        drawer: MyDrawer(),
+        body: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              child: Image(image: AssetImage('images/logo.png')),
+              decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border(
-                    bottom: BorderSide(
-                  color: AppColors.munichWaysBlue,
-                  width: 1,
-                ))),
-          ),
-          NavigationDrawerItem(
+                  bottom: BorderSide(
+                    color: AppColors.munichWaysBlue,
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+            NavigationDrawerItem(
               title: "Karte",
               icon: Icons.map,
               route: NavRoutes.map,
-              currentRoute: currentRoute),
-          NavigationDrawerItem(
-            title: 'Info',
-            icon: Icons.info_outline,
-            route: NavRoutes.info,
-            currentRoute: currentRoute,
-          ),
-          NavigationDrawerItem(
-            title: 'Einstellungen',
-            icon: Icons.settings,
-            route: NavRoutes.settings,
-            currentRoute: currentRoute,
-          ),
-        ],
+              currentRoute: currentRoute,
+            ),
+            NavigationDrawerItem(
+              title: 'Einstellungen',
+              icon: Icons.settings,
+              route: NavRoutes.settings,
+              currentRoute: currentRoute,
+            ),
+            ListTile(
+              title: Text(
+                'Spenden',
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width *
+                      0.045,
+                ),
+              ),
+              subtitle: Text('munichways.de/spenden'),
+              leading: Icon(Icons.touch_app_outlined, color: Colors.black),
+              onTap: () async {
+                const url = 'https://munichways.de/spenden';
+                if (await canLaunchUrlString(url)) {
+                  await launchUrlString(url);
+                } else {
+                  _displayError(
+                      'Keine App zum Öffnen von munichways.de gefunden',
+                      context);
+                }
+              },
+            ),
+            NavigationDrawerItem(
+              title: 'Info',
+              icon: Icons.info_outline,
+              route: NavRoutes.info,
+              currentRoute: currentRoute,
+            ),
+          ],
+        ),
       ),
     );
+  }
+}
+
+class MyDrawer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SideDrawer();
   }
 }
 
@@ -72,7 +119,9 @@ class NavigationDrawerItem extends StatelessWidget {
         title: Text(
           title,
           style: TextStyle(
-              color: selected ? Colors.white : Colors.black, fontSize: 16),
+            color: selected ? Colors.white : Colors.black,
+            fontSize: 16,
+          ),
         ),
         leading: Icon(icon, color: selected ? Colors.white : Colors.black),
         onTap: () {
