@@ -69,6 +69,12 @@ class StreetDetails extends Equatable {
 
   factory StreetDetails.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> properties = json['properties'];
+    // Parse mapillaryImgId using ImgIdParser
+    String? parsedMapillaryImgId = ImgIdParser().parse(
+      properties['mapillary_img_id']?.toString(), // Convert to string here
+      properties['mapillary_link'],
+      properties['strassenansicht_klick_mich'],
+    );
 
     return StreetDetails(
         cartoDbId: properties['cartodb_id'] as int?,
@@ -97,10 +103,7 @@ class StreetDetails extends Equatable {
         rsvStrecke: properties['rsv_strecke'],
         alternative: properties['alternative'],
         planNetztypId: properties['plan_netztyp_id'] as int?,
-        mapillaryImgId: ImgIdParser().parse(
-            properties['mapillary_img_id'],
-            properties['mapillary_link'],
-            properties['strassenansicht_klick_mich']),
+        mapillaryImgId: parsedMapillaryImgId, // Assign the parsed value here
         massnahmenKategorie: properties['massnahmen_kategorie'],
         prioGesamt: properties['prio_gesamt'] != null
             ? double.tryParse(
