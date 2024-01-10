@@ -114,7 +114,7 @@ class _InfoScreenState extends State<InfoScreen> {
               ListTile(
                 title: Text('Nutzungsbedingungen'),
                 subtitle: Text('munichways.de/nutzungbedingungen-app'),
-                trailing: Icon(Icons.link),
+                trailing: Icon(Icons.info_outline),
                 onTap: () async {
                   const url = 'https://munichways.de/nutzungbedingungen-app';
                   if (await canLaunchUrlString(url)) {
@@ -130,6 +130,9 @@ class _InfoScreenState extends State<InfoScreen> {
                 subtitle: Text(
                     'Klicke auf eine Strecke auf der Karte für mehr Details'),
                 trailing: Icon(Icons.touch_app),
+                onTap: () {
+                  Navigator.pushNamed(context, NavRoutes.map);
+                },
               ),
             ],
           ).toList(),
