@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 class SideDrawer extends StatelessWidget {
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
-  GlobalKey<ScaffoldMessengerState>();
+      GlobalKey<ScaffoldMessengerState>();
 
   SideDrawer({
     Key? key,
@@ -59,8 +59,7 @@ class SideDrawer extends StatelessWidget {
               title: Text(
                 'Spenden',
                 style: TextStyle(
-                  fontSize: MediaQuery.of(context).size.width *
-                      0.045,
+                  fontSize: MediaQuery.of(context).size.width * 0.045,
                 ),
               ),
               subtitle: Text('munichways.de/spenden'),
