@@ -98,9 +98,10 @@ class StreetDetails extends Equatable {
         alternative: properties['alternative'],
         planNetztypId: properties['plan_netztyp_id'] as int?,
         mapillaryImgId: ImgIdParser().parse(
-            properties['mapillary_img_id'],
-            properties['mapillary_link'],
-            properties['strassenansicht_klick_mich']),
+          properties['mapillary_img_id']?.toString(),
+          properties['mapillary_link'],
+          properties['strassenansicht_klick_mich'],
+        ),
         massnahmenKategorie: properties['massnahmen_kategorie'],
         prioGesamt: properties['prio_gesamt'] != null
             ? double.tryParse(
