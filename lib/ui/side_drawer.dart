@@ -58,12 +58,14 @@ class SideDrawer extends StatelessWidget {
             ListTile(
               title: Text(
                 'Spenden',
-                style: TextStyle(
-                  fontSize: MediaQuery.of(context).size.width * 0.045,
-                ),
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
-              subtitle: Text('munichways.de/spenden'),
-              leading: Icon(Icons.touch_app_outlined, color: Colors.black),
+              subtitle: Text(
+                'munichways.de/spenden',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              leading: Icon(Icons.touch_app_outlined,
+                  color: Theme.of(context).colorScheme.onSurface),
               onTap: () async {
                 const url = 'https://munichways.de/spenden';
                 if (await canLaunchUrlString(url)) {
@@ -113,16 +115,18 @@ class NavigationDrawerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     bool selected = route == currentRoute;
     return Ink(
-      color: selected ? AppColors.munichWaysBlue : null,
+      color: selected ? Theme.of(context).primaryColor : null,
       child: ListTile(
-        title: Text(
-          title,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.black,
-            fontSize: 16,
-          ),
-        ),
-        leading: Icon(icon, color: selected ? Colors.white : Colors.black),
+        title: Text(title,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: selected
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.onSurface,
+                )),
+        leading: Icon(icon,
+            color: selected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface),
         onTap: () {
           Navigator.of(context).pushNamed(route);
         },

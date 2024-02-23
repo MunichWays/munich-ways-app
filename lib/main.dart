@@ -33,7 +33,9 @@ class _MunichWaysAppState extends State<MunichWaysApp> {
           case NavRoutes.imprint:
             return MaterialPageRoute(builder: (context) => ImprintScreen());
           case NavRoutes.settings:
-            return MaterialPageRoute(builder: (context) => SettingsScreen());
+            return MaterialPageRoute(
+                settings: RouteSettings(name: settings.name),
+                builder: (context) => SettingsScreen());
           default:
             throw Exception("unknown route ${settings.name}");
         }
