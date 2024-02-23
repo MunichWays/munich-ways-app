@@ -45,21 +45,23 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
         ),
       );
     } else if (model.errorMsg != null) {
-      return Column(mainAxisSize: MainAxisSize.min, children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            model.errorMsg!,
-            style: Theme.of(context).textTheme.bodyLarge,
-            textAlign: TextAlign.center,
+      return SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              model.errorMsg!,
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
           ),
-        ),
-        RecentSearchesSection(
-            onClearAllRecentSearches: () {
-              model.clearAllRecentSearches();
-            },
-            recentSearches: model.recentSearches)
-      ]);
+          RecentSearchesSection(
+              onClearAllRecentSearches: () {
+                model.clearAllRecentSearches();
+              },
+              recentSearches: model.recentSearches)
+        ]),
+      );
     } else if (model.places.length > 0) {
       return ListView.separated(
           separatorBuilder: (context, index) {
@@ -89,25 +91,27 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
             }
           });
     } else {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            child: Text(
-              model.isFirstSearch
-                  ? "Bitte gebe einen Suchbegriff ein z.B. eine Straße in München. Betätige dann den Suchen Button."
-                  : "Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.",
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Text(
+                model.isFirstSearch
+                    ? "Bitte gebe einen Suchbegriff ein z.B. eine Straße in München. Betätige dann den Suchen Button."
+                    : "Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.",
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-          RecentSearchesSection(
-              recentSearches: model.recentSearches,
-              onClearAllRecentSearches: () {
-                model.clearAllRecentSearches();
-              })
-        ],
+            RecentSearchesSection(
+                recentSearches: model.recentSearches,
+                onClearAllRecentSearches: () {
+                  model.clearAllRecentSearches();
+                })
+          ],
+        ),
       );
     }
   }
