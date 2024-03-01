@@ -98,7 +98,6 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
   }
 
   void _startLiveLocation() {
-    var mapState = MapCamera.of(context);
     var mapController = MapController.of(context);
     if (_positionStreamSubscription == null) {
       final positionStream = Geolocator.getPositionStream();
@@ -110,10 +109,9 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
         setState(() {
           this.currentPosition = position;
           if (widget.moveMapAlong) {
-            log.d("Move along");
             mapController.move(
                 LatLng(currentPosition!.latitude, currentPosition!.longitude),
-                mapState.zoom,
+                mapController.camera.zoom,
                 id: "MoveAlongLiveLocation");
           }
         });

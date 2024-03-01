@@ -34,7 +34,6 @@ class MapScreenViewModel extends ChangeNotifier {
             (polyline.isGesamtnetz && _isGesamtnetzVisible) ||
             (polyline.isRadlVorrangNetz && _isRadlvorrangnetzVisible))
         .toSet();
-    log.d("Number of polylines: ${tempPolylines.length}");
     return tempPolylines;
   }
 
@@ -70,8 +69,8 @@ class MapScreenViewModel extends ChangeNotifier {
   late Stream showStreetDetails;
   late StreamController showStreetDetailsController;
 
-  late Stream<LatLng> currentLocationStream;
-  late StreamController<LatLng> currentLocationController;
+  late Stream<LatLng> currentLocationBtnClickedStream;
+  late StreamController<LatLng> currentLocationBtnClickedController;
 
   late Stream<Place> destinationStream;
   late StreamController<Place> _destinationStreamController;
@@ -89,8 +88,9 @@ class MapScreenViewModel extends ChangeNotifier {
         _showEnableLocationServiceDialogController.stream;
     showStreetDetailsController = StreamController();
     showStreetDetails = showStreetDetailsController.stream;
-    currentLocationController = StreamController();
-    currentLocationStream = currentLocationController.stream;
+    currentLocationBtnClickedController = StreamController();
+    currentLocationBtnClickedStream =
+        currentLocationBtnClickedController.stream;
     _destinationStreamController = StreamController();
     destinationStream = _destinationStreamController.stream;
     _routeStreamController = StreamController();
@@ -149,7 +149,7 @@ class MapScreenViewModel extends ChangeNotifier {
         notifyListeners();
         Position? position = await Geolocator.getLastKnownPosition();
         if (position != null) {
-          currentLocationController
+          currentLocationBtnClickedController
               .add(LatLng(position.latitude, position.longitude));
         }
         break;

@@ -24,6 +24,7 @@ class _SearchAppBarState extends State<SearchAppBar> {
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 12, 12, 12),
       child: AppBar(
+        elevation: 5,
         titleSpacing: 0.0,
         centerTitle: true,
         iconTheme: IconThemeData(color: Colors.black54),

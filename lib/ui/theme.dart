@@ -36,6 +36,7 @@ class AppColors {
 }
 
 var themeData = ThemeData(
-  primaryColor: AppColors.munichWaysBlue,
   visualDensity: VisualDensity.adaptivePlatformDensity,
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(seedColor: AppColors.munichWaysBlue),
 );

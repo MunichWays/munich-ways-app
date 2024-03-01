@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:munich_ways/api/nominatim_api.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
+
+const MAX_NUMBER_STORED_RECENT_SEARCHES = 50;
 
 class SearchLocationScreenViewModel extends ChangeNotifier {
   bool loading = false;
@@ -15,6 +19,17 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
   NominatimApi api = NominatimApi();
 
   String? errorMsg = null;
+
+  List<Place> recentSearches = [];
+
+  RecentSearchesStore recentSearchesRepo;
+
+  SearchLocationScreenViewModel({required this.recentSearchesRepo}) {
+    recentSearchesRepo.load().then((loadedPlaces) {
+      recentSearches = loadedPlaces;
+      notifyListeners();
+    });
+  }
 
   Future<void> startSearch(String query) async {
     isFirstSearch = false;
@@ -47,6 +62,25 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
 
   void clearErrorMsg() {
     errorMsg = null;
+    notifyListeners();
+  }
+
+  void addToRecentSearches(Place place) {
+    int index = recentSearches
+        .indexWhere((element) => element.displayName == place.displayName);
+    if (index > -1) {
+      recentSearches.removeAt(index);
+    }
+    recentSearches.insert(0, place);
+    recentSearches = recentSearches.sublist(
+        0, min(recentSearches.length, MAX_NUMBER_STORED_RECENT_SEARCHES));
+    recentSearchesRepo.store(recentSearches);
+    notifyListeners();
+  }
+
+  void clearAllRecentSearches() {
+    recentSearches.clear();
+    recentSearchesRepo.store(recentSearches);
     notifyListeners();
   }
 }

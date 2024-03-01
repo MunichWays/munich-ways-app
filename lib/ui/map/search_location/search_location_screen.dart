@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/search_location/search_app_bar.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_screen_model.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +17,8 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<SearchLocationScreenViewModel>(
       create: (BuildContext context) {
-        return SearchLocationScreenViewModel();
+        return SearchLocationScreenViewModel(
+            recentSearchesRepo: recentSearchesRepo);
       },
       child: Consumer<SearchLocationScreenViewModel>(
         builder: (context, model, child) {
@@ -42,23 +45,22 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
         ),
       );
     } else if (model.errorMsg != null) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
+      return SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              model.errorMsg!,
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
           ),
-          SizedBox(
-            height: 16,
-          ),
-          Text(
-            model.errorMsg!,
-            style: TextStyle(fontSize: 18.0),
-            textAlign: TextAlign.center,
-          )
-        ])),
+          RecentSearchesSection(
+              onClearAllRecentSearches: () {
+                model.clearAllRecentSearches();
+              },
+              recentSearches: model.recentSearches)
+        ]),
       );
     } else if (model.places.length > 0) {
       return ListView.separated(
@@ -81,32 +83,95 @@ class _SearchLocationScreenState extends State<SearchLocationScreen> {
                 title: Text(model.places.elementAt(index).displayName!),
                 trailing: Icon(Icons.arrow_forward),
                 onTap: () {
-                  Navigator.pop(context, model.places.elementAt(index));
+                  var place = model.places.elementAt(index);
+                  model.addToRecentSearches(place);
+                  Navigator.pop(context, place);
                 },
               );
             }
           });
     } else {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(
-            Icons.search,
-            size: 48,
-          ),
-          SizedBox(
-            height: 16,
-          ),
-          Text(
-            model.isFirstSearch
-                ? "Bitte gebe einen Suchbegriff z.B. eine Straße in München ein."
-                : "Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.",
-            style: TextStyle(fontSize: 18.0),
-            textAlign: TextAlign.center,
-          )
-        ])),
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Text(
+                model.isFirstSearch
+                    ? "Bitte gebe einen Suchbegriff ein z.B. eine Straße in München. Betätige dann den Suchen Button."
+                    : "Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.",
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            RecentSearchesSection(
+                recentSearches: model.recentSearches,
+                onClearAllRecentSearches: () {
+                  model.clearAllRecentSearches();
+                })
+          ],
+        ),
       );
     }
+  }
+}
+
+class RecentSearchesSection extends StatelessWidget {
+  final List<Place> recentSearches;
+  final Function onClearAllRecentSearches;
+
+  const RecentSearchesSection(
+      {Key? key,
+      required this.onClearAllRecentSearches,
+      required this.recentSearches});
+
+  @override
+  Widget build(BuildContext context) {
+    if (recentSearches.isEmpty) {
+      return Container();
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: Text(
+                "Letzte Ziele",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                this.onClearAllRecentSearches();
+              },
+              child: Text("Suchverlauf löschen"),
+            ),
+          ],
+        ),
+        for (var recentSearch in recentSearches)
+          Column(
+            children: [
+              Divider(height: 1),
+              ListTile(
+                title: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+                    child: Text(recentSearch.displayName!)),
+                trailing: Icon(Icons.arrow_forward),
+                onTap: () {
+                  Navigator.pop(context, recentSearch);
+                },
+              ),
+            ],
+          ),
+      ],
+    );
   }
 }
