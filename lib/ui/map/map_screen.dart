@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:app_settings/app_settings.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/material.dart';
@@ -169,9 +171,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             backgroundColor: Colors.transparent,
           );
         });
-        model.currentLocationStream.listen((LatLng location) {
-          log.d("onUpdateLocation");
-          mapController!.move(location, mapController!.camera.zoom);
+        model.currentLocationBtnClickedStream.listen((LatLng location) {
+          mapController!.move(location, max(mapController!.camera.zoom, 17));
         });
         model.destinationStream.listen((Place place) {
           mapController!.move(place.latLng, mapController!.camera.zoom);
