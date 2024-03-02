@@ -145,7 +145,11 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        locationState = LocationState.FOLLOW;
+        if (locationState == LocationState.FOLLOW) {
+          locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+        } else {
+          locationState = LocationState.FOLLOW;
+        }
         notifyListeners();
         Position? position = await Geolocator.getLastKnownPosition();
         if (position != null) {
@@ -193,10 +197,10 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<void> onMapPositionChanged(
       MapPosition position, bool hasGesture) async {
-    if (locationState == LocationState.FOLLOW && hasGesture) {
-      log.d(locationState);
+    if (hasGesture &&
+        (locationState == LocationState.FOLLOW ||
+            locationState == LocationState.FOLLOW_AND_ROTATE_MAP)) {
       locationState = LocationState.DISPLAY;
-      log.d(locationState);
       notifyListeners();
     }
 
@@ -297,5 +301,6 @@ class MapScreenViewModel extends ChangeNotifier {
 enum LocationState {
   NOT_AVAILABLE, // due to missing permission or support of hardware
   DISPLAY, // display current location on map
-  FOLLOW //move map along current location
+  FOLLOW, //move map along current location
+  FOLLOW_AND_ROTATE_MAP //move map along current location and rotate map in direction user is heading
 }

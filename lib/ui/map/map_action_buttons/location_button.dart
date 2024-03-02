@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/map_button_bar.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/map_button_bar_item.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -44,10 +45,10 @@ class LocationButton extends StatelessWidget {
           Icons.my_location,
           color: AppColors.mapAccentColor,
         );
-      default:
+      case LocationState.FOLLOW_AND_ROTATE_MAP:
         return Icon(
-          Icons.location_searching,
-          color: Colors.black26,
+          MunichwaysIcons.compass,
+          color: AppColors.mapAccentColor,
         );
     }
   }
