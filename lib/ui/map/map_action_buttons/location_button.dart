@@ -34,21 +34,25 @@ class LocationButton extends StatelessWidget {
         return Icon(
           Icons.location_searching,
           color: Colors.black26,
+          size: 36,
         );
       case LocationState.DISPLAY:
         return Icon(
           Icons.my_location,
           color: Colors.black54,
+          size: 36,
         );
       case LocationState.FOLLOW:
         return Icon(
           Icons.my_location,
           color: AppColors.mapAccentColor,
+          size: 36,
         );
       case LocationState.FOLLOW_AND_ROTATE_MAP:
         return Icon(
           MunichwaysIcons.compass,
           color: AppColors.mapAccentColor,
+          size: 36,
         );
     }
   }
