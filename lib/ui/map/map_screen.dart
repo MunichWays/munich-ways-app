@@ -15,6 +15,7 @@ import 'package:munich_ways/ui/map/flutter_map/location_layer_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/location_to_destination_route_layer.dart';
 import 'package:munich_ways/ui/map/flutter_map/map_cache_store.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
+import 'package:munich_ways/ui/map/map_action_buttons/compass_button.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/location_button.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/show_gesamtnetz_button.dart';
@@ -25,7 +26,6 @@ import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
-import 'package:vector_math/vector_math.dart' as vector_math;
 
 import 'flutter_map/destination_offscreen_widget.dart';
 import 'map_app_bar.dart';
@@ -276,8 +276,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               LocationLayerWidget(
                                 enabled: model.locationState !=
                                     LocationState.NOT_AVAILABLE,
-                                moveMapAlong:
-                                    model.locationState == LocationState.FOLLOW,
+                                moveMapAlong: model.locationState ==
+                                        LocationState.FOLLOW ||
+                                    model.locationState ==
+                                        LocationState.FOLLOW_AND_ROTATE_MAP,
+                                rotateMapInUserDirecation:
+                                    model.locationState ==
+                                        LocationState.FOLLOW_AND_ROTATE_MAP,
                               ),
                               if (model.destination != null)
                                 DestinationOffScreenWidget(
@@ -400,35 +405,6 @@ class Space extends StatelessWidget {
     return SizedBox(
       height: 8,
       width: 8,
-    );
-  }
-}
-
-class CompassButton extends StatelessWidget {
-  final double rotationInDegrees;
-  final VoidCallback? onPressed;
-
-  const CompassButton(
-      {Key? key, required this.rotationInDegrees, required this.onPressed})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    bool isVisible = rotationInDegrees % 360 == 0;
-    return AnimatedOpacity(
-      opacity: isVisible ? 0.0 : 1.0,
-      duration: const Duration(milliseconds: 500),
-      child: FloatingActionButton.small(
-        heroTag: null,
-        backgroundColor: Colors.white,
-        child: Transform.rotate(
-            angle: vector_math.radians(rotationInDegrees % 360),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Image(image: AssetImage('images/compass.png')),
-            )),
-        onPressed: onPressed,
-      ),
     );
   }
 }
