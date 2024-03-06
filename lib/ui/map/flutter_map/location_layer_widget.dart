@@ -32,26 +32,6 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
   double? headingInDegree;
 
   @override
-  void initState() {
-    super.initState();
-    _compassEventsStreamSubscription = FlutterCompass.events?.listen((event) {
-      setState(() {
-        if (event.heading == null) {
-          headingInDegree = null;
-        } else {
-          headingInDegree =
-              event.heading! < 0 ? (event.heading! + 360) : event.heading!;
-        }
-
-        if (widget.rotateMapInUserDirecation && headingInDegree != null) {
-          var mapController = MapController.of(context);
-          mapController.rotate(360 - headingInDegree!);
-        }
-      });
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return FutureBuilder<LocationPermission>(
         future: Geolocator.checkPermission(),
@@ -154,6 +134,24 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
         });
       });
     }
+
+    if (_compassEventsStreamSubscription == null) {
+      _compassEventsStreamSubscription = FlutterCompass.events?.listen((event) {
+        setState(() {
+          if (event.heading == null) {
+            headingInDegree = null;
+          } else {
+            headingInDegree =
+                event.heading! < 0 ? (event.heading! + 360) : event.heading!;
+          }
+
+          if (widget.rotateMapInUserDirecation && headingInDegree != null) {
+            var mapController = MapController.of(context);
+            mapController.rotate(360 - headingInDegree!);
+          }
+        });
+      });
+    }
   }
 
   void _stopLiveLocation() {
@@ -161,13 +159,16 @@ class _LocationLayerWidgetState extends State<LocationLayerWidget> {
       _positionStreamSubscription!.cancel();
       _positionStreamSubscription = null;
     }
+
+    if (_compassEventsStreamSubscription != null) {
+      _compassEventsStreamSubscription?.cancel();
+      _compassEventsStreamSubscription = null;
+    }
   }
 
   @override
   void dispose() {
     _stopLiveLocation();
-    _compassEventsStreamSubscription?.cancel();
-    _compassEventsStreamSubscription = null;
     super.dispose();
   }
 }
