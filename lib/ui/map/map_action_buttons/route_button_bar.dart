@@ -42,7 +42,7 @@ class RouteButtonBar extends StatelessWidget {
       MapRouteState.LOADING => "Lade Route ...",
       MapRouteState.SHOWN ||
       MapRouteState.HIDDEN =>
-        "${(mapRoute.route!.distance / 1000).toStringAsFixed(2)} km | ${(mapRoute.route!.duration / 60).toStringAsFixed(0)} Min",
+        "${(mapRoute.route!.distance / 1000).toStringAsFixed(2)} km", // to long: | ${(mapRoute.route!.duration / 60).toStringAsFixed(0)} Min",
       MapRouteState.NO_ROUTE || MapRouteState.ERROR => ""
     };
 
