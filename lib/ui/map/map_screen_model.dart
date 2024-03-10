@@ -40,7 +40,7 @@ class MapScreenViewModel extends ChangeNotifier {
   Place? destination = null;
 
   bool _isRadlvorrangnetzVisible = true;
-  bool _isGesamtnetzVisible = false;
+  bool _isGesamtnetzVisible = true;
 
   bool get isRadlvorrangnetzVisible {
     return _isRadlvorrangnetzVisible;
