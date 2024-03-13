@@ -29,7 +29,7 @@ class ShowGesamtnetzButton extends StatelessWidget {
                 width: 4,
               ),
               Text(
-                "Alle",
+                "",
                 style: TextStyle(
                     color: model.isGesamtnetzVisible
                         ? AppColors.mapAccentColor
