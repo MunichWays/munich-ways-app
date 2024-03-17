@@ -1,5 +1,17 @@
 # Changelog
 
+##  2.0.2+27
+* Version fix
+
+##  2.0.2+26
+* Show all at start
+
+##  2.0.1+25
+* map rotation
+
+##  2.0.0+24
+* routing by RadlNeva.de
+  
 ##  1.2.2+23
 * Fix Crash on zooming out map
 * Set Android Target SDK to API 33
