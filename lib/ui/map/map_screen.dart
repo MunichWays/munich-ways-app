@@ -333,8 +333,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               runAlignment: WrapAlignment.end,
                               clipBehavior: Clip.none,
                               children: [
-                                RouteButtonBar(model: model),
                                 ShowGesamtnetzButton(model: model),
+                                RouteButtonBar(model: model),
                                 LocationButton(
                                   locationState: model.locationState,
                                   onPressed: () async {

@@ -42,7 +42,7 @@ class RouteButtonBar extends StatelessWidget {
       MapRouteState.LOADING => "Lade Route ...",
       MapRouteState.SHOWN ||
       MapRouteState.HIDDEN =>
-        "${(mapRoute.route!.distance / 1000).toStringAsFixed(2)} km", // to long: | ${(mapRoute.route!.duration / 60).toStringAsFixed(0)} Min",
+        "${(mapRoute.route!.distance / 1000).toStringAsFixed(1)} km | ${(mapRoute.route!.duration / 60).toStringAsFixed(0)} Min",
       MapRouteState.NO_ROUTE || MapRouteState.ERROR => ""
     };
 
@@ -94,24 +94,41 @@ class RouteButtonBar extends StatelessWidget {
         ),
       ],
       MapButtonBarItem(
-          onPressed: () async {
-            if (model.destination == null) {
-              Place? place = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SearchLocationScreen()),
-              ) as Place?;
-              model.setDestination(place);
-            } else {
-              model.clearDestination();
-            }
-          },
-          label: model.destination != null ? "Ziel löschen" : "Ziel suchen",
-          child: Icon(
-            model.destination != null ? Icons.search_off : Icons.search,
-            color: model.destination != null
-                ? AppColors.mapAccentColor
-                : AppColors.disabledMapButton,
-          )),
+        onPressed: () async {
+          if (model.destination == null) {
+            Place? place = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SearchLocationScreen()),
+            ) as Place?;
+            model.setDestination(place);
+          } else {
+            model.clearDestination();
+          }
+        },
+        label: model.destination != null ? "Ziel löschen" : "Ziel suchen",
+        child: Row(
+          children: [
+            Icon(
+              model.destination != null ? Icons.search_off : Icons.search,
+              color: model.destination != null
+                  ? AppColors.mapAccentColor
+                  : AppColors.disabledMapButton,
+            ),
+            if (model.destination == null) SizedBox(width: 4),
+            Visibility(
+              visible: model.destination == null,
+              child: Text(
+                "Ziel eingeben",
+                style: TextStyle(
+                  color: model.destination != null
+                      ? AppColors.mapAccentColor
+                      : AppColors.disabledMapButton,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     ]);
   }
 }
