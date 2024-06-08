@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -30,11 +33,30 @@ class StreetDetailsSheet extends StatefulWidget {
 class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
   late Future<MapillaryThumbDataModel> _postThumbData;
 
+  String appVersion = "";
+  GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
   @override
   void initState() {
     super.initState();
 
     _postThumbData = getSinglePostData(widget.details.mapillaryImgId ?? '');
+
+    PackageInfo.fromPlatform().then((PackageInfo packetInfo){
+      setState(() {
+        String version = packetInfo.version;
+        String buildNumber = packetInfo.buildNumber;
+        this.appVersion = '$version($buildNumber) ${Platform.isIOS ? "iOS" : "Android"}';
+      });
+    });
+  }
+
+  void _displayError(String errorMsg) {
+    scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
+      content: Text(errorMsg),
+      duration: Duration(seconds: 3),
+    ));
   }
 
   @override
@@ -83,6 +105,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   ListItem(
                       label: "Strecke",
                       value: widget.details.streckenLink!.title,
+                      icon: Icons.open_in_browser,
                       onTap: widget.details.streckenLink!.url != null
                           ? () async {
                               launchWebsite(widget.details.streckenLink!.url);
@@ -103,6 +126,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                 ListItem(
                     label: "Maßnahmen-Kategorie",
                     value: widget.details.kategorie!.title,
+                    icon: Icons.open_in_browser,
                     onTap: widget.details.kategorie!.url != null
                         ? () async {
                             launchWebsite(widget.details.kategorie!.url);
@@ -123,6 +147,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                 ListItem(
                   label: "Bezirk",
                   value: widget.details.bezirk!.name,
+                  icon: Icons.open_in_browser,
                   onTap: () async {
                     launchWebsite(widget.details.bezirk!.link.url);
                   },
@@ -131,10 +156,26 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   ListItem(
                     label: "Link",
                     value: link.title,
+                    icon: Icons.open_in_browser,
                     onTap: () async {
                       launchWebsite(link.url);
                     },
                   ),
+                ListItem(
+                    label: 'Feedback',
+                    value: 'Du hast einen Fehler entdeckt? oder eine Verbesserungsidee? Sende uns Feedback per Email an mail@munichways.de.',
+                    icon: Icons.email,
+                    onTap: () async {
+                      final Uri _emailLaunchUri = Uri(
+                          scheme: 'mailto',
+                          path: 'mail@munichways.de',
+                          query: 'subject=Feedback Munichways App&body=Appversion: $appVersion\n\n Munichways-Id: ${widget.details.munichwaysId} \n\n');
+                      if (!await launchUrl(_emailLaunchUri,
+                          mode: LaunchMode.externalApplication)) {
+                        _displayError('Keine Email App gefunden');
+                      }
+                    }
+                ),
               ],
             ),
             // overlays the first item in the ListView - the height of header is dynamic therefore could not use a fixed height
