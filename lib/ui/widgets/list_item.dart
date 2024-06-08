@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class ListItem extends StatelessWidget {
   final String label;
   final String? value;
+  final IconData? icon;
   final VoidCallback? onTap;
 
   const ListItem({
     Key? key,
     required this.label,
     required this.value,
+    this.icon,
     this.onTap,
   }) : super(key: key);
 
@@ -50,7 +52,7 @@ class ListItem extends StatelessWidget {
                         ),
                       ),
                       onTap != null
-                          ? Icon(Icons.open_in_browser)
+                          ? Icon(this.icon)
                           : SizedBox.shrink(),
                     ],
                   ),
