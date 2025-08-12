@@ -1,16 +1,15 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:url_launcher/url_launcher_string.dart';
-
-import 'package:munich_ways/common/logger_setup.dart';
-import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
+import 'package:munich_ways/api/mapillary/mapillary_api_v4.dart' as api;
 import 'package:munich_ways/api/mapillary/mapillary_service.dart';
+import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
-import 'package:munich_ways/api/mapillary/mapillary_api_v4.dart' as api;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class StreetDetailsSheet extends StatefulWidget {
   final StreetDetails details;
@@ -50,7 +49,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.5),
+              color: Colors.grey.withAlpha(128),
               spreadRadius: 1,
               blurRadius: 4,
               offset: Offset(0, 0), // changes position of shadow

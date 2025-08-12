@@ -10,8 +10,8 @@ The build server checks if all files are formatted correctly with `dart format`.
 To ensure that the formatter is run locally before a commit set the hooksPath property: `git config --local core.hooksPath ./githooks`
 
 ## Release
-- change version in code pubspec.yaml and commit to master as "Bump version to 2.0.2+26"
- - commit and push
+* change version in code pubspec.yaml and commit to master as "Bump version to 2.0.2+26"
+* commit and push
 
 ### iOS
 
