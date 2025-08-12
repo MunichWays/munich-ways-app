@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
-import 'package:package_info/package_info.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 

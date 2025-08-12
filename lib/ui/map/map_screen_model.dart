@@ -13,7 +13,7 @@ import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
@@ -227,7 +227,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _destinationStreamController.add(place);
 
     // keep screen on while locating destination is on
-    Wakelock.enable();
+    WakelockPlus.enable();
 
     _requestRoute();
   }
@@ -237,7 +237,7 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
 
     // turn screen off when locating destination is off
-    Wakelock.disable();
+    WakelockPlus.disable();
 
     _clearRoute();
   }

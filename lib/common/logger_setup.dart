@@ -19,7 +19,8 @@ class CustomPrinter extends PrettyPrinter {
     Level.fatal: '[F]',
   };
 
-  CustomPrinter() : super(methodCount: 1, printTime: true);
+  CustomPrinter()
+      : super(methodCount: 1, dateTimeFormat: DateTimeFormat.onlyTime);
 
   @override
   List<String> log(LogEvent event) {
@@ -37,7 +38,7 @@ class CustomPrinter extends PrettyPrinter {
     var errorStr = event.error?.toString();
 
     String? timeStr;
-    if (printTime) {
+    if (dateTimeFormat == DateTimeFormat.onlyTime) {
       timeStr = getTime(DateTime.now());
     }
     return [
