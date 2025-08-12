@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -9,10 +7,13 @@ class ImprintScreen extends StatefulWidget {
 }
 
 class _ImprintScreenState extends State<ImprintScreen> {
+  final WebViewController webViewController = WebViewController()
+    ..loadRequest(
+        Uri.parse('https://www.munichways.de/datenschutzerklaerung/'));
+
   @override
   void initState() {
     super.initState();
-    if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
   }
 
   @override
@@ -21,8 +22,8 @@ class _ImprintScreenState extends State<ImprintScreen> {
       appBar: AppBar(
         title: Text("Impressum"),
       ),
-      body: WebView(
-        initialUrl: 'https://www.munichways.de/datenschutzerklaerung/',
+      body: WebViewWidget(
+        controller: webViewController,
       ),
     );
   }
