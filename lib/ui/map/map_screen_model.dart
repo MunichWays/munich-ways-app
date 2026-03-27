@@ -173,6 +173,15 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// North-up / compass control: stop follow/compass tracking like a map gesture.
+  void onCompassNorthUpPressed() {
+    if (locationState == LocationState.NOT_AVAILABLE) {
+      return;
+    }
+    locationState = LocationState.DISPLAY;
+    notifyListeners();
+  }
+
   Future<void> refreshRadlnetze() async {
     loading = true;
     notifyListeners();

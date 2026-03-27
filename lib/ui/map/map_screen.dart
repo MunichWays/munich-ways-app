@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:app_settings/app_settings.dart';
@@ -16,6 +17,7 @@ import 'package:munich_ways/ui/map/map_action_buttons/show_gesamtnetz_button.dar
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
+import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -31,6 +33,14 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
 
+  static const _kNetworkSourceId = 'munichways_radlnetz';
+  static const _kNetworkLayerVisibleId = 'munichways_radlnetz_lines';
+  static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
+
+  /// Cycling route as GeoJSON (not [Line] annotation) so it draws above the radl netz layers.
+  static const _kRouteSourceId = 'munichways_route';
+  static const _kRouteLayerId = 'munichways_route_line';
+
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
 
@@ -44,13 +54,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _overlaySyncRunning = false;
   bool _overlaySyncQueued = false;
 
-  List<Line> _networkLines = const [];
-  List<Line> _networkHitLines = const [];
+  /// Line / GeoJSON feature id → street details (network taps + legacy line taps).
   final Map<String, StreetDetails> _streetDetailsByLineId = {};
-  Line? _routeLine;
+  bool _networkGeoJsonReady = false;
+  bool _routeGeoJsonReady = false;
+  bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
+
+  /// Map camera bearing (clockwise from north) for [CompassButton]. Synced via
+  /// [queryCameraPosition] on [onCameraIdle] — not [trackCameraPosition], to
+  /// avoid per-frame bridge traffic that makes rotation laggy.
   double rotationInDegrees = 0;
   bool _lineTapHandlerAttached = false;
+
+  /// When these match the last sync, the corresponding map layers are skipped.
+  int? _lastSyncedNetworkFingerprint;
+  int? _lastRouteFingerprint;
 
   @override
   void initState() {
@@ -70,6 +89,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _syncCompassBearingFromMap() async {
+    final controller = _mapController;
+    if (controller == null || !mounted) return;
+    final pos = await controller.queryCameraPosition();
+    if (!mounted || pos == null) return;
+    final bearing = pos.bearing;
+    if ((bearing - rotationInDegrees).abs() < 0.5) return;
+    setState(() {
+      rotationInDegrees = bearing;
+    });
   }
 
   Future<void> _askToEnableLocationService() async {
@@ -252,25 +283,56 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           }
                         });
                       }
+                      if (!_featureTapHandlerAttached) {
+                        _featureTapHandlerAttached = true;
+                        controller.onFeatureTapped.add(
+                          (point, latLng, id, layerId, annotation) {
+                            if (layerId != _kNetworkLayerHitId) return;
+                            final details = _streetDetailsByLineId[id];
+                            if (details != null) {
+                              mapViewModel.onTap(details);
+                            }
+                          },
+                        );
+                      }
                     },
                     onStyleLoadedCallback: () {
                       if (!mounted) return;
-                      setState(() {
-                        _styleLoaded = true;
-                      });
-                      _scheduleOverlaySync(model);
+                      final c = _mapController;
+                      Future<void> afterStyle() async {
+                        if (c != null) {
+                          // Remove radl layers before the route layer they sit under.
+                          if (_networkGeoJsonReady) {
+                            await _removeNetworkGeoJsonLayers(c);
+                          }
+                          if (_routeGeoJsonReady) {
+                            await _removeRouteGeoJsonLayers(c);
+                          }
+                        }
+                        _networkGeoJsonReady = false;
+                        _routeGeoJsonReady = false;
+                        if (!mounted) return;
+                        // Style rebuild clears native annotations; drop stale handles.
+                        _destinationCircle = null;
+                        _streetDetailsByLineId.clear();
+                        _lastSyncedNetworkFingerprint = null;
+                        _lastRouteFingerprint = null;
+                        setState(() {
+                          _styleLoaded = true;
+                        });
+                        _scheduleOverlaySync(model);
+                      }
+
+                      unawaited(afterStyle());
                     },
                     onMapLongClick: (screenPoint, latLng) {
                       model.setDestination(Place(null,
                           latlong2.LatLng(latLng.latitude, latLng.longitude)));
                     },
-                    onCameraMove: (cameraPosition) {
-                      if ((cameraPosition.bearing - rotationInDegrees).abs() >=
-                          1) {
-                        setState(() {
-                          rotationInDegrees = cameraPosition.bearing;
-                        });
-                      }
+                    // Compass: update bearing after rotation ends (idle), not
+                    // during the gesture — avoids trackCameraPosition jank.
+                    onCameraIdle: () {
+                      _syncCompassBearingFromMap();
                     },
                   ),
                   SafeArea(
@@ -325,7 +387,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         Padding(
                           padding: const EdgeInsets.all(10.0),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               MapAppBar(
                                 actions: <Widget>[
@@ -340,13 +402,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   ),
                                 ],
                               ),
-                              Space(),
-                              CompassButton(
-                                rotationInDegrees: rotationInDegrees,
-                                onPressed: () {
-                                  _mapController?.animateCamera(
-                                      CameraUpdate.bearingTo(0));
-                                },
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: CompassButton(
+                                    mapBearingDegrees: rotationInDegrees,
+                                    onPressed: () async {
+                                      model.onCompassNorthUpPressed();
+                                      final c = _mapController;
+                                      if (c != null) {
+                                        await c.animateCamera(
+                                            CameraUpdate.bearingTo(0));
+                                        await _syncCompassBearingFromMap();
+                                      }
+                                    },
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -421,6 +493,46 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     });
   }
 
+  /// Identifies the current radl / gesamtnetz overlay set (not route/destination).
+  int _networkFingerprint(MapScreenViewModel model) {
+    final pl = model.polylines.toList()
+      ..sort((a, b) => (a.details?.munichwaysId ?? '')
+          .compareTo(b.details?.munichwaysId ?? ''));
+    var h = Object.hash(
+      model.loading,
+      model.isRadlvorrangnetzVisible,
+      model.isGesamtnetzVisible,
+      pl.length,
+    );
+    for (final p in pl) {
+      h = Object.hash(
+          h, p.details?.munichwaysId, p.details?.cartoDbId, p.points?.length);
+    }
+    return h;
+  }
+
+  int _routeFingerprint(MapScreenViewModel model) {
+    final r = model.route.route;
+    final pts = r?.points;
+    double? lat1, lng1, lat2, lng2;
+    if (pts != null && pts.isNotEmpty) {
+      lat1 = pts.first.latitude;
+      lng1 = pts.first.longitude;
+      lat2 = pts.last.latitude;
+      lng2 = pts.last.longitude;
+    }
+    return Object.hash(
+      model.route.state,
+      pts?.length,
+      lat1,
+      lng1,
+      lat2,
+      lng2,
+      model.destination?.latLng.latitude,
+      model.destination?.latLng.longitude,
+    );
+  }
+
   Future<void> _syncOverlays(MapScreenViewModel model) async {
     final controller = _mapController;
     if (!_styleLoaded || controller == null) return;
@@ -429,89 +541,28 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _overlaySyncQueued = true;
       return;
     }
+
+    final routeFp = _routeFingerprint(model);
+    final netFp = _networkFingerprint(model);
+    final routeChanged = _lastRouteFingerprint != routeFp;
+    final networkChanged = _lastSyncedNetworkFingerprint != netFp;
+    if (!routeChanged && !networkChanged) {
+      return;
+    }
+
     _overlaySyncRunning = true;
     try {
-      if (_networkLines.isNotEmpty) {
-        await controller.removeLines(_networkLines);
-        _networkLines = const [];
-        _streetDetailsByLineId.clear();
+      // Route line layer must exist before radl layers: network uses belowLayerId
+      // so it renders under the route (annotation lines cannot be reordered above
+      // custom style layers).
+      await _ensureRouteGeoJsonLayer(controller);
+      if (networkChanged) {
+        await _syncNetworkLayers(model, controller);
+        _lastSyncedNetworkFingerprint = netFp;
       }
-      if (_networkHitLines.isNotEmpty) {
-        await controller.removeLines(_networkHitLines);
-        _networkHitLines = const [];
-      }
-      if (_routeLine != null) {
-        await controller.removeLine(_routeLine!);
-        _routeLine = null;
-      }
-      if (_destinationCircle != null) {
-        await controller.removeCircle(_destinationCircle!);
-        _destinationCircle = null;
-      }
-
-      final visiblePolylines = model.polylines.toList();
-      final netzLines = visiblePolylines
-          .map((polyline) => LineOptions(
-                geometry: polyline.points!
-                    .map((p) => LatLng(p.latitude, p.longitude))
-                    .toList(),
-                lineWidth: 3.0,
-                lineColor: _hexColor(
-                    AppColors.getPolylineColor(polyline.details!.farbe)),
-              ))
-          .toList();
-      if (netzLines.isNotEmpty) {
-        _networkLines = await controller.addLines(netzLines);
-        // A wider, near-invisible line layer restores the old tap tolerance.
-        // We add this only for currently visible lines, so visibility toggles remain respected.
-        final hitLines = visiblePolylines
-            .map((polyline) => LineOptions(
-                  geometry: polyline.points!
-                      .map((p) => LatLng(p.latitude, p.longitude))
-                      .toList(),
-                  lineWidth: 20.0, // this is the tap tolerance for the lines
-                  lineOpacity: 0.0,
-                  lineColor: '#000000',
-                ))
-            .toList();
-        _networkHitLines = await controller.addLines(hitLines);
-
-        for (var i = 0; i < _networkLines.length; i++) {
-          final details = visiblePolylines[i].details;
-          if (details != null) {
-            _streetDetailsByLineId[_networkLines[i].id] = details;
-          }
-        }
-        for (var i = 0; i < _networkHitLines.length; i++) {
-          final details = visiblePolylines[i].details;
-          if (details != null) {
-            _streetDetailsByLineId[_networkHitLines[i].id] = details;
-          }
-        }
-      }
-
-      if (model.route.state == MapRouteState.SHOWN &&
-          model.route.route != null) {
-        _routeLine = await controller.addLine(LineOptions(
-          geometry: model.route.route!.points
-              .map((p) => LatLng(p.latitude, p.longitude))
-              .toList(),
-          lineWidth: 6.0,
-          lineColor: _hexColor(AppColors.mapRouteColor),
-        ));
-      }
-
-      if (model.destination != null) {
-        _destinationCircle = await controller.addCircle(CircleOptions(
-          geometry: LatLng(
-            model.destination!.latLng.latitude,
-            model.destination!.latLng.longitude,
-          ),
-          circleRadius: 8,
-          circleColor: '#f44336',
-          circleStrokeColor: '#ffffff',
-          circleStrokeWidth: 2,
-        ));
+      if (routeChanged) {
+        await _syncRouteAndDestinationLayers(model, controller);
+        _lastRouteFingerprint = routeFp;
       }
     } finally {
       _overlaySyncRunning = false;
@@ -521,16 +572,138 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       }
     }
   }
-}
 
-class Space extends StatelessWidget {
-  const Space({Key? key}) : super(key: key);
+  Future<void> _syncRouteAndDestinationLayers(
+      MapScreenViewModel model, MapLibreMapController controller) async {
+    if (_destinationCircle != null) {
+      await controller.removeCircle(_destinationCircle!);
+      _destinationCircle = null;
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 8,
-      width: 8,
+    if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
+      await controller.setGeoJsonSource(_kRouteSourceId, {
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': model.route.route!.points
+                  .map((p) => [p.longitude, p.latitude])
+                  .toList(),
+            },
+          },
+        ],
+      });
+    } else {
+      await controller.setGeoJsonSource(_kRouteSourceId, {
+        'type': 'FeatureCollection',
+        'features': <dynamic>[],
+      });
+    }
+
+    if (model.destination != null) {
+      _destinationCircle = await controller.addCircle(CircleOptions(
+        geometry: LatLng(
+          model.destination!.latLng.latitude,
+          model.destination!.latLng.longitude,
+        ),
+        circleRadius: 8,
+        circleColor: '#f44336',
+        circleStrokeColor: '#ffffff',
+        circleStrokeWidth: 2,
+      ));
+    }
+  }
+
+  Future<void> _removeRouteGeoJsonLayers(
+      MapLibreMapController controller) async {
+    if (!_routeGeoJsonReady) return;
+    try {
+      await controller.removeLayer(_kRouteLayerId);
+      await controller.removeSource(_kRouteSourceId);
+    } catch (_) {
+      // Style may have already dropped layers.
+    }
+  }
+
+  Future<void> _ensureRouteGeoJsonLayer(
+      MapLibreMapController controller) async {
+    if (_routeGeoJsonReady) return;
+    await controller.addGeoJsonSource(_kRouteSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
+    await controller.addLineLayer(
+      _kRouteSourceId,
+      _kRouteLayerId,
+      LineLayerProperties(
+        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineWidth: 6.0,
+      ),
+      enableInteraction: false,
     );
+    _routeGeoJsonReady = true;
+  }
+
+  Future<void> _removeNetworkGeoJsonLayers(
+      MapLibreMapController controller) async {
+    if (!_networkGeoJsonReady) return;
+    try {
+      await controller.removeLayer(_kNetworkLayerHitId);
+      await controller.removeLayer(_kNetworkLayerVisibleId);
+      await controller.removeSource(_kNetworkSourceId);
+    } catch (_) {
+      // Style may have already dropped layers.
+    }
+  }
+
+  Future<void> _ensureNetworkGeoJsonLayers(
+      MapLibreMapController controller) async {
+    if (_networkGeoJsonReady) return;
+    await controller.addGeoJsonSource(_kNetworkSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerVisibleId,
+      LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: 3.0,
+        lineOpacity: 1.0,
+      ),
+      belowLayerId: _kRouteLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerHitId,
+      const LineLayerProperties(
+        lineColor: '#000000',
+        lineWidth: 20.0,
+        lineOpacity: 0.0,
+      ),
+      belowLayerId: _kRouteLayerId,
+      enableInteraction: true,
+    );
+    _networkGeoJsonReady = true;
+  }
+
+  Future<void> _syncNetworkLayers(
+      MapScreenViewModel model, MapLibreMapController controller) async {
+    final visiblePolylines = model.polylines.toList();
+    final result = buildNetworkGeoJson(
+      visiblePolylines,
+      (farbe) => _hexColor(AppColors.getPolylineColor(farbe)),
+    );
+
+    _streetDetailsByLineId
+      ..clear()
+      ..addAll(result.detailsByFeatureId);
+
+    await _ensureNetworkGeoJsonLayers(controller);
+    await controller.setGeoJsonSource(
+        _kNetworkSourceId, result.featureCollection);
   }
 }
