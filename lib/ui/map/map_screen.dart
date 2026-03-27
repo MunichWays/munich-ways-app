@@ -61,10 +61,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
 
-  /// Map camera bearing (clockwise from north) for [CompassButton]. Synced via
-  /// [queryCameraPosition] on [onCameraIdle] — not [trackCameraPosition], to
-  /// avoid per-frame bridge traffic that makes rotation laggy.
-  double rotationInDegrees = 0;
+  /// Map camera bearing (clockwise from north) for [CompassButton], from
+  /// [MapLibreMap.onCameraMove] with [trackCameraPosition] enabled.
+  final ValueNotifier<double> _mapBearingDegrees = ValueNotifier<double>(0.0);
   bool _lineTapHandlerAttached = false;
 
   /// When these match the last sync, the corresponding map layers are skipped.
@@ -87,6 +86,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _mapBearingDegrees.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -97,10 +97,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final pos = await controller.queryCameraPosition();
     if (!mounted || pos == null) return;
     final bearing = pos.bearing;
-    if ((bearing - rotationInDegrees).abs() < 0.5) return;
-    setState(() {
-      rotationInDegrees = bearing;
-    });
+    if ((bearing - _mapBearingDegrees.value).abs() < 0.5) return;
+    _mapBearingDegrees.value = bearing;
   }
 
   Future<void> _askToEnableLocationService() async {
@@ -262,6 +260,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       target: LatLng(_stachus.latitude, _stachus.longitude),
                       zoom: 15,
                     ),
+                    trackCameraPosition: true,
                     minMaxZoomPreference: const MinMaxZoomPreference(10, 22),
                     attributionButtonMargins: const Point(-200, -200),
                     myLocationEnabled:
@@ -329,10 +328,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       model.setDestination(Place(null,
                           latlong2.LatLng(latLng.latitude, latLng.longitude)));
                     },
-                    // Compass: update bearing after rotation ends (idle), not
-                    // during the gesture — avoids trackCameraPosition jank.
-                    onCameraIdle: () {
-                      _syncCompassBearingFromMap();
+                    onCameraMove: (CameraPosition position) {
+                      _mapBearingDegrees.value = position.bearing;
                     },
                   ),
                   SafeArea(
@@ -406,16 +403,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 alignment: Alignment.centerRight,
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 6.0),
-                                  child: CompassButton(
-                                    mapBearingDegrees: rotationInDegrees,
-                                    onPressed: () async {
-                                      model.onCompassNorthUpPressed();
-                                      final c = _mapController;
-                                      if (c != null) {
-                                        await c.animateCamera(
-                                            CameraUpdate.bearingTo(0));
-                                        await _syncCompassBearingFromMap();
-                                      }
+                                  child: ValueListenableBuilder<double>(
+                                    valueListenable: _mapBearingDegrees,
+                                    builder: (BuildContext context,
+                                        double bearing, Widget? child) {
+                                      return CompassButton(
+                                        mapBearingDegrees: bearing,
+                                        onPressed: () async {
+                                          model.onCompassNorthUpPressed();
+                                          final c = _mapController;
+                                          if (c != null) {
+                                            await c.animateCamera(
+                                                CameraUpdate.bearingTo(0));
+                                            await _syncCompassBearingFromMap();
+                                          }
+                                        },
+                                      );
                                     },
                                   ),
                                 ),
