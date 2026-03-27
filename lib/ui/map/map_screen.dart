@@ -41,6 +41,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
 
+  /// Show compass when map bearing differs from north by more than this (noise gate).
+  static const double _kShowCompassBearingThresholdDeg = 2.0;
+
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
 
@@ -64,6 +67,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Map camera bearing (clockwise from north) for [CompassButton], from
   /// [MapLibreMap.onCameraMove] with [trackCameraPosition] enabled.
   final ValueNotifier<double> _mapBearingDegrees = ValueNotifier<double>(0.0);
+
+  /// Hidden until the map rotates off north or follow-and-rotate is enabled;
+  /// only tapping the compass hides it again (after bearing returns to north).
+  bool _compassButtonVisible = false;
+  LocationState? _prevLocationStateForCompass;
+
+  /// After compass tap: hide once [queryCameraPosition] reports north (animation
+  /// may still be running when [animateCamera]'s future completes on iOS).
+  bool _pendingCompassHideAfterNorthUp = false;
+
   bool _lineTapHandlerAttached = false;
 
   /// When these match the last sync, the corresponding map layers are skipped.
@@ -99,6 +112,38 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final bearing = pos.bearing;
     if ((bearing - _mapBearingDegrees.value).abs() < 0.5) return;
     _mapBearingDegrees.value = bearing;
+  }
+
+  /// Smallest angle (0–180°) between [bearing] and north.
+  static double _smallestAngleToNorthDegrees(double bearing) {
+    var b = bearing % 360.0;
+    if (b < 0) b += 360.0;
+    return min(b, 360.0 - b);
+  }
+
+  void _onMapCameraMove(CameraPosition position) {
+    _mapBearingDegrees.value = position.bearing;
+    if (!_compassButtonVisible &&
+        _smallestAngleToNorthDegrees(position.bearing) >
+            _kShowCompassBearingThresholdDeg) {
+      setState(() => _compassButtonVisible = true);
+    }
+  }
+
+  /// Hides compass when bearing has reached north ([onCameraIdle] and post-animate).
+  Future<void> _tryFinishCompassHideAfterNorthUp() async {
+    if (!_pendingCompassHideAfterNorthUp || !mounted) return;
+    final controller = _mapController;
+    if (controller == null) return;
+    final pos = await controller.queryCameraPosition();
+    if (!mounted || pos == null) return;
+    final delta = _smallestAngleToNorthDegrees(pos.bearing);
+    if (delta <= _kShowCompassBearingThresholdDeg) {
+      setState(() {
+        _compassButtonVisible = false;
+        _pendingCompassHideAfterNorthUp = false;
+      });
+    }
   }
 
   Future<void> _askToEnableLocationService() async {
@@ -237,6 +282,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          final prevLoc = _prevLocationStateForCompass;
+          if (prevLoc != model.locationState) {
+            final enteredFollowAndRotate =
+                model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP &&
+                    prevLoc != LocationState.FOLLOW_AND_ROTATE_MAP;
+            _prevLocationStateForCompass = model.locationState;
+            if (enteredFollowAndRotate) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && !_compassButtonVisible) {
+                  setState(() => _compassButtonVisible = true);
+                }
+              });
+            }
+          }
+
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -328,8 +388,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       model.setDestination(Place(null,
                           latlong2.LatLng(latLng.latitude, latLng.longitude)));
                     },
-                    onCameraMove: (CameraPosition position) {
-                      _mapBearingDegrees.value = position.bearing;
+                    onCameraMove: _onMapCameraMove,
+                    // [animateCamera] can complete before the bearing animation ends (iOS);
+                    // finish hide when the camera actually settles.
+                    onCameraIdle: () {
+                      unawaited(_tryFinishCompassHideAfterNorthUp());
                     },
                   ),
                   SafeArea(
@@ -399,30 +462,36 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   ),
                                 ],
                               ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 6.0),
-                                  child: ValueListenableBuilder<double>(
-                                    valueListenable: _mapBearingDegrees,
-                                    builder: (BuildContext context,
-                                        double bearing, Widget? child) {
-                                      return CompassButton(
-                                        mapBearingDegrees: bearing,
-                                        onPressed: () async {
-                                          model.onCompassNorthUpPressed();
-                                          final c = _mapController;
-                                          if (c != null) {
-                                            await c.animateCamera(
-                                                CameraUpdate.bearingTo(0));
-                                            await _syncCompassBearingFromMap();
-                                          }
-                                        },
-                                      );
-                                    },
+                              if (_compassButtonVisible)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: ValueListenableBuilder<double>(
+                                      valueListenable: _mapBearingDegrees,
+                                      builder: (BuildContext context,
+                                          double bearing, Widget? child) {
+                                        return CompassButton(
+                                          mapBearingDegrees: bearing,
+                                          onPressed: () async {
+                                            _pendingCompassHideAfterNorthUp =
+                                                true;
+                                            model.onCompassNorthUpPressed();
+                                            final c = _mapController;
+                                            if (c != null) {
+                                              await c.animateCamera(
+                                                  CameraUpdate.bearingTo(0));
+                                              await _syncCompassBearingFromMap();
+                                            }
+                                            if (mounted) {
+                                              await _tryFinishCompassHideAfterNorthUp();
+                                            }
+                                          },
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
