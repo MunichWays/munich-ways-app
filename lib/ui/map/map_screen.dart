@@ -74,6 +74,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   int? _lastSyncedNetworkFingerprint;
   int? _lastRouteFingerprint;
 
+  StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
+    if (rawId == null) return null;
+    final id = rawId.toString();
+    if (id.isEmpty) return null;
+    return _streetDetailsByLineId[id];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -242,21 +249,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
-          final prevLoc = _prevLocationStateForCompass;
-          if (prevLoc != model.locationState) {
-            final enteredFollowAndRotate =
-                model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP &&
-                    prevLoc != LocationState.FOLLOW_AND_ROTATE_MAP;
-            _prevLocationStateForCompass = model.locationState;
-            if (enteredFollowAndRotate) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_compassButtonVisible) {
-                  setState(() => _compassButtonVisible = true);
-                }
-              });
-            }
-          }
-
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -296,7 +288,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       if (!_lineTapHandlerAttached) {
                         _lineTapHandlerAttached = true;
                         controller.onLineTapped.add((line) {
-                          final details = _streetDetailsByLineId[line.id];
+                          final details =
+                              _streetDetailsForNetworkFeatureId(line.id);
                           if (details != null) {
                             mapViewModel.onTap(details);
                           }
@@ -306,8 +299,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         _featureTapHandlerAttached = true;
                         controller.onFeatureTapped.add(
                           (point, latLng, id, layerId, annotation) {
-                            if (layerId != _kNetworkLayerHitId) return;
-                            final details = _streetDetailsByLineId[id];
+                            if (layerId != _kNetworkLayerHitId) {
+                              return;
+                            }
+                            final details =
+                                _streetDetailsForNetworkFeatureId(id);
                             if (details != null) {
                               mapViewModel.onTap(details);
                             }
@@ -698,13 +694,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       belowLayerId: _kRouteLayerId,
       enableInteraction: false,
     );
+    // lineOpacity must stay > 0: some MapLibre builds skip hit-testing for fully
+    // transparent lines, so taps never reach feature#onTap.
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerHitId,
       const LineLayerProperties(
         lineColor: '#000000',
         lineWidth: 20.0,
-        lineOpacity: 0.0,
+        lineOpacity: 0.01,
       ),
       belowLayerId: _kRouteLayerId,
       enableInteraction: true,
