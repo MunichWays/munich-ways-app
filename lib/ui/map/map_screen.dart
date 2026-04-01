@@ -37,7 +37,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerVisibleId = 'munichways_radlnetz_lines';
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
-  /// Cycling route as GeoJSON (not [Line] annotation) so it draws above the radl netz layers.
+  /// Cycling route as GeoJSON (not [Line] annotation). Layer order: Radl-Netz,
+  /// then this line, then highway-name symbol layers (see [_ensureRouteGeoJsonLayer]).
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
 
@@ -316,7 +317,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       final c = _mapController;
                       Future<void> afterStyle() async {
                         if (c != null) {
-                          // Remove radl layers before the route layer they sit under.
+                          // Remove overlay layers before re-adding after style load.
                           if (_networkGeoJsonReady) {
                             await _removeNetworkGeoJsonLayers(c);
                           }
@@ -570,9 +571,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     _overlaySyncRunning = true;
     try {
-      // Route line layer must exist before radl layers: network uses belowLayerId
-      // so it renders under the route (annotation lines cannot be reordered above
-      // custom style layers).
+      // Route sits below the base style’s first highway-name symbol layer; Radl-Netz
+      // sits below the route. Destination uses [MapLibreMapController.addCircle] and
+      // stays above these GeoJSON line layers.
       await _ensureRouteGeoJsonLayer(controller);
       if (networkChanged) {
         await _syncNetworkLayers(model, controller);
@@ -659,6 +660,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineColor: _hexColor(AppColors.mapRouteColor),
         lineWidth: 6.0,
       ),
+      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
       enableInteraction: false,
     );
     _routeGeoJsonReady = true;
