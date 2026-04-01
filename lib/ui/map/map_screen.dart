@@ -41,9 +41,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
 
-  /// Show compass when map bearing differs from north by more than this (noise gate).
-  static const double _kShowCompassBearingThresholdDeg = 2.0;
-
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
 
@@ -64,18 +61,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
 
-  /// Map camera bearing (clockwise from north) for [CompassButton], from
-  /// [MapLibreMap.onCameraMove] with [trackCameraPosition] enabled.
+  /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
+  /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
   final ValueNotifier<double> _mapBearingDegrees = ValueNotifier<double>(0.0);
 
-  /// Hidden until the map rotates off north or follow-and-rotate is enabled;
-  /// only tapping the compass hides it again (after bearing returns to north).
-  bool _compassButtonVisible = false;
-  LocationState? _prevLocationStateForCompass;
-
-  /// After compass tap: hide once [queryCameraPosition] reports north (animation
-  /// may still be running when [animateCamera]'s future completes on iOS).
-  bool _pendingCompassHideAfterNorthUp = false;
+  /// Bumped on [MapLibreMap.onCameraIdle] so [MapCompassControl] can finish hide.
+  final ValueNotifier<int> _compassIdleTick = ValueNotifier<int>(0);
 
   bool _lineTapHandlerAttached = false;
 
@@ -100,6 +91,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _mapBearingDegrees.dispose();
+    _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -112,38 +104,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final bearing = pos.bearing;
     if ((bearing - _mapBearingDegrees.value).abs() < 0.5) return;
     _mapBearingDegrees.value = bearing;
-  }
-
-  /// Smallest angle (0–180°) between [bearing] and north.
-  static double _smallestAngleToNorthDegrees(double bearing) {
-    var b = bearing % 360.0;
-    if (b < 0) b += 360.0;
-    return min(b, 360.0 - b);
-  }
-
-  void _onMapCameraMove(CameraPosition position) {
-    _mapBearingDegrees.value = position.bearing;
-    if (!_compassButtonVisible &&
-        _smallestAngleToNorthDegrees(position.bearing) >
-            _kShowCompassBearingThresholdDeg) {
-      setState(() => _compassButtonVisible = true);
-    }
-  }
-
-  /// Hides compass when bearing has reached north ([onCameraIdle] and post-animate).
-  Future<void> _tryFinishCompassHideAfterNorthUp() async {
-    if (!_pendingCompassHideAfterNorthUp || !mounted) return;
-    final controller = _mapController;
-    if (controller == null) return;
-    final pos = await controller.queryCameraPosition();
-    if (!mounted || pos == null) return;
-    final delta = _smallestAngleToNorthDegrees(pos.bearing);
-    if (delta <= _kShowCompassBearingThresholdDeg) {
-      setState(() {
-        _compassButtonVisible = false;
-        _pendingCompassHideAfterNorthUp = false;
-      });
-    }
   }
 
   Future<void> _askToEnableLocationService() async {
@@ -388,11 +348,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       model.setDestination(Place(null,
                           latlong2.LatLng(latLng.latitude, latLng.longitude)));
                     },
-                    onCameraMove: _onMapCameraMove,
-                    // [animateCamera] can complete before the bearing animation ends (iOS);
-                    // finish hide when the camera actually settles.
+                    onCameraMove: (CameraPosition position) {
+                      _mapBearingDegrees.value = position.bearing;
+                    },
                     onCameraIdle: () {
-                      unawaited(_tryFinishCompassHideAfterNorthUp());
+                      _compassIdleTick.value++;
                     },
                   ),
                   SafeArea(
@@ -462,36 +422,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   ),
                                 ],
                               ),
-                              if (_compassButtonVisible)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(top: 6.0),
-                                    child: ValueListenableBuilder<double>(
-                                      valueListenable: _mapBearingDegrees,
-                                      builder: (BuildContext context,
-                                          double bearing, Widget? child) {
-                                        return CompassButton(
-                                          mapBearingDegrees: bearing,
-                                          onPressed: () async {
-                                            _pendingCompassHideAfterNorthUp =
-                                                true;
-                                            model.onCompassNorthUpPressed();
-                                            final c = _mapController;
-                                            if (c != null) {
-                                              await c.animateCamera(
-                                                  CameraUpdate.bearingTo(0));
-                                              await _syncCompassBearingFromMap();
-                                            }
-                                            if (mounted) {
-                                              await _tryFinishCompassHideAfterNorthUp();
-                                            }
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
+                              MapCompassControl(
+                                mapBearingDegrees: _mapBearingDegrees,
+                                mapIdleTick: _compassIdleTick,
+                                locationState: model.locationState,
+                                onNorthUp: () async {
+                                  model.onCompassNorthUpPressed();
+                                  final c = _mapController;
+                                  if (c != null) {
+                                    await c.animateCamera(
+                                        CameraUpdate.bearingTo(0));
+                                    await _syncCompassBearingFromMap();
+                                  }
+                                },
+                                queryMapBearingDegrees: () async {
+                                  final c = _mapController;
+                                  if (c == null) return null;
+                                  final pos = await c.queryCameraPosition();
+                                  return pos?.bearing;
+                                },
+                              ),
                             ],
                           ),
                         ),
