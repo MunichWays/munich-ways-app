@@ -16,6 +16,7 @@ import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/show_gesamtnetz_button.dart';
 import 'package:munich_ways/ui/map/map_info_dialog.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
@@ -352,6 +353,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _compassIdleTick.value++;
                     },
                   ),
+                  if (model.destination != null &&
+                      _styleLoaded &&
+                      _mapController != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: MapLibreDestinationOffScreenOverlay(
+                          controller: _mapController,
+                          destination: model.destination!,
+                        ),
+                      ),
+                    ),
                   SafeArea(
                     child: Stack(
                       children: [
