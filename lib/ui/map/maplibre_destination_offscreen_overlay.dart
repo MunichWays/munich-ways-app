@@ -7,7 +7,8 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
-/// Same chrome insets as [DestinationOffScreenWidget] / flutter_map: arrow stays
+/// Same chrome insets as the legacy off-screen destination arrow: clear of app bar
+/// and bottom actions.
 /// clear of app bar and bottom action stack.
 class _MapChromeInsets {
   static const double top = 66;

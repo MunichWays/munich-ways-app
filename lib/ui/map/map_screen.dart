@@ -348,6 +348,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     },
                     onCameraMove: (CameraPosition position) {
                       _mapBearingDegrees.value = position.bearing;
+                      model.onMapCenterChanged(latlong2.LatLng(
+                        position.target.latitude,
+                        position.target.longitude,
+                      ));
+                    },
+                    onCameraTrackingDismissed: () {
+                      model.onUserStoppedFollowingLocation();
                     },
                     onCameraIdle: () {
                       _compassIdleTick.value++;

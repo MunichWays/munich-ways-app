@@ -23,10 +23,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_map: ^6.2.1
-  flutter_map_cache: ^1.5.2
+  latlong2: ^0.9.1
   flutter_compass: ^0.8.0
-  dio_cache_interceptor_file_store: ^1.2.2 # file system cache for flutter_map_cache
+  dio_cache_interceptor_file_store: ^1.2.2 # Map tile cache (settings)
   google_polyline_algorithm: ^3.1.0 # decode polylines for routing
   provider: ^6.0.4
   http: ^1.0.0

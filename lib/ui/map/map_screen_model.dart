@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
@@ -204,22 +203,26 @@ class MapScreenViewModel extends ChangeNotifier {
     showStreetDetailsController.add(details);
   }
 
-  Future<void> onMapPositionChanged(
-      MapPosition position, bool hasGesture) async {
-    if (hasGesture &&
-        (locationState == LocationState.FOLLOW ||
-            locationState == LocationState.FOLLOW_AND_ROTATE_MAP)) {
-      locationState = LocationState.DISPLAY;
+  /// MapLibre: call from [MapLibreMap.onCameraMove] with the camera target.
+  void onMapCenterChanged(LatLng center) {
+    if (destination != null) {
+      bearing = Geolocator.bearingBetween(
+        center.latitude,
+        center.longitude,
+        destination!.latLng.latitude,
+        destination!.latLng.longitude,
+      );
+      bearing = (bearing! + 360) % 360;
       notifyListeners();
     }
+  }
 
-    if (destination != null) {
-      this.bearing = Geolocator.bearingBetween(
-          position.center!.latitude,
-          position.center!.longitude,
-          destination!.latLng.latitude,
-          destination!.latLng.longitude);
-      this.bearing = (bearing! + 360) % 360;
+  /// MapLibre: call from [MapLibreMap.onCameraTrackingDismissed] when the user
+  /// breaks location follow / compass tracking.
+  void onUserStoppedFollowingLocation() {
+    if (locationState == LocationState.FOLLOW ||
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      locationState = LocationState.DISPLAY;
       notifyListeners();
     }
   }
