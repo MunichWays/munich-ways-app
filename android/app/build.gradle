@@ -56,7 +56,8 @@ android {
 
     defaultConfig {
         applicationId "com.munichways.app"
-        minSdkVersion flutter.minSdkVersion
+        // MapLibre android-sdk (maplibre_gl) requires minSdk 23; Flutter default is still 21.
+        minSdkVersion 23
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
