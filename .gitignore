@@ -98,6 +98,9 @@ unlinked_spec.ds
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/Podfile.lock
 
+# Cached MapLibre dSYM downloads (see ios/scripts/copy_maplibre_dsym.sh)
+**/ios/.maplibre_dsym/
+
 # macOS
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/Flutter-Debug.xcconfig

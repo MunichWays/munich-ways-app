@@ -24,7 +24,6 @@ dependencies:
   flutter:
     sdk: flutter
   latlong2: ^0.9.1
-  flutter_compass: ^0.8.0
   dio_cache_interceptor_file_store: ^1.2.2 # Map tile cache (settings)
   google_polyline_algorithm: ^3.1.0 # decode polylines for routing
   provider: ^6.0.4
@@ -32,7 +31,6 @@ dependencies:
   http_interceptor: ^2.0.0-beta.7
   logger: ^2.0.1
   geolocator: ^14.0.2
-  app_settings: ^6.1.1
   url_launcher: ^6.0.6
   equatable: ^2.0.2
   package_info_plus: ^8.3.1
