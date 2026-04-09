@@ -303,6 +303,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         target: LatLng(_stachus.latitude, _stachus.longitude),
                         zoom: 15,
                       ),
+                      // Native MapLibre compass (default on) duplicates [MapCompassControl].
+                      compassEnabled: false,
                       trackCameraPosition: true,
                       minMaxZoomPreference: const MinMaxZoomPreference(10, 22),
                       attributionButtonMargins: const Point(-200, -200),
