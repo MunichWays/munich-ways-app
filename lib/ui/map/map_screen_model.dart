@@ -245,6 +245,9 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void clearDestination() {
+    // Drop any in-flight route so a late response cannot repopulate the map.
+    _routeRequest?.cancel();
+    _routeRequest = null;
     this.destination = null;
     notifyListeners();
 
@@ -254,6 +257,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearRoute();
   }
 
+  /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.
   CancelableOperation<CycleRoute>? _routeRequest = null;
 
   void _requestRoute() async {
@@ -269,17 +273,26 @@ class MapScreenViewModel extends ChangeNotifier {
       return;
     }
 
-    _routeRequest?.cancel();
+    _routeRequest
+        ?.cancel(); // New destination / retry: abandon previous request.
     this.route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
     _routeRequest = CancelableOperation<CycleRoute>.fromFuture(
         _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
         onCancel: () => {log.d("canceled prev request")});
     _routeRequest?.value.then((value) {
+      // User may have cleared the destination while the request was running.
+      if (destination == null) {
+        return;
+      }
       this.route = MapRoute(value, MapRouteState.SHOWN);
       _routeStreamController.add(this.route);
       notifyListeners();
     }).catchError((e) {
+      // Same as success path: ignore errors from superseded/cancelled requests.
+      if (destination == null) {
+        return;
+      }
       _displayErrorMsg("Fehler bei Routensuche $e");
       this.route = MapRoute(null, MapRouteState.ERROR);
       notifyListeners();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/nav_routes.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
 
@@ -17,7 +18,8 @@ class MapBottomActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Sit above the OSM attribution strip at the bottom of the map.
-    final bottomInset = MediaQuery.paddingOf(context).bottom + 34;
+    final bottomInset = MediaQuery.paddingOf(context).bottom +
+        kMapBottomActionRowPaddingAboveSafeBottom;
 
     return Positioned(
       left: 16,

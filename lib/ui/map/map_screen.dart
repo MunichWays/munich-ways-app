@@ -12,6 +12,7 @@ import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
@@ -404,6 +405,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       clipBehavior: Clip.none,
                       children: [
                         const OSMCreditsWidget(),
+                        Positioned(
+                          top: 0,
+                          left: 16,
+                          right: 16,
+                          child: MapNavigationHeaderBar(model: model),
+                        ),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
