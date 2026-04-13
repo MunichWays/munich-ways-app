@@ -18,7 +18,6 @@ import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
-import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -276,7 +275,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             key: scaffoldMessengerKey,
             child: Scaffold(
               key: scaffoldKey,
-              drawer: SideDrawer(),
               body: Stack(
                 children: [
                   if (!_mountMapView)

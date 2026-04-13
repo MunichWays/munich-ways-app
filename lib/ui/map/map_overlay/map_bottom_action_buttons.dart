@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/nav_routes.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_info_sheet.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -31,7 +32,7 @@ class MapBottomActionButtons extends StatelessWidget {
           MapOverlayButton(
             circular: false,
             tooltip: 'Info',
-            onPressed: () {},
+            onPressed: () => showMapInfoSheet(context),
             child: const Icon(Icons.info_outline),
           ),
           MapOverlayButton(
@@ -53,9 +54,7 @@ class MapBottomActionButtons extends StatelessWidget {
           MapOverlayButton(
             circular: false,
             tooltip: 'Einstellungen',
-            onPressed: () {
-              Navigator.pushNamed(context, NavRoutes.settings);
-            },
+            onPressed: () => showMapSettingsSheet(context),
             child: const Icon(Icons.settings),
           ),
         ],
