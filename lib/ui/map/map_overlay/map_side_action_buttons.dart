@@ -99,6 +99,7 @@ class MapSideActionButtons extends StatelessWidget {
             onPressed: () {
               showModalBottomSheet<void>(
                 context: context,
+                useSafeArea: true,
                 backgroundColor: Colors.transparent,
                 builder: (ctx) => BikenetSelectionSheet(model: model),
               );

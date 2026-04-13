@@ -4,7 +4,7 @@ import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/map_button_bar.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/map_button_bar_item.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
+import 'package:munich_ways/ui/map/search_location/search_location_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 import '../map_screen_model.dart';
@@ -96,10 +96,7 @@ class RouteButtonBar extends StatelessWidget {
       MapButtonBarItem(
         onPressed: () async {
           if (model.destination == null) {
-            Place? place = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SearchLocationScreen()),
-            ) as Place?;
+            final Place? place = await showSearchLocationSheet(context);
             model.setDestination(place);
           } else {
             model.clearDestination();

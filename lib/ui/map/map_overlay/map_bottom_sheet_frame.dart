@@ -18,14 +18,25 @@ BoxDecoration mapOverlayBottomSheetDecoration() {
   );
 }
 
-/// Max height for sheet body scroll areas so the sheet can stay short when
-/// content is small, but never exceed ~92% of the screen.
-double mapOverlayMaxScrollBodyHeight(
-  BuildContext context, {
-  double chromeAboveBody = 96,
-}) {
-  final h = MediaQuery.sizeOf(context).height;
-  return (h * 0.92 - chromeAboveBody).clamp(160, h * 0.88);
+/// Inset below status bar / notch for sheet layout math.
+///
+/// For [showModalBottomSheet], default `useSafeArea: false` applies
+/// [MediaQuery.removePadding] for the top edge, which zeros **both**
+/// [MediaQueryData.padding] and [MediaQueryData.viewPadding] there — so callers
+/// must pass `useSafeArea: true` and rely on that for the physical top inset; this
+/// helper then typically returns `0` inside the sheet builder and is only non-zero
+/// in contexts that still expose real padding (e.g. tests, nested routes).
+double mapOverlaySheetTopPadding(BuildContext context) {
+  final mq = MediaQuery.of(context);
+  return mq.padding.top > 0 ? mq.padding.top : mq.viewPadding.top;
+}
+
+/// Max height for the **sheet card** (white panel): from below the top inset
+/// down to the keyboard (or physical bottom). Does not subtract bottom safe inset.
+double mapOverlaySheetMaxHeight(BuildContext context) {
+  final mq = MediaQuery.of(context);
+  final top = mapOverlaySheetTopPadding(context);
+  return mq.size.height - mq.viewInsets.bottom - top;
 }
 
 /// White rounded panel used by map modal sheets (layers, settings, info).
@@ -44,43 +55,43 @@ class MapBottomSheetFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: Container(
-        decoration: mapOverlayBottomSheetDecoration(),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
+      child: Padding(
+        padding: EdgeInsets.only(top: mapOverlaySheetTopPadding(context)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: mapOverlaySheetMaxHeight(context),
+          ),
+          child: Container(
+            decoration: mapOverlayBottomSheetDecoration(),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Schließen',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Schließen',
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
+                  ),
+                  const Divider(height: 1),
+                  body,
+                ],
               ),
-              const Divider(height: 1),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: mapOverlayMaxScrollBodyHeight(context),
-                ),
-                child: ListView(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  children: [body],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

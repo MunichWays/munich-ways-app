@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_info_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_screen.dart';
+import 'package:munich_ways/ui/map/search_location/search_location_sheet.dart';
 
 /// Bottom map controls: info (placeholder), search, settings.
 class MapBottomActionButtons extends StatelessWidget {
@@ -39,12 +38,7 @@ class MapBottomActionButtons extends StatelessWidget {
             circular: false,
             tooltip: 'Suche',
             onPressed: () async {
-              final place = await Navigator.push<Place?>(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SearchLocationScreen(),
-                ),
-              );
+              final place = await showSearchLocationSheet(context);
               if (place != null && context.mounted) {
                 model.setDestination(place);
               }
