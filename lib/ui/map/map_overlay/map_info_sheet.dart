@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/ui/about/imprint_screen.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
-import 'package:munich_ways/ui/theme.dart';
+import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -110,47 +110,41 @@ class _MapInfoSheetState extends State<MapInfoSheet> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F2F2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            _InfoLinkRow(
-                              icon: Icons.info_outline,
-                              label: 'Über MunichWays',
-                              onTap: () => _openUrl(
-                                'https://munichways.de',
-                                'Keine App zum Öffnen von munichways.de gefunden',
-                              ),
+                      MenuGroup(
+                        children: [
+                          MenuGroupItem(
+                            icon: Icons.info_outline,
+                            label: 'Über MunichWays',
+                            onTap: () => _openUrl(
+                              'https://munichways.de',
+                              'Keine App zum Öffnen von munichways.de gefunden',
                             ),
-                            const Divider(height: 1, indent: 16, endIndent: 16),
-                            _InfoLinkRow(
-                              icon: Icons.link,
-                              label: 'Über RadlNavi',
-                              onTap: () => _openUrl(
-                                'https://radlnavi.de',
-                                'Keine App zum Öffnen von radlnavi.de gefunden',
-                              ),
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
+                            icon: Icons.link,
+                            label: 'Über RadlNavi',
+                            onTap: () => _openUrl(
+                              'https://radlnavi.de',
+                              'Keine App zum Öffnen von radlnavi.de gefunden',
                             ),
-                            const Divider(height: 1, indent: 16, endIndent: 16),
-                            _InfoLinkRow(
-                              icon: Icons.mail_outline,
-                              label: 'Feedback',
-                              onTap: _openFeedback,
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
+                            icon: Icons.mail_outline,
+                            label: 'Feedback',
+                            onTap: _openFeedback,
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
+                            icon: Icons.volunteer_activism_outlined,
+                            label: 'Spenden',
+                            onTap: () => _openUrl(
+                              'https://munichways.de/spenden',
+                              'Keine App zum Öffnen von munichways.de gefunden',
                             ),
-                            const Divider(height: 1, indent: 16, endIndent: 16),
-                            _InfoLinkRow(
-                              icon: Icons.volunteer_activism_outlined,
-                              label: 'Spenden',
-                              onTap: () => _openUrl(
-                                'https://munichways.de/spenden',
-                                'Keine App zum Öffnen von munichways.de gefunden',
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       Center(
@@ -202,45 +196,5 @@ class _MapInfoSheetState extends State<MapInfoSheet> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       _snack('Keine E-Mail-App gefunden');
     }
-  }
-}
-
-class _InfoLinkRow extends StatelessWidget {
-  const _InfoLinkRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, color: AppColors.mapBlack),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
