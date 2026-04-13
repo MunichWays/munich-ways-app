@@ -39,32 +39,39 @@ class MapSideActionButtons extends StatelessWidget {
         kMapOverlayControlSize +
         kMapGapSideColumnAboveBottomBar;
 
+    final zoomWidgets = <Widget>[
+      if (model.showZoomButtons) ...[
+        MapOverlayButton(
+          tooltip: 'Vergrößern',
+          onPressed: () {
+            final c = mapController;
+            if (c == null) return;
+            c.animateCamera(CameraUpdate.zoomIn());
+          },
+          child: const Icon(Icons.add),
+        ),
+        const SizedBox(height: _buttonSpacing),
+        MapOverlayButton(
+          tooltip: 'Verkleinern',
+          onPressed: () {
+            final c = mapController;
+            if (c == null) return;
+            c.animateCamera(CameraUpdate.zoomOut());
+          },
+          child: const Icon(Icons.remove),
+        ),
+        const SizedBox(height: _buttonSpacing),
+      ],
+    ];
+
     return Positioned(
-      right: 12,
+      left: model.sidePanelEdge == MapSidePanelEdge.left ? 12 : null,
+      right: model.sidePanelEdge == MapSidePanelEdge.right ? 12 : null,
       bottom: sideColumnBottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          MapOverlayButton(
-            tooltip: 'Vergrößern',
-            onPressed: () {
-              final c = mapController;
-              if (c == null) return;
-              c.animateCamera(CameraUpdate.zoomIn());
-            },
-            child: const Icon(Icons.add),
-          ),
-          const SizedBox(height: _buttonSpacing),
-          MapOverlayButton(
-            tooltip: 'Verkleinern',
-            onPressed: () {
-              final c = mapController;
-              if (c == null) return;
-              c.animateCamera(CameraUpdate.zoomOut());
-            },
-            child: const Icon(Icons.remove),
-          ),
-          const SizedBox(height: _buttonSpacing),
+          ...zoomWidgets,
           MapOverlayButton(
             tooltip: 'Fahrradnetz',
             onPressed: () {

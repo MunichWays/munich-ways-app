@@ -4,6 +4,7 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -14,10 +15,63 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+/// Which horizontal edge the map side control column is pinned to.
+enum MapSidePanelEdge {
+  left,
+  right,
+}
+
 class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool _firstLoad = true;
+
+  /// Zoom +/- overlay buttons; default off.
+  bool _showZoomButtons = false;
+
+  /// Side column for layers / location / compass (zoom if enabled).
+  MapSidePanelEdge _sidePanelEdge = MapSidePanelEdge.right;
+
+  bool get showZoomButtons => _showZoomButtons;
+
+  MapSidePanelEdge get sidePanelEdge => _sidePanelEdge;
+
+  void setShowZoomButtons(bool value) {
+    if (_showZoomButtons == value) return;
+    _showZoomButtons = value;
+    notifyListeners();
+    _persistSettings();
+  }
+
+  void setSidePanelEdge(MapSidePanelEdge value) {
+    if (_sidePanelEdge == value) return;
+    _sidePanelEdge = value;
+    notifyListeners();
+    _persistSettings();
+  }
+
+  void _persistSettings() {
+    settingsStore
+        .save(SettingsData(
+      showZoomButtons: _showZoomButtons,
+      sidePanelEdgeName: _sidePanelEdge.name,
+    ))
+        .catchError((Object e, StackTrace st) {
+      log.e('Failed to save settings', error: e, stackTrace: st);
+    });
+  }
+
+  void _applyLoadedSettings(SettingsData data) {
+    final edge = data.sidePanelEdgeName == 'left'
+        ? MapSidePanelEdge.left
+        : MapSidePanelEdge.right;
+    if (data.showZoomButtons == _showZoomButtons && edge == _sidePanelEdge) {
+      return;
+    }
+    _showZoomButtons = data.showZoomButtons;
+    _sidePanelEdge = edge;
+    notifyListeners();
+  }
 
   double? bearing;
 
@@ -90,6 +144,12 @@ class MapScreenViewModel extends ChangeNotifier {
     destinationStream = _destinationStreamController.stream;
     _routeStreamController = StreamController();
     routeStream = _routeStreamController.stream;
+
+    settingsStore.load().then((data) {
+      _applyLoadedSettings(data);
+    }).catchError((Object e, StackTrace st) {
+      log.e('Failed to load settings', error: e, stackTrace: st);
+    });
   }
 
   void _displayErrorMsg(String msg) {

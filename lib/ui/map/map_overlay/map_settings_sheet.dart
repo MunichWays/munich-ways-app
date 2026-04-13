@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/ui/about/settings_sheet_content.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
+import 'package:munich_ways/ui/map/map_screen_model.dart';
 
-void showMapSettingsSheet(BuildContext context) {
+void showMapSettingsSheet(BuildContext context, MapScreenViewModel model) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -12,7 +13,7 @@ void showMapSettingsSheet(BuildContext context) {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
       child: MapBottomSheetFrame(
         title: 'Einstellungen',
-        body: const SettingsSheetContent(),
+        body: SettingsSheetContent(model: model),
       ),
     ),
   );

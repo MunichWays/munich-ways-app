@@ -48,7 +48,7 @@ class MapBottomActionButtons extends StatelessWidget {
           MapOverlayButton(
             circular: false,
             tooltip: 'Einstellungen',
-            onPressed: () => showMapSettingsSheet(context),
+            onPressed: () => showMapSettingsSheet(context, model),
             child: const Icon(Icons.settings),
           ),
         ],

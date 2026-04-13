@@ -39,46 +39,65 @@ class MenuGroupDivider extends StatelessWidget {
   }
 }
 
-/// Single tappable row with leading icon and label (e.g. info sheet links).
+/// Row with optional leading icon, label, optional [trailingElement], and optional tap.
 class MenuGroupItem extends StatelessWidget {
   const MenuGroupItem({
     super.key,
-    required this.icon,
+    this.icon,
     required this.label,
-    required this.onTap,
+    this.onTap,
+    this.trailingElement,
     this.inkBorderRadius = 12,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Widget? trailingElement;
   final double inkBorderRadius;
 
   @override
   Widget build(BuildContext context) {
+    final labelWidget = Text(
+      label,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w400,
+          ),
+    );
+
+    final rowChildren = <Widget>[
+      if (icon != null) ...[
+        Icon(icon, color: AppColors.mapBlack),
+        const SizedBox(width: 16),
+      ],
+      Expanded(child: labelWidget),
+      if (trailingElement != null) ...[
+        const SizedBox(width: 12),
+        trailingElement!,
+      ],
+    ];
+
+    final padded = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: rowChildren,
+      ),
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(inkBorderRadius),
+          onTap: onTap,
+          child: padded,
+        ),
+      );
+    }
+
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(inkBorderRadius),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            spacing: 16,
-            children: [
-              Icon(icon, color: AppColors.mapBlack),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w400,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: padded,
     );
   }
 }
