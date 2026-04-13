@@ -21,8 +21,6 @@ class MunichwaysIcons {
   static const _kFontFam = 'MunichwaysIcons';
   static const String? _kFontPkg = null;
 
-  static const IconData route_hidden =
-      IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData compass =
       IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

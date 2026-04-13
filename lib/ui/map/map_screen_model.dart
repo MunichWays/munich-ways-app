@@ -23,10 +23,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   MapRoute route = MapRoute(null, MapRouteState.NO_ROUTE);
 
-  bool get displayMissingPolylinesMsg {
-    return !_firstLoad && (_polylinesGesamtnetz.isEmpty);
-  }
-
   Set<MPolyline> get polylines {
     Set<MPolyline> tempPolylines = _polylinesGesamtnetz
         .where((polyline) =>
