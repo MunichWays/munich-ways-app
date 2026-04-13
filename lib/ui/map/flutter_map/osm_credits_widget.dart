@@ -47,7 +47,7 @@ class _OSMCreditsWidgetState extends State<OSMCreditsWidget> {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.bottomLeft,
+      alignment: Alignment.bottomCenter,
       child: Container(
         padding: const EdgeInsets.all(2.0),
         color: Colors.white70,

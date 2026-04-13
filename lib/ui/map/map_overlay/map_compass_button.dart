@@ -16,68 +16,10 @@ double smallestBearingAngleToNorthDegrees(double bearing) {
   return math.min(b, 360.0 - b);
 }
 
-/// Map reset control: needle rotates with [mapBearingDegrees] (camera bearing)
-/// so it tracks two-finger map rotation, not device orientation.
-class CompassButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-
-  /// Clockwise degrees from north (same as [CameraPosition.bearing]).
-  final double mapBearingDegrees;
-
-  const CompassButton({
-    Key? key,
-    required this.onPressed,
-    this.mapBearingDegrees = 0,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final double needleRadians = vector_math.radians(-mapBearingDegrees);
-
-    return FloatingActionButton.small(
-      heroTag: null,
-      tooltip: 'Norden nach oben ausrichten',
-      backgroundColor: Colors.white,
-      onPressed: onPressed,
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            IgnorePointer(
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black26, width: 1),
-                ),
-              ),
-            ),
-            Transform.rotate(
-              angle: needleRadians,
-              alignment: Alignment.center,
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: Image(
-                  image: AssetImage('images/compass.png'),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Owns when the compass is shown or hidden; parent updates [mapBearingDegrees]
-/// on camera move and bumps [mapIdleTick] on [MapLibreMap.onCameraIdle].
-class MapCompassControl extends StatefulWidget {
-  const MapCompassControl({
+/// on camera move and bumps [mapIdleTick] on map idle.
+class MapCompassOverlayButton extends StatefulWidget {
+  const MapCompassOverlayButton({
     super.key,
     required this.mapBearingDegrees,
     required this.mapIdleTick,
@@ -93,10 +35,11 @@ class MapCompassControl extends StatefulWidget {
   final Future<double?> Function() queryMapBearingDegrees;
 
   @override
-  State<MapCompassControl> createState() => _MapCompassControlState();
+  State<MapCompassOverlayButton> createState() =>
+      _MapCompassOverlayButtonState();
 }
 
-class _MapCompassControlState extends State<MapCompassControl> {
+class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
   bool _visible = false;
   bool _pendingHideAfterNorthUp = false;
 
@@ -115,7 +58,7 @@ class _MapCompassControlState extends State<MapCompassControl> {
   }
 
   @override
-  void didUpdateWidget(MapCompassControl oldWidget) {
+  void didUpdateWidget(MapCompassOverlayButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.mapBearingDegrees != widget.mapBearingDegrees) {
       oldWidget.mapBearingDegrees.removeListener(_onBearingChanged);
@@ -185,20 +128,63 @@ class _MapCompassControlState extends State<MapCompassControl> {
     }
   }
 
+  static const double _kSlotSize = 48;
+
   @override
   Widget build(BuildContext context) {
-    if (!_visible) {
-      return const SizedBox.shrink();
-    }
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6.0),
-        child: CompassButton(
-          mapBearingDegrees: widget.mapBearingDegrees.value,
-          onPressed: () {
-            unawaited(_onCompassPressed());
-          },
+    return SizedBox(
+      width: _kSlotSize,
+      height: _kSlotSize,
+      child: IgnorePointer(
+        ignoring: !_visible,
+        child: _visible ? _buildVisibleCompass() : const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildVisibleCompass() {
+    final needleRadians = vector_math.radians(-widget.mapBearingDegrees.value);
+    return Tooltip(
+      message: 'Norden nach oben ausrichten',
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.36),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        shadowColor: Colors.transparent,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => unawaited(_onCompassPressed()),
+          child: SizedBox(
+            width: _kSlotSize,
+            height: _kSlotSize,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                IgnorePointer(
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1),
+                    ),
+                  ),
+                ),
+                Transform.rotate(
+                  angle: needleRadians,
+                  alignment: Alignment.center,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6.0),
+                    child: Image.asset(
+                      'images/compass.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

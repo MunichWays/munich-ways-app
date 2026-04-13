@@ -10,21 +10,16 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/compass_button.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/location_button.dart';
 import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/show_gesamtnetz_button.dart';
-import 'package:munich_ways/ui/map/map_info_dialog.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
-import 'package:munich_ways/ui/map/missing_radnetze_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
 import 'package:munich_ways/ui/side_drawer.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
-
-import 'map_app_bar.dart';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -406,103 +401,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     ),
                   SafeArea(
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        OSMCreditsWidget(),
-                        Visibility(
-                          visible: model.loading,
-                          child: Center(
-                            child: RawMaterialButton(
-                                elevation: 2.0,
-                                fillColor: Colors.white,
-                                padding: EdgeInsets.all(15.0),
-                                shape: CircleBorder(),
-                                constraints: BoxConstraints.expand(
-                                    width: 56, height: 56),
-                                onPressed: () {},
-                                child: SizedBox(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3,
-                                  ),
-                                )),
-                          ),
+                        const OSMCreditsWidget(),
+                        MapSideActionButtons(
+                          model: model,
+                          mapController: _mapController,
+                          mapBearingDegrees: _mapBearingDegrees,
+                          compassIdleTick: _compassIdleTick,
+                          onNorthUp: () async {
+                            model.onCompassNorthUpPressed();
+                            final c = _mapController;
+                            if (c != null) {
+                              await c.animateCamera(CameraUpdate.bearingTo(0));
+                              await _syncCompassBearingFromMap();
+                            }
+                          },
+                          queryMapBearingDegrees: () async {
+                            final c = _mapController;
+                            if (c == null) return null;
+                            final pos = await c.queryCameraPosition();
+                            return pos?.bearing;
+                          },
+                          onPressLocation: () {
+                            model.onPressLocationBtn();
+                          },
                         ),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                top: 8.0, left: 8.0, right: 8.0, bottom: 16.0),
-                            child: Wrap(
-                              alignment: WrapAlignment.end,
-                              verticalDirection: VerticalDirection.down,
-                              spacing: 8,
-                              runSpacing: 8,
-                              runAlignment: WrapAlignment.end,
-                              clipBehavior: Clip.none,
-                              children: [
-                                ShowGesamtnetzButton(model: model),
-                                RouteButtonBar(model: model),
-                                LocationButton(
-                                  locationState: model.locationState,
-                                  onPressed: () async {
-                                    model.onPressLocationBtn();
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              MapAppBar(
-                                actions: <Widget>[
-                                  IconButton(
-                                    icon: const Icon(Icons.info_outline),
-                                    tooltip: 'Legende',
-                                    onPressed: () {
-                                      showDialog(
-                                          context: context,
-                                          builder: (_) => MapInfoDialog());
-                                    },
-                                  ),
-                                ],
-                              ),
-                              MapCompassControl(
-                                mapBearingDegrees: _mapBearingDegrees,
-                                mapIdleTick: _compassIdleTick,
-                                locationState: model.locationState,
-                                onNorthUp: () async {
-                                  model.onCompassNorthUpPressed();
-                                  final c = _mapController;
-                                  if (c != null) {
-                                    await c.animateCamera(
-                                        CameraUpdate.bearingTo(0));
-                                    await _syncCompassBearingFromMap();
-                                  }
-                                },
-                                queryMapBearingDegrees: () async {
-                                  final c = _mapController;
-                                  if (c == null) return null;
-                                  final pos = await c.queryCameraPosition();
-                                  return pos?.bearing;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        Visibility(
-                          visible: model.displayMissingPolylinesMsg,
-                          child: MissingRadnetzeCard(
-                            loading: model.loading,
-                            onPressed: () {
-                              model.refreshRadlnetze();
-                            },
-                          ),
-                        )
+                        MapBottomActionButtons(model: model),
                       ],
                     ),
                   ),
