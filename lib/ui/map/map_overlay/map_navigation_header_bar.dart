@@ -36,12 +36,14 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
-        stats = const SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white,
+        stats = Text(
+          'Route wird berechnet...',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.92),
+            fontSize: 15,
+            fontStyle: FontStyle.italic,
           ),
         );
         break;
@@ -133,9 +135,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   child: const Text(
                     'Route beenden',
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.white70,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
