@@ -44,6 +44,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
+  final GlobalKey _mapLibreViewKey = GlobalKey(debugLabel: 'maplibre_map');
 
   bool displayCurrentLocationOnResume = false;
   late MapScreenViewModel mapViewModel;
@@ -295,148 +296,161 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   if (_mountMapView)
-                    MapLibreMap(
-                      styleString: kOpenFreeMapLibertyStyleAsset,
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(_stachus.latitude, _stachus.longitude),
-                        zoom: 15,
-                      ),
-                      // Native MapLibre compass (default on) duplicates [MapCompassControl].
-                      compassEnabled: false,
-                      trackCameraPosition: true,
-                      minMaxZoomPreference: const MinMaxZoomPreference(10, 22),
-                      attributionButtonMargins: const Point(-200, -200),
-                      myLocationEnabled:
-                          model.locationState != LocationState.NOT_AVAILABLE,
-                      myLocationTrackingMode:
-                          _trackingModeFor(model.locationState),
-                      myLocationRenderMode: model.locationState ==
-                              LocationState.FOLLOW_AND_ROTATE_MAP
-                          ? MyLocationRenderMode.compass
-                          : MyLocationRenderMode.normal,
-                      onMapCreated: (controller) {
-                        _mapController = controller;
-                        if (!_lineTapHandlerAttached) {
-                          _lineTapHandlerAttached = true;
-                          controller.onLineTapped.add((line) {
-                            final details =
-                                _streetDetailsForNetworkFeatureId(line.id);
-                            if (details != null) {
-                              mapViewModel.onTap(details);
-                            }
-                          });
-                        }
-                        if (!_featureTapHandlerAttached) {
-                          _featureTapHandlerAttached = true;
-                          controller.onFeatureTapped.add(
-                            (point, latLng, id, layerId, annotation) {
-                              if (layerId != _kNetworkLayerHitId) {
-                                return;
-                              }
+                    RepaintBoundary(
+                      key: _mapLibreViewKey,
+                      child: MapLibreMap(
+                        styleString: kOpenFreeMapLibertyStyleAsset,
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(_stachus.latitude, _stachus.longitude),
+                          zoom: 15,
+                        ),
+                        // Native MapLibre compass (default on) duplicates [MapCompassControl].
+                        compassEnabled: false,
+                        trackCameraPosition: true,
+                        minMaxZoomPreference:
+                            const MinMaxZoomPreference(10, 22),
+                        attributionButtonMargins: const Point(-200, -200),
+                        myLocationEnabled:
+                            model.locationState != LocationState.NOT_AVAILABLE,
+                        myLocationTrackingMode:
+                            _trackingModeFor(model.locationState),
+                        myLocationRenderMode: model.locationState ==
+                                LocationState.FOLLOW_AND_ROTATE_MAP
+                            ? MyLocationRenderMode.compass
+                            : MyLocationRenderMode.normal,
+                        onMapCreated: (controller) {
+                          _mapController = controller;
+                          if (!_lineTapHandlerAttached) {
+                            _lineTapHandlerAttached = true;
+                            controller.onLineTapped.add((line) {
                               final details =
-                                  _streetDetailsForNetworkFeatureId(id);
+                                  _streetDetailsForNetworkFeatureId(line.id);
                               if (details != null) {
                                 mapViewModel.onTap(details);
                               }
-                            },
-                          );
-                        }
-                      },
-                      onStyleLoadedCallback: () {
-                        if (!mounted) return;
-                        final c = _mapController;
-                        Future<void> afterStyle() async {
-                          if (c != null) {
-                            // Remove overlay layers before re-adding after style load.
-                            if (_networkGeoJsonReady) {
-                              await _removeNetworkGeoJsonLayers(c);
-                            }
-                            if (_routeGeoJsonReady) {
-                              await _removeRouteGeoJsonLayers(c);
-                            }
+                            });
                           }
-                          _networkGeoJsonReady = false;
-                          _routeGeoJsonReady = false;
+                          if (!_featureTapHandlerAttached) {
+                            _featureTapHandlerAttached = true;
+                            controller.onFeatureTapped.add(
+                              (point, latLng, id, layerId, annotation) {
+                                if (layerId != _kNetworkLayerHitId) {
+                                  return;
+                                }
+                                final details =
+                                    _streetDetailsForNetworkFeatureId(id);
+                                if (details != null) {
+                                  mapViewModel.onTap(details);
+                                }
+                              },
+                            );
+                          }
+                        },
+                        onStyleLoadedCallback: () {
                           if (!mounted) return;
-                          // Style rebuild clears native annotations; drop stale handles.
-                          _destinationCircle = null;
-                          _streetDetailsByLineId.clear();
-                          _lastSyncedNetworkFingerprint = null;
-                          _lastRouteFingerprint = null;
-                          setState(() {
-                            _styleLoaded = true;
-                          });
-                          _scheduleOverlaySync(model);
-                        }
+                          final c = _mapController;
+                          Future<void> afterStyle() async {
+                            if (c != null) {
+                              // Remove overlay layers before re-adding after style load.
+                              if (_networkGeoJsonReady) {
+                                await _removeNetworkGeoJsonLayers(c);
+                              }
+                              if (_routeGeoJsonReady) {
+                                await _removeRouteGeoJsonLayers(c);
+                              }
+                            }
+                            _networkGeoJsonReady = false;
+                            _routeGeoJsonReady = false;
+                            if (!mounted) return;
+                            // Style rebuild clears native annotations; drop stale handles.
+                            _destinationCircle = null;
+                            _streetDetailsByLineId.clear();
+                            _lastSyncedNetworkFingerprint = null;
+                            _lastRouteFingerprint = null;
+                            setState(() {
+                              _styleLoaded = true;
+                            });
+                            _scheduleOverlaySync(model);
+                          }
 
-                        unawaited(afterStyle());
-                      },
-                      onMapLongClick: (screenPoint, latLng) {
-                        model.setDestination(Place(
-                            null,
-                            latlong2.LatLng(
-                                latLng.latitude, latLng.longitude)));
-                      },
-                      onCameraMove: (CameraPosition position) {
-                        _mapBearingDegrees.value = position.bearing;
-                        model.onMapCenterChanged(latlong2.LatLng(
-                          position.target.latitude,
-                          position.target.longitude,
-                        ));
-                      },
-                      onCameraTrackingDismissed: () {
-                        model.onUserStoppedFollowingLocation();
-                      },
-                      onCameraIdle: () {
-                        _compassIdleTick.value++;
-                      },
-                    ),
-                  if (model.destination != null &&
-                      _styleLoaded &&
-                      _mapController != null)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: MapLibreDestinationOffScreenOverlay(
-                          controller: _mapController,
-                          destination: model.destination!,
-                        ),
+                          unawaited(afterStyle());
+                        },
+                        onMapLongClick: (screenPoint, latLng) {
+                          model.setDestination(Place(
+                              null,
+                              latlong2.LatLng(
+                                  latLng.latitude, latLng.longitude)));
+                        },
+                        onCameraMove: (CameraPosition position) {
+                          _mapBearingDegrees.value = position.bearing;
+                          model.onMapCenterChanged(latlong2.LatLng(
+                            position.target.latitude,
+                            position.target.longitude,
+                          ));
+                        },
+                        onCameraTrackingDismissed: () {
+                          model.onUserStoppedFollowingLocation();
+                        },
+                        onCameraIdle: () {
+                          _compassIdleTick.value++;
+                        },
                       ),
                     ),
                   SafeArea(
-                    child: Stack(
-                      clipBehavior: Clip.none,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const OSMCreditsWidget(),
-                        Positioned(
-                          top: 0,
-                          left: 16,
-                          right: 16,
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                           child: MapNavigationHeaderBar(model: model),
                         ),
-                        MapSideActionButtons(
-                          model: model,
-                          mapController: _mapController,
-                          mapBearingDegrees: _mapBearingDegrees,
-                          compassIdleTick: _compassIdleTick,
-                          onNorthUp: () async {
-                            model.onCompassNorthUpPressed();
-                            final c = _mapController;
-                            if (c != null) {
-                              await c.animateCamera(CameraUpdate.bearingTo(0));
-                              await _syncCompassBearingFromMap();
-                            }
-                          },
-                          queryMapBearingDegrees: () async {
-                            final c = _mapController;
-                            if (c == null) return null;
-                            final pos = await c.queryCameraPosition();
-                            return pos?.bearing;
-                          },
-                          onPressLocation: () {
-                            model.onPressLocationBtn();
-                          },
+                        if (model.destination != null)
+                          const SizedBox(height: 4),
+                        Expanded(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              if (model.destination != null &&
+                                  _styleLoaded &&
+                                  _mapController != null)
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: MapLibreDestinationOffScreenOverlay(
+                                      mapLayerKey: _mapLibreViewKey,
+                                      controller: _mapController,
+                                      destination: model.destination!,
+                                    ),
+                                  ),
+                                ),
+                              const OSMCreditsWidget(),
+                              MapSideActionButtons(
+                                model: model,
+                                mapController: _mapController,
+                                mapBearingDegrees: _mapBearingDegrees,
+                                compassIdleTick: _compassIdleTick,
+                                onNorthUp: () async {
+                                  model.onCompassNorthUpPressed();
+                                  final c = _mapController;
+                                  if (c != null) {
+                                    await c.animateCamera(
+                                        CameraUpdate.bearingTo(0));
+                                    await _syncCompassBearingFromMap();
+                                  }
+                                },
+                                queryMapBearingDegrees: () async {
+                                  final c = _mapController;
+                                  if (c == null) return null;
+                                  final pos = await c.queryCameraPosition();
+                                  return pos?.bearing;
+                                },
+                                onPressLocation: () {
+                                  model.onPressLocationBtn();
+                                },
+                              ),
+                              MapBottomActionButtons(model: model),
+                            ],
+                          ),
                         ),
-                        MapBottomActionButtons(model: model),
                       ],
                     ),
                   ),

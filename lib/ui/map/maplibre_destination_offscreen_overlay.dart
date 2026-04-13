@@ -5,37 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
-/// Same chrome insets as the legacy off-screen destination arrow: clear of app bar
-/// and bottom actions.
-/// clear of app bar and bottom action stack.
-class _MapChromeInsets {
-  static const double top = 66;
-  static const double bottom = 54;
-
-  static EdgeInsets of(BuildContext context) {
-    final mq = MediaQuery.paddingOf(context);
-    return EdgeInsets.fromLTRB(
-      mq.left,
-      mq.top + top,
-      mq.right,
-      mq.bottom + bottom,
-    );
-  }
-}
-
 /// Edge indicator when [destination] projects outside the map view (MapLibre).
-/// Coordinates from [MapLibreMapController.toScreenLocation] match a [Positioned.fill]
-/// layer directly above the map.
+///
+/// [mapLayerKey] must wrap the [MapLibreMap] so [toScreenLocation] coordinates can
+/// be converted into this overlay's layout (e.g. when the arrow is drawn only below
+/// the navigation header without hard-coding header height).
 class MapLibreDestinationOffScreenOverlay extends StatefulWidget {
   const MapLibreDestinationOffScreenOverlay({
     super.key,
+    required this.mapLayerKey,
     required this.controller,
     required this.destination,
     this.imageAssetPath = 'images/bearing_arrow.png',
   });
 
+  final GlobalKey mapLayerKey;
   final MapLibreMapController? controller;
   final Place destination;
   final String imageAssetPath;
@@ -48,7 +35,9 @@ class MapLibreDestinationOffScreenOverlay extends StatefulWidget {
 class _MapLibreDestinationOffScreenOverlayState
     extends State<MapLibreDestinationOffScreenOverlay> {
   ui.Image? _image;
-  Offset? _destinationScreen;
+  Offset? _destinationMapLocal;
+  Offset? _destinationOverlay;
+  Rect? _mapRectInOverlay;
   int _requestGen = 0;
 
   @override
@@ -56,7 +45,9 @@ class _MapLibreDestinationOffScreenOverlayState
     super.initState();
     _loadImage();
     widget.controller?.addListener(_onControllerUpdate);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshScreenPoint());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScreenPoint();
+    });
   }
 
   @override
@@ -74,6 +65,10 @@ class _MapLibreDestinationOffScreenOverlayState
         _loadImage();
       }
       _refreshScreenPoint();
+    }
+    if (oldWidget.mapLayerKey != widget.mapLayerKey) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _recomputeOverlayCoords());
     }
   }
 
@@ -110,44 +105,124 @@ class _MapLibreDestinationOffScreenOverlayState
       );
       if (!mounted || gen != _requestGen) return;
       setState(() {
-        _destinationScreen = Offset(p.x.toDouble(), p.y.toDouble());
+        _destinationMapLocal = Offset(p.x.toDouble(), p.y.toDouble());
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && gen == _requestGen) _recomputeOverlayCoords();
       });
     } catch (_) {
       if (!mounted || gen != _requestGen) return;
-      setState(() => _destinationScreen = null);
+      setState(() {
+        _destinationMapLocal = null;
+        _destinationOverlay = null;
+        _mapRectInOverlay = null;
+      });
     }
+  }
+
+  void _recomputeOverlayCoords() {
+    final mapLocal = _destinationMapLocal;
+    final mapCtx = widget.mapLayerKey.currentContext;
+    final overlayBox = context.findRenderObject() as RenderBox?;
+    if (mapLocal == null ||
+        mapCtx == null ||
+        overlayBox == null ||
+        !overlayBox.hasSize) {
+      return;
+    }
+    final mapBox = mapCtx.findRenderObject() as RenderBox?;
+    if (mapBox == null ||
+        !mapBox.hasSize ||
+        !mapBox.attached ||
+        !overlayBox.attached) {
+      return;
+    }
+
+    final destGlobal = mapBox.localToGlobal(mapLocal);
+    final destOverlay = overlayBox.globalToLocal(destGlobal);
+    final mapTopLeft =
+        overlayBox.globalToLocal(mapBox.localToGlobal(Offset.zero));
+    final mapRect = Rect.fromLTWH(
+      mapTopLeft.dx,
+      mapTopLeft.dy,
+      mapBox.size.width,
+      mapBox.size.height,
+    );
+
+    if (_nearlyEqualOffset(_destinationOverlay, destOverlay) &&
+        _nearlyEqualRect(_mapRectInOverlay, mapRect)) {
+      return;
+    }
+
+    setState(() {
+      _destinationOverlay = destOverlay;
+      _mapRectInOverlay = mapRect;
+    });
+  }
+
+  static bool _nearlyEqualOffset(Offset? a, Offset b) {
+    if (a == null) return false;
+    return (a.dx - b.dx).abs() < 0.5 && (a.dy - b.dy).abs() < 0.5;
+  }
+
+  static bool _nearlyEqualRect(Rect? a, Rect b) {
+    if (a == null) return false;
+    return (a.left - b.left).abs() < 0.5 &&
+        (a.top - b.top).abs() < 0.5 &&
+        (a.width - b.width).abs() < 0.5 &&
+        (a.height - b.height).abs() < 0.5;
   }
 
   @override
   Widget build(BuildContext context) {
     final img = _image;
-    final offset = _destinationScreen;
-    if (img == null || offset == null) {
+    final destOverlay = _destinationOverlay;
+    final mapRect = _mapRectInOverlay;
+    if (img == null || destOverlay == null || mapRect == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _recomputeOverlayCoords();
+      });
       return const SizedBox.expand();
     }
-    return CustomPaint(
-      painter: _OffscreenDestinationPainter(
-        destinationOffset: offset,
-        image: img,
-        mapInsets: _MapChromeInsets.of(context),
-      ),
-      child: const SizedBox.expand(),
+
+    final mq = MediaQuery.paddingOf(context);
+    final bottomChromePx = mq.bottom +
+        kMapBottomActionRowPaddingAboveSafeBottom +
+        kMapOverlayControlSize;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _recomputeOverlayCoords();
+        });
+        return CustomPaint(
+          painter: _OffscreenDestinationPainter(
+            destinationOverlay: destOverlay,
+            mapRectInOverlay: mapRect,
+            bottomChromePx: bottomChromePx,
+            image: img,
+          ),
+          child: const SizedBox.expand(),
+        );
+      },
     );
   }
 }
 
 class _OffscreenDestinationPainter extends CustomPainter {
   _OffscreenDestinationPainter({
-    required this.destinationOffset,
+    required this.destinationOverlay,
+    required this.mapRectInOverlay,
+    required this.bottomChromePx,
     required this.image,
-    required this.mapInsets,
   });
 
-  final Offset destinationOffset;
+  final Offset destinationOverlay;
+  final Rect mapRectInOverlay;
+  final double bottomChromePx;
   final ui.Image image;
-  final EdgeInsets mapInsets;
 
-  /// Ray from [center] toward [target]; returns positive [t] hit on the map rect.
+  /// Ray from [center] toward [target]; returns hit on the rectangle [0,0]–[size].
   static Offset? _borderHit(Offset center, Offset target, Size size) {
     final dx = target.dx - center.dx;
     final dy = target.dy - center.dy;
@@ -187,27 +262,34 @@ class _OffscreenDestinationPainter extends CustomPainter {
     );
   }
 
+  static Offset? _borderHitRect(Offset center, Offset target, Rect rect) {
+    final origin = rect.topLeft;
+    final c = center - origin;
+    final t = target - origin;
+    final hit = _borderHit(c, t, rect.size);
+    return hit == null ? null : hit + origin;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final offset = destinationOffset;
-    final center = Offset(size.width / 2, size.height / 2);
+    if (size.width < 1 || size.height < 1) return;
 
-    final isOffScreen = offset.dx < 0 ||
-        offset.dx > size.width ||
-        offset.dy < 0 ||
-        offset.dy > size.height;
+    final overlayRect = Offset.zero & size;
+    final visibleMap = mapRectInOverlay.intersect(overlayRect);
+    if (visibleMap.width < 1 || visibleMap.height < 1) return;
 
-    if (!isOffScreen) return;
+    final dest = destinationOverlay;
+    if (visibleMap.inflate(2).contains(dest)) return;
 
-    final border = _borderHit(center, offset, size);
+    final center = visibleMap.center;
+    final border = _borderHitRect(center, dest, visibleMap);
     if (border == null) return;
 
-    final topPad = mapInsets.top;
-    final bottomPad = mapInsets.bottom;
-    final y = math.min(
-      math.max(topPad, border.dy),
-      size.height - bottomPad,
-    );
+    final bottomLimit =
+        math.min(visibleMap.bottom, size.height - bottomChromePx);
+    final y = border.dy
+        .clamp(visibleMap.top, math.max(visibleMap.top, bottomLimit))
+        .toDouble();
     final pointOnScreenBorder = Offset(border.dx, y);
 
     final paint = Paint()..filterQuality = FilterQuality.medium;
@@ -231,8 +313,9 @@ class _OffscreenDestinationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _OffscreenDestinationPainter oldDelegate) {
-    return oldDelegate.destinationOffset != destinationOffset ||
-        oldDelegate.image != image ||
-        oldDelegate.mapInsets != mapInsets;
+    return oldDelegate.destinationOverlay != destinationOverlay ||
+        oldDelegate.mapRectInOverlay != mapRectInOverlay ||
+        oldDelegate.bottomChromePx != bottomChromePx ||
+        oldDelegate.image != image;
   }
 }
