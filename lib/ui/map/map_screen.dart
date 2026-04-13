@@ -10,7 +10,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
@@ -35,8 +35,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
-  /// Cycling route as GeoJSON (not [Line] annotation). Layer order: Radl-Netz,
-  /// then this line, then highway-name symbol layers (see [_ensureRouteGeoJsonLayer]).
+  /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
+  /// Radl-Netz lines (gesamt, radl, hit), then highway-name symbol layers — all
+  /// anchored with [kOpenFreeMapLibertyStreetNameBelowLayerId] so the route never
+  /// depends on network layer ids being present.
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
 
@@ -555,9 +557,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     _overlaySyncRunning = true;
     try {
-      // Route sits below the base style’s first highway-name symbol layer; Radl-Netz
-      // sits below the route. Destination uses [MapLibreMapController.addCircle] and
-      // stays above these GeoJSON line layers.
+      // Route is added first, then Radl-Netz (same anchor below highway names) so
+      // ratings paint above the route. Destination uses [MapLibreMapController.addCircle]
+      // and stays above these GeoJSON line layers.
       await _ensureRouteGeoJsonLayer(controller);
       if (networkChanged) {
         await _syncNetworkLayers(model, controller);
@@ -642,7 +644,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteLayerId,
       LineLayerProperties(
         lineColor: _hexColor(AppColors.mapRouteColor),
-        lineWidth: 6.0,
+        lineWidth: 10.0,
       ),
       belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
       enableInteraction: false,
@@ -666,6 +668,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureNetworkGeoJsonLayers(
       MapLibreMapController controller) async {
     if (_networkGeoJsonReady) return;
+    // Route must exist before Radl-Netz layers: all use the same below-highway
+    // anchor so insertion order is route → gesamt → radl → hit (ratings on top).
+    await _ensureRouteGeoJsonLayer(controller);
     await controller.addGeoJsonSource(_kNetworkSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
@@ -687,7 +692,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         [Expressions.get, 'gesamtnetz'],
         true
       ],
-      belowLayerId: _kRouteLayerId,
+      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
       enableInteraction: false,
     );
     await controller.addLineLayer(
@@ -705,7 +710,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         [Expressions.get, 'gesamtnetz'],
         false
       ],
-      belowLayerId: _kRouteLayerId,
+      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
       enableInteraction: false,
     );
     // lineOpacity must stay > 0: some MapLibre builds skip hit-testing for fully
@@ -718,7 +723,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineWidth: 20.0,
         lineOpacity: 0.01,
       ),
-      belowLayerId: _kRouteLayerId,
+      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
       enableInteraction: true,
     );
     _networkGeoJsonReady = true;

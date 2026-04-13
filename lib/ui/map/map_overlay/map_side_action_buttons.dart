@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
-import 'package:munich_ways/ui/theme.dart';
 
-/// Right-hand map controls: zoom, route visibility, layers, location, compass.
+/// Right-hand map controls: zoom, layers, location, compass.
 class MapSideActionButtons extends StatelessWidget {
   const MapSideActionButtons({
     super.key,
@@ -66,33 +64,6 @@ class MapSideActionButtons extends StatelessWidget {
             },
             child: const Icon(Icons.remove),
           ),
-          if (_showRouteToggle(model)) ...[
-            const SizedBox(height: _buttonSpacing),
-            MapOverlayButton(
-              tooltip: model.route.state == MapRouteState.SHOWN
-                  ? 'Route ausblenden'
-                  : 'Route einblenden',
-              isActive: model.route.state == MapRouteState.SHOWN ||
-                  model.route.state == MapRouteState.LOADING,
-              onPressed: model.route.state == MapRouteState.LOADING
-                  ? null
-                  : () => model.toggleRoute(),
-              child: model.route.state == MapRouteState.LOADING
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        color: AppColors.mapAccentColor,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Icon(
-                      model.route.state == MapRouteState.HIDDEN
-                          ? MunichwaysIcons.route_hidden
-                          : Icons.route_outlined,
-                    ),
-            ),
-          ],
           const SizedBox(height: _buttonSpacing),
           MapOverlayButton(
             tooltip: 'Fahrradnetz',
@@ -127,11 +98,6 @@ class MapSideActionButtons extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  bool _showRouteToggle(MapScreenViewModel model) {
-    final s = model.route.state;
-    return s != MapRouteState.NO_ROUTE && s != MapRouteState.ERROR;
   }
 
   Widget _locationIcon(LocationState state) {

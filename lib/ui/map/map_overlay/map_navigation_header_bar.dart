@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
 
@@ -46,7 +46,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
         );
         break;
       case MapRouteState.SHOWN:
-      case MapRouteState.HIDDEN:
         final r = route.route;
         if (r == null) {
           stats = const Text(

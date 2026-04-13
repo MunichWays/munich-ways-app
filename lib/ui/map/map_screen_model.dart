@@ -11,7 +11,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class MapScreenViewModel extends ChangeNotifier {
@@ -301,24 +301,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void _clearRoute() {
     this.route = MapRoute(null, MapRouteState.NO_ROUTE);
-    notifyListeners();
-  }
-
-  void toggleRoute() {
-    switch (this.route.state) {
-      case MapRouteState.SHOWN:
-        {
-          this.route = MapRoute(this.route.route, MapRouteState.HIDDEN);
-        }
-      case MapRouteState.HIDDEN:
-        {
-          this.route = MapRoute(this.route.route, MapRouteState.SHOWN);
-        }
-      default:
-        {
-          //do nothing
-        }
-    }
     notifyListeners();
   }
 }
