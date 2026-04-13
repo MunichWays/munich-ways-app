@@ -51,6 +51,7 @@ NetworkGeoJsonResult buildNetworkGeoJson(
       'id': fid,
       'properties': {
         'lineColor': lineColorHex(details.farbe),
+        'gesamtnetz': polyline.isGesamtnetz,
       },
       'geometry': {
         'type': 'LineString',

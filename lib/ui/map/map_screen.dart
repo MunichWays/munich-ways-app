@@ -30,7 +30,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
 
   static const _kNetworkSourceId = 'munichways_radlnetz';
-  static const _kNetworkLayerVisibleId = 'munichways_radlnetz_lines';
+  static const _kNetworkLayerVisibleGesamtId =
+      'munichways_radlnetz_lines_gesamt';
+  static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: Radl-Netz,
@@ -653,7 +655,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!_networkGeoJsonReady) return;
     try {
       await controller.removeLayer(_kNetworkLayerHitId);
-      await controller.removeLayer(_kNetworkLayerVisibleId);
+      await controller.removeLayer(_kNetworkLayerVisibleRadlId);
+      await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
       await controller.removeSource(_kNetworkSourceId);
     } catch (_) {
       // Style may have already dropped layers.
@@ -667,14 +670,41 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
     await controller.addLineLayer(
       _kNetworkSourceId,
-      _kNetworkLayerVisibleId,
-      LineLayerProperties(
+      _kNetworkLayerVisibleGesamtId,
+      const LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
         lineWidth: 3.0,
         lineOpacity: 1.0,
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineDasharray: [1.25, 2],
       ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        true
+      ],
+      belowLayerId: _kRouteLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerVisibleRadlId,
+      const LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: 3.0,
+        lineOpacity: 1.0,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        false
+      ],
       belowLayerId: _kRouteLayerId,
       enableInteraction: false,
     );
