@@ -31,6 +31,19 @@ double mapOverlaySheetTopPadding(BuildContext context) {
   return mq.padding.top > 0 ? mq.padding.top : mq.viewPadding.top;
 }
 
+/// Bottom inset for **scrollable** map sheet content (home indicator, gesture bar).
+///
+/// Use as padding at the end of the scroll extent so the last row clears the
+/// system inset, while the sheet itself can still extend to the physical bottom
+/// (modal [useSafeArea]: false + this padding on the scroll view).
+///
+/// Mirrors [mapOverlaySheetTopPadding]: when a parent strips [MediaQuery.padding]
+/// (e.g. some modal routes), [MediaQuery.viewPadding] still carries the real inset.
+double mapOverlaySheetBottomScrollPadding(BuildContext context) {
+  final mq = MediaQuery.of(context);
+  return mq.padding.bottom > 0 ? mq.padding.bottom : mq.viewPadding.bottom;
+}
+
 /// Max height for the **sheet card** (white panel): from below the top inset
 /// down to the keyboard (or physical bottom). Does not subtract bottom safe inset.
 double mapOverlaySheetMaxHeight(BuildContext context) {
@@ -65,18 +78,24 @@ class MapBottomSheetFrame extends StatelessWidget {
             decoration: mapOverlayBottomSheetDecoration(),
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.only(
+                bottom: mapOverlaySheetBottomScrollPadding(context),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             title,
-                            style: Theme.of(context).textTheme.titleLarge,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         IconButton(
@@ -87,7 +106,7 @@ class MapBottomSheetFrame extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Divider(height: 1),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
                   body,
                 ],
               ),

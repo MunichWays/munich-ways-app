@@ -143,7 +143,9 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                 Expanded(
                   child: ListView(
                     physics: const ClampingScrollPhysics(),
-                    padding: EdgeInsets.zero,
+                    padding: EdgeInsets.only(
+                      bottom: mapOverlaySheetBottomScrollPadding(context),
+                    ),
                     children: _scrollableChildren(),
                   ),
                 ),

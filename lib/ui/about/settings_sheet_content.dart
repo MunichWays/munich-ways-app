@@ -22,8 +22,7 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
       listenable: model,
       builder: (context, _) {
         return Padding(
-            padding: const EdgeInsets.fromLTRB(
-                16, 16, 16, 32), // TODO: place this in safe area
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

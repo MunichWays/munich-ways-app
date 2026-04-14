@@ -9,12 +9,9 @@ void showMapSettingsSheet(BuildContext context, MapScreenViewModel model) {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-      child: MapBottomSheetFrame(
-        title: 'Einstellungen',
-        body: SettingsSheetContent(model: model),
-      ),
+    builder: (ctx) => MapBottomSheetFrame(
+      title: 'Einstellungen',
+      body: SettingsSheetContent(model: model),
     ),
   );
 }
