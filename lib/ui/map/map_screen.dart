@@ -222,16 +222,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.showEnableLocationServiceDialog.listen((_) {
           _askToEnableLocationService();
         });
-        model.showStreetDetails.listen((details) {
-          final statusBarHeight = MediaQuery.of(context).padding.top;
-          scaffoldKey.currentState!.showBottomSheet(
-            (context) => StreetDetailsSheet(
-              details: details,
-              statusBarHeight: statusBarHeight,
-            ),
-            backgroundColor: Colors.transparent,
-          );
-        });
         model.currentLocationBtnClickedStream
             .listen((latlong2.LatLng location) {
           final controller = _mapController;
@@ -282,6 +272,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               key: scaffoldKey,
               body: Stack(
                 children: [
+                  const _StreetDetailsModalListener(),
                   if (!_mountMapView)
                     const Positioned.fill(
                       child: ColoredBox(
@@ -759,4 +750,53 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
   }
+}
+
+/// Listens for street taps from [MapScreenViewModel] using a [BuildContext] that
+/// is under [Navigator] and [ChangeNotifierProvider], so [showModalBottomSheet]
+/// receives a valid subtree.
+class _StreetDetailsModalListener extends StatefulWidget {
+  const _StreetDetailsModalListener();
+
+  @override
+  State<_StreetDetailsModalListener> createState() =>
+      _StreetDetailsModalListenerState();
+}
+
+class _StreetDetailsModalListenerState
+    extends State<_StreetDetailsModalListener> {
+  StreamSubscription<StreetDetails?>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    final model = context.read<MapScreenViewModel>();
+    _subscription = model.showStreetDetails.listen(_onStreetDetails);
+  }
+
+  void _onStreetDetails(StreetDetails? details) {
+    if (!mounted || details == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: StreetDetailsSheet(details: details),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

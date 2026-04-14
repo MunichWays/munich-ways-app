@@ -115,8 +115,8 @@ class MapScreenViewModel extends ChangeNotifier {
   late Stream showEnableLocationServiceDialog;
   late StreamController _showEnableLocationServiceDialogController;
 
-  late Stream showStreetDetails;
-  late StreamController showStreetDetailsController;
+  late Stream<StreetDetails?> showStreetDetails;
+  late StreamController<StreetDetails?> showStreetDetailsController;
 
   late Stream<LatLng> currentLocationBtnClickedStream;
   late StreamController<LatLng> currentLocationBtnClickedController;
@@ -135,7 +135,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _showEnableLocationServiceDialogController = StreamController();
     showEnableLocationServiceDialog =
         _showEnableLocationServiceDialogController.stream;
-    showStreetDetailsController = StreamController();
+    showStreetDetailsController = StreamController<StreetDetails?>();
     showStreetDetails = showStreetDetailsController.stream;
     currentLocationBtnClickedController = StreamController();
     currentLocationBtnClickedStream =
