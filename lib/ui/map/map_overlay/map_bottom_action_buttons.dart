@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_info_sheet.dart';
+import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';

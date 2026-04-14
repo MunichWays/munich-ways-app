@@ -56,9 +56,13 @@ double bottomSheetMaxHeight(BuildContext context) {
 class BottomSheetFrame extends StatelessWidget {
   const BottomSheetFrame({
     super.key,
+    this.startingElement,
     required this.title,
     required this.body,
   });
+
+  /// Optional control before [title] (e.g. back); [title] stays in [Expanded].
+  final Widget? startingElement;
 
   final Widget title;
 
@@ -89,6 +93,7 @@ class BottomSheetFrame extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Row(
                       children: [
+                        if (startingElement != null) startingElement!,
                         Expanded(
                           child: title,
                         ),
