@@ -50,6 +50,10 @@ class MenuGroupItem extends StatelessWidget {
     this.inkBorderRadius = 12,
   });
 
+  /// Matches typical touch targets (e.g. [Switch]) so rows with only an [Icon]
+  /// trailing do not look shorter than rows with switches or dropdowns.
+  static const double _kMinRowExtent = kMinInteractiveDimension;
+
   final IconData? icon;
   final String label;
   final VoidCallback? onTap;
@@ -78,9 +82,13 @@ class MenuGroupItem extends StatelessWidget {
     ];
 
     final padded = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: rowChildren,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: _kMinRowExtent),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: rowChildren,
+        ),
       ),
     );
 
