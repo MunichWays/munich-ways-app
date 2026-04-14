@@ -254,6 +254,13 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
+  /// overlay can update without leaving the screen.
+  Future<void> reloadRadnetz() async {
+    await _munichwaysApi.emptyCache();
+    await refreshRadlnetze();
+  }
+
   void onTap(StreetDetails? details) {
     log.d(details);
     showStreetDetailsController.add(details);

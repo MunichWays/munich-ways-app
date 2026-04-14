@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 
@@ -69,8 +68,7 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                       label: 'Radnetz neu laden',
                       trailingElement: const Icon(Icons.refresh),
                       onTap: () {
-                        MunichwaysApi()
-                            .emptyCache(); // TODO: reload radnetz instantly, not on map reload as before
+                        model.reloadRadnetz();
                       },
                     ),
                   ],
