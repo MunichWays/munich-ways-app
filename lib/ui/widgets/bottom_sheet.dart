@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Shared styling for map modal bottom sheets.
-BoxDecoration mapOverlayBottomSheetDecoration() {
+/// Shared styling for modal bottom sheet cards (rounded white panel).
+BoxDecoration bottomSheetDecoration() {
   return BoxDecoration(
     color: Colors.white,
     borderRadius: const BorderRadius.vertical(
@@ -26,35 +26,35 @@ BoxDecoration mapOverlayBottomSheetDecoration() {
 /// must pass `useSafeArea: true` and rely on that for the physical top inset; this
 /// helper then typically returns `0` inside the sheet builder and is only non-zero
 /// in contexts that still expose real padding (e.g. tests, nested routes).
-double mapOverlaySheetTopPadding(BuildContext context) {
+double bottomSheetTopPadding(BuildContext context) {
   final mq = MediaQuery.of(context);
   return mq.padding.top > 0 ? mq.padding.top : mq.viewPadding.top;
 }
 
-/// Bottom inset for **scrollable** map sheet content (home indicator, gesture bar).
+/// Bottom inset for **scrollable** sheet content (home indicator, gesture bar).
 ///
 /// Use as padding at the end of the scroll extent so the last row clears the
 /// system inset, while the sheet itself can still extend to the physical bottom
 /// (modal [useSafeArea]: false + this padding on the scroll view).
 ///
-/// Mirrors [mapOverlaySheetTopPadding]: when a parent strips [MediaQuery.padding]
+/// Mirrors [bottomSheetTopPadding]: when a parent strips [MediaQuery.padding]
 /// (e.g. some modal routes), [MediaQuery.viewPadding] still carries the real inset.
-double mapOverlaySheetBottomScrollPadding(BuildContext context) {
+double bottomSheetBottomScrollPadding(BuildContext context) {
   final mq = MediaQuery.of(context);
   return mq.padding.bottom > 0 ? mq.padding.bottom : mq.viewPadding.bottom;
 }
 
 /// Max height for the **sheet card** (white panel): from below the top inset
 /// down to the keyboard (or physical bottom). Does not subtract bottom safe inset.
-double mapOverlaySheetMaxHeight(BuildContext context) {
+double bottomSheetMaxHeight(BuildContext context) {
   final mq = MediaQuery.of(context);
-  final top = mapOverlaySheetTopPadding(context);
+  final top = bottomSheetTopPadding(context);
   return mq.size.height - mq.viewInsets.bottom - top;
 }
 
-/// White rounded panel used by map modal sheets (layers, settings, info).
-class MapBottomSheetFrame extends StatelessWidget {
-  const MapBottomSheetFrame({
+/// White rounded panel with title row, divider, and scrollable [body].
+class BottomSheetFrame extends StatelessWidget {
+  const BottomSheetFrame({
     super.key,
     required this.title,
     required this.body,
@@ -69,17 +69,17 @@ class MapBottomSheetFrame extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: EdgeInsets.only(top: mapOverlaySheetTopPadding(context)),
+        padding: EdgeInsets.only(top: bottomSheetTopPadding(context)),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: mapOverlaySheetMaxHeight(context),
+            maxHeight: bottomSheetMaxHeight(context),
           ),
           child: Container(
-            decoration: mapOverlayBottomSheetDecoration(),
+            decoration: bottomSheetDecoration(),
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.only(
-                bottom: mapOverlaySheetBottomScrollPadding(context),
+                bottom: bottomSheetBottomScrollPadding(context),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

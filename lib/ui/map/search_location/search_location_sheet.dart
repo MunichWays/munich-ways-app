@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_body.dart';
 import 'package:munich_ways/ui/map/search_location/search_location_screen_model.dart';
 import 'package:provider/provider.dart';
@@ -46,17 +46,17 @@ class _SearchLocationSheetState extends State<_SearchLocationSheet> {
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.only(
-        top: mapOverlaySheetTopPadding(context),
+        top: bottomSheetTopPadding(context),
         bottom: viewInsetsBottom,
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: mapOverlaySheetMaxHeight(context),
+          maxHeight: bottomSheetMaxHeight(context),
         ),
         child: Material(
           color: Colors.transparent,
           child: Container(
-            decoration: mapOverlayBottomSheetDecoration(),
+            decoration: bottomSheetDecoration(),
             child: Column(
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,

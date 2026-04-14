@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
 
@@ -34,7 +34,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
       color: Colors.black87,
     );
 
-    return MapBottomSheetFrame(
+    return BottomSheetFrame(
       title: 'Fahrradnetz auswählen',
       body: Column(
         mainAxisSize: MainAxisSize.min,

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:munich_ways/ui/about/imprint_screen.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,7 +16,7 @@ void showMapInfoSheet(BuildContext context) {
     backgroundColor: Colors.transparent,
     builder: (ctx) => Padding(
       padding: EdgeInsets.only(
-        top: mapOverlaySheetTopPadding(ctx),
+        top: bottomSheetTopPadding(ctx),
         bottom: MediaQuery.viewInsetsOf(ctx).bottom,
       ),
       child: const MapInfoSheet(),
@@ -58,10 +58,10 @@ class _MapInfoSheetState extends State<MapInfoSheet> {
       color: Colors.transparent,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: mapOverlaySheetMaxHeight(context),
+          maxHeight: bottomSheetMaxHeight(context),
         ),
         child: Container(
-          decoration: mapOverlayBottomSheetDecoration(),
+          decoration: bottomSheetDecoration(),
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
             child: Column(

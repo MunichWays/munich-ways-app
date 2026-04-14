@@ -6,7 +6,7 @@ import 'package:munich_ways/api/mapillary/mapillary_service.dart';
 import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -125,13 +125,13 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: EdgeInsets.only(top: mapOverlaySheetTopPadding(context)),
+        padding: EdgeInsets.only(top: bottomSheetTopPadding(context)),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: mapOverlaySheetMaxHeight(context),
+            maxHeight: bottomSheetMaxHeight(context),
           ),
           child: Container(
-            decoration: mapOverlayBottomSheetDecoration(),
+            decoration: bottomSheetDecoration(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -144,7 +144,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                   child: ListView(
                     physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.only(
-                      bottom: mapOverlaySheetBottomScrollPadding(context),
+                      bottom: bottomSheetBottomScrollPadding(context),
                     ),
                     children: _scrollableChildren(),
                   ),
