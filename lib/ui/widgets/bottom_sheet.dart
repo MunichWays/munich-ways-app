@@ -60,7 +60,7 @@ class BottomSheetFrame extends StatelessWidget {
     required this.body,
   });
 
-  final String title;
+  final Widget title;
 
   final Widget body;
 
@@ -90,13 +90,7 @@ class BottomSheetFrame extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
+                          child: title,
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
@@ -115,5 +109,20 @@ class BottomSheetFrame extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class BottomSheetTitle extends StatelessWidget {
+  const BottomSheetTitle({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(title,
+        style: Theme.of(context)
+            .textTheme
+            .titleLarge
+            ?.copyWith(fontWeight: FontWeight.w600));
   }
 }

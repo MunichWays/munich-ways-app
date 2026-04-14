@@ -10,7 +10,7 @@ void showMapSettingsSheet(BuildContext context, MapScreenViewModel model) {
     useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => BottomSheetFrame(
-      title: 'Einstellungen',
+      title: const BottomSheetTitle(title: 'Einstellungen'),
       body: SettingsSheetContent(model: model),
     ),
   );

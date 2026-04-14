@@ -35,7 +35,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
     );
 
     return BottomSheetFrame(
-      title: 'Fahrradnetz auswählen',
+      title: const BottomSheetTitle(title: 'Fahrradnetz auswählen'),
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

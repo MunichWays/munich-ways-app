@@ -14,13 +14,7 @@ void showMapInfoSheet(BuildContext context) {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(
-        top: bottomSheetTopPadding(ctx),
-        bottom: MediaQuery.viewInsetsOf(ctx).bottom,
-      ),
-      child: const MapInfoSheet(),
-    ),
+    builder: (ctx) => const MapInfoSheet(),
   );
 }
 
@@ -54,127 +48,98 @@ class _MapInfoSheetState extends State<MapInfoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: bottomSheetMaxHeight(context),
-        ),
-        child: Container(
-          decoration: bottomSheetDecoration(),
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
+    return BottomSheetFrame(
+      title: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(width: 40),
+          Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(width: 40),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Image.asset(
-                              'images/logo_long.png',
-                              height: 36,
-                              fit: BoxFit.contain,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _versionLabel,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.black45,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        tooltip: 'Schließen',
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
+                Image.asset(
+                  'images/logo_long.png',
+                  height: 36,
+                  fit: BoxFit.contain,
                 ),
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      MenuGroup(
-                        children: [
-                          MenuGroupItem(
-                            icon: Icons.info_outline,
-                            label: 'Über MunichWays',
-                            onTap: () => _openUrl(
-                              'https://munichways.de',
-                              'Keine App zum Öffnen von munichways.de gefunden',
-                            ),
-                          ),
-                          const MenuGroupDivider(),
-                          MenuGroupItem(
-                            icon: Icons.link,
-                            label: 'Über RadlNavi',
-                            onTap: () => _openUrl(
-                              'https://radlnavi.de',
-                              'Keine App zum Öffnen von radlnavi.de gefunden',
-                            ),
-                          ),
-                          const MenuGroupDivider(),
-                          MenuGroupItem(
-                            icon: Icons.mail_outline,
-                            label: 'Feedback',
-                            onTap: _openFeedback,
-                          ),
-                          const MenuGroupDivider(),
-                          MenuGroupItem(
-                            icon: Icons.volunteer_activism_outlined,
-                            label: 'Spenden',
-                            onTap: () => _openUrl(
-                              'https://munichways.de/spenden',
-                              'Keine App zum Öffnen von munichways.de gefunden',
-                            ),
-                          ),
-                        ],
+                const SizedBox(height: 6),
+                Text(
+                  _versionLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.black45,
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => ImprintScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text('Impressum & Datenschutz'),
-                        ),
-                      ),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => _openUrl(
-                            'https://munichways.de/nutzungbedingungen-app',
-                            'Keine App zum Öffnen der Nutzungsbedingungen gefunden',
-                          ),
-                          child: const Text('Nutzungsbedingungen'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            MenuGroup(
+              children: [
+                MenuGroupItem(
+                  icon: Icons.info_outline,
+                  label: 'Über MunichWays',
+                  onTap: () => _openUrl(
+                    'https://munichways.de',
+                    'Keine App zum Öffnen von munichways.de gefunden',
+                  ),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.link,
+                  label: 'Über RadlNavi',
+                  onTap: () => _openUrl(
+                    'https://radlnavi.de',
+                    'Keine App zum Öffnen von radlnavi.de gefunden',
+                  ),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.mail_outline,
+                  label: 'Feedback',
+                  onTap: _openFeedback,
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.volunteer_activism_outlined,
+                  label: 'Spenden',
+                  onTap: () => _openUrl(
+                    'https://munichways.de/spenden',
+                    'Keine App zum Öffnen von munichways.de gefunden',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ImprintScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Impressum & Datenschutz'),
+              ),
+            ),
+            Center(
+              child: TextButton(
+                onPressed: () => _openUrl(
+                  'https://munichways.de/nutzungbedingungen-app',
+                  'Keine App zum Öffnen der Nutzungsbedingungen gefunden',
+                ),
+                child: const Text('Nutzungsbedingungen'),
+              ),
+            ),
+          ],
         ),
       ),
     );
