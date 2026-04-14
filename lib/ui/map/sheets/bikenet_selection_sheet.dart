@@ -1,116 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_bottom_sheet_frame.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 class BikenetSelectionSheet extends StatefulWidget {
-  final MapScreenViewModel? model;
+  const BikenetSelectionSheet({
+    super.key,
+    required this.model,
+  });
 
-  BikenetSelectionSheet({Key? key, this.model}) : super(key: key);
+  final MapScreenViewModel model;
 
   @override
-  _BikenetSelectionSheetState createState() => _BikenetSelectionSheetState();
+  State<BikenetSelectionSheet> createState() => _BikenetSelectionSheetState();
 }
 
 class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
+  static const _lineColors = <Color>[
+    AppColors.mapGreen,
+    AppColors.mapYellow,
+    AppColors.mapRed,
+    AppColors.mapBlack,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: new BorderRadius.only(
-          topLeft: const Radius.circular(15.0),
-          topRight: const Radius.circular(15.0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withAlpha(128),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 0), // changes position of shadow
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
+    final theme = Theme.of(context);
+    final rowTitleStyle = theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+      color: Colors.black87,
+    );
+    final rowSubtitleStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: Colors.black87,
+    );
+
+    return MapBottomSheetFrame(
+      title: 'Fahrradnetz auswählen',
+      body: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Fahrradnetz auswählen",
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                IconButton(
-                  icon: Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 0,
-          ),
-          CheckboxListTile(
-            title: Row(
-              children: [
-                Text('RadlVorrang MunichWays'),
-                SizedBox(
-                  width: 8,
-                ),
-                Container(
-                  width: 24,
-                  height: 4,
-                  color: Colors.black54,
-                ),
-              ],
-            ),
-            contentPadding: EdgeInsets.all(16),
-            isThreeLine: true,
-            subtitle: Text(
-                "Ausgesuchte RadlVorrang-Strecken von MunichWays. Mit dem Rad stressfrei durch München auf Wegen weitestgehend abseits vielbefahrener Straßen."),
-            value: widget.model!.isRadlvorrangnetzVisible,
-            onChanged: (bool? value) {
-              widget.model!.toggleRadvorrangnetzVisible();
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _BikenetLayerRow(
+            selected: widget.model.isRadlvorrangnetzVisible,
+            dashed: false,
+            title: 'Radl-Vorrang-Netz',
+            subtitle: 'Linie durchgezogen',
+            lineColors: _lineColors,
+            onTap: () {
+              widget.model.toggleRadvorrangnetzVisible();
               setState(() {});
             },
+            titleStyle: rowTitleStyle,
+            subtitleStyle: rowSubtitleStyle,
           ),
-          Divider(
-            height: 0,
-          ),
-          CheckboxListTile(
-            isThreeLine: true,
-            contentPadding: EdgeInsets.all(16),
-            title: Row(
-              children: [
-                Text("Alle Strecken"),
-                SizedBox(
-                  width: 8,
-                ),
-                Dot(),
-                SizedBox(
-                  width: 2,
-                ),
-                Dot(),
-                SizedBox(
-                  width: 2,
-                ),
-                Dot(),
-                SizedBox(
-                  width: 2,
-                ),
-                Dot(),
-              ],
-            ),
-            subtitle: Text(
-                'Alle Straßen und Wege, auf denen man mit dem Rad fahren kann.'),
-            value: widget.model!.isGesamtnetzVisible,
-            onChanged: (bool? value) {
-              widget.model!.toggleGesamtnetzVisible();
+          _BikenetLayerRow(
+            selected: widget.model.isGesamtnetzVisible,
+            dashed: true,
+            title: 'Weitere Strecken',
+            subtitle: 'Linie gestrichelt',
+            lineColors: _lineColors,
+            onTap: () {
+              widget.model.toggleGesamtnetzVisible();
               setState(() {});
             },
+            titleStyle: rowTitleStyle,
+            subtitleStyle: rowSubtitleStyle,
           ),
         ],
       ),
@@ -118,17 +72,194 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
   }
 }
 
-class Dot extends StatelessWidget {
-  const Dot({
-    Key? key,
-  }) : super(key: key);
+class _BikenetLayerRow extends StatelessWidget {
+  const _BikenetLayerRow({
+    required this.selected,
+    required this.dashed,
+    required this.title,
+    required this.subtitle,
+    required this.lineColors,
+    required this.onTap,
+    required this.titleStyle,
+    required this.subtitleStyle,
+  });
+
+  final bool selected;
+  final bool dashed;
+  final String title;
+  final String subtitle;
+  final List<Color> lineColors;
+  final VoidCallback onTap;
+  final TextStyle? titleStyle;
+  final TextStyle? subtitleStyle;
+
+  static const double _previewSize = 56;
+  static const double _lineThickness = 3;
+  static const double _lineGap = 4;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 4,
-      height: 4,
-      decoration: ShapeDecoration(color: Colors.black54, shape: CircleBorder()),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _LinePreviewBadge(
+                size: _previewSize,
+                selected: selected,
+                dashed: dashed,
+                lineColors: lineColors,
+                lineThickness: _lineThickness,
+                lineGap: _lineGap,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: titleStyle),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: subtitleStyle),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
+}
+
+class _LinePreviewBadge extends StatelessWidget {
+  const _LinePreviewBadge({
+    required this.size,
+    required this.selected,
+    required this.dashed,
+    required this.lineColors,
+    required this.lineThickness,
+    required this.lineGap,
+  });
+
+  final double size;
+  final bool selected;
+  final bool dashed;
+  final List<Color> lineColors;
+  final double lineThickness;
+  final double lineGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final inner = Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < lineColors.length; i++) ...[
+            if (i > 0) SizedBox(height: lineGap),
+            dashed
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return CustomPaint(
+                        size: Size(constraints.maxWidth, lineThickness),
+                        painter: _DashedBarPainter(color: lineColors[i]),
+                      );
+                    },
+                  )
+                : Container(
+                    height: lineThickness,
+                    decoration: BoxDecoration(
+                      color: lineColors[i],
+                      borderRadius: BorderRadius.circular(lineThickness / 2),
+                    ),
+                  ),
+          ],
+        ],
+      ),
+    );
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : const Color(0xFFF0F0F0),
+              borderRadius: BorderRadius.circular(12),
+              border: selected
+                  ? Border.all(
+                      color: AppColors.mapAccentColor,
+                      width: 4,
+                    )
+                  : null,
+            ),
+            child: inner,
+          ),
+          if (selected)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.mapAccentColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(3),
+                  child: Icon(
+                    Icons.check,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Short horizontal dashes for the “gestrichelt” preview.
+class _DashedBarPainter extends CustomPainter {
+  _DashedBarPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const dashLen = 4.0;
+    const gap = 6.0;
+    final y = size.height / 2;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = size.height.clamp(1.0, 4.0)
+      ..strokeCap = StrokeCap.round;
+    var x = 0.0;
+    while (x < size.width) {
+      final end = (x + dashLen).clamp(0.0, size.width);
+      if (end > x) {
+        canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+      }
+      x += dashLen + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBarPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
