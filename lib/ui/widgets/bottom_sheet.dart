@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Shared styling for modal bottom sheet cards (rounded white panel).
@@ -52,8 +54,10 @@ double bottomSheetMaxHeight(BuildContext context) {
   return mq.size.height - mq.viewInsets.bottom - top;
 }
 
-/// White rounded panel with title row, divider, and scrollable [body].
-class BottomSheetFrame extends StatelessWidget {
+/// White rounded panel: pinned title row + divider; [body] scrolls on its own
+/// when taller than remaining space. Sheet height is intrinsic (content-sized)
+/// up to [bottomSheetMaxHeight].
+class BottomSheetFrame extends StatefulWidget {
   const BottomSheetFrame({
     super.key,
     this.startingElement,
@@ -69,48 +73,126 @@ class BottomSheetFrame extends StatelessWidget {
   final Widget body;
 
   @override
+  State<BottomSheetFrame> createState() => _BottomSheetFrameState();
+}
+
+class _BottomSheetFrameState extends State<BottomSheetFrame> {
+  final GlobalKey _headerColumnKey = GlobalKey();
+
+  /// Height of title row + divider; measured after layout.
+  double _measuredHeaderPx = 0;
+
+  bool _measureFrameScheduled = false;
+
+  /// Until the first layout measure, assume at least this much space for the
+  /// header block so `bodyMax` stays ≤ `maxSheet - header` (avoids overflow if
+  /// the real header is taller than this, increase sparingly).
+  static const double _kHeaderFallbackPx = 140;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureHeaderMeasureScheduled();
+  }
+
+  @override
+  void didUpdateWidget(covariant BottomSheetFrame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.title != widget.title ||
+        oldWidget.startingElement != widget.startingElement) {
+      // Old height can be too small (e.g. back button added) → bodyMax too
+      // large → Column overflows until we remeasure.
+      _measuredHeaderPx = 0;
+      _ensureHeaderMeasureScheduled();
+    }
+  }
+
+  void _ensureHeaderMeasureScheduled() {
+    if (_measureFrameScheduled) return;
+    _measureFrameScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureFrameScheduled = false;
+      if (!mounted) return;
+      final box =
+          _headerColumnKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize) return;
+      final h = box.size.height;
+      if ((h - _measuredHeaderPx).abs() > 0.5) {
+        setState(() => _measuredHeaderPx = h);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _ensureHeaderMeasureScheduled();
+
+    final computedMaxSheet = bottomSheetMaxHeight(context);
+
     return Material(
       color: Colors.transparent,
       child: Padding(
         padding: EdgeInsets.only(top: bottomSheetTopPadding(context)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: bottomSheetMaxHeight(context),
-          ),
-          child: Container(
-            decoration: bottomSheetDecoration(),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.only(
-                bottom: bottomSheetBottomScrollPadding(context),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Row(
-                      children: [
-                        if (startingElement != null) startingElement!,
-                        Expanded(
-                          child: title,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          tooltip: 'Schließen',
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final parentMax = constraints.maxHeight;
+            final maxSheet = parentMax.isFinite
+                ? math.min(computedMaxSheet, parentMax)
+                : computedMaxSheet;
+            final headerBudget =
+                _measuredHeaderPx > 0 ? _measuredHeaderPx : _kHeaderFallbackPx;
+            final bodyMax = math.max(0.0, maxSheet - headerBudget);
+
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxSheet),
+              child: Container(
+                decoration: bottomSheetDecoration(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    KeyedSubtree(
+                      key: _headerColumnKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            child: Row(
+                              children: [
+                                if (widget.startingElement != null)
+                                  widget.startingElement!,
+                                Expanded(
+                                  child: widget.title,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  tooltip: 'Schließen',
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  body,
-                ],
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: bodyMax),
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.only(
+                          bottom: bottomSheetBottomScrollPadding(context),
+                        ),
+                        child: widget.body,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
