@@ -16,7 +16,7 @@ class InfoSheetLegendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final captionStyle = theme.textTheme.bodySmall?.copyWith(
+    final captionStyle = theme.textTheme.bodyMedium?.copyWith(
       color: Colors.black54,
       height: 1.3,
     );
@@ -24,12 +24,12 @@ class InfoSheetLegendRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 16,
+          height: 16,
           margin: const EdgeInsets.only(top: 4, right: 12),
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(4),
             border: color == AppColors.mapBlack
                 ? Border.all(color: Colors.black26)
                 : null,
