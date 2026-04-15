@@ -2093,8 +2093,8 @@
       },
       "paint": {
         "text-color": "hsl(30,0%,62%)",
-        "text-halo-color": "#f8f4f0",
-        "text-halo-width": 0.5
+        "text-halo-color": "rgba(255,255,255,0.85)",
+        "text-halo-width": 2
       }
     },
     {
@@ -2185,7 +2185,8 @@
       "paint": {
         "text-color": "#666",
         "text-halo-blur": 0.5,
-        "text-halo-width": 1
+        "text-halo-color": "rgba(255,255,255,0.85)",
+        "text-halo-width": 2
       }
     },
     {
@@ -2262,7 +2263,8 @@
       "paint": {
         "text-color": "#666",
         "text-halo-blur": 0.5,
-        "text-halo-width": 1
+        "text-halo-color": "rgba(255,255,255,0.85)",
+        "text-halo-width": 2
       }
     },
     {
