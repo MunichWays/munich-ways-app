@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -15,6 +14,7 @@ import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
+import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
@@ -131,82 +131,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _mapBearingDegrees.value = bearing;
   }
 
-  Future<void> _askToEnableLocationService() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Standort aktivieren'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(
-                    'Zur Anzeige des aktuellen Standorts muss die Standortbestimmung aktiviert sein.'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Abbrechen'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Standorteinstellungen'),
-              onPressed: () {
-                Geolocator.openLocationSettings();
-                displayCurrentLocationOnResume = true;
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _askForLocationPermission() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Standortberechtigung'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(
-                    'Zur Anzeige des aktuellen Standorts benötigt die App die Berechtigung "Standort".'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Abbrechen'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Appeinstellungen'),
-              onPressed: () {
-                Geolocator.openAppSettings();
-                displayCurrentLocationOnResume = true;
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MapScreenViewModel>(
-      create: (BuildContext context) {
+      create: (BuildContext _) {
         final model = MapScreenViewModel();
         mapViewModel = model;
 
@@ -218,10 +146,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ));
         });
         model.showLocationPermissionDialog.listen((_) {
-          _askForLocationPermission();
+          if (!mounted) return;
+          MapLocationDialogs.showPermissionRequestDialog(
+            this.context,
+            markRecheckLocationOnResume: () {
+              displayCurrentLocationOnResume = true;
+            },
+          );
         });
         model.showEnableLocationServiceDialog.listen((_) {
-          _askToEnableLocationService();
+          if (!mounted) return;
+          MapLocationDialogs.showEnableLocationServiceDialog(
+            this.context,
+            markRecheckLocationOnResume: () {
+              displayCurrentLocationOnResume = true;
+            },
+          );
         });
         model.currentLocationBtnClickedStream
             .listen((latlong2.LatLng location) {
