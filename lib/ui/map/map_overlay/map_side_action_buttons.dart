@@ -83,7 +83,9 @@ class MapSideActionButtons extends StatelessWidget {
               );
             },
             child: Icon(
-              model.isGesamtnetzVisible ? Icons.layers : Icons.layers_clear,
+              model.isRadlvorrangnetzVisible && model.isGesamtnetzVisible
+                  ? Icons.layers
+                  : Icons.layers_clear,
             ),
           ),
           const SizedBox(height: _buttonSpacing),
