@@ -36,8 +36,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
-  /// Radl-Netz lines (gesamt, radl, hit), then highway-name symbol layers — all
-  /// anchored with [kOpenFreeMapLibertyStreetNameBelowLayerId] so the route never
+  /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
+  /// — all anchored with [kOpenFreeMapBasemapOverlayBelowLayerId] so the route never
   /// depends on network layer ids being present.
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
@@ -562,7 +562,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     _overlaySyncRunning = true;
     try {
-      // Route is added first, then Radl-Netz (same anchor below highway names) so
+      // Route is added first, then Radl-Netz (same anchor below basemap labels) so
       // ratings paint above the route. Destination uses [MapLibreMapController.addCircle]
       // and stays above these GeoJSON line layers.
       await _ensureRouteGeoJsonLayer(controller);
@@ -651,7 +651,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineColor: _hexColor(AppColors.mapRouteColor),
         lineWidth: 10.0,
       ),
-      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,
     );
     _routeGeoJsonReady = true;
@@ -673,7 +673,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureNetworkGeoJsonLayers(
       MapLibreMapController controller) async {
     if (_networkGeoJsonReady) return;
-    // Route must exist before Radl-Netz layers: all use the same below-highway
+    // Route must exist before Radl-Netz layers: all use the same basemap label
     // anchor so insertion order is route → gesamt → radl → hit (ratings on top).
     await _ensureRouteGeoJsonLayer(controller);
     await controller.addGeoJsonSource(_kNetworkSourceId, {
@@ -697,7 +697,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         [Expressions.get, 'gesamtnetz'],
         true
       ],
-      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,
     );
     await controller.addLineLayer(
@@ -715,7 +715,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         [Expressions.get, 'gesamtnetz'],
         false
       ],
-      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,
     );
     // lineOpacity must stay > 0: some MapLibre builds skip hit-testing for fully
@@ -728,7 +728,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineWidth: 20.0,
         lineOpacity: 0.01,
       ),
-      belowLayerId: kOpenFreeMapLibertyStreetNameBelowLayerId,
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: true,
     );
     _networkGeoJsonReady = true;
