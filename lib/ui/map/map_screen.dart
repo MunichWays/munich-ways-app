@@ -10,6 +10,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
+import 'package:munich_ways/ui/map/map_overlay_line_zoom_style.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
@@ -649,7 +650,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteLayerId,
       LineLayerProperties(
         lineColor: _hexColor(AppColors.mapRouteColor),
-        lineWidth: 10.0,
+        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,
@@ -686,8 +687,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kNetworkLayerVisibleGesamtId,
       const LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: 3.0,
-        lineOpacity: 1.0,
+        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
         lineDasharray: [1.25, 2],
@@ -705,8 +706,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kNetworkLayerVisibleRadlId,
       const LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: 3.0,
-        lineOpacity: 1.0,
+        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
       ),
@@ -725,7 +726,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kNetworkLayerHitId,
       const LineLayerProperties(
         lineColor: '#000000',
-        lineWidth: 20.0,
+        lineWidth: MapOverlayLineStyle.networkHitLineWidthByZoom,
         lineOpacity: 0.01,
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
