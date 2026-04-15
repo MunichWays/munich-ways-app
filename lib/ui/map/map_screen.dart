@@ -10,7 +10,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
-import 'package:munich_ways/ui/map/map_overlay_line_zoom_style.dart';
+import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
