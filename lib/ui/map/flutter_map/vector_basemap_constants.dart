@@ -1,8 +1,7 @@
-const String kOpenFreeMapLibertyStyleUrl =
-    'https://tiles.openfreemap.org/styles/positron';
-
-// Kept for compatibility with call sites; for MapLibre this can be a remote URL.
-const String kOpenFreeMapLibertyStyleAsset = kOpenFreeMapLibertyStyleUrl;
+/// Fork of Positron (https://tiles.openfreemap.org/styles/positron). MapLibre loads this via
+/// a pubspec asset path (see `assets/map/openfreemap_positron_style.json`).
+const String kOpenFreeMapLibertyStyleAsset =
+    'assets/map/openfreemap_positron_style.json';
 
 /// First water *name* symbol layer in OpenFreeMap Positron / OpenMapTiles-based
 /// styles (`water_name_*` and `highway-name-*` stack above this). Custom line
