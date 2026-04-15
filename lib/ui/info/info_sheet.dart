@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/about/imprint_screen.dart';
+import 'package:munich_ways/ui/info/imprint_screen.dart';
 import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_main_content.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
