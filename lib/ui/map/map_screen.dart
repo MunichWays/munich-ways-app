@@ -16,9 +16,9 @@ import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
-import 'package:munich_ways/ui/street_details/street_details_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -273,7 +273,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               key: scaffoldKey,
               body: Stack(
                 children: [
-                  const _StreetDetailsModalListener(),
+                  const StreetDetailsModalListener(),
                   if (!_mountMapView)
                     const Positioned.fill(
                       child: ColoredBox(
@@ -751,53 +751,4 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
   }
-}
-
-/// Listens for street taps from [MapScreenViewModel] using a [BuildContext] that
-/// is under [Navigator] and [ChangeNotifierProvider], so [showModalBottomSheet]
-/// receives a valid subtree.
-class _StreetDetailsModalListener extends StatefulWidget {
-  const _StreetDetailsModalListener();
-
-  @override
-  State<_StreetDetailsModalListener> createState() =>
-      _StreetDetailsModalListenerState();
-}
-
-class _StreetDetailsModalListenerState
-    extends State<_StreetDetailsModalListener> {
-  StreamSubscription<StreetDetails?>? _subscription;
-
-  @override
-  void initState() {
-    super.initState();
-    final model = context.read<MapScreenViewModel>();
-    _subscription = model.showStreetDetails.listen(_onStreetDetails);
-  }
-
-  void _onStreetDetails(StreetDetails? details) {
-    if (!mounted || details == null) return;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: StreetDetailsSheet(details: details),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }
