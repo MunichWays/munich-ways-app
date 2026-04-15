@@ -1,5 +1,5 @@
 const String kOpenFreeMapLibertyStyleUrl =
-    'https://tiles.openfreemap.org/styles/liberty';
+    'https://tiles.openfreemap.org/styles/positron';
 
 // Kept for compatibility with call sites; for MapLibre this can be a remote URL.
 const String kOpenFreeMapLibertyStyleAsset = kOpenFreeMapLibertyStyleUrl;
