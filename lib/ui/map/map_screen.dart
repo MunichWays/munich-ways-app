@@ -18,7 +18,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
-import 'package:munich_ways/ui/map/sheets/street_details_sheet.dart';
+import 'package:munich_ways/ui/street_details/street_details_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
