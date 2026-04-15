@@ -82,7 +82,7 @@ class MenuGroupItem extends StatelessWidget {
     ];
 
     final padded = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: _kMinRowExtent),
         child: Row(
