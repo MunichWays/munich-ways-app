@@ -30,6 +30,21 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
 
+  /// After layout is safe, wait briefly so the default view settles before flying
+  /// to the user (especially when permission is already granted and GPS is instant).
+  static const Duration _userLocationCameraPreFlyDelay =
+      Duration(milliseconds: 320);
+
+  /// Passed to [MapLibreMapController.animateCamera] so iOS uses `flyTo` with a
+  /// calm duration instead of the default brisk [setCamera] animation.
+  static const Duration _userLocationCameraFlyDuration =
+      Duration(milliseconds: 1500);
+
+  /// After a user-location fly, wait slightly longer than [duration] before turning
+  /// native tracking back on so the puck does not jump at the end of the animation.
+  static const Duration _userLocationTrackingResumeAfterFlyPadding =
+      Duration(milliseconds: 220);
+
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
@@ -80,11 +95,103 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
   late bool _mountMapView;
 
+  /// While true, [MyLocationTrackingMode] is forced to [MyLocationTrackingMode.none]
+  /// so MapLibre's follow mode does not fight our programmatic flyTo (which makes
+  /// the location puck jump mid-animation).
+  bool _suppressNativeLocationTrackingDuringFly = false;
+  Timer? _resumeNativeLocationTrackingTimer;
+
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
     final id = rawId.toString();
     if (id.isEmpty) return null;
     return _streetDetailsByLineId[id];
+  }
+
+  /// MapLibre on iOS can abort inside [MLNMapView setCamera] (invalid unproject in
+  /// [mbgl::LatLng]) if [animateCamera] runs before the map has a stable size.
+  /// A second cold start often resolves the last known position immediately, so
+  /// this defers camera work until after layout (same class of issue as the iOS
+  /// [MapLibreMap] mount defer in [initState]).
+  void _scheduleSafeMapCamera(
+    void Function(MapLibreMapController c) action, {
+    Duration extraDelayAfterLayout = Duration.zero,
+  }) {
+    void run() {
+      final c = _mapController;
+      if (!mounted || c == null || !_styleLoaded) return;
+      action(c);
+    }
+
+    void runAfterExtraDelay() {
+      if (extraDelayAfterLayout <= Duration.zero) {
+        run();
+        return;
+      }
+      Future<void>.delayed(extraDelayAfterLayout, () {
+        if (mounted) run();
+      });
+    }
+
+    if (Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future<void>.delayed(const Duration(milliseconds: 80), () {
+            if (mounted) runAfterExtraDelay();
+          });
+        });
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) runAfterExtraDelay();
+      });
+    }
+  }
+
+  void _armResumeNativeLocationTrackingAfterUserFly() {
+    _resumeNativeLocationTrackingTimer?.cancel();
+    _resumeNativeLocationTrackingTimer = Timer(
+      _userLocationCameraFlyDuration +
+          _userLocationTrackingResumeAfterFlyPadding,
+      () {
+        if (!mounted) return;
+        setState(() => _suppressNativeLocationTrackingDuringFly = false);
+      },
+    );
+  }
+
+  /// Fly the camera to [location] after layout safety; temporarily disables native
+  /// location tracking so the puck stays georeferenced during the animation.
+  void _runUserLocationFlyTo(latlong2.LatLng location) {
+    if (!_isValidCoordinate(location.latitude, location.longitude)) return;
+    _scheduleSafeMapCamera(
+      (_) {
+        _resumeNativeLocationTrackingTimer?.cancel();
+
+        void startFly() {
+          if (!mounted) return;
+          final c = _mapController;
+          if (c == null || !_styleLoaded) return;
+          final currentZoom = _safeZoom(c.cameraPosition?.zoom);
+          unawaited(
+            c.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(location.latitude, location.longitude),
+                max(currentZoom, 17),
+              ),
+              duration: _userLocationCameraFlyDuration,
+            ),
+          );
+          _armResumeNativeLocationTrackingAfterUserFly();
+        }
+
+        if (!_suppressNativeLocationTrackingDuringFly) {
+          setState(() => _suppressNativeLocationTrackingDuringFly = true);
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) => startFly());
+      },
+      extraDelayAfterLayout: _userLocationCameraPreFlyDelay,
+    );
   }
 
   @override
@@ -115,6 +222,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _resumeNativeLocationTrackingTimer?.cancel();
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -163,57 +271,48 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             },
           );
         });
-        model.currentLocationBtnClickedStream
-            .listen((latlong2.LatLng location) {
-          final controller = _mapController;
-          if (controller == null) return;
-          if (!_isValidCoordinate(location.latitude, location.longitude))
-            return;
-          final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-          controller.animateCamera(
-            CameraUpdate.newLatLngZoom(
-              LatLng(location.latitude, location.longitude),
-              max(currentZoom, 17),
-            ),
-          );
-        });
+        model.currentLocationBtnClickedStream.listen(_runUserLocationFlyTo);
         model.destinationStream.listen((Place place) {
-          final controller = _mapController;
-          if (controller == null) return;
           if (!_isValidCoordinate(
               place.latLng.latitude, place.latLng.longitude)) {
             return;
           }
-          final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-          controller.animateCamera(
-            CameraUpdate.newLatLngZoom(
-              LatLng(place.latLng.latitude, place.latLng.longitude),
-              currentZoom,
-            ),
-          );
+          _scheduleSafeMapCamera((controller) {
+            final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
+            controller.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(place.latLng.latitude, place.latLng.longitude),
+                currentZoom,
+              ),
+            );
+          });
         });
         model.routeStream.listen((MapRoute route) {
-          final controller = _mapController;
-          if (controller == null || route.route == null) return;
+          if (route.route == null) return;
           final validPoints = route.route!.points
               .where((p) => _isValidCoordinate(p.latitude, p.longitude))
               .toList();
           if (validPoints.isEmpty) return;
 
           if (validPoints.length == 1) {
-            final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-            controller.animateCamera(
-              CameraUpdate.newLatLngZoom(
-                LatLng(validPoints.first.latitude, validPoints.first.longitude),
-                currentZoom,
-              ),
-            );
+            _scheduleSafeMapCamera((controller) {
+              final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
+              controller.animateCamera(
+                CameraUpdate.newLatLngZoom(
+                  LatLng(
+                      validPoints.first.latitude, validPoints.first.longitude),
+                  currentZoom,
+                ),
+              );
+            });
             return;
           }
 
           final bounds = _boundsFor(validPoints);
-          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds,
-              left: 24, top: 24, right: 24, bottom: 24));
+          _scheduleSafeMapCamera((controller) {
+            controller.animateCamera(CameraUpdate.newLatLngBounds(bounds,
+                left: 24, top: 24, right: 24, bottom: 24));
+          });
         });
         return model;
       },
@@ -267,7 +366,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         myLocationEnabled:
                             model.locationState != LocationState.NOT_AVAILABLE,
                         myLocationTrackingMode:
-                            _trackingModeFor(model.locationState),
+                            _suppressNativeLocationTrackingDuringFly
+                                ? MyLocationTrackingMode.none
+                                : _trackingModeFor(model.locationState),
                         myLocationRenderMode: model.locationState ==
                                 LocationState.FOLLOW_AND_ROTATE_MAP
                             ? MyLocationRenderMode.compass
