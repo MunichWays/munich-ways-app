@@ -5,7 +5,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/map/sheets/bikenet_selection_sheet.dart';
+import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 
 /// Right-hand map controls: zoom, layers, location, compass.
 class MapSideActionButtons extends StatelessWidget {
