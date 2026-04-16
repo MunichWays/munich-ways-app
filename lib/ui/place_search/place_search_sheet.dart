@@ -2,33 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_body.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_screen_model.dart';
+import 'package:munich_ways/ui/place_search/place_search_body.dart';
+import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:provider/provider.dart';
 
-Future<Place?> showSearchLocationSheet(BuildContext context) {
+Future<Place?> showPlaceSearchSheet(BuildContext context) {
   return showModalBottomSheet<Place?>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => ChangeNotifierProvider<SearchLocationScreenViewModel>(
-      create: (_) => SearchLocationScreenViewModel(
+    builder: (ctx) => ChangeNotifierProvider<PlaceSearchScreenViewModel>(
+      create: (_) => PlaceSearchScreenViewModel(
         recentSearchesRepo: recentSearchesRepo,
       ),
-      child: const _SearchLocationSheet(),
+      child: const _PlaceSearchSheet(),
     ),
   );
 }
 
-class _SearchLocationSheet extends StatefulWidget {
-  const _SearchLocationSheet();
+class _PlaceSearchSheet extends StatefulWidget {
+  const _PlaceSearchSheet();
 
   @override
-  State<_SearchLocationSheet> createState() => _SearchLocationSheetState();
+  State<_PlaceSearchSheet> createState() => _PlaceSearchSheetState();
 }
 
-class _SearchLocationSheetState extends State<_SearchLocationSheet> {
+class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
   final TextEditingController _query = TextEditingController();
 
   @override
@@ -38,7 +38,7 @@ class _SearchLocationSheetState extends State<_SearchLocationSheet> {
   }
 
   void _submitSearch() {
-    context.read<SearchLocationScreenViewModel>().startSearch(_query.text);
+    context.read<PlaceSearchScreenViewModel>().startSearch(_query.text);
   }
 
   @override
@@ -99,9 +99,9 @@ class _SearchLocationSheetState extends State<_SearchLocationSheet> {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: Consumer<SearchLocationScreenViewModel>(
+                  child: Consumer<PlaceSearchScreenViewModel>(
                     builder: (context, model, _) {
-                      return SearchLocationBody(model: model);
+                      return PlaceSearchBody(model: model);
                     },
                   ),
                 ),

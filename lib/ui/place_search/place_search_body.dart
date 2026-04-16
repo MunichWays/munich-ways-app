@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/map/search_location/search_location_screen_model.dart';
+import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 
 /// Scrollable search results, errors, hints, and recent destinations.
-class SearchLocationBody extends StatelessWidget {
-  const SearchLocationBody({
+class PlaceSearchBody extends StatelessWidget {
+  const PlaceSearchBody({
     super.key,
     required this.model,
   });
 
-  final SearchLocationScreenViewModel model;
+  final PlaceSearchScreenViewModel model;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +89,7 @@ class SearchLocationBody extends StatelessWidget {
 
   List<Widget> _recentSearchWidgets(
     BuildContext context,
-    SearchLocationScreenViewModel model,
+    PlaceSearchScreenViewModel model,
   ) {
     if (model.recentSearches.isEmpty) {
       return [];

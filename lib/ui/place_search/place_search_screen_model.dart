@@ -7,9 +7,9 @@ import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 
-const MAX_NUMBER_STORED_RECENT_SEARCHES = 50;
+const maxNumberStoredRecentSearches = 50;
 
-class SearchLocationScreenViewModel extends ChangeNotifier {
+class PlaceSearchScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool isFirstSearch = true;
@@ -24,7 +24,7 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
 
   RecentSearchesStore recentSearchesRepo;
 
-  SearchLocationScreenViewModel({required this.recentSearchesRepo}) {
+  PlaceSearchScreenViewModel({required this.recentSearchesRepo}) {
     recentSearchesRepo.load().then((loadedPlaces) {
       recentSearches = loadedPlaces;
       notifyListeners();
@@ -73,7 +73,7 @@ class SearchLocationScreenViewModel extends ChangeNotifier {
     }
     recentSearches.insert(0, place);
     recentSearches = recentSearches.sublist(
-        0, min(recentSearches.length, MAX_NUMBER_STORED_RECENT_SEARCHES));
+        0, min(recentSearches.length, maxNumberStoredRecentSearches));
     recentSearchesRepo.store(recentSearches);
     notifyListeners();
   }
