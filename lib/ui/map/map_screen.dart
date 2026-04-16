@@ -7,7 +7,7 @@ import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/ui/map/flutter_map/osm_credits_widget.dart';
+import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
@@ -354,7 +354,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     ),
                                   ),
                                 ),
-                              const OSMCreditsWidget(),
+                              const MapAttribution(),
                               MapSideActionButtons(
                                 model: model,
                                 mapController: _mapController,

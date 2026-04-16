@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-class OSMCreditsWidget extends StatefulWidget {
-  const OSMCreditsWidget({
+class MapAttribution extends StatefulWidget {
+  const MapAttribution({
     Key? key,
   }) : super(key: key);
 
   @override
-  State<OSMCreditsWidget> createState() => _OSMCreditsWidgetState();
+  State<MapAttribution> createState() => _MapAttributionState();
 }
 
-class _OSMCreditsWidgetState extends State<OSMCreditsWidget> {
+class _MapAttributionState extends State<MapAttribution> {
   late final TapGestureRecognizer _openFreeMapTap;
   late final TapGestureRecognizer _openMapTilesTap;
   late final TapGestureRecognizer _openStreetMapTap;
