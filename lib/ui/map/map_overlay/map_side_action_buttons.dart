@@ -116,12 +116,9 @@ class MapSideActionButtons extends StatelessWidget {
       case LocationState.DISPLAY:
         return const Icon(Icons.my_location);
       case LocationState.FOLLOW:
+        return const Icon(Icons.my_location);
       case LocationState.FOLLOW_AND_ROTATE_MAP:
-        return Icon(
-          state == LocationState.FOLLOW_AND_ROTATE_MAP
-              ? MunichwaysIcons.compass
-              : Icons.my_location,
-        );
+        return Icon(MunichwaysIcons.compass);
     }
   }
 }
