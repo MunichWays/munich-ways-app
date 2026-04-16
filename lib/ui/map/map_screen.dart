@@ -167,7 +167,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             .listen((latlong2.LatLng location) {
           final controller = _mapController;
           if (controller == null) return;
-          final currentZoom = controller.cameraPosition?.zoom ?? 15;
+          if (!_isValidCoordinate(location.latitude, location.longitude))
+            return;
+          final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
           controller.animateCamera(
             CameraUpdate.newLatLngZoom(
               LatLng(location.latitude, location.longitude),
@@ -178,7 +180,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           final controller = _mapController;
           if (controller == null) return;
-          final currentZoom = controller.cameraPosition?.zoom ?? 15;
+          if (!_isValidCoordinate(
+              place.latLng.latitude, place.latLng.longitude)) {
+            return;
+          }
+          final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
           controller.animateCamera(
             CameraUpdate.newLatLngZoom(
               LatLng(place.latLng.latitude, place.latLng.longitude),
@@ -189,7 +195,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.routeStream.listen((MapRoute route) {
           final controller = _mapController;
           if (controller == null || route.route == null) return;
-          final bounds = _boundsFor(route.route!.points);
+          final validPoints = route.route!.points
+              .where((p) => _isValidCoordinate(p.latitude, p.longitude))
+              .toList();
+          if (validPoints.isEmpty) return;
+
+          if (validPoints.length == 1) {
+            final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
+            controller.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(validPoints.first.latitude, validPoints.first.longitude),
+                currentZoom,
+              ),
+            );
+            return;
+          }
+
+          final bounds = _boundsFor(validPoints);
           controller.animateCamera(CameraUpdate.newLatLngBounds(bounds,
               left: 24, top: 24, right: 24, bottom: 24));
         });
@@ -405,6 +427,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       case LocationState.DISPLAY:
         return MyLocationTrackingMode.none;
     }
+  }
+
+  bool _isValidCoordinate(double latitude, double longitude) {
+    if (!latitude.isFinite || !longitude.isFinite) return false;
+    if (latitude < -90 || latitude > 90) return false;
+    if (longitude < -180 || longitude > 180) return false;
+    return true;
+  }
+
+  double _safeZoom(double? zoom) {
+    if (zoom == null || !zoom.isFinite) return 15;
+    return zoom.clamp(10, 22);
   }
 
   LatLngBounds _boundsFor(List<latlong2.LatLng> points) {

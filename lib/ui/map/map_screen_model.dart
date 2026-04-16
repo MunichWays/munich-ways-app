@@ -161,6 +161,32 @@ class MapScreenViewModel extends ChangeNotifier {
     onPressLocationBtn();
   }
 
+  /// Toggle follow mode, notify UI, then push coordinates so the map animates
+  /// to the user. Uses [Geolocator.getCurrentPosition] when there is no last
+  /// known fix (common right after the user grants permission).
+  Future<void> _enterLocationFollowAndCenterCamera() async {
+    if (locationState == LocationState.FOLLOW) {
+      locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    } else {
+      locationState = LocationState.FOLLOW;
+    }
+    notifyListeners();
+
+    try {
+      Position? position = await Geolocator.getLastKnownPosition();
+      position ??= await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      currentLocationBtnClickedController.add(
+        LatLng(position.latitude, position.longitude),
+      );
+    } catch (e, st) {
+      log.e('Could not read current position', error: e, stackTrace: st);
+    }
+  }
+
   Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
     log.d("onPressLocationBtn");
     bool isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -186,12 +212,18 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     switch (permission) {
       case LocationPermission.denied:
-        permission = await Geolocator.requestPermission();
-        log.d(permission);
-        if (permission == LocationPermission.denied) {
+        final afterRequest = await Geolocator.requestPermission();
+        log.d(afterRequest);
+        if (afterRequest == LocationPermission.denied) {
           locationState = LocationState.NOT_AVAILABLE;
+          notifyListeners();
           _displayErrorMsg("Standort Berechtigung fehlt.");
-        } else if (permission == LocationPermission.deniedForever) {
+        } else if (afterRequest == LocationPermission.deniedForever) {
+          _permissionStreamController.add("");
+        } else if (afterRequest == LocationPermission.whileInUse ||
+            afterRequest == LocationPermission.always) {
+          await _enterLocationFollowAndCenterCamera();
+        } else if (afterRequest == LocationPermission.unableToDetermine) {
           _permissionStreamController.add("");
         }
         break;
@@ -200,17 +232,7 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        if (locationState == LocationState.FOLLOW) {
-          locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
-        } else {
-          locationState = LocationState.FOLLOW;
-        }
-        notifyListeners();
-        Position? position = await Geolocator.getLastKnownPosition();
-        if (position != null) {
-          currentLocationBtnClickedController
-              .add(LatLng(position.latitude, position.longitude));
-        }
+        await _enterLocationFollowAndCenterCamera();
         break;
       case LocationPermission.unableToDetermine:
         _permissionStreamController.add("");
