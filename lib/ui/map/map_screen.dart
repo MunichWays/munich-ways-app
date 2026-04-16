@@ -8,7 +8,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
-import 'package:munich_ways/ui/map/flutter_map/vector_basemap_constants.dart';
+import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
