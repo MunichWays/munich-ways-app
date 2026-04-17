@@ -34,3 +34,20 @@ Runner/GeneratedPluginRegistrant.*
 #Secrets
 credentials/add_credentials_to_env.sh
 Credentials.generated.swift
+
+# Fastlane / codesigning (never commit keys, CSRs, certs, or profiles dropped in ios/)
+*.mobileprovision
+*.p12
+*.cer
+*.certSigningRequest
+*.ipa
+*.dSYM.zip
+
+# Fastlane (never commit keys, CSRs, certs, or profiles dropped in ios/)
+fastlane/Appfile
+fastlane/.env
+fastlane/AuthKey*.p8
+
+# Fastlane run output (regenerated each lane run)
+fastlane/report.xml
+fastlane/.env

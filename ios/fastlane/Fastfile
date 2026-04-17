@@ -1,0 +1,64 @@
+skip_docs
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Create/update cert+profile and upload TestFlight build"
+  lane :beta do
+    # 1) Ensure distribution certificate exists in keychain
+    cert(
+      development: false,
+      force: false
+    )
+    # 2) Create/download App Store provisioning profile
+    sigh(
+      app_identifier: "com.munichways.app",
+      force: false
+    )
+    # 3) Build with explicit export options/profile mapping
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store"
+    )
+    # 4) Upload to TestFlight
+    #
+    # Upload uses altool by default; Apple IDs with 2FA require an app-specific password
+    # (FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD) for that path, or you can use an
+    # App Store Connect API key (recommended): ASC_KEY_ID, ASC_ISSUER_ID, and either
+    # ASC_KEY_PATH (path to .p8) or ASC_KEY_CONTENT_BASE64 (base64 of the .p8 file).
+    upload_options = { skip_waiting_for_build_processing: true }
+    key_id = ENV["ASC_KEY_ID"]
+    issuer_id = ENV["ASC_ISSUER_ID"]
+    key_path = ENV["ASC_KEY_PATH"]
+    key_content_b64 = ENV["ASC_KEY_CONTENT_BASE64"]
+    if key_id && !key_id.empty? && issuer_id && !issuer_id.empty?
+      if key_path && !key_path.empty?
+        expanded = File.expand_path(key_path, Dir.pwd)
+        if File.file?(expanded)
+          upload_options[:api_key] = app_store_connect_api_key(
+            key_id: key_id,
+            issuer_id: issuer_id,
+            key_filepath: expanded,
+            duration: 1200,
+            in_house: false
+          )
+        else
+          UI.user_error!("ASC_KEY_PATH does not exist: #{expanded}")
+        end
+      elsif key_content_b64 && !key_content_b64.empty?
+        upload_options[:api_key] = app_store_connect_api_key(
+          key_id: key_id,
+          issuer_id: issuer_id,
+          key_content: key_content_b64,
+          is_key_content_base64: true,
+          duration: 1200,
+          in_house: false
+        )
+      else
+        UI.user_error!("ASC_KEY_ID and ASC_ISSUER_ID are set: add ASC_KEY_PATH (path to .p8) or ASC_KEY_CONTENT_BASE64 for API key upload.")
+      end
+    end
+    upload_to_testflight(upload_options)
+  end
+end
