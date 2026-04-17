@@ -2,6 +2,40 @@ skip_docs
 
 default_platform(:ios)
 
+# Shared App Store Connect API key for pilot/deliver when ASC_* env vars are set.
+# Returns nil if API key is not configured (TestFlight upload may use app-specific password instead).
+def app_store_connect_api_key_from_env
+  key_id = ENV["ASC_KEY_ID"].to_s
+  issuer_id = ENV["ASC_ISSUER_ID"].to_s
+  return nil if key_id.empty? || issuer_id.empty?
+
+  key_path = ENV["ASC_KEY_PATH"].to_s
+  key_content_b64 = ENV["ASC_KEY_CONTENT_BASE64"].to_s
+
+  if !key_path.empty?
+    expanded = File.expand_path(key_path, Dir.pwd)
+    UI.user_error!("ASC_KEY_PATH does not exist: #{expanded}") unless File.file?(expanded)
+    app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_filepath: expanded,
+      duration: 1200,
+      in_house: false
+    )
+  elsif !key_content_b64.empty?
+    app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_content: key_content_b64,
+      is_key_content_base64: true,
+      duration: 1200,
+      in_house: false
+    )
+  else
+    UI.user_error!("ASC_KEY_ID and ASC_ISSUER_ID are set: add ASC_KEY_PATH or ASC_KEY_CONTENT_BASE64 for API key upload.")
+  end
+end
+
 platform :ios do
   desc "Create/update cert+profile and upload TestFlight build"
   lane :beta do
@@ -22,43 +56,54 @@ platform :ios do
       export_method: "app-store"
     )
     # 4) Upload to TestFlight
-    #
-    # Upload uses altool by default; Apple IDs with 2FA require an app-specific password
-    # (FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD) for that path, or you can use an
-    # App Store Connect API key (recommended): ASC_KEY_ID, ASC_ISSUER_ID, and either
-    # ASC_KEY_PATH (path to .p8) or ASC_KEY_CONTENT_BASE64 (base64 of the .p8 file).
     upload_options = { skip_waiting_for_build_processing: true }
-    key_id = ENV["ASC_KEY_ID"]
-    issuer_id = ENV["ASC_ISSUER_ID"]
-    key_path = ENV["ASC_KEY_PATH"]
-    key_content_b64 = ENV["ASC_KEY_CONTENT_BASE64"]
-    if key_id && !key_id.empty? && issuer_id && !issuer_id.empty?
-      if key_path && !key_path.empty?
-        expanded = File.expand_path(key_path, Dir.pwd)
-        if File.file?(expanded)
-          upload_options[:api_key] = app_store_connect_api_key(
-            key_id: key_id,
-            issuer_id: issuer_id,
-            key_filepath: expanded,
-            duration: 1200,
-            in_house: false
-          )
-        else
-          UI.user_error!("ASC_KEY_PATH does not exist: #{expanded}")
-        end
-      elsif key_content_b64 && !key_content_b64.empty?
-        upload_options[:api_key] = app_store_connect_api_key(
-          key_id: key_id,
-          issuer_id: issuer_id,
-          key_content: key_content_b64,
-          is_key_content_base64: true,
-          duration: 1200,
-          in_house: false
-        )
-      else
-        UI.user_error!("ASC_KEY_ID and ASC_ISSUER_ID are set: add ASC_KEY_PATH (path to .p8) or ASC_KEY_CONTENT_BASE64 for API key upload.")
-      end
-    end
+    k = app_store_connect_api_key_from_env
+    upload_options[:api_key] = k if k
     upload_to_testflight(upload_options)
+  end
+
+  desc "Upload App Store listing metadata from fastlane/metadata (no IPA, no screenshots). " \
+       "Set APP_STORE_VERSION to target a specific App Store version (e.g. 3.0.0)."
+  lane :metadata do
+    deliver_options = {
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
+      # Listing-only: do not run precheck as if we were submitting a binary
+      run_precheck_before_submit: false
+    }
+
+    v = ENV["APP_STORE_VERSION"].to_s
+    deliver_options[:app_version] = v unless v.empty?
+
+    k = app_store_connect_api_key_from_env
+    deliver_options[:api_key] = k if k
+
+    deliver(deliver_options)
+  end
+
+  desc "Submit the current App Store version for review (metadata must already match ASC rules). " \
+       "Requires a build attached in App Store Connect. Set CONFIRM_SUBMIT=1."
+  lane :submit_review do
+    UI.user_error!("Set CONFIRM_SUBMIT=1 to submit this app version for App Review.") unless ENV["CONFIRM_SUBMIT"] == "1"
+
+    deliver_options = {
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      run_precheck_before_submit: true,
+      force: true
+    }
+
+    v = ENV["APP_STORE_VERSION"].to_s
+    deliver_options[:app_version] = v unless v.empty?
+
+    k = app_store_connect_api_key_from_env
+    deliver_options[:api_key] = k if k
+
+    deliver(deliver_options)
   end
 end

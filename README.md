@@ -17,7 +17,7 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 
 #### Fastlane (TestFlight)
 
-Automated iOS builds and TestFlight uploads use Fastlane. **Setup, lanes, credentials, and troubleshooting are documented in [ios/fastlane/README.md](ios/fastlane/README.md).**
+iOS release automation (TestFlight builds, App Store metadata via `deliver`, optional submit for review) uses Fastlane. **Setup, lanes, credentials, and troubleshooting are documented in [ios/fastlane/README.md](ios/fastlane/README.md).**
 
 #### Manual build/archive (alternative)
 
