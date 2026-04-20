@@ -3,6 +3,7 @@ import 'package:munich_ways/api/mapillary/mapillary_service.dart';
 import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/street_details/mapillary_image.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -27,7 +28,14 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
   @override
   void initState() {
     super.initState();
-    _postThumbData = getSinglePostData(widget.details.mapillaryImgId ?? '');
+    final imgId = widget.details.mapillaryImgId ?? '';
+    if (kStoreScreenshots && imgId.isEmpty) {
+      _postThumbData = Future.value(
+        MapillaryThumbDataModel(thumbUrl: '', imageId: ''),
+      );
+    } else {
+      _postThumbData = getSinglePostData(imgId);
+    }
   }
 
   List<Widget> _scrollableChildren() {

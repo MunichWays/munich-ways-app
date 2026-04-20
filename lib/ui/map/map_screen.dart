@@ -10,6 +10,9 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
+import 'package:munich_ways/screenshots/store_screenshot_config.dart';
+import 'package:munich_ways/screenshots/store_screenshot_controls.dart';
+import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
@@ -76,6 +79,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// When these match the last sync, the corresponding map layers are skipped.
   int? _lastSyncedNetworkFingerprint;
   int? _lastRouteFingerprint;
+
+  bool _storeScreenshotNetworkSynced = false;
+  bool _storeScreenshotIdleCameraDone = false;
+  bool _storeScreenshotIdleCameraScheduled = false;
+  bool _storeScreenshotRouteVisualReady = false;
 
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
   late bool _mountMapView;
@@ -229,6 +237,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           }
           _scheduleOverlaySync(model);
 
+          if (kStoreScreenshots &&
+              _storeScreenshotNetworkSynced &&
+              !_storeScreenshotIdleCameraDone &&
+              !_storeScreenshotIdleCameraScheduled &&
+              _mapController != null &&
+              _mountMapView) {
+            _storeScreenshotIdleCameraScheduled = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              unawaited(_applyStoreScreenshotIdleCamera());
+            });
+          }
+
+          final storeIdleReady = kStoreScreenshots &&
+              _styleLoaded &&
+              !model.loading &&
+              model.storeScreenshotLocationPrimeComplete &&
+              _storeScreenshotNetworkSynced &&
+              _storeScreenshotIdleCameraDone &&
+              model.destination == null &&
+              model.route.state == MapRouteState.NO_ROUTE;
+
+          final storeRouteReady = kStoreScreenshots &&
+              model.route.state == MapRouteState.SHOWN &&
+              model.route.route != null &&
+              model.route.route!.points.isNotEmpty &&
+              _storeScreenshotRouteVisualReady;
+
           return ScaffoldMessenger(
             key: scaffoldMessengerKey,
             child: Scaffold(
@@ -323,6 +358,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             _lastRouteFingerprint = null;
                             setState(() {
                               _styleLoaded = true;
+                              if (kStoreScreenshots) {
+                                _storeScreenshotNetworkSynced = false;
+                                _storeScreenshotIdleCameraDone = false;
+                                _storeScreenshotIdleCameraScheduled = false;
+                                _storeScreenshotRouteVisualReady = false;
+                              }
                             });
                             _scheduleOverlaySync(model);
                           }
@@ -402,6 +443,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 },
                               ),
                               MapBottomActionButtons(model: model),
+                              if (kStoreScreenshots) ...[
+                                StoreScreenshotMapReadySemantics(
+                                  storeIdleReady: storeIdleReady,
+                                  storeRouteReady: storeRouteReady,
+                                ),
+                                StoreScreenshotControls(model: model),
+                              ],
                             ],
                           ),
                         ),
@@ -415,6 +463,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         },
       ),
     );
+  }
+
+  Future<void> _applyStoreScreenshotIdleCamera() async {
+    if (!mounted || !kStoreScreenshots || _storeScreenshotIdleCameraDone) {
+      return;
+    }
+    final c = _mapController;
+    if (c == null) return;
+    try {
+      await c.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(_stachus.latitude, _stachus.longitude),
+            zoom: 14,
+            bearing: 0,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Map may not be ready; idle semantics will not flip and the test can time out.
+    }
+    if (!mounted) return;
+    setState(() {
+      _storeScreenshotIdleCameraDone = true;
+    });
   }
 
   MyLocationTrackingMode _trackingModeFor(LocationState state) {
@@ -599,6 +672,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         circleStrokeWidth: 2,
       ));
     }
+
+    if (mounted && kStoreScreenshots) {
+      final pts = model.route.route?.points;
+      final hasRoute = model.route.state == MapRouteState.SHOWN &&
+          pts != null &&
+          pts.isNotEmpty;
+      setState(() {
+        _storeScreenshotRouteVisualReady = hasRoute;
+      });
+    }
   }
 
   Future<void> _removeRouteGeoJsonLayers(
@@ -724,5 +807,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _ensureNetworkGeoJsonLayers(controller);
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
+    if (mounted && kStoreScreenshots) {
+      setState(() {
+        _storeScreenshotNetworkSynced = true;
+      });
+    }
   }
 }

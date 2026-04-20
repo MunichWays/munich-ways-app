@@ -12,6 +12,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -25,6 +26,9 @@ class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool _firstLoad = true;
+
+  /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
+  bool storeScreenshotLocationPrimeComplete = false;
 
   /// Zoom +/- overlay buttons; default off.
   bool _showZoomButtons = false;
@@ -158,7 +162,75 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void onMapReady() {
     refreshRadlnetze();
-    onPressLocationBtn();
+    if (kStoreScreenshots) {
+      unawaited(primeLocationForStoreScreenshots());
+    } else {
+      onPressLocationBtn();
+    }
+  }
+
+  /// Obtains permission and a GPS fix without entering follow/compass tracking.
+  /// Used for App Store screenshot automation so the map stays in a stable overview.
+  Future<void> primeLocationForStoreScreenshots() async {
+    if (!kStoreScreenshots) return;
+    storeScreenshotLocationPrimeComplete = false;
+    notifyListeners();
+
+    final isLocationServiceEnabled =
+        await Geolocator.isLocationServiceEnabled();
+    if (!isLocationServiceEnabled) {
+      locationState = LocationState.NOT_AVAILABLE;
+      storeScreenshotLocationPrimeComplete = true;
+      notifyListeners();
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    switch (permission) {
+      case LocationPermission.denied:
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.whileInUse &&
+            permission != LocationPermission.always) {
+          locationState = LocationState.NOT_AVAILABLE;
+          storeScreenshotLocationPrimeComplete = true;
+          notifyListeners();
+          return;
+        }
+        break;
+      case LocationPermission.deniedForever:
+        locationState = LocationState.NOT_AVAILABLE;
+        storeScreenshotLocationPrimeComplete = true;
+        notifyListeners();
+        return;
+      case LocationPermission.unableToDetermine:
+        locationState = LocationState.NOT_AVAILABLE;
+        storeScreenshotLocationPrimeComplete = true;
+        notifyListeners();
+        return;
+      case LocationPermission.whileInUse:
+      case LocationPermission.always:
+        break;
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      locationState = LocationState.DISPLAY;
+      notifyListeners();
+      currentLocationBtnClickedController.add(
+        LatLng(position.latitude, position.longitude),
+      );
+    } catch (e, st) {
+      log.e('primeLocationForStoreScreenshots', error: e, stackTrace: st);
+      locationState = LocationState.NOT_AVAILABLE;
+      notifyListeners();
+    } finally {
+      storeScreenshotLocationPrimeComplete = true;
+      notifyListeners();
+    }
   }
 
   /// Toggle follow mode, notify UI, then push coordinates so the map animates

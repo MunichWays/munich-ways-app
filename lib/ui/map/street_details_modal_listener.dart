@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/street_details/street_details_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -36,12 +37,22 @@ class _StreetDetailsModalListenerState
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: StreetDetailsSheet(details: details),
-      ),
+      builder: (sheetContext) {
+        final sheet = Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: StreetDetailsSheet(details: details),
+        );
+        if (kStoreScreenshots) {
+          return Semantics(
+            label: StoreScreenshotSemantics.streetSheetReady,
+            container: true,
+            child: sheet,
+          );
+        }
+        return sheet;
+      },
     );
   }
 

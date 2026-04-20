@@ -1,5 +1,7 @@
 skip_docs
 
+require "fileutils"
+
 default_platform(:ios)
 
 # Shared App Store Connect API key for pilot/deliver when ASC_* env vars are set.
@@ -72,6 +74,130 @@ platform :ios do
       submit_for_review: false,
       automatic_release: false,
       # Listing-only: do not run precheck as if we were submitting a binary
+      run_precheck_before_submit: false
+    }
+
+    v = ENV["APP_STORE_VERSION"].to_s
+    deliver_options[:app_version] = v unless v.empty?
+
+    k = app_store_connect_api_key_from_env
+    deliver_options[:api_key] = k if k
+
+    deliver(deliver_options)
+  end
+
+  desc "Capture App Store marketing screenshots (Flutter integration_test on iOS Simulator). " \
+       "Requires a booted simulator: set SCREENSHOT_SIMULATOR_UDID (see `xcrun simctl list devices booted`). " \
+       "Writes PNGs under Library/Caches/store_screenshots (iOS path_provider cache). Flutter uninstalls the app when the test exits, " \
+       "so this lane polls simctl during the run and copies PNGs to <repo>/integration_test/screenshots/, then fastlane/screenshots/de-DE/."
+  lane :screenshots do
+    # __dir__ is ios/fastlane — Flutter project root is two levels up (where pubspec.yaml lives).
+    repo_root = File.expand_path("../..", __dir__)
+    ios_dir = File.join(repo_root, "ios")
+    pod_binstubs = File.join(ios_dir, "vendor", "bundle_binstubs")
+
+    udid = ENV["SCREENSHOT_SIMULATOR_UDID"].to_s.strip
+    if udid.empty?
+      UI.user_error!(
+        "Set SCREENSHOT_SIMULATOR_UDID to a booted iOS Simulator UDID " \
+        "(Xcode → Window → Devices and Simulators, or `xcrun simctl list devices booted`)."
+      )
+    end
+
+    # Flutter validates `pod` on PATH; a system/Homebrew pod tied to another Ruby often breaks.
+    # ios/Gemfile pins CocoaPods — binstubs put a working `pod` first on PATH for this lane.
+    # Bundler 4 removed `bundle binstubs --path=…`; use `bundle config set bin` (local to ios/).
+    sh(%(cd "#{ios_dir}" && bundle install))
+    sh(
+      %(cd "#{ios_dir}" && ) +
+        %(bundle config set --local bin vendor/bundle_binstubs && ) +
+        %(bundle binstubs cocoapods --force)
+    )
+    sh(%(cd "#{ios_dir}" && bundle exec pod install))
+
+    bundle_id = "com.munichways.app"
+    # Best-effort: grant location and pin Stachus so routing has a start fix.
+    sh(%(xcrun simctl privacy "#{udid}" grant location #{bundle_id}))
+    # simctl expects one "lat,lon" token (comma-separated), not two arguments.
+    sh(%(xcrun simctl location "#{udid}" set 48.14,11.5652))
+
+    host_shots = File.join(repo_root, "integration_test", "screenshots")
+    FileUtils.mkdir_p(host_shots)
+
+    # `flutter test` integration runs uninstall the app on teardown, so a single
+    # post-run `get_app_container` often sees ENOENT. Poll while the test runs.
+    stop_polling = false
+    poller = Thread.new do
+      until stop_polling
+        begin
+          app_data = `xcrun simctl get_app_container "#{udid}" #{bundle_id} data 2>/dev/null`.strip
+          unless app_data.empty?
+            # iOS/macOS: getTemporaryDirectory() / getApplicationCacheDirectory() → NSCachesDirectory (Library/Caches), not tmp/.
+            sim_shots = File.join(app_data, "Library", "Caches", "store_screenshots")
+            if Dir.exist?(sim_shots)
+              Dir.glob(File.join(sim_shots, "*.png")).each do |src|
+                FileUtils.cp(src, host_shots) if File.file?(src)
+              end
+            end
+          end
+        rescue StandardError
+          # Transient while the app is installing or simctl is busy.
+        end
+        sleep(0.15)
+      end
+    end
+
+    previous_path = ENV["PATH"]
+    ENV["PATH"] = [pod_binstubs, previous_path].compact.join(File::PATH_SEPARATOR)
+    flutter_test_failed = false
+    begin
+      sh(
+        %(cd "#{repo_root}" && ) +
+          %(flutter test integration_test/screenshots_test.dart ) +
+          %(-d "#{udid}" --dart-define=STORE_SCREENSHOTS=true)
+      )
+    rescue StandardError => e
+      flutter_test_failed = true
+      UI.important("flutter test failed (#{e.message}) — still collecting any screenshots from the simulator.")
+    ensure
+      ENV["PATH"] = previous_path
+      stop_polling = true
+      poller.join(5)
+      poller.kill if poller.alive?
+    end
+
+    # Best-effort final copy (sometimes the app is still registered briefly).
+    app_data = `xcrun simctl get_app_container "#{udid}" #{bundle_id} data 2>/dev/null`.strip
+    sim_shots = File.join(app_data, "Library", "Caches", "store_screenshots")
+    if !app_data.empty? && Dir.exist?(sim_shots)
+      Dir.glob(File.join(sim_shots, "*.png")).each { |f| FileUtils.cp(f, host_shots) }
+    end
+
+    host_pngs = Dir.glob(File.join(host_shots, "*.png"))
+    if host_pngs.empty?
+      UI.important("No PNGs in #{host_shots} — check bundle id com.munichways.app and Library/Caches/store_screenshots in the test.")
+    else
+      UI.success("Collected #{host_pngs.length} screenshot(s) into #{host_shots}")
+    end
+
+    dest = File.expand_path("screenshots/de-DE", __dir__)
+    FileUtils.mkdir_p(dest)
+    if Dir.exist?(host_shots)
+      Dir.glob(File.join(host_shots, "*.png")).each { |f| FileUtils.cp(f, dest) }
+      UI.success("Copied screenshots to #{dest}")
+    end
+
+    UI.user_error!("flutter test integration_test/screenshots_test.dart failed") if flutter_test_failed
+  end
+
+  desc "Upload App Store metadata and screenshots from fastlane/screenshots (same as ios metadata but skip_screenshots: false)."
+  lane :metadata_and_screenshots do
+    deliver_options = {
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
       run_precheck_before_submit: false
     }
 
