@@ -68,6 +68,7 @@ flutter:
   assets:
      - images/
      - assets/map/openfreemap_positron_style.json
+     - assets/map/osm_openmaptiles_style.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

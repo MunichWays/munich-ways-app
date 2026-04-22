@@ -1,10 +1,14 @@
-/// Fork of Positron (https://tiles.openfreemap.org/styles/positron). MapLibre loads this via
-/// a pubspec asset path (see `assets/map/openfreemap_positron_style.json`).
+/// [OSM Liberty / OSM OpenMapTiles](https://github.com/openmaptiles/osm-liberty-gl-style)
+/// with the vector source pointed at `https://tiles.openfreemap.org/planet` (OMT
+/// schema). The former `water_name_line` label layer is renamed to
+/// `waterway_line_label` so the overlay anchor matches
+/// [kOpenFreeMapBasemapOverlayBelowLayerId]. The Positron fork remains at
+/// `assets/map/openfreemap_positron_style.json` for easy switching.
 const String kOpenFreeMapLibertyStyleAsset =
-    'assets/map/openfreemap_positron_style.json';
+    'assets/map/osm_openmaptiles_style.json';
 
-/// First water *name* symbol layer in OpenFreeMap Positron / OpenMapTiles-based
-/// styles (`water_name_*` and `highway-name-*` stack above this). Custom line
-/// layers must use `belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId` so
-/// river/lake labels and street names all paint on top of route / Radl-Netz lines.
+/// OpenMapTiles waterway *line* label symbol layer (`water_name_line` in
+/// unmodified OSM Liberty, renamed in our asset to match Positron’s id). Custom
+/// line layers must use `belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId` so
+/// other water/road labels paint on top of route / Radl-Netz lines.
 const String kOpenFreeMapBasemapOverlayBelowLayerId = 'waterway_line_label';
