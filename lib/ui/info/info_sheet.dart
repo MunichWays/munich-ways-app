@@ -44,7 +44,7 @@ class _InfoSheetState extends State<InfoSheet> {
 
   Widget _buildTitle(ThemeData theme) {
     if (_showMapHelp) {
-      return const BottomSheetTitle(title: 'Karte nutzen');
+      return const BottomSheetTitle(title: 'Legende & Tipps');
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

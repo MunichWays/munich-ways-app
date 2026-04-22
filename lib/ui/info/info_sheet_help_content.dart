@@ -14,23 +14,6 @@ class InfoSheetHelpContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Ziel auswählen',
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text(
-            'Nutze den Button unten in der Mitte, um nach einem Ziel zu suchen. Du kannst aber auch auf einen Ort auf der Karte tippen und ca. eine Sekunde gedrückt halten, um die Navigation dorthin zu starten.'),
-        const SizedBox(height: 24),
-        Text('Details zu Streckenabschnitten',
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text(
-          'Tippe auf eine farbige Linie auf der Karte. Es öffnet sich eine '
-          'Übersicht mit Details zu diesem Straßenabschnitt (Bewertung, '
-          'Maßnahmen, Links).',
-        ),
-        const SizedBox(height: 24),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 8,
@@ -62,6 +45,23 @@ class InfoSheetHelpContent extends StatelessWidget {
               description: 'Lücke im Radnetz',
             ),
           ],
+        ),
+        const SizedBox(height: 24),
+        Text('Ziel auswählen',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Text(
+            'Nutze den Button unten in der Mitte, um nach einem Ziel zu suchen. Du kannst aber auch auf einen Ort auf der Karte tippen und ca. eine Sekunde gedrückt halten, um die Navigation dorthin zu starten.'),
+        const SizedBox(height: 24),
+        Text('Details zu Streckenabschnitten',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Text(
+          'Tippe auf eine farbige Linie auf der Karte. Es öffnet sich eine '
+          'Übersicht mit Details zu diesem Straßenabschnitt (Bewertung, '
+          'Maßnahmen, Links).',
         ),
       ],
     );

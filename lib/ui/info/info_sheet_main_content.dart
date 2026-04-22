@@ -56,7 +56,7 @@ class InfoSheetMainContent extends StatelessWidget {
           children: [
             MenuGroupItem(
               icon: Icons.map_outlined,
-              label: 'Karte nutzen',
+              label: 'Legende & Tipps',
               trailingElement: const Icon(Icons.chevron_right),
               onTap: onOpenMapHelp,
             ),
