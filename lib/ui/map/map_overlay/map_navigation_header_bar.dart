@@ -29,9 +29,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final title = dest.displayName?.trim();
-    final headline = (title != null && title.isNotEmpty) ? title : 'Ziel';
-
     final route = model.route;
     final Widget stats;
     switch (route.state) {
@@ -56,34 +53,41 @@ class MapNavigationHeaderBar extends StatelessWidget {
           );
           break;
         }
-        stats = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _formatKm(r.distance),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                '·',
-                style: TextStyle(color: Colors.white70, fontSize: 15),
-              ),
-            ),
-            Text(
-              _formatMin(r.duration),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        );
+        stats = Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                Text(
+                  'Bei Start:',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15),
+                ),
+                Text(
+                  _formatKm(r.distance),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '·',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+                Text(
+                  _formatMin(r.duration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ));
         break;
       case MapRouteState.ERROR:
       case MapRouteState.NO_ROUTE:
@@ -100,46 +104,33 @@ class MapNavigationHeaderBar extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
+        padding: const EdgeInsets.all(8),
+        // [Wrap] + [WrapAlignment.spaceBetween]: stats and action share one line
+        // when their intrinsic widths fit; the previous LayoutBuilder+SizedBox(
+        // width: constraints.maxWidth) forced the second child to claim the
+        // full line width, so the action always wrapped.
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(
-              headline,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: stats),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () => model.clearDestination(),
-                  child: const Text(
-                    'Route beenden',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+            stats,
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
                 ),
-              ],
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () => model.clearDestination(),
+              child: const Text(
+                'Route beenden',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
