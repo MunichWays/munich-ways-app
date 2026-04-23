@@ -8,13 +8,13 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
-/// Edge indicator when [destination] projects outside the map view (MapLibre).
+/// Edge indicator when [destination] projects outside the map view.
 ///
 /// [mapLayerKey] must wrap the [MapLibreMap] so [toScreenLocation] coordinates can
 /// be converted into this overlay's layout (e.g. when the arrow is drawn only below
 /// the navigation header without hard-coding header height).
-class MapLibreDestinationOffScreenOverlay extends StatefulWidget {
-  const MapLibreDestinationOffScreenOverlay({
+class MapDestinationOffScreenOverlay extends StatefulWidget {
+  const MapDestinationOffScreenOverlay({
     super.key,
     required this.mapLayerKey,
     required this.controller,
@@ -28,12 +28,12 @@ class MapLibreDestinationOffScreenOverlay extends StatefulWidget {
   final String imageAssetPath;
 
   @override
-  State<MapLibreDestinationOffScreenOverlay> createState() =>
-      _MapLibreDestinationOffScreenOverlayState();
+  State<MapDestinationOffScreenOverlay> createState() =>
+      _MapDestinationOffScreenOverlayState();
 }
 
-class _MapLibreDestinationOffScreenOverlayState
-    extends State<MapLibreDestinationOffScreenOverlay> {
+class _MapDestinationOffScreenOverlayState
+    extends State<MapDestinationOffScreenOverlay> {
   ui.Image? _image;
   Offset? _destinationMapLocal;
   Offset? _destinationOverlay;
@@ -51,8 +51,7 @@ class _MapLibreDestinationOffScreenOverlayState
   }
 
   @override
-  void didUpdateWidget(
-      covariant MapLibreDestinationOffScreenOverlay oldWidget) {
+  void didUpdateWidget(covariant MapDestinationOffScreenOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.removeListener(_onControllerUpdate);

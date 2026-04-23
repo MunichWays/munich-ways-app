@@ -20,7 +20,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
-import 'package:munich_ways/ui/map/maplibre_destination_offscreen_overlay.dart';
+import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
@@ -410,7 +410,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   _mapController != null)
                                 Positioned.fill(
                                   child: IgnorePointer(
-                                    child: MapLibreDestinationOffScreenOverlay(
+                                    child: MapDestinationOffScreenOverlay(
                                       mapLayerKey: _mapLibreViewKey,
                                       controller: _mapController,
                                       destination: model.destination!,
