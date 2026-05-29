@@ -438,8 +438,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   final pos = await c.queryCameraPosition();
                                   return pos?.bearing;
                                 },
-                                onPressLocation: () {
-                                  model.onPressLocationBtn();
+                                onPressLocation: () async {
+                                  await model.onPressLocationBtn();
+                                  // Belt-and-suspenders: explicitly set the
+                                  // native tracking mode via the controller
+                                  // after the model state settles. On Android
+                                  // the widget-property update may race with
+                                  // the platform channel; calling the method
+                                  // directly guarantees the mode is applied.
+                                  final mode =
+                                      _trackingModeFor(model.locationState);
+                                  await _mapController
+                                      ?.updateMyLocationTrackingMode(mode);
                                 },
                               ),
                               MapBottomActionButtons(model: model),

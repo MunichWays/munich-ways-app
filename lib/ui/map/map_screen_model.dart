@@ -233,9 +233,11 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
-  /// Toggle follow mode, notify UI, then push coordinates so the map animates
-  /// to the user. Uses [Geolocator.getCurrentPosition] when there is no last
-  /// known fix (common right after the user grants permission).
+  /// Toggle follow mode and notify the UI. MapLibre's native tracking mode
+  /// centres the camera automatically once active, so no manual [animateCamera]
+  /// call is made here. On Android, calling [animateCamera] with a new lat/lng
+  /// target while tracking mode is active fires [onCameraTrackingDismissed],
+  /// which would immediately cancel tracking.
   Future<void> _enterLocationFollowAndCenterCamera() async {
     if (locationState == LocationState.FOLLOW) {
       locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
@@ -243,20 +245,6 @@ class MapScreenViewModel extends ChangeNotifier {
       locationState = LocationState.FOLLOW;
     }
     notifyListeners();
-
-    try {
-      Position? position = await Geolocator.getLastKnownPosition();
-      position ??= await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      );
-      currentLocationBtnClickedController.add(
-        LatLng(position.latitude, position.longitude),
-      );
-    } catch (e, st) {
-      log.e('Could not read current position', error: e, stackTrace: st);
-    }
   }
 
   Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
@@ -370,7 +358,9 @@ class MapScreenViewModel extends ChangeNotifier {
         destination!.latLng.longitude,
       );
       bearing = (bearing! + 360) % 360;
-      notifyListeners();
+      // notifyListeners() intentionally omitted: bearing is not consumed by any
+      // widget, so rebuilding the Consumer tree on every camera frame (60fps)
+      // would cause overheating and jank with no visible benefit.
     }
   }
 

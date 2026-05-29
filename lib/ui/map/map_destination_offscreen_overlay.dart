@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:ui' as ui show Image;
 
@@ -38,7 +39,13 @@ class _MapDestinationOffScreenOverlayState
   Offset? _destinationMapLocal;
   Offset? _destinationOverlay;
   Rect? _mapRectInOverlay;
-  int _requestGen = 0;
+
+  /// True while a [toScreenLocation] platform-channel call is outstanding.
+  bool _refreshInFlight = false;
+
+  /// Set to true when the camera moved while a call was in flight, so we
+  /// immediately start another refresh once the current one completes.
+  bool _refreshQueued = false;
 
   @override
   void initState() {
@@ -87,14 +94,21 @@ class _MapDestinationOffScreenOverlayState
 
   void _onControllerUpdate() {
     if (widget.controller?.isDisposed ?? true) return;
-    _refreshScreenPoint();
+    if (_refreshInFlight) {
+      // A toScreenLocation call is already running. Mark that we need another
+      // refresh after it completes so we always end up with the latest position.
+      _refreshQueued = true;
+    } else {
+      _refreshScreenPoint();
+    }
   }
 
   Future<void> _refreshScreenPoint() async {
     final c = widget.controller;
     if (!mounted || c == null || c.isDisposed) return;
 
-    final gen = ++_requestGen;
+    _refreshInFlight = true;
+    _refreshQueued = false;
     try {
       final p = await c.toScreenLocation(
         LatLng(
@@ -102,20 +116,35 @@ class _MapDestinationOffScreenOverlayState
           widget.destination.latLng.longitude,
         ),
       );
-      if (!mounted || gen != _requestGen) return;
+      if (!mounted) return;
+      // toScreenLocation() returns physical pixels on Android but logical
+      // pixels on iOS. Flutter layout (RenderBox) works in logical pixels, so
+      // divide by the device pixel ratio on Android only.
+      final double scale =
+          Platform.isAndroid ? MediaQuery.devicePixelRatioOf(context) : 1.0;
       setState(() {
-        _destinationMapLocal = Offset(p.x.toDouble(), p.y.toDouble());
+        _destinationMapLocal = Offset(
+          p.x.toDouble() / scale,
+          p.y.toDouble() / scale,
+        );
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && gen == _requestGen) _recomputeOverlayCoords();
+        if (mounted) _recomputeOverlayCoords();
       });
     } catch (_) {
-      if (!mounted || gen != _requestGen) return;
+      if (!mounted) return;
       setState(() {
         _destinationMapLocal = null;
         _destinationOverlay = null;
         _mapRectInOverlay = null;
       });
+    } finally {
+      _refreshInFlight = false;
+      // If the camera moved while the call was in flight, immediately fetch
+      // the latest position so the arrow stays in sync.
+      if (_refreshQueued && mounted) {
+        _refreshScreenPoint();
+      }
     }
   }
 
@@ -191,9 +220,10 @@ class _MapDestinationOffScreenOverlayState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _recomputeOverlayCoords();
-        });
+        // No postFrameCallback here: _onControllerUpdate already calls
+        // _recomputeOverlayCoords via _refreshScreenPoint on every camera
+        // update, so adding one on each build would cause redundant setState
+        // calls at rebuild frequency.
         return CustomPaint(
           painter: _OffscreenDestinationPainter(
             destinationOverlay: destOverlay,
