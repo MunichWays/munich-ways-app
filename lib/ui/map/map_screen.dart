@@ -115,9 +115,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (displayCurrentLocationOnResume && state == AppLifecycleState.resumed) {
+    if (state != AppLifecycleState.resumed) return;
+
+    if (displayCurrentLocationOnResume) {
       displayCurrentLocationOnResume = false;
-      mapViewModel.onPressLocationBtn(permissionCheck: false);
+      unawaited(_primeLocationOnStart(mapViewModel, permissionCheck: false));
+    } else if (Platform.isAndroid) {
+      unawaited(_refreshLocationOnResume(mapViewModel));
     }
   }
 
@@ -230,8 +234,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                model.onMapReady();
+              if (!mounted) return;
+              model.onMapReady();
+              if (!kStoreScreenshots) {
+                unawaited(_primeLocationOnStart(model));
               }
             });
           }
@@ -440,16 +446,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 },
                                 onPressLocation: () async {
                                   await model.onPressLocationBtn();
-                                  // Belt-and-suspenders: explicitly set the
-                                  // native tracking mode via the controller
-                                  // after the model state settles. On Android
-                                  // the widget-property update may race with
-                                  // the platform channel; calling the method
-                                  // directly guarantees the mode is applied.
-                                  final mode =
-                                      _trackingModeFor(model.locationState);
-                                  await _mapController
-                                      ?.updateMyLocationTrackingMode(mode);
+                                  if (!mounted) return;
+                                  await _applyNativeLocationTracking(model);
                                 },
                               ),
                               MapBottomActionButtons(model: model),
@@ -510,6 +508,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       case LocationState.DISPLAY:
         return MyLocationTrackingMode.none;
     }
+  }
+
+  /// On Android the widget-property update for tracking mode may race with the
+  /// platform channel; calling the controller directly guarantees it is applied.
+  Future<void> _applyNativeLocationTracking(MapScreenViewModel model) async {
+    await _mapController?.updateMyLocationTrackingMode(
+      _trackingModeFor(model.locationState),
+    );
+  }
+
+  Future<void> _primeLocationOnStart(
+    MapScreenViewModel model, {
+    bool permissionCheck = true,
+  }) async {
+    await model.refreshCurrentLocationFix();
+    await model.onPressLocationBtn(permissionCheck: permissionCheck);
+    if (!mounted) return;
+    await _applyNativeLocationTracking(model);
+  }
+
+  Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
+    if (model.locationState == LocationState.NOT_AVAILABLE) return;
+    await model.refreshCurrentLocationFix();
+    if (!mounted) return;
+    await _applyNativeLocationTracking(model);
   }
 
   bool _isValidCoordinate(double latitude, double longitude) {

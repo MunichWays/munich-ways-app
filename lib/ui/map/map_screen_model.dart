@@ -23,6 +23,16 @@ enum MapSidePanelEdge {
 }
 
 class MapScreenViewModel extends ChangeNotifier {
+  static const _refreshLocationSettings = LocationSettings(
+    accuracy: LocationAccuracy.medium,
+    timeLimit: Duration(seconds: 10),
+  );
+
+  static const _routeStartLocationSettings = LocationSettings(
+    accuracy: LocationAccuracy.medium,
+    timeLimit: Duration(seconds: 8),
+  );
+
   bool loading = false;
 
   bool _firstLoad = true;
@@ -164,8 +174,34 @@ class MapScreenViewModel extends ChangeNotifier {
     refreshRadlnetze();
     if (kStoreScreenshots) {
       unawaited(primeLocationForStoreScreenshots());
-    } else {
-      onPressLocationBtn();
+    }
+  }
+
+  /// Requests a fresh GPS fix so Android's cached last-known location is updated.
+  /// Failures are logged and ignored so callers can continue either way.
+  Future<void> refreshCurrentLocationFix() async {
+    try {
+      await Geolocator.getCurrentPosition(
+        locationSettings: _refreshLocationSettings,
+      );
+    } catch (e, st) {
+      log.d('refreshCurrentLocationFix failed', error: e, stackTrace: st);
+    }
+  }
+
+  /// Prefer a live fix for routing; fall back to last known if GPS is slow.
+  Future<Position?> resolveRouteStartPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: _routeStartLocationSettings,
+      );
+    } catch (e, st) {
+      log.d(
+        'resolveRouteStartPosition: getCurrentPosition failed, trying last known',
+        error: e,
+        stackTrace: st,
+      );
+      return Geolocator.getLastKnownPosition();
     }
   }
 
@@ -408,7 +444,7 @@ class MapScreenViewModel extends ChangeNotifier {
   CancelableOperation<CycleRoute>? _routeRequest = null;
 
   void _requestRoute() async {
-    Position? from = await Geolocator.getLastKnownPosition();
+    Position? from = await resolveRouteStartPosition();
     if (from == null) {
       _displayErrorMsg(
           "Keine Route, da kein aktueller Standort als Start vorhanden");
