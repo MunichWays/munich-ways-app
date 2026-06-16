@@ -29,71 +29,49 @@ class MapNavigationHeaderBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.bodyLarge?.copyWith(
+          color: Colors.white,
+        ) ??
+        const TextStyle(color: Colors.white);
+    final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
+
     final route = model.route;
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
         stats = Text(
           'Route wird berechnet...',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontStyle: FontStyle.italic,
-          ),
+          softWrap: true,
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
         );
         break;
       case MapRouteState.SHOWN:
         final r = route.route;
         if (r == null) {
-          stats = const Text(
-            '…',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          );
+          stats = Text('…', style: baseStyle);
           break;
         }
         stats = Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 4,
-              children: [
-                Text(
-                  'Bei Start:',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15),
-                ),
-                Text(
-                  _formatKm(r.distance),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  '·',
-                  style: TextStyle(color: Colors.white, fontSize: 15),
-                ),
-                Text(
-                  _formatMin(r.duration),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ));
+          padding: const EdgeInsets.all(8),
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Bei Start:', style: emphasisStyle),
+              Text(_formatKm(r.distance), style: emphasisStyle),
+              Text('·', style: baseStyle),
+              Text(_formatMin(r.duration), style: emphasisStyle),
+            ],
+          ),
+        );
         break;
       case MapRouteState.ERROR:
       case MapRouteState.NO_ROUTE:
         stats = Text(
           route.state == MapRouteState.ERROR ? '—' : '…',
-          style: const TextStyle(color: Colors.white, fontSize: 15),
+          style: baseStyle,
         );
         break;
     }
@@ -125,11 +103,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               onPressed: () => model.clearDestination(),
-              child: const Text(
+              child: Text(
                 'Route beenden',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: emphasisStyle.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ],
