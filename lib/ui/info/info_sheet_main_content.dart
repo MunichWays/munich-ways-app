@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -21,6 +22,11 @@ class InfoSheetMainContent extends StatelessWidget {
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      message,
+      TextDirection.ltr,
     );
   }
 

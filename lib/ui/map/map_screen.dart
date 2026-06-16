@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -156,6 +157,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             content: Text(errorMsg),
             duration: Duration(seconds: 2),
           ));
+          SemanticsService.sendAnnouncement(
+            View.of(this.context),
+            errorMsg,
+            TextDirection.ltr,
+          );
         });
         model.showLocationPermissionDialog.listen((_) {
           if (!mounted) return;
