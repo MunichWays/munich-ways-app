@@ -58,12 +58,13 @@ class _InfoSheetState extends State<InfoSheet> {
                 'images/logo_long.png',
                 height: 36,
                 fit: BoxFit.contain,
+                semanticLabel: 'MunichWays - Info',
               ),
               const SizedBox(height: 6),
               Text(
                 _versionLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black45,
+                  color: Colors.black87,
                 ),
               ),
             ],

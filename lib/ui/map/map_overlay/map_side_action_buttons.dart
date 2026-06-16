@@ -73,7 +73,9 @@ class MapSideActionButtons extends StatelessWidget {
         children: [
           ...zoomWidgets,
           MapOverlayButton(
-            tooltip: 'Fahrradnetz',
+            tooltip: model.isRadlvorrangnetzVisible && model.isGesamtnetzVisible
+                ? 'Fahrradnetz auswählen (alle Ebenen sichtbar)'
+                : 'Fahrradnetz auswählen (einige Ebenen ausgeblendet)',
             onPressed: () {
               showModalBottomSheet<void>(
                 context: context,
@@ -90,7 +92,7 @@ class MapSideActionButtons extends StatelessWidget {
           ),
           const SizedBox(height: _buttonSpacing),
           MapOverlayButton(
-            tooltip: 'Aktueller Standort',
+            tooltip: _locationTooltip(model.locationState),
             isActive: model.locationState == LocationState.FOLLOW ||
                 model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
             onPressed: onPressLocation,
@@ -119,6 +121,19 @@ class MapSideActionButtons extends StatelessWidget {
         return const Icon(Icons.my_location);
       case LocationState.FOLLOW_AND_ROTATE_MAP:
         return Icon(MunichwaysIcons.compass);
+    }
+  }
+
+  String _locationTooltip(LocationState state) {
+    switch (state) {
+      case LocationState.NOT_AVAILABLE:
+        return 'Standort nicht verfügbar – antippen, um Berechtigung zu erteilen';
+      case LocationState.DISPLAY:
+        return 'Standort anzeigen – antippen, um der Position zu folgen';
+      case LocationState.FOLLOW:
+        return 'Folgt Standort – antippen, um Karte mitzudrehen';
+      case LocationState.FOLLOW_AND_ROTATE_MAP:
+        return 'Folgt Standort und dreht Karte – antippen, um Standort-Verfolgung zu beenden';
     }
   }
 }

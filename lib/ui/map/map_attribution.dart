@@ -46,6 +46,10 @@ class _MapAttributionState extends State<MapAttribution> {
 
   @override
   Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.black87,
+            ) ??
+        const TextStyle(color: Colors.black87);
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
@@ -53,7 +57,7 @@ class _MapAttributionState extends State<MapAttribution> {
         color: Colors.white70,
         child: Text.rich(
           TextSpan(
-            style: const TextStyle(fontSize: 12),
+            style: baseStyle,
             children: <TextSpan>[
               const TextSpan(text: '© '),
               TextSpan(

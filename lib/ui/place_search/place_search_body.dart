@@ -48,7 +48,10 @@ class PlaceSearchBody extends StatelessWidget {
         children.add(
           ListTile(
             title: Text(place.displayName!),
-            trailing: const Icon(Icons.arrow_forward),
+            trailing: Icon(
+              Icons.arrow_forward,
+              semanticLabel: 'Ziel auswählen: ${place.displayName!}',
+            ),
             onTap: () {
               model.addToRecentSearches(place);
               Navigator.pop(context, place);
@@ -61,7 +64,9 @@ class PlaceSearchBody extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Text(
             'Data © OpenStreetMap contributors, ODbL 1.0. https://osm.org/copyright',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade800,
+                ),
           ),
         ),
       );
@@ -119,7 +124,10 @@ class PlaceSearchBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(recentSearch.displayName!),
           ),
-          trailing: const Icon(Icons.arrow_forward),
+          trailing: Icon(
+            Icons.arrow_forward,
+            semanticLabel: 'Ziel auswählen: ${recentSearch.displayName!}',
+          ),
           onTap: () {
             Navigator.pop(context, recentSearch);
           },

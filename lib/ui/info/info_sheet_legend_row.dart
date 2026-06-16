@@ -17,7 +17,7 @@ class InfoSheetLegendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final captionStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: Colors.black54,
+      color: Colors.black87,
       height: 1.3,
     );
     return Row(
@@ -31,7 +31,7 @@ class InfoSheetLegendRow extends StatelessWidget {
             color: color,
             borderRadius: BorderRadius.circular(4),
             border: color == AppColors.mapBlack
-                ? Border.all(color: Colors.black26)
+                ? Border.all(color: Colors.black87)
                 : null,
           ),
         ),
@@ -39,7 +39,8 @@ class InfoSheetLegendRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: captionStyle?.copyWith(color: Colors.black87)),
+              Text(label,
+                  style: captionStyle?.copyWith(fontWeight: FontWeight.w600)),
               Text(description, style: captionStyle),
             ],
           ),

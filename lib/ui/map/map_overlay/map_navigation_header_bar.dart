@@ -37,8 +37,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
           'Route wird berechnet...',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.92),
+          style: const TextStyle(
+            color: Colors.white,
             fontSize: 15,
             fontStyle: FontStyle.italic,
           ),
@@ -49,7 +49,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
         if (r == null) {
           stats = const Text(
             '…',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
+            style: TextStyle(color: Colors.white, fontSize: 15),
           );
           break;
         }
@@ -76,7 +76,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 ),
                 Text(
                   '·',
-                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                  style: TextStyle(color: Colors.white, fontSize: 15),
                 ),
                 Text(
                   _formatMin(r.duration),
@@ -93,7 +93,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       case MapRouteState.NO_ROUTE:
         stats = Text(
           route.state == MapRouteState.ERROR ? '—' : '…',
-          style: const TextStyle(color: Colors.white70, fontSize: 15),
+          style: const TextStyle(color: Colors.white, fontSize: 15),
         );
         break;
     }

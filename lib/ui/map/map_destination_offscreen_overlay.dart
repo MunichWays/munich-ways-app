@@ -224,14 +224,19 @@ class _MapDestinationOffScreenOverlayState
         // _recomputeOverlayCoords via _refreshScreenPoint on every camera
         // update, so adding one on each build would cause redundant setState
         // calls at rebuild frequency.
-        return CustomPaint(
-          painter: _OffscreenDestinationPainter(
-            destinationOverlay: destOverlay,
-            mapRectInOverlay: mapRect,
-            bottomChromePx: bottomChromePx,
-            image: img,
+        return Semantics(
+          label:
+              'Ziel liegt außerhalb des Kartenausschnitts – Pfeil zeigt in dessen Richtung',
+          container: true,
+          child: CustomPaint(
+            painter: _OffscreenDestinationPainter(
+              destinationOverlay: destOverlay,
+              mapRectInOverlay: mapRect,
+              bottomChromePx: bottomChromePx,
+              image: img,
+            ),
+            child: const SizedBox.expand(),
           ),
-          child: const SizedBox.expand(),
         );
       },
     );

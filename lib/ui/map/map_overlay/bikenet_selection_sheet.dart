@@ -99,35 +99,45 @@ class _BikenetLayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _LinePreviewBadge(
-                size: _previewSize,
-                selected: selected,
-                dashed: dashed,
-                lineColors: lineColors,
-                lineThickness: _lineThickness,
-                lineGap: _lineGap,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: titleStyle),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: subtitleStyle),
-                  ],
+    return Semantics(
+      container: true,
+      label: '$title, $subtitle',
+      toggled: selected,
+      onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ExcludeSemantics(
+                  child: _LinePreviewBadge(
+                    size: _previewSize,
+                    selected: selected,
+                    dashed: dashed,
+                    lineColors: lineColors,
+                    lineThickness: _lineThickness,
+                    lineGap: _lineGap,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ExcludeSemantics(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: titleStyle),
+                        const SizedBox(height: 4),
+                        Text(subtitle, style: subtitleStyle),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -193,12 +203,10 @@ class _LinePreviewBadge extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected ? Colors.white : const Color(0xFFF0F0F0),
               borderRadius: BorderRadius.circular(12),
-              border: selected
-                  ? Border.all(
-                      color: AppColors.mapAccentColor,
-                      width: 4,
-                    )
-                  : null,
+              border: Border.all(
+                color: selected ? AppColors.mapAccentColor : Colors.black54,
+                width: selected ? 4 : 1,
+              ),
             ),
             child: inner,
           ),

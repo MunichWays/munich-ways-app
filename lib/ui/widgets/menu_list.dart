@@ -71,7 +71,9 @@ class MenuGroupItem extends StatelessWidget {
 
     final rowChildren = <Widget>[
       if (icon != null) ...[
-        Icon(icon, color: AppColors.mapBlack),
+        ExcludeSemantics(
+          child: Icon(icon, color: AppColors.mapBlack),
+        ),
         const SizedBox(width: 16),
       ],
       Expanded(child: labelWidget),

@@ -71,7 +71,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                           controller: _query,
                           autofocus: true,
                           decoration: const InputDecoration(
-                            hintText: 'Suche Ziel …',
+                            labelText: 'Ziel suchen',
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.symmetric(
@@ -79,7 +79,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                               vertical: 12,
                             ),
                           ),
-                          style: const TextStyle(fontSize: 18),
+                          style: Theme.of(context).textTheme.titleMedium,
                           textInputAction: TextInputAction.search,
                           onSubmitted: (_) => _submitSearch(),
                         ),

@@ -63,7 +63,7 @@ class MapillaryImage extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white70,
+              backgroundColor: Colors.white,
               foregroundColor: Colors.black87,
             ),
             child: const Text('Mapillary öffnen'),

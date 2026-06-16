@@ -167,7 +167,7 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
                     height: 30,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 1),
+                      border: Border.all(color: Colors.white70, width: 1),
                     ),
                   ),
                 ),
@@ -176,9 +176,11 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
                   alignment: Alignment.center,
                   child: Padding(
                     padding: const EdgeInsets.all(6.0),
-                    child: Image.asset(
-                      'images/compass.png',
-                      fit: BoxFit.contain,
+                    child: ExcludeSemantics(
+                      child: Image.asset(
+                        'images/compass.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
