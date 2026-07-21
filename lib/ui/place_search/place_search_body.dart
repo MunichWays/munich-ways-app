@@ -100,9 +100,8 @@ class PlaceSearchBody extends StatelessWidget {
       return [];
     }
     return [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -111,9 +110,12 @@ class PlaceSearchBody extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          TextButton(
-            onPressed: model.clearAllRecentSearches,
-            child: const Text('Suchverlauf löschen'),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: model.clearAllRecentSearches,
+              child: const Text('Suchverlauf löschen'),
+            ),
           ),
         ],
       ),
@@ -129,6 +131,7 @@ class PlaceSearchBody extends StatelessWidget {
             semanticLabel: 'Ziel auswählen: ${recentSearch.displayName!}',
           ),
           onTap: () {
+            model.addToRecentSearches(recentSearch);
             Navigator.pop(context, recentSearch);
           },
         ),
