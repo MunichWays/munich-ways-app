@@ -22,6 +22,55 @@ class FakeRecentSearchesStore extends RecentSearchesStore {
 }
 
 void main() {
+  testWidgets('shows compact address search help in a tooltip', (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Suchbegriff eingeben'), findsOneWidget);
+    expect(
+      tester.widget<Tooltip>(find.byType(Tooltip)).showDuration,
+      const Duration(seconds: 8),
+    );
+    expect(
+      find.textContaining('Bitte gebe einen Suchbegriff ein'),
+      findsNothing,
+    );
+
+    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.pump();
+
+    expect(
+      find.textContaining('Bitte gebe einen Suchbegriff ein'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Bitte gebe einen Suchbegriff ein'),
+      findsNothing,
+    );
+
+    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Bitte gebe einen Suchbegriff ein'),
+      findsNothing,
+    );
+  });
+
   test('stores at most 25 recent searches', () async {
     final store = FakeRecentSearchesStore([]);
     final model = PlaceSearchScreenViewModel(recentSearchesRepo: store);
@@ -80,10 +129,10 @@ void main() {
     await tester.pump();
 
     final headingTop = tester.getTopLeft(find.text('Letzte Ziele')).dy;
-    final clearButtonTop =
-        tester.getTopLeft(find.text('Suchverlauf löschen')).dy;
+    final clearButtonTop = tester.getTopLeft(find.text('Suchverlauf')).dy;
 
     expect(clearButtonTop, greaterThan(headingTop));
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
