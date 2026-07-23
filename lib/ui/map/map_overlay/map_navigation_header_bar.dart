@@ -8,10 +8,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
   const MapNavigationHeaderBar({
     super.key,
     required this.model,
+    required this.onRefreshRoute,
     required this.onStartNavigation,
   });
 
   final MapScreenViewModel model;
+  final Future<void> Function() onRefreshRoute;
   final Future<void> Function() onStartNavigation;
 
   static String _formatKm(double meters) {
@@ -97,9 +99,21 @@ class MapNavigationHeaderBar extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               constraints: const BoxConstraints(),
               visualDensity: VisualDensity.compact,
-              tooltip: 'Route neu berechnen',
-              onPressed: model.refreshRoute,
-              icon: const Icon(Icons.refresh),
+              tooltip: route.state == MapRouteState.LOADING
+                  ? 'Route wird berechnet'
+                  : 'Route neu berechnen',
+              onPressed:
+                  route.state == MapRouteState.LOADING ? null : onRefreshRoute,
+              icon: route.state == MapRouteState.LOADING
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Icon(Icons.refresh),
             ),
             stats,
             if (route.state == MapRouteState.SHOWN &&

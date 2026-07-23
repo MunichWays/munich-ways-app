@@ -57,6 +57,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
   bool _initialContentReady = false;
+  bool _initialRatingsAwaitingMapIdle = false;
   bool _mapReadyNotified = false;
   bool _overlaySyncScheduled = false;
   bool _overlaySyncRunning = false;
@@ -400,6 +401,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         onCameraIdle: () {
                           _compassIdleTick.value++;
                         },
+                        onMapIdle: () {
+                          if (!_initialRatingsAwaitingMapIdle ||
+                              _initialContentReady ||
+                              !mounted) {
+                            return;
+                          }
+                          setState(() {
+                            _initialRatingsAwaitingMapIdle = false;
+                            _initialContentReady = true;
+                          });
+                        },
                       ),
                     ),
                   SafeArea(
@@ -410,6 +422,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                           child: MapNavigationHeaderBar(
                             model: model,
+                            onRefreshRoute: () =>
+                                _refreshRouteAndResumeNavigation(model),
                             onStartNavigation: () => _startNavigation(model),
                           ),
                         ),
@@ -473,31 +487,55 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   if (!_initialContentReady)
-                    Positioned.fill(
-                      child: ColoredBox(
-                        color: const Color(0xE6FFFFFF),
-                        child: Center(
-                          child: Semantics(
-                            label: 'Karte und Bewertungen werden geladen',
-                            liveRegion: true,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 32),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(strokeWidth: 3),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Karte und Bewertungen\nwerden geladen …',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.black87,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.4,
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                              child: Material(
+                                color: Colors.white,
+                                elevation: 4,
+                                shadowColor: Colors.black38,
+                                borderRadius: BorderRadius.circular(14),
+                                child: Semantics(
+                                  label: 'Karte und Bewertungen werden geladen',
+                                  liveRegion: true,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 3,
+                                          ),
+                                        ),
+                                        SizedBox(width: 14),
+                                        Flexible(
+                                          child: Text(
+                                            'Karte und Bewertungen werden geladen …',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.black87,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -573,6 +611,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+  }
+
+  Future<void> _refreshRouteAndResumeNavigation(
+      MapScreenViewModel model) async {
+    final routeUpdated = await model.refreshRoute();
+    if (!mounted || !routeUpdated) return;
+    await _startNavigation(model);
   }
 
   Future<void> _primeLocationOnStart(
@@ -903,9 +948,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
     if (mounted && !_initialContentReady && containsInitialLoadResult) {
-      setState(() {
-        _initialContentReady = true;
-      });
+      // setGeoJsonSource completes when the data has been handed to MapLibre.
+      // Keep showing the loader until onMapIdle confirms that these ratings
+      // have also been rendered.
+      _initialRatingsAwaitingMapIdle = true;
     }
     if (mounted && kStoreScreenshots) {
       setState(() {
