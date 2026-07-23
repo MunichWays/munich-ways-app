@@ -56,6 +56,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
+  bool _initialContentReady = false;
   bool _mapReadyNotified = false;
   bool _overlaySyncScheduled = false;
   bool _overlaySyncRunning = false;
@@ -409,7 +410,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                          child: MapNavigationHeaderBar(model: model),
+                          child: MapNavigationHeaderBar(
+                            model: model,
+                            onStartNavigation: () =>
+                                _startNavigation(model),
+                          ),
                         ),
                         if (model.destination != null)
                           const SizedBox(height: 4),
@@ -470,6 +475,38 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
+                  if (!_initialContentReady)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: const Color(0xE6FFFFFF),
+                        child: Center(
+                          child: Semantics(
+                            label: 'Karte und Bewertungen werden geladen',
+                            liveRegion: true,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(strokeWidth: 3),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Karte und Bewertungen\nwerden geladen …',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -522,6 +559,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _mapController?.updateMyLocationTrackingMode(
       _trackingModeFor(model.locationState),
     );
+  }
+
+  Future<void> _startNavigation(MapScreenViewModel model) async {
+    // Camera animations performed after entering native tracking can trigger
+    // onCameraTrackingDismissed. Set the navigation zoom first, then enable
+    // follow-and-rotate so the final state remains native location tracking.
+    await _mapController?.animateCamera(CameraUpdate.zoomTo(18));
+    if (!mounted) return;
+
+    final started = await model.startNavigation();
+    if (!mounted || !started) return;
+
+    // Let MapLibreMap rebuild with myLocationEnabled and trackingCompass before
+    // applying the same mode directly through the platform controller.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await _applyNativeLocationTracking(model);
   }
 
   Future<void> _primeLocationOnStart(
@@ -833,6 +887,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _syncNetworkLayers(
       MapScreenViewModel model, MapLibreMapController controller) async {
+    // Capture this before building the GeoJSON. The initial empty-layer sync can
+    // overlap the ratings download; checking the live model only after the await
+    // would then hide the loader even though this sync contains no ratings yet.
+    final containsInitialLoadResult =
+        model.initialLoadComplete && !model.loading;
     final visiblePolylines = model.polylines.toList();
     final result = buildNetworkGeoJson(
       visiblePolylines,
@@ -846,6 +905,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _ensureNetworkGeoJsonLayers(controller);
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
+    if (mounted && !_initialContentReady && containsInitialLoadResult) {
+      setState(() {
+        _initialContentReady = true;
+      });
+    }
     if (mounted && kStoreScreenshots) {
       setState(() {
         _storeScreenshotNetworkSynced = true;

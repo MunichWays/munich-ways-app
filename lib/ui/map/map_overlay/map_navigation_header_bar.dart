@@ -8,9 +8,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
   const MapNavigationHeaderBar({
     super.key,
     required this.model,
+    required this.onStartNavigation,
   });
 
   final MapScreenViewModel model;
+  final Future<void> Function() onStartNavigation;
 
   static String _formatKm(double meters) {
     final km = meters / 1000.0;
@@ -59,7 +61,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
             runSpacing: 2,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Bei Start:', style: emphasisStyle),
               Text(_formatKm(r.distance), style: emphasisStyle),
               Text('·', style: baseStyle),
               Text(_formatMin(r.duration), style: emphasisStyle),
@@ -91,22 +92,42 @@ class MapNavigationHeaderBar extends StatelessWidget {
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            IconButton(
+              color: Colors.white,
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Route neu berechnen',
+              onPressed: model.refreshRoute,
+              icon: const Icon(Icons.refresh),
+            ),
             stats,
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
+            if (route.state == MapRouteState.SHOWN &&
+                route.route != null &&
+                !model.navigationStarted)
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onPressed: onStartNavigation,
+                icon: const Icon(Icons.navigation, size: 18),
+                label: const Text('Starten'),
               ),
-              onPressed: () => model.clearDestination(),
-              child: Text(
-                'Route beenden',
-                style: emphasisStyle.copyWith(fontWeight: FontWeight.w700),
-              ),
+            IconButton(
+              color: Colors.white,
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Route beenden',
+              onPressed: model.clearDestination,
+              icon: const Icon(Icons.close),
             ),
           ],
         ),

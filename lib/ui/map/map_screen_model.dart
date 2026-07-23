@@ -36,6 +36,7 @@ class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool _firstLoad = true;
+  bool get initialLoadComplete => !_firstLoad;
 
   /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
   bool storeScreenshotLocationPrimeComplete = false;
@@ -114,6 +115,8 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   LocationState locationState = LocationState.NOT_AVAILABLE;
+  bool _navigationStarted = false;
+  bool get navigationStarted => _navigationStarted;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
 
@@ -336,6 +339,29 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
+  /// Enters turn-by-turn navigation tracking in one action.
+  ///
+  /// The regular location button deliberately cycles through follow modes.
+  /// Navigation start instead advances directly to follow-and-rotate, while
+  /// reusing the same location-service and permission handling.
+  Future<bool> startNavigation() async {
+    if (locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      _navigationStarted = true;
+      notifyListeners();
+      return true;
+    }
+
+    if (locationState != LocationState.FOLLOW) {
+      await onPressLocationBtn();
+    }
+    if (locationState == LocationState.FOLLOW) {
+      locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+      _navigationStarted = true;
+      notifyListeners();
+    }
+    return locationState == LocationState.FOLLOW_AND_ROTATE_MAP;
+  }
+
   void toggleGesamtnetzVisible() {
     _isGesamtnetzVisible = !_isGesamtnetzVisible;
     notifyListeners();
@@ -418,6 +444,7 @@ class MapScreenViewModel extends ChangeNotifier {
       locationState = LocationState.DISPLAY;
     }
     this.destination = place;
+    _navigationStarted = false;
     notifyListeners();
     _destinationStreamController.add(place);
 
@@ -432,12 +459,20 @@ class MapScreenViewModel extends ChangeNotifier {
     _routeRequest?.cancel();
     _routeRequest = null;
     this.destination = null;
+    _navigationStarted = false;
     notifyListeners();
 
     // turn screen off when locating destination is off
     WakelockPlus.disable();
 
     _clearRoute();
+  }
+
+  /// Recalculates the route from the current location to the current destination.
+  void refreshRoute() {
+    if (destination != null) {
+      _requestRoute();
+    }
   }
 
   /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.
