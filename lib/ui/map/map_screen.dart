@@ -412,8 +412,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                           child: MapNavigationHeaderBar(
                             model: model,
-                            onStartNavigation: () =>
-                                _startNavigation(model),
+                            onStartNavigation: () => _startNavigation(model),
                           ),
                         ),
                         if (model.destination != null)
