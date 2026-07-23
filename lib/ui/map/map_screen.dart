@@ -158,11 +158,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             content: Text(errorMsg),
             duration: Duration(seconds: 2),
           ));
-          SemanticsService.sendAnnouncement(
-            View.of(this.context),
-            errorMsg,
-            TextDirection.ltr,
-          );
+          // `announce` also works with the older Flutter SDK used by the 3.0 CI job.
+          // ignore: deprecated_member_use
+          SemanticsService.announce(errorMsg, TextDirection.ltr);
         });
         model.showLocationPermissionDialog.listen((_) {
           if (!mounted) return;
