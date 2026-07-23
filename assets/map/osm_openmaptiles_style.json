@@ -3532,6 +3532,11 @@
           "Point"
         ],
         [
+          "!=",
+          "class",
+          "drinking_water"
+        ],
+        [
           ">=",
           "rank",
           20
@@ -3588,6 +3593,11 @@
           "==",
           "$type",
           "Point"
+        ],
+        [
+          "!=",
+          "class",
+          "drinking_water"
         ],
         [
           ">=",
@@ -3651,6 +3661,11 @@
           "==",
           "$type",
           "Point"
+        ],
+        [
+          "!=",
+          "class",
+          "drinking_water"
         ],
         [
           ">=",
@@ -3737,6 +3752,80 @@
         "text-halo-color": "#ffffff",
         "text-halo-width": 1
       }
+    },
+    {
+      "id": "poi_drinking_water_halo",
+      "type": "circle",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "drinking_water"
+        ]
+      ],
+      "paint": {
+        "circle-color": "#ffffff",
+        "circle-radius": {
+          "stops": [
+            [
+              14,
+              8
+            ],
+            [
+              16,
+              10
+            ]
+          ]
+        },
+        "circle-stroke-color": "#1976d2",
+        "circle-stroke-width": 2
+      }
+    },
+    {
+      "id": "poi_drinking_water",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "drinking_water"
+        ]
+      ],
+      "layout": {
+        "icon-image": "drinking_water",
+        "icon-allow-overlap": true,
+        "icon-size": {
+          "stops": [
+            [
+              14,
+              1
+            ],
+            [
+              16,
+              1.35
+            ]
+          ]
+        }
+      },
+      "paint": {}
     },
     {
       "id": "road_label",

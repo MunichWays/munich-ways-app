@@ -36,6 +36,7 @@ class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool _firstLoad = true;
+  bool get initialLoadComplete => !_firstLoad;
 
   /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
   bool storeScreenshotLocationPrimeComplete = false;
@@ -114,6 +115,8 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   LocationState locationState = LocationState.NOT_AVAILABLE;
+  bool _navigationStarted = false;
+  bool get navigationStarted => _navigationStarted;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
 
@@ -336,6 +339,29 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
+  /// Enters turn-by-turn navigation tracking in one action.
+  ///
+  /// The regular location button deliberately cycles through follow modes.
+  /// Navigation start instead advances directly to follow-and-rotate, while
+  /// reusing the same location-service and permission handling.
+  Future<bool> startNavigation() async {
+    if (locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      _navigationStarted = true;
+      notifyListeners();
+      return true;
+    }
+
+    if (locationState != LocationState.FOLLOW) {
+      await onPressLocationBtn();
+    }
+    if (locationState == LocationState.FOLLOW) {
+      locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+      _navigationStarted = true;
+      notifyListeners();
+    }
+    return locationState == LocationState.FOLLOW_AND_ROTATE_MAP;
+  }
+
   void toggleGesamtnetzVisible() {
     _isGesamtnetzVisible = !_isGesamtnetzVisible;
     notifyListeners();
@@ -418,13 +444,14 @@ class MapScreenViewModel extends ChangeNotifier {
       locationState = LocationState.DISPLAY;
     }
     this.destination = place;
+    _navigationStarted = false;
     notifyListeners();
     _destinationStreamController.add(place);
 
     // keep screen on while locating destination is on
     WakelockPlus.enable();
 
-    _requestRoute();
+    unawaited(_requestRoute());
   }
 
   void clearDestination() {
@@ -432,6 +459,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _routeRequest?.cancel();
     _routeRequest = null;
     this.destination = null;
+    _navigationStarted = false;
     notifyListeners();
 
     // turn screen off when locating destination is off
@@ -440,46 +468,76 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearRoute();
   }
 
+  /// Recalculates the route from the current location to the current destination.
+  Future<bool> refreshRoute() {
+    if (destination == null) {
+      return Future<bool>.value(false);
+    }
+    return _requestRoute();
+  }
+
   /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.
   CancelableOperation<CycleRoute>? _routeRequest = null;
 
-  void _requestRoute() async {
-    Position? from = await resolveRouteStartPosition();
-    if (from == null) {
-      _displayErrorMsg(
-          "Keine Route, da kein aktueller Standort als Start vorhanden");
-      return;
-    }
+  Future<bool> _requestRoute() async {
     final to = this.destination;
     if (to == null) {
       _displayErrorMsg("Keine Route, da kein Ziel vorhanden");
-      return;
+      return false;
     }
 
-    _routeRequest
-        ?.cancel(); // New destination / retry: abandon previous request.
+    // Show feedback immediately. Resolving a fresh GPS position can itself take
+    // several seconds and is part of the route recalculation from the user's
+    // perspective.
     this.route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
-    _routeRequest = CancelableOperation<CycleRoute>.fromFuture(
-        _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
-        onCancel: () => {log.d("canceled prev request")});
-    _routeRequest?.value.then((value) {
+
+    // New destination / retry: abandon the previous request.
+    await _routeRequest?.cancel();
+    if (destination != to) {
+      return false;
+    }
+
+    final from = await resolveRouteStartPosition();
+    if (destination != to) {
+      return false;
+    }
+    if (from == null) {
+      _displayErrorMsg(
+          "Keine Route, da kein aktueller Standort als Start vorhanden");
+      this.route = MapRoute(null, MapRouteState.ERROR);
+      notifyListeners();
+      return false;
+    }
+
+    final request = CancelableOperation<CycleRoute>.fromFuture(
+      _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
+      onCancel: () => log.d("canceled prev request"),
+    );
+    _routeRequest = request;
+
+    try {
+      final value = await request.valueOrCancellation();
       // User may have cleared the destination while the request was running.
-      if (destination == null) {
-        return;
+      if (!identical(_routeRequest, request) ||
+          destination == null ||
+          value == null) {
+        return false;
       }
       this.route = MapRoute(value, MapRouteState.SHOWN);
       _routeStreamController.add(this.route);
       notifyListeners();
-    }).catchError((e) {
+      return true;
+    } catch (e) {
       // Same as success path: ignore errors from superseded/cancelled requests.
-      if (destination == null) {
-        return;
+      if (!identical(_routeRequest, request) || destination == null) {
+        return false;
       }
       _displayErrorMsg("Fehler bei Routensuche $e");
       this.route = MapRoute(null, MapRouteState.ERROR);
       notifyListeners();
-    });
+      return false;
+    }
   }
 
   void _clearRoute() {

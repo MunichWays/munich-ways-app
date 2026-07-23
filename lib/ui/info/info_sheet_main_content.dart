@@ -23,11 +23,9 @@ class InfoSheetMainContent extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
     );
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      message,
-      TextDirection.ltr,
-    );
+    // `announce` also works with the older Flutter SDK used by the 3.0 CI job.
+    // ignore: deprecated_member_use
+    SemanticsService.announce(message, TextDirection.ltr);
   }
 
   Future<void> _openUrl(

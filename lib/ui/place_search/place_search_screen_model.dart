@@ -7,7 +7,7 @@ import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 
-const maxNumberStoredRecentSearches = 50;
+const maxNumberStoredRecentSearches = 25;
 
 class PlaceSearchScreenViewModel extends ChangeNotifier {
   bool loading = false;
