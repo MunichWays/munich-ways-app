@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
+import 'package:munich_ways/ui/place_search/place_search_body.dart';
+import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
+import 'package:provider/provider.dart';
+
+Future<Place?> showPlaceSearchSheet(BuildContext context) {
+  return showModalBottomSheet<Place?>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => ChangeNotifierProvider<PlaceSearchScreenViewModel>(
+      create: (_) => PlaceSearchScreenViewModel(
+        recentSearchesRepo: recentSearchesRepo,
+      ),
+      child: const _PlaceSearchSheet(),
+    ),
+  );
+}
+
+class _PlaceSearchSheet extends StatefulWidget {
+  const _PlaceSearchSheet();
+
+  @override
+  State<_PlaceSearchSheet> createState() => _PlaceSearchSheetState();
+}
+
+class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
+  final TextEditingController _query = TextEditingController();
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  void _submitSearch() {
+    context.read<PlaceSearchScreenViewModel>().startSearch(_query.text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: bottomSheetTopPadding(context),
+        bottom: viewInsetsBottom,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: bottomSheetMaxHeight(context),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: bottomSheetDecoration(),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 4, 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _query,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Ziel suchen',
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: Theme.of(context).textTheme.titleMedium,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _submitSearch(),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Suchen',
+                        icon: const Icon(Icons.search),
+                        onPressed: _submitSearch,
+                      ),
+                      IconButton(
+                        tooltip: 'Schließen',
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Consumer<PlaceSearchScreenViewModel>(
+                    builder: (context, model, _) {
+                      return PlaceSearchBody(model: model);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

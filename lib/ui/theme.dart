@@ -9,12 +9,12 @@ class AppColors {
   static const mapRed = Color(0xfff44336);
   static const mapGrey = Color(0xff9c9d9f);
 
+  static const mapButtonBackground = Color(0xFF4D4D4D);
+  static const mapButtonForeground = Colors.white;
+  static const mapButtonForegroundActive = Color(0xFF65B8FF);
+
   static const mapAccentColor = Color(0xFF2196F3);
-
   static const mapRouteColor = mapAccentColor;
-  static const mapRouteBorderColor = Color(0xFF213DF3);
-
-  static var disabledMapButton = Colors.black45;
 
   static Color getPolylineColor(_color) {
     switch (_color) {

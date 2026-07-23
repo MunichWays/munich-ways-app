@@ -1,0 +1,5 @@
+* Die Karte wurde technisch modernisiert – für flüssigere Darstellung und eine stabilere Basis für künftige Funktionen.
+* Neues Kartenlayout: Infos, Einstellungen, Radnetz-Auswahl, Ortssuche und Straßendetails öffnen sich jetzt in übersichtlichen Fenstern.
+* Zoom-Buttons können der Karte hinzugefügt und wieder entfernt werden bei Bedarf.
+* Die Buttons zur Bedienung der Karte können wahlweise links oder rechts dargestellt werden.
+* Neues, ruhigeres Kartenbild mit besser lesbaren Beschriftungen und klarerer Darstellung von Linien und Routen.

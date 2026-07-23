@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0+31
+* Migrated the map stack from `flutter_map` to MapLibre and removed legacy map code paths.
+* Introduced a new map overlay layout with modal sheets for info, settings, bike network selection, place search, and street details.
+* Added map controls customization (button visibility/settings) and improved on-map navigation UX, including loading and off-screen destination handling.
+* Switched to a customized OpenFreeMap Positron style and improved map readability (label halo, line layering, zoom-aware route widths).
+
 ##  2.0.2+27
 * Version fix
 

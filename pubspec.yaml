@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 2.0.3+28
+version: 3.0.0+36
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -23,17 +23,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_map: ^6.2.1
-  flutter_map_cache: ^1.5.2
-  flutter_compass: ^0.8.0
-  dio_cache_interceptor_file_store: ^1.2.2 # file system cache for flutter_map_cache
+  latlong2: ^0.9.1
+  dio_cache_interceptor_file_store: ^1.2.2 # Map tile cache (settings)
   google_polyline_algorithm: ^3.1.0 # decode polylines for routing
   provider: ^6.0.4
   http: ^1.0.0
   http_interceptor: ^2.0.0-beta.7
   logger: ^2.0.1
   geolocator: ^14.0.2
-  app_settings: ^6.1.1
   url_launcher: ^6.0.6
   equatable: ^2.0.2
   package_info_plus: ^8.3.1
@@ -48,10 +45,13 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.0
+  maplibre_gl: ^0.25.0
 
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
 # For information on the generic Dart part of this file, see the
@@ -67,6 +67,8 @@ flutter:
 
   assets:
      - images/
+     - assets/map/openfreemap_positron_style.json
+     - assets/map/osm_openmaptiles_style.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

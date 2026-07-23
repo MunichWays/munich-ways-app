@@ -20,6 +20,7 @@ if(keystorePropertiesFile.exists()) {
 } else {
     project.logger.info('Load keystore properties from environment')
     try {
+        keystoreProperties['storeFile'] = System.getenv('ANDROID_RELEASE_STORE_FILE') ?: 'release.keystore'
         keystoreProperties['storePassword'] = System.getenv('ANDROID_RELEASE_STORE_PASSWORD')
         keystoreProperties['alias'] = System.getenv('ANDROID_RELEASE_ALIAS')
         keystoreProperties['aliasPassword'] = System.getenv('ANDROID_RELEASE_ALIAS_PASSWORD')
@@ -40,6 +41,7 @@ if (flutterVersionName == null) {
 
 android {
     compileSdkVersion 36
+    ndkVersion "28.2.13676358"
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -56,25 +58,31 @@ android {
 
     defaultConfig {
         applicationId "com.munichways.app"
-        minSdkVersion flutter.minSdkVersion
+        // maplibre_gl requires minSdk >= 23.
+        // Math.max keeps the constraint explicit and is immune to Flutter's
+        // MinSdkVersionMigration tool (which rewrites bare values 16-23 to flutter.minSdkVersion).
+        minSdkVersion Math.max(flutter.minSdkVersion, 23)
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
 
+    def releaseKeystoreFile = file(keystoreProperties['storeFile'] ?: 'release.keystore')
+
     signingConfigs {
         release {
             keyAlias keystoreProperties['alias']
             keyPassword keystoreProperties['aliasPassword']
-            storeFile file("release.keystore")
+            storeFile releaseKeystoreFile
             storePassword keystoreProperties['storePassword']
         }
-
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig releaseKeystoreFile.exists()
+                ? signingConfigs.release
+                : signingConfigs.debug
         }
     }
     namespace 'com.munichways.munich_ways'

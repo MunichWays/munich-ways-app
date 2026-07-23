@@ -1,5 +1,8 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '11.0'
+# Keep in sync with Runner IPHONEOS_DEPLOYMENT_TARGET and AppFrameworkInfo MinimumOSVersion.
+# Explicit CDN avoids "None of your spec sources contain MapLibre" when the local trunk cache is stale.
+source 'https://cdn.cocoapods.org/'
+
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -27,6 +30,21 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+# maplibre_gl 0.25 pins MapLibre Native 6.19.1; that build can SIGABRT in mbgl during
+# MapLibreMapController init on recent iOS. Bump the pin before CocoaPods resolves deps
+# (pre_install is too late — resolution has already read the podspec).
+# 6.21.2+ includes native crash fixes; newer 6.x picks up additional iOS fixes.
+# Use `pod install --repo-update` if resolution fails.
+MAPML_MAPLIBRE_IOS = '6.24.0'
+maplibre_podspec = File.expand_path('.symlinks/plugins/maplibre_gl/ios/maplibre_gl.podspec', __dir__)
+if File.exist?(maplibre_podspec)
+  real = File.realpath(maplibre_podspec)
+  contents = File.read(real)
+  new_dep = "s.dependency 'MapLibre', '#{MAPML_MAPLIBRE_IOS}'"
+  patched = contents.sub(/s\.dependency 'MapLibre', '[^']+'/, new_dep)
+  File.write(real, patched) if patched != contents
+end
+
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
@@ -37,5 +55,12 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # Pods (e.g. geolocator_apple privacy bundles) may still declare iOS 11; Xcode 26 warns.
+      t = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+      if t.nil? || t.to_s.empty? || t.to_f < 13.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
   end
 end

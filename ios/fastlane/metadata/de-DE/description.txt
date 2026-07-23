@@ -1,0 +1,24 @@
+Die MunichWays Fahrrad App ist eine Supersache, wenn Du für Dich die passende Radlroute durch München finden willst.
+
+Die App zeigt Dir grüne Fahrrad Routen, die breit, sicher und eben sind. Und sie zeigt Dir rote und schwarze Radl-Strecken mit vielen Kreuzungen und fehlenden Radwegen in und um München.
+Smartphone an der Lenkerhalterung befestigen, MunichWays App einschalten und los geht’s! Du siehst genau, wo komfortable Radl-Verbindungen in München zu finden sind und welche stressigen Fahrrad-Strecken Du meiden kannst.
+
+Die Bewertungskriterien:
+Grün: Gemütlich und komfortabel, Radweg ist breit, sicher, eben
+Gelb: Durchschnittlich, Radweg ist verbesserungswürdig
+Rot: Stressig, Radweg ist sehr schmal, nicht sicher
+Schwarz: Lücke, kein Radweg, Lücke im Netz, im Bau
+https://www.munichways.de/radlvorrangnetz/berwertungskriterien-radwege/
+
+Mit der MunichWays App findest Du die Fahrrad-Route in München, die für Dich gerade passt, je nach Tageszeit, Wetter und Laune. Unsere Fahrrad-App zeigt Dir die Möglichkeiten. Wenn Du Dich in München überhaupt nicht auskennst, empfehlen wir zusätzlich die Navigation während der Fahrt mit Sprachnavigation wie beispielsweise von komoot.
+
+Wer wir sind:
+Wir sind engagierte Münchner Bürgerinnen und setzen uns für ebene, lückenlose und vor allem sichere Fuß- und Radwege ein. Damit stressfreies Vorankommen in München für Menschen jeden Alters überall möglich wird.
+Unsere Gruppe „RadlVorrangNetz“ ist Teil des Stammtisches „Mobilität und Verkehrswende“ bei Green City e.V.. Gemeinsam mit dem ADFC München und zahlreichen engagierten Bürgerinnen haben wir die Münchner Wege systematisch bewertet und das RadlVorrangNetz erarbeitet.
+Gefördert durch die Landeshauptstadt München, Sozialreferat
+
+https://www.munichways.de/
+Initiator: Thomas Häusler
+
+Entwickler: Sven Adolph, Stefan Heilmann, Christian Förg
+RadlNavi: Florian Schnell

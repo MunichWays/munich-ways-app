@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -12,21 +12,84 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
-import 'package:munich_ways/ui/map/map_action_buttons/route_button_bar.dart';
+import 'package:munich_ways/screenshots/store_screenshot_config.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+/// Which horizontal edge the map side control column is pinned to.
+enum MapSidePanelEdge {
+  left,
+  right,
+}
+
 class MapScreenViewModel extends ChangeNotifier {
+  static const _refreshLocationSettings = LocationSettings(
+    accuracy: LocationAccuracy.medium,
+    timeLimit: Duration(seconds: 10),
+  );
+
+  static const _routeStartLocationSettings = LocationSettings(
+    accuracy: LocationAccuracy.medium,
+    timeLimit: Duration(seconds: 8),
+  );
+
   bool loading = false;
 
   bool _firstLoad = true;
 
+  /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
+  bool storeScreenshotLocationPrimeComplete = false;
+
+  /// Zoom +/- overlay buttons; default off.
+  bool _showZoomButtons = false;
+
+  /// Side column for layers / location / compass (zoom if enabled).
+  MapSidePanelEdge _sidePanelEdge = MapSidePanelEdge.right;
+
+  bool get showZoomButtons => _showZoomButtons;
+
+  MapSidePanelEdge get sidePanelEdge => _sidePanelEdge;
+
+  void setShowZoomButtons(bool value) {
+    if (_showZoomButtons == value) return;
+    _showZoomButtons = value;
+    notifyListeners();
+    _persistSettings();
+  }
+
+  void setSidePanelEdge(MapSidePanelEdge value) {
+    if (_sidePanelEdge == value) return;
+    _sidePanelEdge = value;
+    notifyListeners();
+    _persistSettings();
+  }
+
+  void _persistSettings() {
+    settingsStore
+        .save(SettingsData(
+      showZoomButtons: _showZoomButtons,
+      sidePanelEdgeName: _sidePanelEdge.name,
+    ))
+        .catchError((Object e, StackTrace st) {
+      log.e('Failed to save settings', error: e, stackTrace: st);
+    });
+  }
+
+  void _applyLoadedSettings(SettingsData data) {
+    final edge = data.sidePanelEdgeName == 'left'
+        ? MapSidePanelEdge.left
+        : MapSidePanelEdge.right;
+    if (data.showZoomButtons == _showZoomButtons && edge == _sidePanelEdge) {
+      return;
+    }
+    _showZoomButtons = data.showZoomButtons;
+    _sidePanelEdge = edge;
+    notifyListeners();
+  }
+
   double? bearing;
 
   MapRoute route = MapRoute(null, MapRouteState.NO_ROUTE);
-
-  bool get displayMissingPolylinesMsg {
-    return !_firstLoad && (_polylinesGesamtnetz.isEmpty);
-  }
 
   Set<MPolyline> get polylines {
     Set<MPolyline> tempPolylines = _polylinesGesamtnetz
@@ -66,8 +129,8 @@ class MapScreenViewModel extends ChangeNotifier {
   late Stream showEnableLocationServiceDialog;
   late StreamController _showEnableLocationServiceDialogController;
 
-  late Stream showStreetDetails;
-  late StreamController showStreetDetailsController;
+  late Stream<StreetDetails?> showStreetDetails;
+  late StreamController<StreetDetails?> showStreetDetailsController;
 
   late Stream<LatLng> currentLocationBtnClickedStream;
   late StreamController<LatLng> currentLocationBtnClickedController;
@@ -86,7 +149,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _showEnableLocationServiceDialogController = StreamController();
     showEnableLocationServiceDialog =
         _showEnableLocationServiceDialogController.stream;
-    showStreetDetailsController = StreamController();
+    showStreetDetailsController = StreamController<StreetDetails?>();
     showStreetDetails = showStreetDetailsController.stream;
     currentLocationBtnClickedController = StreamController();
     currentLocationBtnClickedStream =
@@ -95,6 +158,12 @@ class MapScreenViewModel extends ChangeNotifier {
     destinationStream = _destinationStreamController.stream;
     _routeStreamController = StreamController();
     routeStream = _routeStreamController.stream;
+
+    settingsStore.load().then((data) {
+      _applyLoadedSettings(data);
+    }).catchError((Object e, StackTrace st) {
+      log.e('Failed to load settings', error: e, stackTrace: st);
+    });
   }
 
   void _displayErrorMsg(String msg) {
@@ -103,7 +172,115 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void onMapReady() {
     refreshRadlnetze();
-    onPressLocationBtn();
+    if (kStoreScreenshots) {
+      unawaited(primeLocationForStoreScreenshots());
+    }
+  }
+
+  /// Requests a fresh GPS fix so Android's cached last-known location is updated.
+  /// Failures are logged and ignored so callers can continue either way.
+  Future<void> refreshCurrentLocationFix() async {
+    try {
+      await Geolocator.getCurrentPosition(
+        locationSettings: _refreshLocationSettings,
+      );
+    } catch (e, st) {
+      log.d('refreshCurrentLocationFix failed', error: e, stackTrace: st);
+    }
+  }
+
+  /// Prefer a live fix for routing; fall back to last known if GPS is slow.
+  Future<Position?> resolveRouteStartPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: _routeStartLocationSettings,
+      );
+    } catch (e, st) {
+      log.d(
+        'resolveRouteStartPosition: getCurrentPosition failed, trying last known',
+        error: e,
+        stackTrace: st,
+      );
+      return Geolocator.getLastKnownPosition();
+    }
+  }
+
+  /// Obtains permission and a GPS fix without entering follow/compass tracking.
+  /// Used for App Store screenshot automation so the map stays in a stable overview.
+  Future<void> primeLocationForStoreScreenshots() async {
+    if (!kStoreScreenshots) return;
+    storeScreenshotLocationPrimeComplete = false;
+    notifyListeners();
+
+    final isLocationServiceEnabled =
+        await Geolocator.isLocationServiceEnabled();
+    if (!isLocationServiceEnabled) {
+      locationState = LocationState.NOT_AVAILABLE;
+      storeScreenshotLocationPrimeComplete = true;
+      notifyListeners();
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    switch (permission) {
+      case LocationPermission.denied:
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.whileInUse &&
+            permission != LocationPermission.always) {
+          locationState = LocationState.NOT_AVAILABLE;
+          storeScreenshotLocationPrimeComplete = true;
+          notifyListeners();
+          return;
+        }
+        break;
+      case LocationPermission.deniedForever:
+        locationState = LocationState.NOT_AVAILABLE;
+        storeScreenshotLocationPrimeComplete = true;
+        notifyListeners();
+        return;
+      case LocationPermission.unableToDetermine:
+        locationState = LocationState.NOT_AVAILABLE;
+        storeScreenshotLocationPrimeComplete = true;
+        notifyListeners();
+        return;
+      case LocationPermission.whileInUse:
+      case LocationPermission.always:
+        break;
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      locationState = LocationState.DISPLAY;
+      notifyListeners();
+      currentLocationBtnClickedController.add(
+        LatLng(position.latitude, position.longitude),
+      );
+    } catch (e, st) {
+      log.e('primeLocationForStoreScreenshots', error: e, stackTrace: st);
+      locationState = LocationState.NOT_AVAILABLE;
+      notifyListeners();
+    } finally {
+      storeScreenshotLocationPrimeComplete = true;
+      notifyListeners();
+    }
+  }
+
+  /// Toggle follow mode and notify the UI. MapLibre's native tracking mode
+  /// centres the camera automatically once active, so no manual [animateCamera]
+  /// call is made here. On Android, calling [animateCamera] with a new lat/lng
+  /// target while tracking mode is active fires [onCameraTrackingDismissed],
+  /// which would immediately cancel tracking.
+  Future<void> _enterLocationFollowAndCenterCamera() async {
+    if (locationState == LocationState.FOLLOW) {
+      locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    } else {
+      locationState = LocationState.FOLLOW;
+    }
+    notifyListeners();
   }
 
   Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
@@ -131,12 +308,18 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     switch (permission) {
       case LocationPermission.denied:
-        permission = await Geolocator.requestPermission();
-        log.d(permission);
-        if (permission == LocationPermission.denied) {
+        final afterRequest = await Geolocator.requestPermission();
+        log.d(afterRequest);
+        if (afterRequest == LocationPermission.denied) {
           locationState = LocationState.NOT_AVAILABLE;
+          notifyListeners();
           _displayErrorMsg("Standort Berechtigung fehlt.");
-        } else if (permission == LocationPermission.deniedForever) {
+        } else if (afterRequest == LocationPermission.deniedForever) {
+          _permissionStreamController.add("");
+        } else if (afterRequest == LocationPermission.whileInUse ||
+            afterRequest == LocationPermission.always) {
+          await _enterLocationFollowAndCenterCamera();
+        } else if (afterRequest == LocationPermission.unableToDetermine) {
           _permissionStreamController.add("");
         }
         break;
@@ -145,17 +328,7 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        if (locationState == LocationState.FOLLOW) {
-          locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
-        } else {
-          locationState = LocationState.FOLLOW;
-        }
-        notifyListeners();
-        Position? position = await Geolocator.getLastKnownPosition();
-        if (position != null) {
-          currentLocationBtnClickedController
-              .add(LatLng(position.latitude, position.longitude));
-        }
+        await _enterLocationFollowAndCenterCamera();
         break;
       case LocationPermission.unableToDetermine:
         _permissionStreamController.add("");
@@ -170,6 +343,15 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void toggleRadvorrangnetzVisible() {
     _isRadlvorrangnetzVisible = !_isRadlvorrangnetzVisible;
+    notifyListeners();
+  }
+
+  /// North-up / compass control: stop follow/compass tracking like a map gesture.
+  void onCompassNorthUpPressed() {
+    if (locationState == LocationState.NOT_AVAILABLE) {
+      return;
+    }
+    locationState = LocationState.DISPLAY;
     notifyListeners();
   }
 
@@ -190,27 +372,40 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
+  /// overlay can update without leaving the screen.
+  Future<void> reloadRadnetz() async {
+    await _munichwaysApi.emptyCache();
+    await refreshRadlnetze();
+  }
+
   void onTap(StreetDetails? details) {
     log.d(details);
     showStreetDetailsController.add(details);
   }
 
-  Future<void> onMapPositionChanged(
-      MapPosition position, bool hasGesture) async {
-    if (hasGesture &&
-        (locationState == LocationState.FOLLOW ||
-            locationState == LocationState.FOLLOW_AND_ROTATE_MAP)) {
-      locationState = LocationState.DISPLAY;
-      notifyListeners();
-    }
-
+  /// MapLibre: call from [MapLibreMap.onCameraMove] with the camera target.
+  void onMapCenterChanged(LatLng center) {
     if (destination != null) {
-      this.bearing = Geolocator.bearingBetween(
-          position.center!.latitude,
-          position.center!.longitude,
-          destination!.latLng.latitude,
-          destination!.latLng.longitude);
-      this.bearing = (bearing! + 360) % 360;
+      bearing = Geolocator.bearingBetween(
+        center.latitude,
+        center.longitude,
+        destination!.latLng.latitude,
+        destination!.latLng.longitude,
+      );
+      bearing = (bearing! + 360) % 360;
+      // notifyListeners() intentionally omitted: bearing is not consumed by any
+      // widget, so rebuilding the Consumer tree on every camera frame (60fps)
+      // would cause overheating and jank with no visible benefit.
+    }
+  }
+
+  /// MapLibre: call from [MapLibreMap.onCameraTrackingDismissed] when the user
+  /// breaks location follow / compass tracking.
+  void onUserStoppedFollowingLocation() {
+    if (locationState == LocationState.FOLLOW ||
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      locationState = LocationState.DISPLAY;
       notifyListeners();
     }
   }
@@ -233,6 +428,9 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void clearDestination() {
+    // Drop any in-flight route so a late response cannot repopulate the map.
+    _routeRequest?.cancel();
+    _routeRequest = null;
     this.destination = null;
     notifyListeners();
 
@@ -242,10 +440,11 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearRoute();
   }
 
+  /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.
   CancelableOperation<CycleRoute>? _routeRequest = null;
 
   void _requestRoute() async {
-    Position? from = await Geolocator.getLastKnownPosition();
+    Position? from = await resolveRouteStartPosition();
     if (from == null) {
       _displayErrorMsg(
           "Keine Route, da kein aktueller Standort als Start vorhanden");
@@ -257,17 +456,26 @@ class MapScreenViewModel extends ChangeNotifier {
       return;
     }
 
-    _routeRequest?.cancel();
+    _routeRequest
+        ?.cancel(); // New destination / retry: abandon previous request.
     this.route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
     _routeRequest = CancelableOperation<CycleRoute>.fromFuture(
         _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
         onCancel: () => {log.d("canceled prev request")});
     _routeRequest?.value.then((value) {
+      // User may have cleared the destination while the request was running.
+      if (destination == null) {
+        return;
+      }
       this.route = MapRoute(value, MapRouteState.SHOWN);
       _routeStreamController.add(this.route);
       notifyListeners();
     }).catchError((e) {
+      // Same as success path: ignore errors from superseded/cancelled requests.
+      if (destination == null) {
+        return;
+      }
       _displayErrorMsg("Fehler bei Routensuche $e");
       this.route = MapRoute(null, MapRouteState.ERROR);
       notifyListeners();
@@ -276,24 +484,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void _clearRoute() {
     this.route = MapRoute(null, MapRouteState.NO_ROUTE);
-    notifyListeners();
-  }
-
-  void toggleRoute() {
-    switch (this.route.state) {
-      case MapRouteState.SHOWN:
-        {
-          this.route = MapRoute(this.route.route, MapRouteState.HIDDEN);
-        }
-      case MapRouteState.HIDDEN:
-        {
-          this.route = MapRoute(this.route.route, MapRouteState.SHOWN);
-        }
-      default:
-        {
-          //do nothing
-        }
-    }
     notifyListeners();
   }
 }

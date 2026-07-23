@@ -21,6 +21,9 @@
 .settings/
 .vscode/
 
+# integration_test screenshot outputs (generated locally / CI)
+integration_test/screenshots/*.png
+
 # Flutter repo-specific
 /bin/cache/
 /bin/mingit/
@@ -97,6 +100,9 @@ unlinked_spec.ds
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/Podfile.lock
+
+# Cached MapLibre dSYM downloads (see ios/scripts/copy_maplibre_dsym.sh)
+**/ios/.maplibre_dsym/
 
 # macOS
 **/macos/Flutter/GeneratedPluginRegistrant.swift
