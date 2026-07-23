@@ -134,3 +134,6 @@ test/missing_imgs_retriever/local_properties.dart
 
 local.properties
 .gradle
+
+# FVM Version Cache
+.fvm/
