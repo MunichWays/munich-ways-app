@@ -467,75 +467,69 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                          child: MapNavigationHeaderBar(
-                            model: model,
-                            onRefreshRoute: () =>
-                                _refreshRouteAndResumeNavigation(model),
-                            onStartNavigation: () => _startNavigation(model),
-                          ),
-                        ),
-                        if (model.destination != null)
-                          const SizedBox(height: 4),
-                        Expanded(
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              if (model.destination != null &&
-                                  _styleLoaded &&
-                                  _mapController != null)
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: MapDestinationOffScreenOverlay(
-                                      mapLayerKey: _mapLibreViewKey,
-                                      controller: _mapController,
-                                      destination: model.destination!,
-                                    ),
-                                  ),
-                                ),
-                              const MapAttribution(),
-                              MapSideActionButtons(
-                                model: model,
-                                mapController: _mapController,
-                                mapBearingDegrees: _mapBearingDegrees,
-                                compassIdleTick: _compassIdleTick,
-                                onNorthUp: () async {
-                                  model.onCompassNorthUpPressed();
-                                  final c = _mapController;
-                                  if (c != null) {
-                                    await c.animateCamera(
-                                        CameraUpdate.bearingTo(0));
-                                    await _syncCompassBearingFromMap();
-                                  }
-                                },
-                                queryMapBearingDegrees: () async {
-                                  final c = _mapController;
-                                  if (c == null) return null;
-                                  final pos = await c.queryCameraPosition();
-                                  return pos?.bearing;
-                                },
-                                onPressLocation: () async {
-                                  await model.onPressLocationBtn();
-                                  if (!mounted) return;
-                                  await _applyNativeLocationTracking(model);
-                                  _updateLocationStream(model);
-                                },
+                        if (model.destination != null &&
+                            _styleLoaded &&
+                            _mapController != null)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: MapDestinationOffScreenOverlay(
+                                mapLayerKey: _mapLibreViewKey,
+                                controller: _mapController,
+                                destination: model.destination!,
                               ),
-                              MapBottomActionButtons(model: model),
-                              if (kStoreScreenshots) ...[
-                                StoreScreenshotMapReadySemantics(
-                                  storeIdleReady: storeIdleReady,
-                                  storeRouteReady: storeRouteReady,
-                                ),
-                                StoreScreenshotControls(model: model),
-                              ],
-                            ],
+                            ),
                           ),
+                        const MapAttribution(),
+                        MapSideActionButtons(
+                          model: model,
+                          mapController: _mapController,
+                          mapBearingDegrees: _mapBearingDegrees,
+                          compassIdleTick: _compassIdleTick,
+                          additionalBottomOffset:
+                              model.destination != null ? 72 : 0,
+                          onNorthUp: () async {
+                            model.onCompassNorthUpPressed();
+                            final c = _mapController;
+                            if (c != null) {
+                              await c.animateCamera(CameraUpdate.bearingTo(0));
+                              await _syncCompassBearingFromMap();
+                            }
+                          },
+                          queryMapBearingDegrees: () async {
+                            final c = _mapController;
+                            if (c == null) return null;
+                            final pos = await c.queryCameraPosition();
+                            return pos?.bearing;
+                          },
+                          onPressLocation: () async {
+                            await model.onPressLocationBtn();
+                            if (!mounted) return;
+                            await _applyNativeLocationTracking(model);
+                            _updateLocationStream(model);
+                          },
                         ),
+                        MapBottomActionButtons(
+                          model: model,
+                          navigationBar: model.destination == null
+                              ? null
+                              : MapNavigationHeaderBar(
+                                  model: model,
+                                  onRefreshRoute: () =>
+                                      _refreshRouteAndResumeNavigation(model),
+                                  onStartNavigation: () =>
+                                      _startNavigation(model),
+                                ),
+                        ),
+                        if (kStoreScreenshots) ...[
+                          StoreScreenshotMapReadySemantics(
+                            storeIdleReady: storeIdleReady,
+                            storeRouteReady: storeRouteReady,
+                          ),
+                          StoreScreenshotControls(model: model),
+                        ],
                       ],
                     ),
                   ),

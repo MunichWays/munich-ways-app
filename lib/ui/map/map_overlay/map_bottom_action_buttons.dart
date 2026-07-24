@@ -11,9 +11,11 @@ class MapBottomActionButtons extends StatelessWidget {
   const MapBottomActionButtons({
     super.key,
     required this.model,
+    this.navigationBar,
   });
 
   final MapScreenViewModel model;
+  final Widget? navigationBar;
 
   @override
   Widget build(BuildContext context) {
@@ -25,31 +27,40 @@ class MapBottomActionButtons extends StatelessWidget {
       left: 16,
       right: 16,
       bottom: bottomInset,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          MapOverlayButton(
-            circular: false,
-            tooltip: 'Info',
-            onPressed: () => showMapInfoSheet(context),
-            child: const Icon(Icons.info_outline),
-          ),
-          MapOverlayButton(
-            circular: false,
-            tooltip: 'Suche',
-            onPressed: () async {
-              final place = await showPlaceSearchSheet(context);
-              if (place != null && context.mounted) {
-                model.setDestination(place);
-              }
-            },
-            child: const Icon(Icons.search),
-          ),
-          MapOverlayButton(
-            circular: false,
-            tooltip: 'Einstellungen',
-            onPressed: () => showMapSettingsSheet(context, model),
-            child: const Icon(Icons.settings),
+          if (navigationBar case final bar?) ...[
+            bar,
+            const SizedBox(height: 8),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              MapOverlayButton(
+                circular: false,
+                tooltip: 'Info',
+                onPressed: () => showMapInfoSheet(context),
+                child: const Icon(Icons.info_outline),
+              ),
+              MapOverlayButton(
+                circular: false,
+                tooltip: 'Suche',
+                onPressed: () async {
+                  final place = await showPlaceSearchSheet(context);
+                  if (place != null && context.mounted) {
+                    model.setDestination(place);
+                  }
+                },
+                child: const Icon(Icons.search),
+              ),
+              MapOverlayButton(
+                circular: false,
+                tooltip: 'Einstellungen',
+                onPressed: () => showMapSettingsSheet(context, model),
+                child: const Icon(Icons.settings),
+              ),
+            ],
           ),
         ],
       ),

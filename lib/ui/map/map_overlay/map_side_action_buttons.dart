@@ -18,6 +18,7 @@ class MapSideActionButtons extends StatelessWidget {
     required this.onNorthUp,
     required this.queryMapBearingDegrees,
     required this.onPressLocation,
+    this.additionalBottomOffset = 0,
   });
 
   final MapScreenViewModel model;
@@ -27,6 +28,7 @@ class MapSideActionButtons extends StatelessWidget {
   final Future<void> Function() onNorthUp;
   final Future<double?> Function() queryMapBearingDegrees;
   final VoidCallback onPressLocation;
+  final double additionalBottomOffset;
 
   static const double _buttonSpacing = 10;
 
@@ -37,7 +39,8 @@ class MapSideActionButtons extends StatelessWidget {
         mq.bottom + kMapBottomActionRowPaddingAboveSafeBottom;
     final sideColumnBottom = bottomBarBottom +
         kMapOverlayControlSize +
-        kMapGapSideColumnAboveBottomBar;
+        kMapGapSideColumnAboveBottomBar +
+        additionalBottomOffset;
 
     final zoomWidgets = <Widget>[
       if (model.showZoomButtons) ...[
