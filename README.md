@@ -35,8 +35,8 @@ iOS release automation (TestFlight builds, App Store metadata via `deliver`, opt
 #### Github Actions
 
 * tag current state and push the tags
-    * `git tag -a 0.0.3+5 -m "0.0.3+5"`
-    * `git push --tags`
+    * `git tag -a 3.1.2+39 -m "3.1.2+39 open beta"`
+    * `git push origin 3.1.2+39` 
 * this will trigger the workflow, see `workflows/android-release`
 
 #### Local
