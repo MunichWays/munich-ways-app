@@ -426,8 +426,7 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
-  /// MapLibre: call from [MapLibreMap.onCameraTrackingDismissed] when the user
-  /// breaks location follow / compass tracking.
+  /// Called when the user touches the map and breaks camera following.
   void onUserStoppedFollowingLocation() {
     if (locationState == LocationState.FOLLOW ||
         locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {

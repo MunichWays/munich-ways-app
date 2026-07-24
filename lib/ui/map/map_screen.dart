@@ -5,8 +5,10 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
@@ -24,6 +26,7 @@ import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
+import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -70,6 +73,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _routeGeoJsonReady = false;
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
+  Circle? _locationCircle;
+  StreamSubscription<Position>? _locationSubscription;
+  Position? _latestPosition;
+  Position? _pendingPosition;
+  bool _locationRenderRunning = false;
+  double? _smoothedMovementBearing;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
@@ -131,6 +140,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _locationSubscription?.cancel();
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -298,119 +308,131 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   if (_mountMapView)
-                    RepaintBoundary(
-                      key: _mapLibreViewKey,
-                      child: MapLibreMap(
-                        styleString: kOpenFreeMapLibertyStyleAsset,
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(_stachus.latitude, _stachus.longitude),
-                          zoom: 15,
-                        ),
-                        // Native MapLibre compass (default on) duplicates [MapCompassControl].
-                        compassEnabled: false,
-                        trackCameraPosition: true,
-                        minMaxZoomPreference:
-                            const MinMaxZoomPreference(10, 22),
-                        attributionButtonMargins: const Point(-200, -200),
-                        myLocationEnabled:
-                            model.locationState != LocationState.NOT_AVAILABLE,
-                        myLocationTrackingMode:
-                            _trackingModeFor(model.locationState),
-                        myLocationRenderMode:
-                            _renderModeFor(model.locationState),
-                        onMapCreated: (controller) {
-                          _mapController = controller;
-                          if (!_lineTapHandlerAttached) {
-                            _lineTapHandlerAttached = true;
-                            controller.onLineTapped.add((line) {
-                              final details =
-                                  _streetDetailsForNetworkFeatureId(line.id);
-                              if (details != null) {
-                                mapViewModel.onTap(details);
-                              }
-                            });
-                          }
-                          if (!_featureTapHandlerAttached) {
-                            _featureTapHandlerAttached = true;
-                            controller.onFeatureTapped.add(
-                              (point, latLng, id, layerId, annotation) {
-                                if (layerId != _kNetworkLayerHitId) {
-                                  return;
-                                }
+                    Listener(
+                      onPointerDown: (_) {
+                        if (model.locationState == LocationState.FOLLOW ||
+                            model.locationState ==
+                                LocationState.FOLLOW_AND_ROTATE_MAP) {
+                          model.onUserStoppedFollowingLocation();
+                        }
+                      },
+                      child: RepaintBoundary(
+                        key: _mapLibreViewKey,
+                        child: MapLibreMap(
+                          styleString: kOpenFreeMapLibertyStyleAsset,
+                          initialCameraPosition: CameraPosition(
+                            target:
+                                LatLng(_stachus.latitude, _stachus.longitude),
+                            zoom: 15,
+                          ),
+                          // Native MapLibre compass (default on) duplicates [MapCompassControl].
+                          compassEnabled: false,
+                          trackCameraPosition: true,
+                          minMaxZoomPreference:
+                              const MinMaxZoomPreference(10, 22),
+                          attributionButtonMargins: const Point(-200, -200),
+                          myLocationEnabled: false,
+                          myLocationTrackingMode:
+                              _trackingModeFor(model.locationState),
+                          myLocationRenderMode:
+                              _renderModeFor(model.locationState),
+                          onMapCreated: (controller) {
+                            _mapController = controller;
+                            if (!_lineTapHandlerAttached) {
+                              _lineTapHandlerAttached = true;
+                              controller.onLineTapped.add((line) {
                                 final details =
-                                    _streetDetailsForNetworkFeatureId(id);
+                                    _streetDetailsForNetworkFeatureId(line.id);
                                 if (details != null) {
                                   mapViewModel.onTap(details);
                                 }
-                              },
-                            );
-                          }
-                        },
-                        onStyleLoadedCallback: () {
-                          if (!mounted) return;
-                          final c = _mapController;
-                          Future<void> afterStyle() async {
-                            if (c != null) {
-                              // Remove overlay layers before re-adding after style load.
-                              if (_networkGeoJsonReady) {
-                                await _removeNetworkGeoJsonLayers(c);
+                              });
+                            }
+                            if (!_featureTapHandlerAttached) {
+                              _featureTapHandlerAttached = true;
+                              controller.onFeatureTapped.add(
+                                (point, latLng, id, layerId, annotation) {
+                                  if (layerId != _kNetworkLayerHitId) {
+                                    return;
+                                  }
+                                  final details =
+                                      _streetDetailsForNetworkFeatureId(id);
+                                  if (details != null) {
+                                    mapViewModel.onTap(details);
+                                  }
+                                },
+                              );
+                            }
+                          },
+                          onStyleLoadedCallback: () {
+                            if (!mounted) return;
+                            final c = _mapController;
+                            Future<void> afterStyle() async {
+                              if (c != null) {
+                                // Remove overlay layers before re-adding after style load.
+                                if (_networkGeoJsonReady) {
+                                  await _removeNetworkGeoJsonLayers(c);
+                                }
+                                if (_routeGeoJsonReady) {
+                                  await _removeRouteGeoJsonLayers(c);
+                                }
                               }
-                              if (_routeGeoJsonReady) {
-                                await _removeRouteGeoJsonLayers(c);
+                              _networkGeoJsonReady = false;
+                              _routeGeoJsonReady = false;
+                              if (!mounted) return;
+                              // Style rebuild clears native annotations; drop stale handles.
+                              _destinationCircle = null;
+                              _locationCircle = null;
+                              _streetDetailsByLineId.clear();
+                              _lastSyncedNetworkFingerprint = null;
+                              _lastRouteFingerprint = null;
+                              setState(() {
+                                _styleLoaded = true;
+                                if (kStoreScreenshots) {
+                                  _storeScreenshotNetworkSynced = false;
+                                  _storeScreenshotIdleCameraDone = false;
+                                  _storeScreenshotIdleCameraScheduled = false;
+                                  _storeScreenshotRouteVisualReady = false;
+                                }
+                              });
+                              _scheduleOverlaySync(model);
+                              final position = _latestPosition;
+                              if (position != null) {
+                                _pendingPosition = position;
+                                unawaited(_drainLocationUpdates(model));
                               }
                             }
-                            _networkGeoJsonReady = false;
-                            _routeGeoJsonReady = false;
-                            if (!mounted) return;
-                            // Style rebuild clears native annotations; drop stale handles.
-                            _destinationCircle = null;
-                            _streetDetailsByLineId.clear();
-                            _lastSyncedNetworkFingerprint = null;
-                            _lastRouteFingerprint = null;
-                            setState(() {
-                              _styleLoaded = true;
-                              if (kStoreScreenshots) {
-                                _storeScreenshotNetworkSynced = false;
-                                _storeScreenshotIdleCameraDone = false;
-                                _storeScreenshotIdleCameraScheduled = false;
-                                _storeScreenshotRouteVisualReady = false;
-                              }
-                            });
-                            _scheduleOverlaySync(model);
-                          }
 
-                          unawaited(afterStyle());
-                        },
-                        onMapLongClick: (screenPoint, latLng) {
-                          model.setDestination(Place(
-                              null,
-                              latlong2.LatLng(
-                                  latLng.latitude, latLng.longitude)));
-                        },
-                        onCameraMove: (CameraPosition position) {
-                          _mapBearingDegrees.value = position.bearing;
-                          model.onMapCenterChanged(latlong2.LatLng(
-                            position.target.latitude,
-                            position.target.longitude,
-                          ));
-                        },
-                        onCameraTrackingDismissed: () {
-                          model.onUserStoppedFollowingLocation();
-                        },
-                        onCameraIdle: () {
-                          _compassIdleTick.value++;
-                        },
-                        onMapIdle: () {
-                          if (!_initialRatingsAwaitingMapIdle ||
-                              _initialContentReady ||
-                              !mounted) {
-                            return;
-                          }
-                          setState(() {
-                            _initialRatingsAwaitingMapIdle = false;
-                            _initialContentReady = true;
-                          });
-                        },
+                            unawaited(afterStyle());
+                          },
+                          onMapLongClick: (screenPoint, latLng) {
+                            model.setDestination(Place(
+                                null,
+                                latlong2.LatLng(
+                                    latLng.latitude, latLng.longitude)));
+                          },
+                          onCameraMove: (CameraPosition position) {
+                            _mapBearingDegrees.value = position.bearing;
+                            model.onMapCenterChanged(latlong2.LatLng(
+                              position.target.latitude,
+                              position.target.longitude,
+                            ));
+                          },
+                          onCameraIdle: () {
+                            _compassIdleTick.value++;
+                          },
+                          onMapIdle: () {
+                            if (!_initialRatingsAwaitingMapIdle ||
+                                _initialContentReady ||
+                                !mounted) {
+                              return;
+                            }
+                            setState(() {
+                              _initialRatingsAwaitingMapIdle = false;
+                              _initialContentReady = true;
+                            });
+                          },
+                        ),
                       ),
                     ),
                   SafeArea(
@@ -469,6 +491,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   await model.onPressLocationBtn();
                                   if (!mounted) return;
                                   await _applyNativeLocationTracking(model);
+                                  _updateLocationStream(model);
                                 },
                               ),
                               MapBottomActionButtons(model: model),
@@ -576,30 +599,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   MyLocationTrackingMode _trackingModeFor(LocationState state) {
-    switch (state) {
-      case LocationState.FOLLOW:
-        return MyLocationTrackingMode.tracking;
-      case LocationState.FOLLOW_AND_ROTATE_MAP:
-        // Android's GPS mode follows the actual direction of travel instead of
-        // the magnetometer. This matches the browser Geolocation heading used
-        // by radlnavi.de and is not affected by compass calibration or mounts.
-        return defaultTargetPlatform == TargetPlatform.android
-            ? MyLocationTrackingMode.trackingGps
-            : MyLocationTrackingMode.trackingCompass;
-      case LocationState.NOT_AVAILABLE:
-      case LocationState.DISPLAY:
-        return MyLocationTrackingMode.none;
-    }
+    return MyLocationTrackingMode.none;
   }
 
   MyLocationRenderMode _renderModeFor(LocationState state) {
-    if (state != LocationState.FOLLOW_AND_ROTATE_MAP) {
-      return MyLocationRenderMode.normal;
-    }
-    // MapLibre's GPS location-render mode is currently Android-only.
-    return defaultTargetPlatform == TargetPlatform.android
-        ? MyLocationRenderMode.gps
-        : MyLocationRenderMode.compass;
+    return MyLocationRenderMode.normal;
   }
 
   /// On Android the widget-property update for tracking mode may race with the
@@ -608,6 +612,155 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _mapController?.updateMyLocationTrackingMode(
       _trackingModeFor(model.locationState),
     );
+  }
+
+  LocationSettings _locationSettings() {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        intervalDuration: const Duration(milliseconds: 250),
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
+    );
+  }
+
+  void _updateLocationStream(MapScreenViewModel model) {
+    if (model.locationState == LocationState.NOT_AVAILABLE) {
+      _locationSubscription?.cancel();
+      _locationSubscription = null;
+      return;
+    }
+    if (_locationSubscription != null) return;
+
+    _locationSubscription = Geolocator.getPositionStream(
+      locationSettings: _locationSettings(),
+    ).listen(
+      (position) {
+        _latestPosition = position;
+        _pendingPosition = position;
+        unawaited(_drainLocationUpdates(model));
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        log.w('location stream error', error: error, stackTrace: stackTrace);
+      },
+    );
+  }
+
+  Future<void> _drainLocationUpdates(MapScreenViewModel model) async {
+    if (_locationRenderRunning) return;
+    _locationRenderRunning = true;
+    try {
+      while (_pendingPosition != null) {
+        final position = _pendingPosition!;
+        _pendingPosition = null;
+        await _renderLocation(model, position);
+      }
+    } finally {
+      _locationRenderRunning = false;
+    }
+  }
+
+  Future<void> _renderLocation(
+    MapScreenViewModel model,
+    Position position,
+  ) async {
+    final controller = _mapController;
+    if (!mounted || !_styleLoaded || controller == null) return;
+    if (!position.latitude.isFinite ||
+        !position.longitude.isFinite ||
+        !position.accuracy.isFinite ||
+        position.accuracy > 50) {
+      return;
+    }
+
+    final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    var displayedPosition = rawPosition;
+    final routePoints = model.route.route?.points;
+    if (model.navigationStarted &&
+        routePoints != null &&
+        routePoints.length >= 2) {
+      final snapDistance = (position.accuracy * 1.5).clamp(15.0, 30.0);
+      displayedPosition = RoutePositionSnapper.snap(
+        rawPosition,
+        routePoints,
+        maxDistanceMeters: snapDistance,
+      );
+    }
+
+    final mapPosition = LatLng(
+      displayedPosition.latitude,
+      displayedPosition.longitude,
+    );
+    try {
+      final circle = _locationCircle;
+      if (circle == null) {
+        _locationCircle = await controller.addCircle(CircleOptions(
+          geometry: mapPosition,
+          circleRadius: 5,
+          circleColor: '#1976d2',
+          circleStrokeColor: '#ffffff',
+          circleStrokeWidth: 2,
+        ));
+      } else {
+        await controller.updateCircle(
+          circle,
+          CircleOptions(geometry: mapPosition),
+        );
+      }
+
+      final state = model.locationState;
+      if (state != LocationState.FOLLOW &&
+          state != LocationState.FOLLOW_AND_ROTATE_MAP) {
+        _smoothedMovementBearing = null;
+        return;
+      }
+      if (state == LocationState.FOLLOW) {
+        _smoothedMovementBearing = null;
+      }
+
+      var bearing = state == LocationState.FOLLOW_AND_ROTATE_MAP
+          ? _mapBearingDegrees.value
+          : 0.0;
+      final headingAvailable = position.heading.isFinite &&
+          position.heading >= 0 &&
+          position.heading < 360 &&
+          position.speed.isFinite &&
+          position.speed >= 1 &&
+          (position.heading != 0 || position.headingAccuracy > 0);
+      if (state == LocationState.FOLLOW_AND_ROTATE_MAP && headingAvailable) {
+        bearing = _smoothBearing(
+          _smoothedMovementBearing,
+          position.heading,
+        );
+        _smoothedMovementBearing = bearing;
+      }
+
+      await controller.moveCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: mapPosition,
+            zoom: _safeZoom(controller.cameraPosition?.zoom),
+            bearing: bearing,
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      log.d(
+        'render location skipped while map is updating',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  double _smoothBearing(double? previous, double target) {
+    if (previous == null) return target;
+    final delta = (target - previous + 540) % 360 - 180;
+    return (previous + delta * 0.25 + 360) % 360;
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -625,6 +778,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   Future<void> _refreshRouteAndResumeNavigation(
@@ -642,6 +796,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.onPressLocationBtn(permissionCheck: permissionCheck);
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
@@ -649,6 +804,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.refreshCurrentLocationFix();
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   bool _isValidCoordinate(double latitude, double longitude) {
