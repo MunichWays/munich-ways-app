@@ -62,7 +62,7 @@ android {
         // Math.max keeps the constraint explicit and is immune to Flutter's
         // MinSdkVersionMigration tool (which rewrites bare values 16-23 to flutter.minSdkVersion).
         minSdkVersion Math.max(flutter.minSdkVersion, 23)
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
