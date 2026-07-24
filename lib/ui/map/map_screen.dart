@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -73,6 +74,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
   final ValueNotifier<double> _mapBearingDegrees = ValueNotifier<double>(0.0);
+  bool _ignoreNextTrackingDismiss = false;
+  StreamSubscription<Position>? _locationStreamSubscription;
+  Position? _lastLocationPosition;
+  double? _movementBearing;
+  double _smoothedMapBearing = 0.0;
 
   /// Bumped on [MapLibreMap.onCameraIdle] so [MapCompassControl] can finish hide.
   final ValueNotifier<int> _compassIdleTick = ValueNotifier<int>(0);
@@ -130,6 +136,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _locationStreamSubscription?.cancel();
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -315,10 +322,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             model.locationState != LocationState.NOT_AVAILABLE,
                         myLocationTrackingMode:
                             _trackingModeFor(model.locationState),
-                        myLocationRenderMode: model.locationState ==
-                                LocationState.FOLLOW_AND_ROTATE_MAP
-                            ? MyLocationRenderMode.compass
-                            : MyLocationRenderMode.normal,
+                        myLocationRenderMode:
+                            model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP
+                                ? MyLocationRenderMode.compass
+                                : MyLocationRenderMode.normal,
                         onMapCreated: (controller) {
                           _mapController = controller;
                           if (!_lineTapHandlerAttached) {
@@ -396,7 +403,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ));
                         },
                         onCameraTrackingDismissed: () {
+                          if (_ignoreNextTrackingDismiss) {
+                            _ignoreNextTrackingDismiss = false;
+                            return;
+                          }
                           model.onUserStoppedFollowingLocation();
+                          _stopLocationStream();
                         },
                         onCameraIdle: () {
                           _compassIdleTick.value++;
@@ -470,6 +482,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   await model.onPressLocationBtn();
                                   if (!mounted) return;
                                   await _applyNativeLocationTracking(model);
+                                  _updateLocationStream(model);
                                 },
                               ),
                               MapBottomActionButtons(model: model),
@@ -577,15 +590,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   MyLocationTrackingMode _trackingModeFor(LocationState state) {
-    switch (state) {
-      case LocationState.FOLLOW:
-        return MyLocationTrackingMode.tracking;
-      case LocationState.FOLLOW_AND_ROTATE_MAP:
-        return MyLocationTrackingMode.trackingCompass;
-      case LocationState.NOT_AVAILABLE:
-      case LocationState.DISPLAY:
-        return MyLocationTrackingMode.none;
-    }
+    return MyLocationTrackingMode.none;
   }
 
   /// On Android the widget-property update for tracking mode may race with the
@@ -594,6 +599,87 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _mapController?.updateMyLocationTrackingMode(
       _trackingModeFor(model.locationState),
     );
+  }
+
+  void _stopLocationStream() {
+    _locationStreamSubscription?.cancel();
+    _locationStreamSubscription = null;
+    _lastLocationPosition = null;
+    _movementBearing = null;
+  }
+
+  void _updateLocationStream(MapScreenViewModel model) {
+    if (model.locationState == LocationState.NOT_AVAILABLE ||
+        model.locationState == LocationState.DISPLAY) {
+      _stopLocationStream();
+      return;
+    }
+
+    if (_locationStreamSubscription != null) {
+      return;
+    }
+
+    _locationStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((position) async {
+      if (!mounted || _mapController == null) return;
+      if (!position.latitude.isFinite || !position.longitude.isFinite) return;
+      if (position.accuracy.isNaN || position.accuracy > 100) return;
+
+      if (position.heading.isFinite && position.heading >= 0) {
+        _movementBearing = (position.heading + 360) % 360;
+      } else if (_lastLocationPosition != null) {
+        final distance = Geolocator.distanceBetween(
+          _lastLocationPosition!.latitude,
+          _lastLocationPosition!.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        if (distance >= 3) {
+          _movementBearing = Geolocator.bearingBetween(
+            _lastLocationPosition!.latitude,
+            _lastLocationPosition!.longitude,
+            position.latitude,
+            position.longitude,
+          );
+          _movementBearing = (_movementBearing! + 360) % 360;
+        }
+      }
+      _lastLocationPosition = position;
+
+      if (_mapController == null) return;
+      final currentZoom = _safeZoom(_mapController?.cameraPosition?.zoom);
+      final rawHeading = position.heading.isFinite ? position.heading : 0.0;
+      final targetBearing = model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP
+          ? (_movementBearing ?? rawHeading)
+          : 0.0;
+      _smoothedMapBearing = _smoothBearing(_smoothedMapBearing, targetBearing);
+
+      try {
+        _ignoreNextTrackingDismiss = true;
+        await _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(position.latitude, position.longitude),
+              zoom: currentZoom,
+              bearing: _smoothedMapBearing,
+            ),
+          ),
+        );
+      } catch (_) {
+        // ignore if map is not ready
+      }
+    }, onError: (Object error) {
+      // ignore stream errors silently, the native location layer may still work
+    });
+  }
+
+  double _smoothBearing(double previous, double target) {
+    final delta = (target - previous + 540) % 360 - 180;
+    return (previous + delta * 0.15) % 360;
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -606,11 +692,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
 
+    final routeStart = model.route.route?.points.first;
+    if (routeStart != null) {
+      _ignoreNextTrackingDismiss = true;
+      await _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(routeStart.latitude, routeStart.longitude),
+          18,
+        ),
+      );
+    }
+
     // Let MapLibreMap rebuild with myLocationEnabled and trackingCompass before
     // applying the same mode directly through the platform controller.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   Future<void> _refreshRouteAndResumeNavigation(
@@ -628,6 +726,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.onPressLocationBtn(permissionCheck: permissionCheck);
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
@@ -635,6 +734,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.refreshCurrentLocationFix();
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
+    _updateLocationStream(model);
   }
 
   bool _isValidCoordinate(double latitude, double longitude) {
