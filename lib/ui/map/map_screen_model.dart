@@ -24,18 +24,13 @@ enum MapSidePanelEdge {
 
 class MapScreenViewModel extends ChangeNotifier {
   static const _refreshLocationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
+    accuracy: LocationAccuracy.medium,
     timeLimit: Duration(seconds: 10),
   );
 
   static const _routeStartLocationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    timeLimit: Duration(seconds: 12),
-  );
-
-  static const _movementHeadingLocationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 5,
+    accuracy: LocationAccuracy.medium,
+    timeLimit: Duration(seconds: 8),
   );
 
   bool loading = false;
@@ -94,9 +89,6 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   double? bearing;
-  double? movementBearing;
-  Position? _lastPosition;
-  StreamSubscription<Position>? _positionStreamSubscription;
 
   MapRoute route = MapRoute(null, MapRouteState.NO_ROUTE);
 
@@ -181,46 +173,6 @@ class MapScreenViewModel extends ChangeNotifier {
     _errorMsgsController.add(msg);
   }
 
-  void _startMovementHeadingStream() {
-    _positionStreamSubscription?.cancel();
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: _movementHeadingLocationSettings,
-    ).listen((position) {
-      if (position.latitude.isNaN || position.longitude.isNaN) {
-        return;
-      }
-      if (position.heading.isFinite && position.heading > 0) {
-        movementBearing = (position.heading + 360) % 360;
-      } else if (_lastPosition != null) {
-        final distance = Geolocator.distanceBetween(
-          _lastPosition!.latitude,
-          _lastPosition!.longitude,
-          position.latitude,
-          position.longitude,
-        );
-        if (distance >= 5 && position.accuracy <= 50) {
-          movementBearing = Geolocator.bearingBetween(
-            _lastPosition!.latitude,
-            _lastPosition!.longitude,
-            position.latitude,
-            position.longitude,
-          );
-          movementBearing = (movementBearing! + 360) % 360;
-        }
-      }
-      _lastPosition = position;
-    }, onError: (error) {
-      log.d('movement heading stream error', error: error);
-    });
-  }
-
-  void _stopMovementHeadingStream() {
-    _positionStreamSubscription?.cancel();
-    _positionStreamSubscription = null;
-    movementBearing = null;
-    _lastPosition = null;
-  }
-
   void onMapReady() {
     refreshRadlnetze();
     if (kStoreScreenshots) {
@@ -296,7 +248,6 @@ class MapScreenViewModel extends ChangeNotifier {
         return;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        _startMovementHeadingStream();
         break;
     }
 
@@ -380,7 +331,6 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        _startMovementHeadingStream();
         await _enterLocationFollowAndCenterCamera();
         break;
       case LocationPermission.unableToDetermine:
@@ -427,7 +377,6 @@ class MapScreenViewModel extends ChangeNotifier {
     if (locationState == LocationState.NOT_AVAILABLE) {
       return;
     }
-    _stopMovementHeadingStream();
     locationState = LocationState.DISPLAY;
     notifyListeners();
   }
@@ -594,13 +543,6 @@ class MapScreenViewModel extends ChangeNotifier {
   void _clearRoute() {
     this.route = MapRoute(null, MapRouteState.NO_ROUTE);
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _positionStreamSubscription?.cancel();
-    _positionStreamSubscription = null;
-    super.dispose();
   }
 }
 
