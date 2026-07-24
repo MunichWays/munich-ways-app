@@ -435,6 +435,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+                  if (model.navigationStarted &&
+                      model.locationState ==
+                          LocationState.FOLLOW_AND_ROTATE_MAP)
+                    const Positioned.fill(
+                      child: IgnorePointer(
+                        child: Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Icon(
+                                Icons.navigation,
+                                color: Color(0xff1976d2),
+                                size: 25,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   SafeArea(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -695,12 +726,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       displayedPosition.latitude,
       displayedPosition.longitude,
     );
+    final showDirectionPuck = model.navigationStarted &&
+        model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP;
     try {
       final circle = _locationCircle;
       if (circle == null) {
         _locationCircle = await controller.addCircle(CircleOptions(
           geometry: mapPosition,
-          circleRadius: 5,
+          circleRadius: showDirectionPuck ? 0 : 5,
           circleColor: '#1976d2',
           circleStrokeColor: '#ffffff',
           circleStrokeWidth: 2,
@@ -708,7 +741,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       } else {
         await controller.updateCircle(
           circle,
-          CircleOptions(geometry: mapPosition),
+          CircleOptions(
+            geometry: mapPosition,
+            circleRadius: showDirectionPuck ? 0 : 5,
+          ),
         );
       }
 
