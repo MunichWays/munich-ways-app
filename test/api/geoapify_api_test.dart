@@ -97,5 +97,4 @@ void main() {
       throwsA(isA<ApiException>()),
     );
   });
-
 }

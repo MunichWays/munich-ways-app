@@ -131,15 +131,11 @@ class MunichStreetCorrector {
     var previousPrevious = <int>[];
     var previous = List<int>.generate(target.length + 1, (index) => index);
 
-    for (var sourceIndex = 1;
-        sourceIndex <= source.length;
-        sourceIndex++) {
+    for (var sourceIndex = 1; sourceIndex <= source.length; sourceIndex++) {
       final current = List<int>.filled(target.length + 1, 0);
       current[0] = sourceIndex;
 
-      for (var targetIndex = 1;
-          targetIndex <= target.length;
-          targetIndex++) {
+      for (var targetIndex = 1; targetIndex <= target.length; targetIndex++) {
         final substitutionCost =
             source[sourceIndex - 1] == target[targetIndex - 1] ? 0 : 1;
         current[targetIndex] = _minimum(
@@ -152,10 +148,10 @@ class MunichStreetCorrector {
             targetIndex > 1 &&
             source[sourceIndex - 1] == target[targetIndex - 2] &&
             source[sourceIndex - 2] == target[targetIndex - 1]) {
-          current[targetIndex] = current[targetIndex] <
-                  previousPrevious[targetIndex - 2] + 1
-              ? current[targetIndex]
-              : previousPrevious[targetIndex - 2] + 1;
+          current[targetIndex] =
+              current[targetIndex] < previousPrevious[targetIndex - 2] + 1
+                  ? current[targetIndex]
+                  : previousPrevious[targetIndex - 2] + 1;
         }
       }
 

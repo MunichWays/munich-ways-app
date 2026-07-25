@@ -132,10 +132,7 @@ class GeoapifyApi {
     Map<String, dynamic> result,
     String key,
   ) =>
-      _value(result, key)
-          .toLowerCase()
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+      _value(result, key).toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
   static String _value(Map<String, dynamic> result, String key) =>
       result[key]?.toString().trim() ?? '';
