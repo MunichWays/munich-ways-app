@@ -4,17 +4,23 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
+import 'package:latlong2/latlong.dart';
 
 class MapSearchBar extends StatelessWidget {
   const MapSearchBar({
     super.key,
     required this.model,
+    required this.searchCenterProvider,
   });
 
   final MapScreenViewModel model;
+  final LatLng? Function() searchCenterProvider;
 
   Future<void> _openSearch(BuildContext context) async {
-    final result = await showPlaceSearchSheet(context);
+    final result = await showPlaceSearchSheet(
+      context,
+      searchCenter: searchCenterProvider(),
+    );
     if (!context.mounted) {
       return;
     }

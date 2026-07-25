@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -29,6 +30,7 @@ import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
+import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -81,6 +83,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Position? _pendingPosition;
   bool _locationRenderRunning = false;
   double? _smoothedMovementBearing;
+  final FlutterTts _flutterTts = FlutterTts();
+  final VoiceGuidance _voiceGuidance = VoiceGuidance();
+  VoiceGuidanceDisplay? _nextManeuver;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
@@ -114,6 +119,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_configureTextToSpeech());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
     // UIKit/Metal window phase and abort on cold start; a short defer avoids that. Android is fine.
     if (Platform.isIOS) {
@@ -143,10 +149,75 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _configureTextToSpeech() async {
+    try {
+      await _flutterTts.setQueueMode(0);
+      if (Platform.isAndroid) {
+        await _flutterTts.setAudioAttributesForNavigation();
+      } else if (Platform.isIOS) {
+        await _flutterTts.setSharedInstance(true);
+        await _flutterTts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+            IosTextToSpeechAudioCategoryOptions.duckOthers,
+          ],
+          IosTextToSpeechAudioMode.voicePrompt,
+        );
+      }
+    } catch (error, stackTrace) {
+      log.w(
+        'Text-to-speech initialization failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _speak(String text, {required bool english}) async {
+    try {
+      await _flutterTts.setLanguage(english ? 'en-US' : 'de-DE');
+      await _flutterTts.stop();
+      await _flutterTts.speak(text, focus: true);
+    } catch (error, stackTrace) {
+      log.w(
+        'Voice guidance announcement failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _toggleVoiceGuidance(
+    MapScreenViewModel model, {
+    required bool english,
+  }) {
+    final enabled = !model.voiceGuidanceEnabled;
+    model.setVoiceGuidanceEnabled(enabled);
+    if (enabled) {
+      unawaited(_speak(
+        english ? 'Voice guidance enabled.' : 'Sprachansagen aktiviert.',
+        english: english,
+      ));
+    } else {
+      unawaited(_flutterTts.stop());
+    }
+  }
+
+  void _endRoute(MapScreenViewModel model) {
+    _voiceGuidance.reset();
+    if (_nextManeuver != null) {
+      setState(() => _nextManeuver = null);
+    }
+    unawaited(_flutterTts.stop());
+    model.clearDestination();
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -210,6 +281,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           );
         });
         model.destinationStream.listen((Place place) {
+          _voiceGuidance.reset();
+          if (_nextManeuver != null && mounted) {
+            setState(() => _nextManeuver = null);
+          }
+          unawaited(_flutterTts.stop());
           final controller = _mapController;
           if (controller == null) return;
           if (!_isValidCoordinate(
@@ -225,6 +301,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           );
         });
         model.routeStream.listen((MapRoute route) {
+          final position = _latestPosition;
+          if (model.navigationStarted && position != null) {
+            _refreshVoiceGuidance(model, position);
+          }
           final controller = _mapController;
           if (controller == null || route.route == null) return;
           final validPoints = route.route!.points
@@ -501,7 +581,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                         const MapAttribution(),
                         if (_initialContentReady && !model.navigationStarted)
-                          MapSearchBar(model: model),
+                          MapSearchBar(
+                            model: model,
+                            searchCenterProvider: () {
+                              final position = _latestPosition;
+                              return position == null
+                                  ? null
+                                  : latlong2.LatLng(
+                                      position.latitude,
+                                      position.longitude,
+                                    );
+                            },
+                          ),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
@@ -540,6 +631,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                       _refreshRouteAndResumeNavigation(model),
                                   onStartNavigation: () =>
                                       _startNavigation(model),
+                                  onToggleVoiceGuidance: () =>
+                                      _toggleVoiceGuidance(
+                                    model,
+                                    english: context.l10n.isEnglish,
+                                  ),
+                                  onEndRoute: () => _endRoute(model),
+                                  nextManeuver: _nextManeuver,
                                 ),
                         ),
                         if (kStoreScreenshots) ...[
@@ -716,8 +814,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model,
     Position position,
   ) async {
-    final controller = _mapController;
-    if (!mounted || !_styleLoaded || controller == null) return;
+    if (!mounted) return;
     if (!position.latitude.isFinite ||
         !position.longitude.isFinite ||
         !position.accuracy.isFinite ||
@@ -726,6 +823,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
 
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    _refreshVoiceGuidance(model, position);
+
+    final controller = _mapController;
+    if (!mounted || !_styleLoaded || controller == null) return;
     var displayedPosition = rawPosition;
     final routePoints = model.route.route?.points;
     if (model.navigationStarted &&
@@ -795,6 +896,47 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return (previous + delta * 0.25 + 360) % 360;
   }
 
+  void _refreshVoiceGuidance(
+    MapScreenViewModel model,
+    Position position,
+  ) {
+    if (!mounted ||
+        !position.latitude.isFinite ||
+        !position.longitude.isFinite ||
+        !position.accuracy.isFinite ||
+        position.accuracy > 50) {
+      return;
+    }
+
+    final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    _voiceGuidance.setRoute(
+      model.navigationStarted ? model.route.route : null,
+    );
+    final nextManeuver = model.navigationStarted
+        ? _voiceGuidance.display(
+            rawPosition,
+            english: context.l10n.isEnglish,
+            speedMetersPerSecond: position.speed,
+          )
+        : null;
+    if (nextManeuver != _nextManeuver) {
+      setState(() => _nextManeuver = nextManeuver);
+    }
+    if (model.navigationStarted && model.voiceGuidanceEnabled) {
+      final instruction = _voiceGuidance.update(
+        rawPosition,
+        english: context.l10n.isEnglish,
+        speedMetersPerSecond: position.speed,
+      );
+      if (instruction != null) {
+        unawaited(_speak(
+          instruction,
+          english: context.l10n.isEnglish,
+        ));
+      }
+    }
+  }
+
   Future<void> _startNavigation(MapScreenViewModel model) async {
     // Camera animations performed after entering native tracking can trigger
     // onCameraTrackingDismissed. Set the navigation zoom first, then enable
@@ -804,6 +946,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    final position = _latestPosition;
+    if (position != null) {
+      _refreshVoiceGuidance(model, position);
+    }
 
     // Let MapLibreMap rebuild with myLocationEnabled and GPS tracking before
     // applying the same mode directly through the platform controller.

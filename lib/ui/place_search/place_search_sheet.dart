@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
@@ -8,7 +9,10 @@ import 'package:munich_ways/ui/place_search/place_search_body.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:provider/provider.dart';
 
-Future<Object?> showPlaceSearchSheet(BuildContext context) {
+Future<Object?> showPlaceSearchSheet(
+  BuildContext context, {
+  LatLng? searchCenter,
+}) {
   return showModalBottomSheet<Object?>(
     context: context,
     isScrollControlled: true,
@@ -17,6 +21,7 @@ Future<Object?> showPlaceSearchSheet(BuildContext context) {
     builder: (ctx) => ChangeNotifierProvider<PlaceSearchScreenViewModel>(
       create: (_) => PlaceSearchScreenViewModel(
         recentSearchesRepo: recentSearchesRepo,
+        searchCenter: searchCenter,
       ),
       child: const _PlaceSearchSheet(),
     ),

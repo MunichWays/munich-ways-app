@@ -32,7 +32,7 @@ class RadlNaviApi {
 
     final queryParameters = {
       'alternatives': 'false',
-      'steps': 'false',
+      'steps': 'true',
       'annotations': 'false',
       'geometries': 'polyline',
       'overview': 'full',
@@ -54,13 +54,34 @@ class RadlNaviApi {
         var polyline = decodePolyline(firstRoute['geometry']);
         var distance = firstRoute['distance'] as num;
         var duration = firstRoute['duration'] as num;
+        final maneuvers = <RouteManeuver>[];
+        for (final leg in firstRoute['legs'] as List? ?? const []) {
+          for (final rawStep in leg['steps'] as List? ?? const []) {
+            final step = rawStep as Map<String, dynamic>;
+            final maneuver =
+                step['maneuver'] as Map<String, dynamic>? ?? const {};
+            final location = maneuver['location'] as List?;
+            if (location == null || location.length < 2) continue;
+            maneuvers.add(RouteManeuver(
+              location: LatLng(
+                (location[1] as num).toDouble(),
+                (location[0] as num).toDouble(),
+              ),
+              type: maneuver['type'] as String? ?? 'turn',
+              modifier: maneuver['modifier'] as String?,
+              roadName: step['name'] as String? ?? '',
+              exit: (maneuver['exit'] as num?)?.toInt(),
+            ));
+          }
+        }
 
         return CycleRoute(
             polyline
                 .map((e) => LatLng(e[0].toDouble(), e[1].toDouble()))
                 .toList(),
             distance.toDouble(),
-            duration.toDouble());
+            duration.toDouble(),
+            maneuvers: maneuvers);
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }

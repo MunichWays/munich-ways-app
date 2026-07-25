@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 /// Blue navigation summary shown while a destination is set (same color as the route line).
@@ -11,11 +12,17 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.model,
     required this.onRefreshRoute,
     required this.onStartNavigation,
+    required this.onToggleVoiceGuidance,
+    required this.onEndRoute,
+    this.nextManeuver,
   });
 
   final MapScreenViewModel model;
   final Future<void> Function() onRefreshRoute;
   final Future<void> Function() onStartNavigation;
+  final VoidCallback onToggleVoiceGuidance;
+  final VoidCallback onEndRoute;
+  final VoiceGuidanceDisplay? nextManeuver;
 
   static String _formatKm(double meters) {
     final km = meters / 1000.0;
@@ -25,6 +32,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
   static String _formatMin(double seconds) {
     final min = (seconds / 60.0).round();
     return '$min Min';
+  }
+
+  static IconData _maneuverIcon(VoiceGuidanceDisplay maneuver) {
+    if (maneuver.type == 'arrive') return Icons.location_on;
+    if (maneuver.type == 'roundabout' ||
+        maneuver.type == 'rotary' ||
+        maneuver.type == 'roundabout turn') {
+      return Icons.roundabout_right;
+    }
+    return switch (maneuver.modifier) {
+      'left' || 'sharp left' => Icons.turn_left,
+      'slight left' => Icons.turn_slight_left,
+      'right' || 'sharp right' => Icons.turn_right,
+      'slight right' => Icons.turn_slight_right,
+      'uturn' => Icons.u_turn_left,
+      _ => Icons.straight,
+    };
   }
 
   @override
@@ -89,66 +113,122 @@ class MapNavigationHeaderBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        // [Wrap] + [WrapAlignment.spaceBetween]: stats and action share one line
-        // when their intrinsic widths fit; the previous LayoutBuilder+SizedBox(
-        // width: constraints.maxWidth) forced the second child to claim the
-        // full line width, so the action always wrapped.
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            IconButton(
-              color: Colors.white,
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-              visualDensity: VisualDensity.compact,
-              tooltip: route.state == MapRouteState.LOADING
-                  ? (context.l10n.isEnglish
-                      ? 'Calculating route'
-                      : 'Route wird berechnet')
-                  : (context.l10n.isEnglish
-                      ? 'Recalculate route'
-                      : 'Route neu berechnen'),
-              onPressed:
-                  route.state == MapRouteState.LOADING ? null : onRefreshRoute,
-              icon: route.state == MapRouteState.LOADING
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
+            if (model.navigationStarted && nextManeuver != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      _maneuverIcon(nextManeuver!),
+                      size: 32,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        nextManeuver!.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              height: 1.15,
+                            ) ??
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
-                    )
-                  : const Icon(Icons.refresh),
-            ),
-            stats,
-            if (route.state == MapRouteState.SHOWN &&
-                route.route != null &&
-                !model.navigationStarted)
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ],
                 ),
-                onPressed: onStartNavigation,
-                icon: const Icon(Icons.navigation, size: 18),
-                label: Text(context.l10n.tr('Starten')),
               ),
-            IconButton(
-              color: Colors.white,
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-              visualDensity: VisualDensity.compact,
-              tooltip: context.l10n.tr('Route beenden'),
-              onPressed: model.clearDestination,
-              icon: const Icon(Icons.close),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                IconButton(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: route.state == MapRouteState.LOADING
+                      ? (context.l10n.isEnglish
+                          ? 'Calculating route'
+                          : 'Route wird berechnet')
+                      : (context.l10n.isEnglish
+                          ? 'Recalculate route'
+                          : 'Route neu berechnen'),
+                  onPressed: route.state == MapRouteState.LOADING
+                      ? null
+                      : onRefreshRoute,
+                  icon: route.state == MapRouteState.LOADING
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Icon(Icons.refresh),
+                ),
+                stats,
+                if (route.state == MapRouteState.SHOWN &&
+                    route.route != null &&
+                    !model.navigationStarted)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onStartNavigation,
+                    icon: const Icon(Icons.navigation, size: 18),
+                    label: Text(context.l10n.tr('Starten')),
+                  ),
+                if (route.state == MapRouteState.SHOWN &&
+                    route.route != null &&
+                    model.navigationStarted)
+                  IconButton(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: model.voiceGuidanceEnabled
+                        ? (context.l10n.isEnglish
+                            ? 'Turn off voice guidance'
+                            : 'Sprachansagen ausschalten')
+                        : (context.l10n.isEnglish
+                            ? 'Turn on voice guidance'
+                            : 'Sprachansagen einschalten'),
+                    onPressed: onToggleVoiceGuidance,
+                    icon: Icon(
+                      model.voiceGuidanceEnabled
+                          ? Icons.volume_up
+                          : Icons.volume_off,
+                    ),
+                  ),
+                IconButton(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: context.l10n.tr('Route beenden'),
+                  onPressed: onEndRoute,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
           ],
         ),

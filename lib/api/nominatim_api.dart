@@ -19,16 +19,38 @@ class NominatimApi {
   }
 
   // https://nominatim.org/release-docs/latest/api/Search/
-  Future<List<Place>> search(String query) async {
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) async {
+    final center = searchCenter ?? const LatLng(48.137154, 11.576124);
+    final localPlaces = await _request(
+      query,
+      localOnly: true,
+      center: center,
+    );
+    if (localPlaces.isNotEmpty) {
+      return localPlaces;
+    }
+    return _request(query, localOnly: false, center: center);
+  }
+
+  Future<List<Place>> _request(
+    String query, {
+    required bool localOnly,
+    required LatLng center,
+  }) async {
     final queryParameters = {
       'q': query,
       'format': 'jsonv2',
+      'limit': '15',
+      if (localOnly) ...{
+        'viewbox': _viewBox(center),
+        'bounded': '1',
+      },
     };
     Uri uri = Uri.https(baseUrl, 'search', queryParameters);
     Response response = await client!.get(uri, headers: {
       "Accept": "application/json",
       "User-Agent": "com.munichways.app/flutter"
-    });
+    }).timeout(const Duration(seconds: 8));
     switch (response.statusCode) {
       case 200:
         log.d(response.body);
@@ -43,4 +65,8 @@ class NominatimApi {
         throw ApiException("Error retrieving places: " + response.body);
     }
   }
+
+  static String _viewBox(LatLng center) =>
+      '${center.longitude - 0.35},${center.latitude + 0.25},'
+      '${center.longitude + 0.35},${center.latitude - 0.25}';
 }

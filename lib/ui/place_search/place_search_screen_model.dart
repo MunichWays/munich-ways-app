@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/geoapify_api.dart';
 import 'package:munich_ways/api/munich_street_corrector.dart';
+import 'package:munich_ways/api/nominatim_api.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
@@ -18,7 +20,10 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
   List<Place> places = [];
 
   GeoapifyApi api;
+  NominatimApi fallbackApi;
   MunichStreetCorrector streetCorrector;
+  bool resultsFromNominatim = false;
+  final LatLng? searchCenter;
 
   String? errorMsg = null;
 
@@ -31,8 +36,11 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
   PlaceSearchScreenViewModel({
     required this.recentSearchesRepo,
     GeoapifyApi? api,
+    NominatimApi? fallbackApi,
     MunichStreetCorrector? streetCorrector,
+    this.searchCenter,
   })  : api = api ?? GeoapifyApi(),
+        fallbackApi = fallbackApi ?? NominatimApi(),
         streetCorrector = streetCorrector ?? MunichStreetCorrector() {
     recentSearchesRepo.load().then((loadedPlaces) {
       recentSearches = loadedPlaces;
@@ -58,14 +66,31 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     try {
       final correction = await streetCorrector.correct(query);
       final correctedSearchQuery = correction?.query ?? query;
-      final newPlaces = await api.search(correctedSearchQuery);
+      List<Place> newPlaces;
+      try {
+        newPlaces = await api.search(
+          correctedSearchQuery,
+          searchCenter: searchCenter,
+        );
+        resultsFromNominatim = false;
+      } catch (error, stackTrace) {
+        log.w(
+          'Geoapify search failed, trying Nominatim fallback',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        newPlaces = await fallbackApi.search(
+          correctedSearchQuery,
+          searchCenter: searchCenter,
+        );
+        resultsFromNominatim = true;
+      }
       if (searchSequence != _searchSequence) {
         return;
       }
       places = newPlaces;
       correctedQuery =
           correction?.query == query ? null : correction?.displayName;
-      loading = false;
       notifyListeners();
     } catch (e) {
       if (searchSequence != _searchSequence) {
@@ -73,6 +98,11 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
       }
       _displayErrorMsg(
           "Fehler bei Straßensuche. Bitte versuche es erneut.\n\n${e.toString()}");
+    } finally {
+      if (searchSequence == _searchSequence) {
+        loading = false;
+        notifyListeners();
+      }
     }
   }
 
