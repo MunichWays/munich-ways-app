@@ -52,5 +52,5 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           serviceAccountJson: google_play_service_account.json
           packageName: com.munichways.app
-          track: beta
+          track: alpha
           status: completed
