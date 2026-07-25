@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class ImprintScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ImprintScreenState extends State<ImprintScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Impressum"),
+        title: Text(context.l10n.tr('Impressum')),
       ),
       body: WebViewWidget(
         controller: webViewController,

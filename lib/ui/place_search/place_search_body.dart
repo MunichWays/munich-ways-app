@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -45,7 +46,9 @@ class PlaceSearchBody extends StatelessWidget {
         children.add(
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Text('Korrigiert zu „$correctedQuery“'),
+            child: Text(context.l10n.isEnglish
+                ? 'Corrected to “$correctedQuery”'
+                : 'Korrigiert zu „$correctedQuery“'),
           ),
         );
       }
@@ -56,10 +59,21 @@ class PlaceSearchBody extends StatelessWidget {
         final place = model.places[i];
         children.add(
           ListTile(
-            title: Text(place.displayName!),
+            dense: true,
+            leading: Icon(
+              Icons.location_on_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(
+              place.displayName!,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
             trailing: Icon(
-              Icons.arrow_forward,
-              semanticLabel: 'Ziel auswählen: ${place.displayName!}',
+              Icons.chevron_right,
+              color: Colors.black45,
+              semanticLabel: context.l10n.selectDestination(place.displayName!),
             ),
             onTap: () {
               model.addToRecentSearches(place);
@@ -75,7 +89,9 @@ class PlaceSearchBody extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Text(
-              'Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.',
+              context.l10n.tr(
+                'Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.',
+              ),
               style: Theme.of(context).textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),
@@ -97,17 +113,32 @@ class PlaceSearchBody extends StatelessWidget {
 
     if (showAttribution) {
       children.add(
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: () => launchUrl(
-              Uri.parse('https://www.geoapify.com/'),
-              mode: LaunchMode.externalApplication,
-            ),
-            child: const Text(
-              'Powered by Geoapify · Data © OpenStreetMap contributors · '
-              'Straßennamen © Landeshauptstadt München',
-            ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Powered by ', style: _attributionStyle),
+              InkWell(
+                onTap: () => launchUrl(
+                  Uri.parse('https://www.geoapify.com/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: Text(
+                  'Geoapify',
+                  style: _attributionStyle.copyWith(
+                    decoration: TextDecoration.underline,
+                    decorationColor: Colors.black45,
+                  ),
+                ),
+              ),
+              Text(
+                context.l10n.isEnglish
+                    ? ' · © OpenStreetMap contributors · © City of Munich'
+                    : ' · © OpenStreetMap-Mitwirkende · © Stadt München',
+                style: _attributionStyle,
+              ),
+            ],
           ),
         ),
       );
@@ -119,12 +150,26 @@ class PlaceSearchBody extends StatelessWidget {
     );
   }
 
+  static const _attributionStyle = TextStyle(
+    color: Colors.black45,
+    fontSize: 10,
+    height: 1.2,
+  );
+
   Widget _mapSelectionWidget(BuildContext context) {
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(vertical: -2),
-      leading: const Icon(Icons.add_location_alt_outlined),
-      title: const Text('Auf Karte auswählen'),
+      leading: Icon(
+        Icons.add_location_alt_outlined,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      title: Text(
+        context.l10n.tr('Auf Karte auswählen'),
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+      ),
       onTap: () => Navigator.pop(
         context,
         PlaceSearchSheetResult.selectOnMap,
@@ -143,17 +188,24 @@ class PlaceSearchBody extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
         child: Text(
-          'Letzte Ziele',
+          context.l10n.tr('Letzte Ziele'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
       for (final recentSearch in model.recentSearches) ...[
         const Divider(height: 1),
         ListTile(
-          title: Text(recentSearch.displayName!),
+          dense: true,
+          leading: const Icon(Icons.history, color: Colors.black45),
+          title: Text(
+            recentSearch.displayName!,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           trailing: Icon(
-            Icons.arrow_forward,
-            semanticLabel: 'Ziel auswählen: ${recentSearch.displayName!}',
+            Icons.chevron_right,
+            color: Colors.black45,
+            semanticLabel:
+                context.l10n.selectDestination(recentSearch.displayName!),
           ),
           onTap: () {
             model.addToRecentSearches(recentSearch);
@@ -166,7 +218,7 @@ class PlaceSearchBody extends StatelessWidget {
         child: TextButton.icon(
           onPressed: model.clearAllRecentSearches,
           icon: const Icon(Icons.delete_outline),
-          label: const Text('(Suchverlauf löschen)'),
+          label: Text(context.l10n.tr('(Suchverlauf löschen)')),
         ),
       ),
     ];

@@ -3,6 +3,7 @@ import 'package:munich_ways/api/mapillary/mapillary_service.dart';
 import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/street_details/mapillary_image.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
@@ -53,9 +54,9 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
           }
           if (snapshot.hasError) {
             log.e('${snapshot.error}');
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Fehler beim Laden.'),
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(context.l10n.tr('Fehler beim Laden.')),
             );
           }
           return const Padding(
@@ -66,7 +67,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
       ),
       if (d.streckenLink != null)
         ListItem(
-          label: 'Strecke',
+          label: context.l10n.tr('Strecke'),
           value: d.streckenLink!.title,
           onTap: d.streckenLink!.url != null
               ? () async {
@@ -75,7 +76,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
               : null,
         ),
       ListItem(
-        label: 'Ist-Situation',
+        label: context.l10n.tr('Ist-Situation'),
         value: d.ist,
       ),
       ListItem(
@@ -83,11 +84,11 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
         value: d.happyBikeLevel,
       ),
       ListItem(
-        label: 'Soll-Maßnahmen',
+        label: context.l10n.tr('Soll-Maßnahmen'),
         value: d.soll,
       ),
       ListItem(
-        label: 'Maßnahmen-Kategorie',
+        label: context.l10n.tr('Maßnahmen-Kategorie'),
         value: d.kategorie!.title,
         onTap: d.kategorie!.url != null
             ? () async {
@@ -96,7 +97,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
             : null,
       ),
       ListItem(
-        label: 'Beschreibung',
+        label: context.l10n.tr('Beschreibung'),
         value: d.description,
       ),
       ListItem(
@@ -104,11 +105,11 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
         value: d.munichwaysId,
       ),
       ListItem(
-        label: 'Status-Umsetzung',
+        label: context.l10n.tr('Status-Umsetzung'),
         value: d.statusUmsetzung,
       ),
       ListItem(
-        label: 'Bezirk',
+        label: context.l10n.tr('Bezirk'),
         value: d.bezirk!.name,
         onTap: () async {
           launchWebsite(d.bezirk!.link.url);
@@ -206,7 +207,7 @@ class _Header extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              name ?? 'Unbekannte Straße',
+              name ?? context.l10n.tr('Unbekannte Straße'),
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
@@ -214,7 +215,7 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               icon: const Icon(Icons.close),
-              tooltip: 'Schließen',
+              tooltip: context.l10n.close,
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),

@@ -2,10 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
-import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
-import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:provider/provider.dart';
 
@@ -98,7 +97,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       IconButton(
-                        tooltip: 'Zurück zur Karte',
+                        tooltip: context.l10n.tr('Zurück zur Karte'),
                         icon: const Icon(Icons.arrow_back),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
@@ -106,11 +105,11 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                         child: TextField(
                           controller: _query,
                           autofocus: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Ziel suchen',
+                          decoration: InputDecoration(
+                            labelText: context.l10n.tr('Ziel suchen'),
                             border: InputBorder.none,
                             isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 4,
                               vertical: 12,
                             ),
@@ -123,7 +122,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                       ),
                       if (_hasQuery)
                         IconButton(
-                          tooltip: 'Eingabe löschen',
+                          tooltip: context.l10n.tr('Eingabe löschen'),
                           icon: const Icon(Icons.close),
                           onPressed: _clearQuery,
                         ),

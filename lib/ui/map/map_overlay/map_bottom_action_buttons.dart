@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
@@ -38,13 +39,13 @@ class MapBottomActionButtons extends StatelessWidget {
             children: [
               MapOverlayButton(
                 circular: false,
-                tooltip: 'Info',
+                tooltip: context.l10n.tr('Info'),
                 onPressed: () => showMapInfoSheet(context),
                 child: const Icon(Icons.info_outline),
               ),
               MapOverlayButton(
                 circular: false,
-                tooltip: 'Einstellungen',
+                tooltip: context.l10n.settings,
                 onPressed: () => showMapSettingsSheet(context, model),
                 child: const Icon(Icons.settings),
               ),

@@ -1,0 +1,15 @@
+MunichWays helps you find the cycling route through Munich that suits you.
+
+The app shows comfortable green cycling routes that are wide, safe and smooth. It also highlights red and black sections with narrow paths, difficult intersections or gaps in the cycling network in and around Munich.
+
+The rating:
+Green: Comfortable — the cycle path is wide, safe and smooth
+Yellow: Average — the cycle path could be improved
+Red: Stressful — the cycle path is very narrow or unsafe
+Black: Gap — no cycle path, a gap in the network or construction work
+
+Attach your phone to your handlebars, open MunichWays and start riding. You can see where Munich offers comfortable cycling connections and which stressful sections you may want to avoid.
+
+We are a group of committed Munich residents working for smooth, continuous and, above all, safe walking and cycling routes for people of all ages.
+
+https://www.munichways.de/

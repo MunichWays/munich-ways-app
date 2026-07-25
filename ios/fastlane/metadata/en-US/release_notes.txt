@@ -1,0 +1,6 @@
+* The map has been modernized for smoother rendering and a more stable foundation.
+* A new layout presents info, settings, cycling network selection, place search and street details in clear panels.
+* Zoom buttons can be shown or hidden as needed.
+* Map controls can be positioned on either the left or right.
+* A calmer map design improves labels, lines and route readability.
+* The app is now available in English and follows the system language by default.

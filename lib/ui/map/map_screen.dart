@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
@@ -64,6 +65,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _initialContentReady = false;
   bool _initialRatingsAwaitingMapIdle = false;
   bool _mapReadyNotified = false;
+  bool _locationPrimeStarted = false;
   bool _overlaySyncScheduled = false;
   bool _overlaySyncRunning = false;
   bool _overlaySyncQueued = false;
@@ -163,6 +165,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       create: (BuildContext _) {
         final model = MapScreenViewModel();
         mapViewModel = model;
+        model.startInitialLoad();
 
         model.errorMsgs.listen((errorMsg) {
           scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
@@ -253,9 +256,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               model.onMapReady();
-              if (!kStoreScreenshots) {
-                unawaited(_primeLocationOnStart(model));
-              }
             });
           }
           _scheduleOverlaySync(model);
@@ -338,6 +338,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _renderModeFor(model.locationState),
                           onMapCreated: (controller) {
                             _mapController = controller;
+                            if (!kStoreScreenshots && !_locationPrimeStarted) {
+                              _locationPrimeStarted = true;
+                              unawaited(_primeLocationOnStart(model));
+                            }
                             if (!_lineTapHandlerAttached) {
                               _lineTapHandlerAttached = true;
                               controller.onLineTapped.add((line) {
@@ -496,8 +500,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         const MapAttribution(),
-                        if (_initialContentReady &&
-                            !model.navigationStarted)
+                        if (_initialContentReady && !model.navigationStarted)
                           MapSearchBar(model: model),
                         MapSideActionButtons(
                           model: model,
@@ -565,7 +568,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 shadowColor: Colors.black38,
                                 borderRadius: BorderRadius.circular(14),
                                 child: Semantics(
-                                  label: 'Karte und Bewertungen werden geladen',
+                                  label: context.l10n.loadingMap,
                                   liveRegion: true,
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -817,11 +820,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model, {
     bool permissionCheck = true,
   }) async {
-    await model.refreshCurrentLocationFix();
     await model.onPressLocationBtn(permissionCheck: permissionCheck);
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
     _updateLocationStream(model);
+    final cachedPosition = await Geolocator.getLastKnownPosition();
+    if (!mounted || cachedPosition == null) return;
+    _latestPosition = cachedPosition;
+    _pendingPosition = cachedPosition;
+    unawaited(_drainLocationUpdates(model));
   }
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
@@ -890,11 +897,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       model.loading,
       model.isRadlvorrangnetzVisible,
       model.isGesamtnetzVisible,
+      model.networkRevision,
       pl.length,
     );
     for (final p in pl) {
+      final points = p.points;
       h = Object.hash(
-          h, p.details?.munichwaysId, p.details?.cartoDbId, p.points?.length);
+        h,
+        p.details?.munichwaysId,
+        p.details?.cartoDbId,
+        p.details?.farbe,
+        p.details?.lastUpdated,
+        points?.length,
+        points?.firstOrNull?.latitude,
+        points?.firstOrNull?.longitude,
+        points?.lastOrNull?.latitude,
+        points?.lastOrNull?.longitude,
+      );
     }
     return h;
   }

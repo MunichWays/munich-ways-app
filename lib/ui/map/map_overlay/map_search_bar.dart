@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
@@ -21,8 +22,10 @@ class MapSearchBar extends StatelessWidget {
       model.setDestination(result);
     } else if (result == PlaceSearchSheetResult.selectOnMap) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gewünschtes Ziel auf der Karte lange antippen.'),
+        SnackBar(
+          content: Text(
+            context.l10n.tr('Gewünschtes Ziel auf der Karte lange antippen.'),
+          ),
         ),
       );
     }
@@ -44,17 +47,17 @@ class MapSearchBar extends StatelessWidget {
           onTap: () => _openSearch(context),
           child: Semantics(
             button: true,
-            label: 'Ziel suchen',
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            label: context.l10n.tr('Ziel suchen'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: Row(
                 children: [
-                  Icon(Icons.search),
-                  SizedBox(width: 14),
+                  const Icon(Icons.search),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Wohin möchtest du?',
-                      style: TextStyle(fontSize: 16),
+                      context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
                 ],

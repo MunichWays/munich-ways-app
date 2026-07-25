@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 
 /// Shared styling for modal bottom sheet cards (rounded white panel).
 BoxDecoration bottomSheetDecoration() {
@@ -168,7 +169,7 @@ class _BottomSheetFrameState extends State<BottomSheetFrame> {
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.close),
-                                  tooltip: 'Schließen',
+                                  tooltip: context.l10n.close,
                                   onPressed: () => Navigator.of(context).pop(),
                                 ),
                               ],
