@@ -12,7 +12,8 @@ class AppLocalizations {
       _AppLocalizationsDelegate();
 
   static AppLocalizations of(BuildContext context) =>
-      Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+      Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      const AppLocalizations(Locale('de'));
 
   String get settings => isEnglish ? 'Settings' : 'Einstellungen';
   String get close => isEnglish ? 'Close' : 'Schließen';
