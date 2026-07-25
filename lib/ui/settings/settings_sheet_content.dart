@@ -7,9 +7,14 @@ import 'package:provider/provider.dart';
 
 /// Settings list for the map bottom sheet (no scaffold / drawer).
 class SettingsSheetContent extends StatefulWidget {
-  const SettingsSheetContent({super.key, required this.model});
+  const SettingsSheetContent({
+    super.key,
+    required this.model,
+    required this.onReloadRadnetz,
+  });
 
   final MapScreenViewModel model;
+  final Future<void> Function() onReloadRadnetz;
 
   @override
   State<SettingsSheetContent> createState() => _SettingsSheetContentState();
@@ -116,26 +121,8 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                       label: strings.reloadNetwork,
                       trailingElement: const Icon(Icons.refresh),
                       onTap: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final message = strings.reloadingMap;
                         Navigator.of(context).pop();
-                        messenger
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(
-                            SnackBar(content: Text(message)),
-                          );
-                        final updated = await model.reloadRadnetz();
-                        messenger
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                updated
-                                    ? strings.mapUpdated
-                                    : strings.mapUpdateFailed,
-                              ),
-                            ),
-                          );
+                        await widget.onReloadRadnetz();
                       },
                     ),
                   ],

@@ -389,7 +389,10 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> refreshRadlnetze() async {
+  Future<bool> refreshRadlnetze({
+    Duration minimumLoadingDuration = Duration.zero,
+  }) async {
+    final startedAt = DateTime.now();
     loading = true;
     notifyListeners();
 
@@ -403,7 +406,9 @@ class MapScreenViewModel extends ChangeNotifier {
         if (_firstLoad) {
           _firstLoad = false;
         }
-        loading = false;
+        if (minimumLoadingDuration == Duration.zero) {
+          loading = false;
+        }
         notifyListeners();
       }
       return receivedData;
@@ -412,6 +417,11 @@ class MapScreenViewModel extends ChangeNotifier {
       log.e("Error loading Netze", error: e);
       return false;
     } finally {
+      final remaining =
+          minimumLoadingDuration - DateTime.now().difference(startedAt);
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
       if (_firstLoad) {
         _firstLoad = false;
       }
@@ -423,8 +433,12 @@ class MapScreenViewModel extends ChangeNotifier {
   /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
   /// overlay can update without leaving the screen.
   Future<bool> reloadRadnetz() async {
+    loading = true;
+    notifyListeners();
     await _munichwaysApi.removeRatingsCache();
-    return refreshRadlnetze();
+    return refreshRadlnetze(
+      minimumLoadingDuration: const Duration(milliseconds: 1500),
+    );
   }
 
   void onTap(StreetDetails? details) {

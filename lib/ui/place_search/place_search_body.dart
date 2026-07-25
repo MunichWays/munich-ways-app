@@ -111,42 +111,17 @@ class PlaceSearchBody extends StatelessWidget {
       children.add(_mapSelectionWidget(context));
     }
 
-    if (showAttribution) {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('Powered by ', style: _attributionStyle),
-              InkWell(
-                onTap: () => launchUrl(
-                  Uri.parse('https://www.geoapify.com/'),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text(
-                  'Geoapify',
-                  style: _attributionStyle.copyWith(
-                    decoration: TextDecoration.underline,
-                    decorationColor: Colors.black45,
-                  ),
-                ),
-              ),
-              Text(
-                context.l10n.isEnglish
-                    ? ' · © OpenStreetMap contributors · © City of Munich'
-                    : ' · © OpenStreetMap-Mitwirkende · © Stadt München',
-                style: _attributionStyle,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ListView(
+    final results = ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: children,
+    );
+    if (!showAttribution) return results;
+
+    return Column(
+      children: [
+        Expanded(child: results),
+        _buildAttribution(context),
+      ],
     );
   }
 
@@ -155,6 +130,39 @@ class PlaceSearchBody extends StatelessWidget {
     fontSize: 10,
     height: 1.2,
   );
+
+  Widget _buildAttribution(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      color: Theme.of(context).colorScheme.surface,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Powered by ', style: _attributionStyle),
+          InkWell(
+            onTap: () => launchUrl(
+              Uri.parse('https://www.geoapify.com/'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: Text(
+              'Geoapify',
+              style: _attributionStyle.copyWith(
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.black45,
+              ),
+            ),
+          ),
+          Text(
+            context.l10n.isEnglish
+                ? ' · © OpenStreetMap contributors · © City of Munich'
+                : ' · © OpenStreetMap-Mitwirkende · © Stadt München',
+            style: _attributionStyle,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _mapSelectionWidget(BuildContext context) {
     return ListTile(

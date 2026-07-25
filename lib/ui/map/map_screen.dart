@@ -552,7 +552,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  if (!_initialContentReady)
+                  if (!_initialContentReady || model.loading)
                     Positioned(
                       top: 0,
                       left: 0,
@@ -568,29 +568,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 shadowColor: Colors.black38,
                                 borderRadius: BorderRadius.circular(14),
                                 child: Semantics(
-                                  label: context.l10n.loadingMap,
+                                  label: _initialContentReady
+                                      ? context.l10n.reloadingMap
+                                      : context.l10n.loadingMap,
                                   liveRegion: true,
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 18,
                                       vertical: 14,
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        SizedBox(
+                                        const SizedBox(
                                           width: 24,
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 3,
                                           ),
                                         ),
-                                        SizedBox(width: 14),
+                                        const SizedBox(width: 14),
                                         Flexible(
                                           child: Text(
-                                            'Karte und Bewertungen werden geladen …',
+                                            _initialContentReady
+                                                ? context.l10n.reloadingMap
+                                                : '${context.l10n.loadingMap} …',
                                             textAlign: TextAlign.center,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.black87,
                                               fontSize: 15,
                                               fontWeight: FontWeight.w500,
