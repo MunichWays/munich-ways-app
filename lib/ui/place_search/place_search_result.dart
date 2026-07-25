@@ -1,0 +1,1 @@
+enum PlaceSearchSheetResult { selectOnMap }

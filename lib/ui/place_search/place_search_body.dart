@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Scrollable search results, errors, hints, and recent destinations.
+/// Scrollable search results, errors, and recent destinations.
 class PlaceSearchBody extends StatelessWidget {
   const PlaceSearchBody({
     super.key,
@@ -16,23 +16,22 @@ class PlaceSearchBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (model.loading) {
       return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(48),
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(strokeWidth: 3),
-          ),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(strokeWidth: 3),
         ),
       );
     }
 
     final children = <Widget>[];
+    var showAttribution = false;
+    var mapSelectionAdded = false;
 
     if (model.errorMsg != null) {
       children.add(
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Text(
             model.errorMsg!,
             style: Theme.of(context).textTheme.bodyLarge,
@@ -42,11 +41,19 @@ class PlaceSearchBody extends StatelessWidget {
       );
       children.addAll(_recentSearchWidgets(context, model));
     } else if (model.places.isNotEmpty) {
+      if (model.correctedQuery case final correctedQuery?) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('Korrigiert zu „$correctedQuery“'),
+          ),
+        );
+      }
       for (var i = 0; i < model.places.length; i++) {
         if (i > 0) {
           children.add(const Divider(height: 1));
         }
-        final place = model.places.elementAt(i);
+        final place = model.places[i];
         children.add(
           ListTile(
             title: Text(place.displayName!),
@@ -61,48 +68,67 @@ class PlaceSearchBody extends StatelessWidget {
           ),
         );
       }
-      children.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Text(
-            'Data © OpenStreetMap contributors, ODbL 1.0. https://osm.org/copyright',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade800,
-                ),
-          ),
-        ),
-      );
+      showAttribution = true;
     } else {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: model.isFirstSearch
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'Suchbegriff eingeben',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const _SearchHelpTooltip(),
-                  ],
-                )
-              : Text(
-                  'Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-        ),
-      );
+      if (!model.isFirstSearch) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Text(
+              'Keine Ergebnisse vorhanden.\nBitte überprüfe den Suchbegriff.',
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+        children.add(const Divider(height: 1));
+        children.add(_mapSelectionWidget(context));
+        mapSelectionAdded = true;
+      }
       children.addAll(_recentSearchWidgets(context, model));
     }
 
+    if (!mapSelectionAdded) {
+      if (children.isNotEmpty) {
+        children.add(const Divider(height: 1));
+      }
+      children.add(_mapSelectionWidget(context));
+    }
+
+    if (showAttribution) {
+      children.add(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => launchUrl(
+              Uri.parse('https://www.geoapify.com/'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: const Text(
+              'Powered by Geoapify · Data © OpenStreetMap contributors · '
+              'Straßennamen © Landeshauptstadt München',
+            ),
+          ),
+        ),
+      );
+    }
+
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 16),
       children: children,
+    );
+  }
+
+  Widget _mapSelectionWidget(BuildContext context) {
+    return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -2),
+      leading: const Icon(Icons.add_location_alt_outlined),
+      title: const Text('Auf Karte auswählen'),
+      onTap: () => Navigator.pop(
+        context,
+        PlaceSearchSheetResult.selectOnMap,
+      ),
     );
   }
 
@@ -114,36 +140,17 @@ class PlaceSearchBody extends StatelessWidget {
       return [];
     }
     return [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  'Letzte Ziele',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                TextButton.icon(
-                  onPressed: model.clearAllRecentSearches,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Suchverlauf'),
-                ),
-              ],
-            ),
-          ),
-        ],
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+        child: Text(
+          'Letzte Ziele',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
       ),
       for (final recentSearch in model.recentSearches) ...[
         const Divider(height: 1),
         ListTile(
-          title: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(recentSearch.displayName!),
-          ),
+          title: Text(recentSearch.displayName!),
           trailing: Icon(
             Icons.arrow_forward,
             semanticLabel: 'Ziel auswählen: ${recentSearch.displayName!}',
@@ -154,62 +161,14 @@ class PlaceSearchBody extends StatelessWidget {
           },
         ),
       ],
-    ];
-  }
-}
-
-class _SearchHelpTooltip extends StatefulWidget {
-  const _SearchHelpTooltip();
-
-  @override
-  State<_SearchHelpTooltip> createState() => _SearchHelpTooltipState();
-}
-
-class _SearchHelpTooltipState extends State<_SearchHelpTooltip> {
-  static const _showDuration = Duration(seconds: 8);
-
-  final _tooltipKey = GlobalKey<TooltipState>();
-  Timer? _hideTimer;
-  bool _isVisible = false;
-
-  void _toggleTooltip() {
-    _hideTimer?.cancel();
-
-    if (_isVisible) {
-      Tooltip.dismissAllToolTips();
-      _isVisible = false;
-      return;
-    }
-
-    _tooltipKey.currentState?.ensureTooltipVisible();
-    _isVisible = true;
-    _hideTimer = Timer(_showDuration, () {
-      Tooltip.dismissAllToolTips();
-      _isVisible = false;
-    });
-  }
-
-  @override
-  void dispose() {
-    _hideTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      key: _tooltipKey,
-      message: 'Bitte gebe einen Suchbegriff ein, z.B. eine Straße in München. '
-          'Betätige dann den Suchen-Button.',
-      triggerMode: TooltipTriggerMode.manual,
-      showDuration: _showDuration,
-      child: IconButton(
-        onPressed: _toggleTooltip,
-        icon: const Icon(
-          Icons.help_outline,
-          semanticLabel: 'Hilfe zur Adresssuche',
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: model.clearAllRecentSearches,
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('(Suchverlauf löschen)'),
         ),
       ),
-    );
+    ];
   }
 }

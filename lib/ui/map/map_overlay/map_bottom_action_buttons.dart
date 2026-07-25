@@ -4,7 +4,6 @@ import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
 
 /// Bottom map controls: info (placeholder), search, settings.
 class MapBottomActionButtons extends StatelessWidget {
@@ -42,17 +41,6 @@ class MapBottomActionButtons extends StatelessWidget {
                 tooltip: 'Info',
                 onPressed: () => showMapInfoSheet(context),
                 child: const Icon(Icons.info_outline),
-              ),
-              MapOverlayButton(
-                circular: false,
-                tooltip: 'Suche',
-                onPressed: () async {
-                  final place = await showPlaceSearchSheet(context);
-                  if (place != null && context.mounted) {
-                    model.setDestination(place);
-                  }
-                },
-                child: const Icon(Icons.search),
               ),
               MapOverlayButton(
                 circular: false,

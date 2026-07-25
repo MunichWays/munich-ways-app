@@ -20,6 +20,7 @@ import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dar
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -495,6 +496,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         const MapAttribution(),
+                        if (_initialContentReady &&
+                            !model.navigationStarted)
+                          MapSearchBar(model: model),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
