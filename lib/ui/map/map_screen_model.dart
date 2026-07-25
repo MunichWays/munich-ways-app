@@ -66,6 +66,21 @@ class MapScreenViewModel extends ChangeNotifier {
     _persistSettings();
   }
 
+  void setVoiceGuidanceEnabled(bool value) {
+    if (_voiceGuidanceEnabled == value) return;
+    _voiceGuidanceEnabled = value;
+    notifyListeners();
+    settingsStore.saveVoiceGuidanceEnabled(value).catchError(
+      (Object e, StackTrace st) {
+        log.e(
+          'Failed to save voice guidance setting',
+          error: e,
+          stackTrace: st,
+        );
+      },
+    );
+  }
+
   void _persistSettings() {
     settingsStore
         .saveMapSettings(
@@ -81,11 +96,14 @@ class MapScreenViewModel extends ChangeNotifier {
     final edge = data.sidePanelEdgeName == 'left'
         ? MapSidePanelEdge.left
         : MapSidePanelEdge.right;
-    if (data.showZoomButtons == _showZoomButtons && edge == _sidePanelEdge) {
+    if (data.showZoomButtons == _showZoomButtons &&
+        edge == _sidePanelEdge &&
+        data.voiceGuidanceEnabled == _voiceGuidanceEnabled) {
       return;
     }
     _showZoomButtons = data.showZoomButtons;
     _sidePanelEdge = edge;
+    _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
     notifyListeners();
   }
 
@@ -118,6 +136,8 @@ class MapScreenViewModel extends ChangeNotifier {
   LocationState locationState = LocationState.NOT_AVAILABLE;
   bool _navigationStarted = false;
   bool get navigationStarted => _navigationStarted;
+  bool _voiceGuidanceEnabled = false;
+  bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
   int _networkRevision = 0;
@@ -475,10 +495,13 @@ class MapScreenViewModel extends ChangeNotifier {
     if (place == null) {
       return;
     }
-    if (locationState == LocationState.FOLLOW) {
+    if (locationState == LocationState.FOLLOW ||
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
       locationState = LocationState.DISPLAY;
     }
     this.destination = place;
+    // A new destination prepares a new route. Navigation must be started
+    // explicitly so tracking and guidance are initialized for that route.
     _navigationStarted = false;
     notifyListeners();
     _destinationStreamController.add(place);

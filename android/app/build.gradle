@@ -58,10 +58,10 @@ android {
 
     defaultConfig {
         applicationId "com.munichways.app"
-        // maplibre_gl requires minSdk >= 23.
+        // flutter_tts requires minSdk >= 24 (maplibre_gl requires >= 23).
         // Math.max keeps the constraint explicit and is immune to Flutter's
         // MinSdkVersionMigration tool (which rewrites bare values 16-23 to flutter.minSdkVersion).
-        minSdkVersion Math.max(flutter.minSdkVersion, 23)
+        minSdkVersion Math.max(flutter.minSdkVersion, 24)
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

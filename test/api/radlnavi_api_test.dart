@@ -16,7 +16,7 @@ void main() {
       expect(req.url.path,
           "/route/v1/bike/11.578090968904041,48.142439149231784;11.588108539581299,48.14585899848997");
       expect(req.url.query,
-          "alternatives=false&steps=false&annotations=false&geometries=polyline&overview=full&continue_straight=default");
+          "alternatives=false&steps=true&annotations=false&geometries=polyline&overview=full&continue_straight=default");
       expect(req.headers['Accept'], "application/json");
       expect(req.headers['User-Agent'], "com.munichways.app/flutter");
 
@@ -35,6 +35,27 @@ void main() {
     expect(actualRoute.points.length, 18);
     expect(actualRoute.duration, 319.4);
     expect(actualRoute.distance, 1119);
+  });
+
+  test('parses OSRM turn-by-turn maneuvers', () async {
+    final api = RadlNaviApi(client: MockClient((_) async {
+      return Response(
+        '{"code":"Ok","routes":[{"geometry":"_p~iF~ps|U_ulLnnqC_mqNvxq`@","legs":[{"steps":[{"distance":80,"duration":20,"name":"Testweg","maneuver":{"location":[11.57,48.14],"type":"turn","modifier":"right"}},{"distance":20,"duration":5,"name":"","maneuver":{"location":[11.571,48.141],"type":"arrive"}}]}],"distance":100,"duration":25}]}',
+        200,
+        headers: {"content-type": "application/json; charset=UTF-8"},
+      );
+    }));
+
+    final route = await api.route(const [
+      LatLng(48.14, 11.57),
+      LatLng(48.141, 11.571),
+    ]);
+
+    expect(route.maneuvers, hasLength(2));
+    expect(route.maneuvers.first.type, 'turn');
+    expect(route.maneuvers.first.modifier, 'right');
+    expect(route.maneuvers.first.roadName, 'Testweg');
+    expect(route.maneuvers.last.type, 'arrive');
   });
 
   test('response with error message, route should throw ApiException',

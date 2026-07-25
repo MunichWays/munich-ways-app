@@ -69,6 +69,12 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveVoiceGuidanceEnabled(bool enabled) {
+    return _enqueueUpdate((current) => current.copyWith(
+          voiceGuidanceEnabled: enabled,
+        ));
+  }
+
   Future<void> _enqueueUpdate(
     SettingsData Function(SettingsData current) update,
   ) {
@@ -86,6 +92,7 @@ class SettingsData {
     required this.showZoomButtons,
     required this.sidePanelEdgeName,
     required this.languageCode,
+    required this.voiceGuidanceEnabled,
   });
 
   final bool showZoomButtons;
@@ -95,17 +102,20 @@ class SettingsData {
 
   /// `null` follows the operating system, otherwise `de` or `en`.
   final String? languageCode;
+  final bool voiceGuidanceEnabled;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: false,
     sidePanelEdgeName: 'right',
     languageCode: null,
+    voiceGuidanceEnabled: false,
   );
 
   Map<String, dynamic> toJson() => {
         'showZoomButtons': showZoomButtons,
         'sidePanelEdge': sidePanelEdgeName,
         if (languageCode != null) 'language': languageCode,
+        'voiceGuidanceEnabled': voiceGuidanceEnabled,
       };
 
   SettingsData copyWith({
@@ -113,12 +123,14 @@ class SettingsData {
     String? sidePanelEdgeName,
     String? languageCode,
     bool clearLanguageCode = false,
+    bool? voiceGuidanceEnabled,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
         sidePanelEdgeName: sidePanelEdgeName ?? this.sidePanelEdgeName,
         languageCode:
             clearLanguageCode ? null : languageCode ?? this.languageCode,
+        voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -128,6 +140,7 @@ class SettingsData {
       showZoomButtons: json['showZoomButtons'] as bool? ?? false,
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
+      voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,
     );
   }
 }

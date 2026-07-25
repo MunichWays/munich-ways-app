@@ -11,7 +11,14 @@ void main() {
     NominatimApi api = NominatimApi(client: MockClient((req) async {
       //Then
       expect(req.url.path, "/search");
-      expect(req.url.query, "q=Marienplatz&format=jsonv2");
+      expect(req.url.queryParameters['q'], 'Marienplatz');
+      expect(req.url.queryParameters['format'], 'jsonv2');
+      expect(
+        req.url.queryParameters['viewbox'],
+        '11.226124,48.387154,11.926124,47.887154',
+      );
+      expect(req.url.queryParameters['bounded'], '1');
+      expect(req.url.queryParameters['limit'], '15');
       expect(req.headers['Accept'], "application/json");
       expect(req.headers['User-Agent'], "com.munichways.app/flutter");
 
@@ -31,5 +38,27 @@ void main() {
     expect(place.displayName,
         "Marienplatz, Angerviertel, Bezirksteil Angerviertel, Altstadt-Lehel, München, Bayern, 80331, Deutschland");
     expect(place.latLng, LatLng(48.137031750000006, 11.575924590567384));
+  });
+
+  test('retries without Munich bounds when local search is empty', () async {
+    var requestCount = 0;
+    final api = NominatimApi(client: MockClient((request) async {
+      requestCount++;
+      if (requestCount == 1) {
+        expect(request.url.queryParameters['bounded'], '1');
+        return Response('[]', 200);
+      }
+      expect(request.url.queryParameters.containsKey('bounded'), isFalse);
+      expect(request.url.queryParameters.containsKey('viewbox'), isFalse);
+      return Response(
+        '[{"display_name":"Alexanderplatz, Berlin","lat":"52.5219","lon":"13.4132"}]',
+        200,
+      );
+    }));
+
+    final places = await api.search('Alexanderplatz Berlin');
+
+    expect(requestCount, 2);
+    expect(places.single.displayName, 'Alexanderplatz, Berlin');
   });
 }

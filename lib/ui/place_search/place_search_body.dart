@@ -142,11 +142,15 @@ class PlaceSearchBody extends StatelessWidget {
           Text('Powered by ', style: _attributionStyle),
           InkWell(
             onTap: () => launchUrl(
-              Uri.parse('https://www.geoapify.com/'),
+              Uri.parse(
+                model.resultsFromNominatim
+                    ? 'https://nominatim.org/'
+                    : 'https://www.geoapify.com/',
+              ),
               mode: LaunchMode.externalApplication,
             ),
             child: Text(
-              'Geoapify',
+              model.resultsFromNominatim ? 'Nominatim' : 'Geoapify',
               style: _attributionStyle.copyWith(
                 decoration: TextDecoration.underline,
                 decorationColor: Colors.black45,

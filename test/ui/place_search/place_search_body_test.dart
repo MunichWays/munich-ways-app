@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/api/geoapify_api.dart';
+import 'package:munich_ways/api/nominatim_api.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
@@ -21,7 +23,56 @@ class FakeRecentSearchesStore extends RecentSearchesStore {
   }
 }
 
+class FailingGeoapifyApi extends GeoapifyApi {
+  FailingGeoapifyApi() : super(apiKey: 'test');
+
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) =>
+      Future<List<Place>>.error(Exception('network failed'));
+}
+
+class FailingNominatimApi extends NominatimApi {
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) =>
+      Future<List<Place>>.error(Exception('fallback failed'));
+}
+
+class SuccessfulNominatimApi extends NominatimApi {
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) async => [
+        Place('Marienplatz', const LatLng(48.137, 11.576)),
+      ];
+}
+
 void main() {
+  test('stops loading when address search fails', () async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: FailingGeoapifyApi(),
+      fallbackApi: FailingNominatimApi(),
+    );
+
+    await model.startSearch('Marienplatz');
+
+    expect(model.loading, isFalse);
+    expect(model.errorMsg, contains('Fehler'));
+  });
+
+  test('uses Nominatim when primary address search fails', () async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: FailingGeoapifyApi(),
+      fallbackApi: SuccessfulNominatimApi(),
+    );
+
+    await model.startSearch('Marienplatz');
+
+    expect(model.loading, isFalse);
+    expect(model.errorMsg, isNull);
+    expect(model.places.single.displayName, 'Marienplatz');
+    expect(model.resultsFromNominatim, isTrue);
+  });
+
   testWidgets('shows map selection without redundant search hint',
       (tester) async {
     final model = PlaceSearchScreenViewModel(
