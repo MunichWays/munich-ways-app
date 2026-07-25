@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -35,7 +36,9 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
     );
 
     return BottomSheetFrame(
-      title: const BottomSheetTitle(title: 'Fahrradnetz auswählen'),
+      title: BottomSheetTitle(
+        title: context.l10n.tr('Fahrradnetz auswählen'),
+      ),
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -43,8 +46,8 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           _BikenetLayerRow(
             selected: widget.model.isRadlvorrangnetzVisible,
             dashed: false,
-            title: 'Radl-Vorrang-Netz',
-            subtitle: 'Linie durchgezogen',
+            title: context.l10n.tr('Radl-Vorrang-Netz'),
+            subtitle: context.l10n.tr('Linie durchgezogen'),
             lineColors: _lineColors,
             onTap: () {
               widget.model.toggleRadvorrangnetzVisible();
@@ -56,8 +59,8 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           _BikenetLayerRow(
             selected: widget.model.isGesamtnetzVisible,
             dashed: true,
-            title: 'Weitere Strecken',
-            subtitle: 'Linie gestrichelt',
+            title: context.l10n.tr('Weitere Strecken'),
+            subtitle: context.l10n.tr('Linie gestrichelt'),
             lineColors: _lineColors,
             onTap: () {
               widget.model.toggleGesamtnetzVisible();

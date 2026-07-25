@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
@@ -45,7 +46,7 @@ class MapSideActionButtons extends StatelessWidget {
     final zoomWidgets = <Widget>[
       if (model.showZoomButtons) ...[
         MapOverlayButton(
-          tooltip: 'Vergrößern',
+          tooltip: context.l10n.tr('Vergrößern'),
           onPressed: () {
             final c = mapController;
             if (c == null) return;
@@ -55,7 +56,7 @@ class MapSideActionButtons extends StatelessWidget {
         ),
         const SizedBox(height: _buttonSpacing),
         MapOverlayButton(
-          tooltip: 'Verkleinern',
+          tooltip: context.l10n.tr('Verkleinern'),
           onPressed: () {
             final c = mapController;
             if (c == null) return;
@@ -77,8 +78,12 @@ class MapSideActionButtons extends StatelessWidget {
           ...zoomWidgets,
           MapOverlayButton(
             tooltip: model.isRadlvorrangnetzVisible && model.isGesamtnetzVisible
-                ? 'Fahrradnetz auswählen (alle Ebenen sichtbar)'
-                : 'Fahrradnetz auswählen (einige Ebenen ausgeblendet)',
+                ? (context.l10n.isEnglish
+                    ? 'Select cycling network (all layers visible)'
+                    : 'Fahrradnetz auswählen (alle Ebenen sichtbar)')
+                : (context.l10n.isEnglish
+                    ? 'Select cycling network (some layers hidden)'
+                    : 'Fahrradnetz auswählen (einige Ebenen ausgeblendet)'),
             onPressed: () {
               showModalBottomSheet<void>(
                 context: context,
@@ -95,7 +100,7 @@ class MapSideActionButtons extends StatelessWidget {
           ),
           const SizedBox(height: _buttonSpacing),
           MapOverlayButton(
-            tooltip: _locationTooltip(model.locationState),
+            tooltip: _locationTooltip(context, model.locationState),
             isActive: model.locationState == LocationState.FOLLOW ||
                 model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
             onPressed: onPressLocation,
@@ -127,16 +132,25 @@ class MapSideActionButtons extends StatelessWidget {
     }
   }
 
-  String _locationTooltip(LocationState state) {
+  String _locationTooltip(BuildContext context, LocationState state) {
+    final english = context.l10n.isEnglish;
     switch (state) {
       case LocationState.NOT_AVAILABLE:
-        return 'Standort nicht verfügbar – antippen, um Berechtigung zu erteilen';
+        return english
+            ? 'Location unavailable – tap to grant permission'
+            : 'Standort nicht verfügbar – antippen, um Berechtigung zu erteilen';
       case LocationState.DISPLAY:
-        return 'Standort anzeigen – antippen, um der Position zu folgen';
+        return english
+            ? 'Show location – tap to follow your position'
+            : 'Standort anzeigen – antippen, um der Position zu folgen';
       case LocationState.FOLLOW:
-        return 'Folgt Standort – antippen, um Karte mitzudrehen';
+        return english
+            ? 'Following location – tap to rotate the map'
+            : 'Folgt Standort – antippen, um Karte mitzudrehen';
       case LocationState.FOLLOW_AND_ROTATE_MAP:
-        return 'Folgt Standort und dreht Karte – antippen, um Standort-Verfolgung zu beenden';
+        return english
+            ? 'Following location and rotating map – tap to stop'
+            : 'Folgt Standort und dreht Karte – antippen, um Standort-Verfolgung zu beenden';
     }
   }
 }

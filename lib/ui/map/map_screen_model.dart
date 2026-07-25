@@ -36,6 +36,7 @@ class MapScreenViewModel extends ChangeNotifier {
   bool loading = false;
 
   bool _firstLoad = true;
+  bool _initialLoadStarted = false;
   bool get initialLoadComplete => !_firstLoad;
 
   /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
@@ -67,10 +68,10 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void _persistSettings() {
     settingsStore
-        .save(SettingsData(
+        .saveMapSettings(
       showZoomButtons: _showZoomButtons,
       sidePanelEdgeName: _sidePanelEdge.name,
-    ))
+    )
         .catchError((Object e, StackTrace st) {
       log.e('Failed to save settings', error: e, stackTrace: st);
     });
@@ -119,6 +120,8 @@ class MapScreenViewModel extends ChangeNotifier {
   bool get navigationStarted => _navigationStarted;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
+  int _networkRevision = 0;
+  int get networkRevision => _networkRevision;
 
   MunichwaysApi _munichwaysApi = MunichwaysApi();
   RadlNaviApi _radlNaviApi = RadlNaviApi();
@@ -174,10 +177,15 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void onMapReady() {
-    refreshRadlnetze();
     if (kStoreScreenshots) {
       unawaited(primeLocationForStoreScreenshots());
     }
+  }
+
+  void startInitialLoad() {
+    if (_initialLoadStarted) return;
+    _initialLoadStarted = true;
+    unawaited(refreshRadlnetze());
   }
 
   /// Requests a fresh GPS fix so Android's cached last-known location is updated.
@@ -381,28 +389,56 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshRadlnetze() async {
+  Future<bool> refreshRadlnetze({
+    Duration minimumLoadingDuration = Duration.zero,
+  }) async {
+    final startedAt = DateTime.now();
     loading = true;
     notifyListeners();
 
     try {
-      _polylinesGesamtnetz = await _munichwaysApi.getRadlvorrangnetz();
+      var receivedData = false;
+      await for (final polylines
+          in _munichwaysApi.getRadlvorrangnetzUpdates()) {
+        _polylinesGesamtnetz = polylines;
+        _networkRevision++;
+        receivedData = true;
+        if (_firstLoad) {
+          _firstLoad = false;
+        }
+        if (minimumLoadingDuration == Duration.zero) {
+          loading = false;
+        }
+        notifyListeners();
+      }
+      return receivedData;
     } catch (e) {
       _displayErrorMsg(e.toString());
       log.e("Error loading Netze", error: e);
+      return false;
+    } finally {
+      final remaining =
+          minimumLoadingDuration - DateTime.now().difference(startedAt);
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
+      if (_firstLoad) {
+        _firstLoad = false;
+      }
+      loading = false;
+      notifyListeners();
     }
-    if (_firstLoad) {
-      _firstLoad = false;
-    }
-    loading = false;
-    notifyListeners();
   }
 
   /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
   /// overlay can update without leaving the screen.
-  Future<void> reloadRadnetz() async {
-    await _munichwaysApi.emptyCache();
-    await refreshRadlnetze();
+  Future<bool> reloadRadnetz() async {
+    loading = true;
+    notifyListeners();
+    await _munichwaysApi.removeRatingsCache();
+    return refreshRadlnetze(
+      minimumLoadingDuration: const Duration(milliseconds: 1500),
+    );
   }
 
   void onTap(StreetDetails? details) {

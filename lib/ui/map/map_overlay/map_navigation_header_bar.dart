@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -45,7 +46,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
     switch (route.state) {
       case MapRouteState.LOADING:
         stats = Text(
-          'Route wird berechnet...',
+          context.l10n.isEnglish
+              ? 'Calculating route...'
+              : 'Route wird berechnet...',
           softWrap: true,
           style: baseStyle.copyWith(fontStyle: FontStyle.italic),
         );
@@ -100,8 +103,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
               constraints: const BoxConstraints(),
               visualDensity: VisualDensity.compact,
               tooltip: route.state == MapRouteState.LOADING
-                  ? 'Route wird berechnet'
-                  : 'Route neu berechnen',
+                  ? (context.l10n.isEnglish
+                      ? 'Calculating route'
+                      : 'Route wird berechnet')
+                  : (context.l10n.isEnglish
+                      ? 'Recalculate route'
+                      : 'Route neu berechnen'),
               onPressed:
                   route.state == MapRouteState.LOADING ? null : onRefreshRoute,
               icon: route.state == MapRouteState.LOADING
@@ -132,14 +139,14 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 ),
                 onPressed: onStartNavigation,
                 icon: const Icon(Icons.navigation, size: 18),
-                label: const Text('Starten'),
+                label: Text(context.l10n.tr('Starten')),
               ),
             IconButton(
               color: Colors.white,
               padding: const EdgeInsets.all(8),
               constraints: const BoxConstraints(),
               visualDensity: VisualDensity.compact,
-              tooltip: 'Route beenden',
+              tooltip: context.l10n.tr('Route beenden'),
               onPressed: model.clearDestination,
               icon: const Icon(Icons.close),
             ),

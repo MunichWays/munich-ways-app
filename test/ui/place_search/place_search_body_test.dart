@@ -22,7 +22,8 @@ class FakeRecentSearchesStore extends RecentSearchesStore {
 }
 
 void main() {
-  testWidgets('shows compact address search help in a tooltip', (tester) async {
+  testWidgets('shows map selection without redundant search hint',
+      (tester) async {
     final model = PlaceSearchScreenViewModel(
       recentSearchesRepo: FakeRecentSearchesStore([]),
     );
@@ -34,41 +35,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Suchbegriff eingeben'), findsOneWidget);
-    expect(
-      tester.widget<Tooltip>(find.byType(Tooltip)).showDuration,
-      const Duration(seconds: 8),
-    );
-    expect(
-      find.textContaining('Bitte gebe einen Suchbegriff ein'),
-      findsNothing,
-    );
-
-    await tester.tap(find.byIcon(Icons.help_outline));
-    await tester.pump();
-
-    expect(
-      find.textContaining('Bitte gebe einen Suchbegriff ein'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byIcon(Icons.help_outline));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.textContaining('Bitte gebe einen Suchbegriff ein'),
-      findsNothing,
-    );
-
-    await tester.tap(find.byIcon(Icons.help_outline));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 8));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.textContaining('Bitte gebe einen Suchbegriff ein'),
-      findsNothing,
-    );
+    expect(find.text('Suchbegriff eingeben'), findsNothing);
+    expect(find.text('Auf Karte auswählen'), findsOneWidget);
+    expect(find.byIcon(Icons.help_outline), findsNothing);
   });
 
   test('stores at most 25 recent searches', () async {
@@ -108,6 +77,32 @@ void main() {
     expect(store.storedPlaces, [home, work]);
   });
 
+  testWidgets('offers map selection before recent searches without results',
+      (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([
+        Place('Home', const LatLng(48.2, 11.6)),
+      ]),
+    );
+    model.isFirstSearch = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    final noResultsTop =
+        tester.getTopLeft(find.textContaining('Keine Ergebnisse')).dy;
+    final mapSelectionTop =
+        tester.getTopLeft(find.text('Auf Karte auswählen')).dy;
+    final recentSearchesTop = tester.getTopLeft(find.text('Letzte Ziele')).dy;
+
+    expect(mapSelectionTop, greaterThan(noResultsTop));
+    expect(recentSearchesTop, greaterThan(mapSelectionTop));
+  });
+
   testWidgets('lays out recent search controls vertically with large text',
       (tester) async {
     final store = FakeRecentSearchesStore([
@@ -129,7 +124,8 @@ void main() {
     await tester.pump();
 
     final headingTop = tester.getTopLeft(find.text('Letzte Ziele')).dy;
-    final clearButtonTop = tester.getTopLeft(find.text('Suchverlauf')).dy;
+    final clearButtonTop =
+        tester.getTopLeft(find.text('(Suchverlauf löschen)')).dy;
 
     expect(clearButtonTop, greaterThan(headingTop));
     expect(find.byIcon(Icons.delete_outline), findsOneWidget);

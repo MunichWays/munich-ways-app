@@ -21,12 +21,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Create Appbundle
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --dart-define=GEOAPIFY_API_KEY="${GEOAPIFY_API_KEY}"
         env:
           ANDROID_RELEASE_ALIAS: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS }}
           ANDROID_RELEASE_ALIAS_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS_PASSWORD }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_STORE_PASSWORD }}
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+          GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
       - uses: actions/upload-artifact@v4
         with:
           name: appbundle

@@ -4,6 +4,21 @@ Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For mor
 
 ## Development Setup
 
+### Geoapify address search
+
+Ask Thomas for the API key or go to https://myprojects.geoapify.com/, mail@munichways.de, project App-MunichWays
+
+The Geoapify API key is injected at build time and must not be committed:
+
+```
+flutter run --dart-define=GEOAPIFY_API_KEY=<your-api-key>
+```
+
+Use the same `--dart-define` for release builds.
+
+The Android release workflow expects a GitHub Actions secret named
+`GEOAPIFY_API_KEY`.
+
 ### Setup Git hooks for formatting
 
 The build server checks if all files are formatted correctly with `dart format`. If not it will fail.

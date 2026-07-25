@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,19 +15,7 @@ class MunichwaysApi {
 
   GeojsonConverter _converter = GeojsonConverter();
 
-  Future<Set<MPolyline>> getRadlvorrangnetz() async {
-    FileInfo? geoJsonFileInfo =
-        await DefaultCacheManager().getFileFromCache(_radlvorrangnetzUrl);
-
-    if (geoJsonFileInfo != null) {
-      log.d("cached till ${geoJsonFileInfo.validTill.toIso8601String()}");
-    } else {
-      log.d("not cached");
-    }
-
-    File geojsonFile =
-        await DefaultCacheManager().getSingleFile(_radlvorrangnetzUrl);
-
+  Future<Set<MPolyline>> _parse(File geojsonFile) async {
     try {
       return _converter.getPolylines(
           geojson: json.decode(await geojsonFile.readAsString()));
@@ -35,7 +24,25 @@ class MunichwaysApi {
     }
   }
 
-  Future<void> emptyCache() {
-    return DefaultCacheManager().emptyCache();
+  /// Emits cached ratings immediately, then a refreshed file when the cached
+  /// response is stale. This keeps subsequent starts independent of the network.
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates() async* {
+    await for (final response in DefaultCacheManager().getFileStream(
+      _radlvorrangnetzUrl,
+      withProgress: false,
+    )) {
+      if (response is FileInfo) {
+        log.d("ratings valid till ${response.validTill.toIso8601String()}");
+        yield await _parse(response.file);
+      }
+    }
+  }
+
+  Future<Set<MPolyline>> getRadlvorrangnetz() =>
+      getRadlvorrangnetzUpdates().first;
+
+  /// Removes only the ratings file. Other cached app resources stay intact.
+  Future<void> removeRatingsCache() {
+    return DefaultCacheManager().removeFile(_radlvorrangnetzUrl);
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/info/imprint_screen.dart';
 import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_main_content.dart';
@@ -42,9 +43,9 @@ class _InfoSheetState extends State<InfoSheet> {
     });
   }
 
-  Widget _buildTitle(ThemeData theme) {
+  Widget _buildTitle(BuildContext context, ThemeData theme) {
     if (_showMapHelp) {
-      return const BottomSheetTitle(title: 'Legende & Tipps');
+      return BottomSheetTitle(title: context.l10n.tr('Legende & Tipps'));
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,11 +83,11 @@ class _InfoSheetState extends State<InfoSheet> {
       startingElement: _showMapHelp
           ? IconButton(
               icon: const Icon(Icons.arrow_back),
-              tooltip: 'Zurück',
+              tooltip: context.l10n.tr('Zurück'),
               onPressed: () => setState(() => _showMapHelp = false),
             )
           : null,
-      title: _buildTitle(theme),
+      title: _buildTitle(context, theme),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         child: _showMapHelp

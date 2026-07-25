@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -60,14 +61,16 @@ class InfoSheetMainContent extends StatelessWidget {
           children: [
             MenuGroupItem(
               icon: Icons.map_outlined,
-              label: 'Legende & Tipps',
+              label: context.l10n.tr('Legende & Tipps'),
               trailingElement: const Icon(Icons.chevron_right),
               onTap: onOpenMapHelp,
             ),
             const MenuGroupDivider(),
             MenuGroupItem(
               icon: Icons.info_outline,
-              label: 'Über MunichWays',
+              label: context.l10n.isEnglish
+                  ? 'About MunichWays'
+                  : 'Über MunichWays',
               onTap: () => _openUrl(
                 context,
                 'https://munichways.de',
@@ -77,7 +80,8 @@ class InfoSheetMainContent extends StatelessWidget {
             const MenuGroupDivider(),
             MenuGroupItem(
               icon: Icons.link,
-              label: 'Über RadlNavi',
+              label:
+                  context.l10n.isEnglish ? 'About RadlNavi' : 'Über RadlNavi',
               onTap: () => _openUrl(
                 context,
                 'https://radlnavi.de',
@@ -93,7 +97,7 @@ class InfoSheetMainContent extends StatelessWidget {
             const MenuGroupDivider(),
             MenuGroupItem(
               icon: Icons.volunteer_activism_outlined,
-              label: 'Spenden',
+              label: context.l10n.isEnglish ? 'Donate' : 'Spenden',
               onTap: () => _openUrl(
                 context,
                 'https://munichways.de/spenden',
@@ -106,7 +110,7 @@ class InfoSheetMainContent extends StatelessWidget {
         Center(
           child: TextButton(
             onPressed: onOpenImprint,
-            child: const Text('Impressum & Datenschutz'),
+            child: Text(context.l10n.tr('Impressum & Datenschutz')),
           ),
         ),
         Center(
@@ -116,7 +120,7 @@ class InfoSheetMainContent extends StatelessWidget {
               'https://munichways.de/nutzungbedingungen-app',
               'Keine App zum Öffnen der Nutzungsbedingungen gefunden',
             ),
-            child: const Text('Nutzungsbedingungen'),
+            child: Text(context.l10n.tr('Nutzungsbedingungen')),
           ),
         ),
       ],

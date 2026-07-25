@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
@@ -20,6 +21,7 @@ import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dar
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -63,6 +65,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _initialContentReady = false;
   bool _initialRatingsAwaitingMapIdle = false;
   bool _mapReadyNotified = false;
+  bool _locationPrimeStarted = false;
   bool _overlaySyncScheduled = false;
   bool _overlaySyncRunning = false;
   bool _overlaySyncQueued = false;
@@ -162,6 +165,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       create: (BuildContext _) {
         final model = MapScreenViewModel();
         mapViewModel = model;
+        model.startInitialLoad();
 
         model.errorMsgs.listen((errorMsg) {
           scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
@@ -252,9 +256,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               model.onMapReady();
-              if (!kStoreScreenshots) {
-                unawaited(_primeLocationOnStart(model));
-              }
             });
           }
           _scheduleOverlaySync(model);
@@ -337,6 +338,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _renderModeFor(model.locationState),
                           onMapCreated: (controller) {
                             _mapController = controller;
+                            if (!kStoreScreenshots && !_locationPrimeStarted) {
+                              _locationPrimeStarted = true;
+                              unawaited(_primeLocationOnStart(model));
+                            }
                             if (!_lineTapHandlerAttached) {
                               _lineTapHandlerAttached = true;
                               controller.onLineTapped.add((line) {
@@ -495,6 +500,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         const MapAttribution(),
+                        if (_initialContentReady && !model.navigationStarted)
+                          MapSearchBar(model: model),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
@@ -545,7 +552,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  if (!_initialContentReady)
+                  if (!_initialContentReady || model.loading)
                     Positioned(
                       top: 0,
                       left: 0,
@@ -561,29 +568,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 shadowColor: Colors.black38,
                                 borderRadius: BorderRadius.circular(14),
                                 child: Semantics(
-                                  label: 'Karte und Bewertungen werden geladen',
+                                  label: _initialContentReady
+                                      ? context.l10n.reloadingMap
+                                      : context.l10n.loadingMap,
                                   liveRegion: true,
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 18,
                                       vertical: 14,
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        SizedBox(
+                                        const SizedBox(
                                           width: 24,
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 3,
                                           ),
                                         ),
-                                        SizedBox(width: 14),
+                                        const SizedBox(width: 14),
                                         Flexible(
                                           child: Text(
-                                            'Karte und Bewertungen werden geladen …',
+                                            _initialContentReady
+                                                ? context.l10n.reloadingMap
+                                                : '${context.l10n.loadingMap} …',
                                             textAlign: TextAlign.center,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.black87,
                                               fontSize: 15,
                                               fontWeight: FontWeight.w500,
@@ -813,11 +824,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model, {
     bool permissionCheck = true,
   }) async {
-    await model.refreshCurrentLocationFix();
     await model.onPressLocationBtn(permissionCheck: permissionCheck);
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
     _updateLocationStream(model);
+    final cachedPosition = await Geolocator.getLastKnownPosition();
+    if (!mounted || cachedPosition == null) return;
+    _latestPosition = cachedPosition;
+    _pendingPosition = cachedPosition;
+    unawaited(_drainLocationUpdates(model));
   }
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
@@ -886,11 +901,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       model.loading,
       model.isRadlvorrangnetzVisible,
       model.isGesamtnetzVisible,
+      model.networkRevision,
       pl.length,
     );
     for (final p in pl) {
+      final points = p.points;
       h = Object.hash(
-          h, p.details?.munichwaysId, p.details?.cartoDbId, p.points?.length);
+        h,
+        p.details?.munichwaysId,
+        p.details?.cartoDbId,
+        p.details?.farbe,
+        p.details?.lastUpdated,
+        points?.length,
+        points?.firstOrNull?.latitude,
+        points?.firstOrNull?.longitude,
+        points?.lastOrNull?.latitude,
+        points?.lastOrNull?.longitude,
+      );
     }
     return h;
   }

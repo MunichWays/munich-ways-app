@@ -45,6 +45,7 @@ class MenuGroupItem extends StatelessWidget {
     super.key,
     this.icon,
     required this.label,
+    this.labelSemantics,
     this.onTap,
     this.trailingElement,
     this.inkBorderRadius = 12,
@@ -56,17 +57,24 @@ class MenuGroupItem extends StatelessWidget {
 
   final IconData? icon;
   final String label;
+  final String? labelSemantics;
   final VoidCallback? onTap;
   final Widget? trailingElement;
   final double inkBorderRadius;
 
   @override
   Widget build(BuildContext context) {
-    final labelWidget = Text(
-      label,
-      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w400,
-          ),
+    final labelWidget = Semantics(
+      label: labelSemantics,
+      child: ExcludeSemantics(
+        excluding: labelSemantics != null,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w400,
+              ),
+        ),
+      ),
     );
 
     final rowChildren = <Widget>[

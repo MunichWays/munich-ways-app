@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:munich_ways/api/mapillary/mapillary_api_v4.dart' as api;
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MapillaryImage extends StatelessWidget {
@@ -30,10 +31,10 @@ class MapillaryImage extends StatelessWidget {
                     errorWidget: (context, url, error) =>
                         const Icon(Icons.error),
                   )
-                : const Center(
+                : Center(
                     child: Text(
-                      'Kein Bild hinterlegt',
-                      style: TextStyle(color: Colors.white),
+                      context.l10n.tr('Kein Bild hinterlegt'),
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
           ),
@@ -66,7 +67,7 @@ class MapillaryImage extends StatelessWidget {
               backgroundColor: Colors.white,
               foregroundColor: Colors.black87,
             ),
-            child: const Text('Mapillary öffnen'),
+            child: Text(context.l10n.tr('Mapillary öffnen')),
           ),
         ),
       ],
