@@ -40,7 +40,10 @@ class RadlNaviApi implements RoutingProvider {
       'alternatives': 'false',
       'steps': 'true',
       'annotations': 'false',
-      'geometries': 'polyline',
+      // GeoJSON preserves the backend coordinates without encoded-polyline
+      // rounding, which otherwise becomes visible beside rating lines at high
+      // navigation zoom levels.
+      'geometries': 'geojson',
       'overview': 'full',
       'continue_straight': 'default',
     };
@@ -56,8 +59,12 @@ class RadlNaviApi implements RoutingProvider {
     switch (response.statusCode) {
       case 200:
         var json = response.jsonBody();
-        var firstRoute = (json['routes'] as List).firstOrNull;
-        var polyline = decodePolyline(firstRoute['geometry']);
+        final firstRoute =
+            (json['routes'] as List?)?.firstOrNull as Map<String, dynamic>?;
+        if (firstRoute == null) {
+          throw ApiException('RadlNavi response contains no route');
+        }
+        final points = _parseGeometry(firstRoute['geometry']);
         var distance = firstRoute['distance'] as num;
         var duration = firstRoute['duration'] as num;
         final maneuvers = <RouteManeuver>[];
@@ -82,14 +89,42 @@ class RadlNaviApi implements RoutingProvider {
         }
 
         return CycleRoute(
-            polyline
-                .map((e) => LatLng(e[0].toDouble(), e[1].toDouble()))
-                .toList(),
-            distance.toDouble(),
-            duration.toDouble(),
-            maneuvers: maneuvers);
+          points,
+          distance.toDouble(),
+          duration.toDouble(),
+          maneuvers: maneuvers,
+        );
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
+  }
+
+  List<LatLng> _parseGeometry(Object? geometry) {
+    if (geometry is Map<String, dynamic>) {
+      final coordinates = geometry['coordinates'];
+      if (geometry['type'] != 'LineString' || coordinates is! List) {
+        throw ApiException('Invalid RadlNavi GeoJSON geometry');
+      }
+      return coordinates.map((coordinate) {
+        if (coordinate is! List || coordinate.length < 2) {
+          throw ApiException('Invalid RadlNavi route coordinate');
+        }
+        return LatLng(
+          (coordinate[1] as num).toDouble(),
+          (coordinate[0] as num).toDouble(),
+        );
+      }).toList();
+    }
+
+    // Compatibility with older RadlNavi/OSRM deployments and recorded fixtures.
+    if (geometry is String) {
+      return decodePolyline(geometry)
+          .map((coordinate) => LatLng(
+                coordinate[0].toDouble(),
+                coordinate[1].toDouble(),
+              ))
+          .toList();
+    }
+    throw ApiException('Missing RadlNavi route geometry');
   }
 }

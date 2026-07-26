@@ -168,139 +168,102 @@ class _RoutingSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final profileLabel = switch (model.bRouterProfile) {
+      BRouterProfile.trekking => strings.bRouterTrekking,
+      BRouterProfile.fastBike => strings.bRouterFastBike,
+      BRouterProfile.shortest => strings.bRouterShortest,
+    };
+    final modeLabel = model.routingMode == RoutingMode.automatic
+        ? strings.routingAutomatic
+        : strings.routingBRouterEverywhere;
+
+    return MenuGroup(
       children: [
-        _SettingsHeading(
-          label: strings.routePlanning,
-          onInfo: () => showDialog<void>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(strings.routePlanning),
-              content: SingleChildScrollView(
-                child: Text(strings.routePlanningInfo),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(strings.close),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.only(left: 16, right: 8),
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: Row(
+              children: [
+                Expanded(child: Text(strings.routePlanning)),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip:
+                      '${AppLocalizations.of(context).tr('Info')}: ${strings.routePlanning}',
+                  onPressed: () => _showRoutingInfo(context),
+                  icon: const Icon(Icons.info_outline),
                 ),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        MenuGroup(
-          children: [
-            _RadioMenuItem<RoutingMode>(
-              title: strings.routingAutomatic,
-              subtitle: strings.routingAutomaticDescription,
-              value: RoutingMode.automatic,
-              groupValue: model.routingMode,
-              onChanged: model.setRoutingMode,
-            ),
-            const MenuGroupDivider(),
-            _RadioMenuItem<RoutingMode>(
-              title: strings.routingBRouterEverywhere,
-              value: RoutingMode.bRouterEverywhere,
-              groupValue: model.routingMode,
-              onChanged: model.setRoutingMode,
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        MenuGroup(
-          children: [
-            _BRouterProfileDropdown(
-              model: model,
-              strings: strings,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _BRouterProfileDropdown extends StatelessWidget {
-  const _BRouterProfileDropdown({
-    required this.model,
-    required this.strings,
-  });
-
-  final MapScreenViewModel model;
-  final AppLocalizations strings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              strings.bRouterProfile,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 4),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<BRouterProfile>(
-                value: model.bRouterProfile,
-                isExpanded: true,
-                items: [
-                  DropdownMenuItem(
-                    value: BRouterProfile.trekking,
-                    child: Text(strings.bRouterTrekking),
-                  ),
-                  DropdownMenuItem(
-                    value: BRouterProfile.fastBike,
-                    child: Text(strings.bRouterFastBike),
-                  ),
-                  DropdownMenuItem(
-                    value: BRouterProfile.shortest,
-                    child: Text(strings.bRouterShortest),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) model.setBRouterProfile(value);
-                },
+            subtitle: Text('$modeLabel · $profileLabel'),
+            children: [
+              const MenuGroupDivider(),
+              _RadioMenuItem<RoutingMode>(
+                title: strings.routingAutomatic,
+                subtitle: strings.routingAutomaticDescription,
+                value: RoutingMode.automatic,
+                groupValue: model.routingMode,
+                onChanged: model.setRoutingMode,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsHeading extends StatelessWidget {
-  const _SettingsHeading({
-    required this.label,
-    required this.onInfo,
-  });
-
-  final String label;
-  final VoidCallback onInfo;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.titleMedium,
+              const MenuGroupDivider(),
+              _RadioMenuItem<RoutingMode>(
+                title: strings.routingBRouterEverywhere,
+                value: RoutingMode.bRouterEverywhere,
+                groupValue: model.routingMode,
+                onChanged: model.setRoutingMode,
+              ),
+              const MenuGroupDivider(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    strings.bRouterProfile,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ),
+              _RadioMenuItem<BRouterProfile>(
+                title: strings.bRouterTrekking,
+                value: BRouterProfile.trekking,
+                groupValue: model.bRouterProfile,
+                onChanged: model.setBRouterProfile,
+              ),
+              _RadioMenuItem<BRouterProfile>(
+                title: strings.bRouterFastBike,
+                value: BRouterProfile.fastBike,
+                groupValue: model.bRouterProfile,
+                onChanged: model.setBRouterProfile,
+              ),
+              _RadioMenuItem<BRouterProfile>(
+                title: strings.bRouterShortest,
+                value: BRouterProfile.shortest,
+                groupValue: model.bRouterProfile,
+                onChanged: model.setBRouterProfile,
+              ),
+            ],
           ),
         ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: '${AppLocalizations.of(context).tr('Info')}: $label',
-          onPressed: onInfo,
-          icon: const Icon(Icons.info_outline),
-        ),
       ],
+    );
+  }
+
+  void _showRoutingInfo(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.routePlanning),
+        content: SingleChildScrollView(
+          child: Text(strings.routePlanningInfo),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(strings.close),
+          ),
+        ],
+      ),
     );
   }
 }

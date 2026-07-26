@@ -53,31 +53,38 @@ class _MapAttributionState extends State<MapAttribution> {
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
-        padding: const EdgeInsets.all(2.0),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         color: Colors.white70,
-        child: Text.rich(
-          TextSpan(
-            style: baseStyle,
-            children: <TextSpan>[
-              const TextSpan(text: '© '),
-              TextSpan(
-                text: 'OpenMapTiles',
-                style: const TextStyle(decoration: TextDecoration.underline),
-                recognizer: _openMapTilesTap,
-              ),
-              const TextSpan(text: ' · OpenStreetMap'),
-              TextSpan(
-                text: ' contributors',
-                style: const TextStyle(decoration: TextDecoration.underline),
-                recognizer: _openStreetMapTap,
-              ),
-              const TextSpan(text: ' · '),
-              TextSpan(
-                text: 'OpenFreeMap',
-                style: const TextStyle(decoration: TextDecoration.underline),
-                recognizer: _openFreeMapTap,
-              ),
-            ],
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Text.rich(
+            TextSpan(
+              style: baseStyle,
+              children: <TextSpan>[
+                const TextSpan(text: '© '),
+                TextSpan(
+                  text: 'OpenMapTiles',
+                  style: const TextStyle(decoration: TextDecoration.underline),
+                  recognizer: _openMapTilesTap,
+                ),
+                const TextSpan(text: ' · © '),
+                TextSpan(
+                  text: 'OpenStreetMap contributors',
+                  style: const TextStyle(decoration: TextDecoration.underline),
+                  recognizer: _openStreetMapTap,
+                ),
+                const TextSpan(text: ' · '),
+                TextSpan(
+                  text: 'OpenFreeMap',
+                  style: const TextStyle(decoration: TextDecoration.underline),
+                  recognizer: _openFreeMapTap,
+                ),
+              ],
+            ),
+            maxLines: 1,
+            softWrap: false,
           ),
         ),
       ),

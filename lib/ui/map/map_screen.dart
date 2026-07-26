@@ -304,8 +304,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.routeStream.listen((MapRoute route) {
           final position = _latestPosition;
-          if (model.navigationStarted && position != null) {
-            _refreshVoiceGuidance(model, position);
+          if (model.navigationStarted) {
+            if (position != null) {
+              _refreshVoiceGuidance(model, position);
+            }
+            // A refreshed route must not trigger the pre-navigation overview
+            // camera. It races with zoom 18 from _startNavigation and can leave
+            // active navigation zoomed out to the full route bounds.
+            return;
           }
           final controller = _mapController;
           if (controller == null || route.route == null) return;
@@ -587,11 +593,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           mapController: _mapController,
                           mapBearingDegrees: _mapBearingDegrees,
                           compassIdleTick: _compassIdleTick,
-                          additionalBottomOffset: model.destination == null
-                              ? 0
-                              : model.navigationStarted && _nextManeuver != null
-                                  ? 144
-                                  : 72,
+                          additionalBottomOffset:
+                              _sideControlsAdditionalBottomOffset(
+                            context,
+                            model,
+                          ),
                           onNorthUp: () async {
                             model.onCompassNorthUpPressed();
                             final c = _mapController;
@@ -606,12 +612,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             final pos = await c.queryCameraPosition();
                             return pos?.bearing;
                           },
-                          onPressLocation: () async {
-                            await model.onPressLocationBtn();
-                            if (!mounted) return;
-                            await _applyNativeLocationTracking(model);
-                            _updateLocationStream(model);
-                          },
                         ),
                         MapBottomActionButtons(
                           model: model,
@@ -625,6 +625,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     position.latitude,
                                     position.longitude,
                                   );
+                          },
+                          onPressLocation: () async {
+                            await model.onPressLocationBtn();
+                            if (!mounted) return;
+                            await _applyNativeLocationTracking(model);
+                            _updateLocationStream(model);
                           },
                           navigationBar: model.destination == null
                               ? null
@@ -966,6 +972,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MapScreenViewModel model) async {
     final routeUpdated = await model.refreshRoute();
     if (!mounted || !routeUpdated) return;
+    // A successful refresh resumes navigation exactly like the Start action:
+    // navigation zoom, location tracking and direction-based map rotation.
     await _startNavigation(model);
   }
 
@@ -1002,6 +1010,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
     return zoom.clamp(10, 22);
+  }
+
+  double _sideControlsAdditionalBottomOffset(
+    BuildContext context,
+    MapScreenViewModel model,
+  ) {
+    final desiredOffset = model.destination == null
+        ? 0.0
+        : !model.navigationStarted
+            ? 128.0
+            : _nextManeuver != null
+                ? 144.0
+                : 72.0;
+    if (MediaQuery.orientationOf(context) == Orientation.landscape) {
+      // Landscape has much less vertical room. Capping the offset keeps zoom
+      // and compass controls on-screen while the width-limited route panel
+      // remains clear below them.
+      return min(desiredOffset, 80.0);
+    }
+    return desiredOffset;
   }
 
   LatLngBounds _boundsFor(List<latlong2.LatLng> points) {
@@ -1210,6 +1238,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       LineLayerProperties(
         lineColor: _hexColor(AppColors.mapRouteColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

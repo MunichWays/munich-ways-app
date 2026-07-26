@@ -67,6 +67,8 @@ class InfoSheetHelpContent extends StatelessWidget {
                   ? 'Missing bridge or underpass'
                   : 'Fehlende Brücke oder Unterführung',
             ),
+            const SizedBox(height: 4),
+            const _NetworkLineLegend(),
           ],
         ),
         const SizedBox(height: 24),
@@ -85,6 +87,78 @@ class InfoSheetHelpContent extends StatelessWidget {
         Text(context.l10n.isEnglish
             ? 'Tap a colored line on the map to see its rating, measures and links.'
             : 'Tippe auf eine farbige Linie auf der Karte. Es öffnet sich eine Übersicht mit Details zu diesem Straßenabschnitt (Bewertung, Maßnahmen, Links).'),
+      ],
+    );
+  }
+}
+
+class _NetworkLineLegend extends StatelessWidget {
+  const _NetworkLineLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final english = context.l10n.isEnglish;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _NetworkLineLegendRow(
+          dashed: false,
+          label: english ? 'Priority cycling network' : 'RadlVorrang-Netz',
+        ),
+        const SizedBox(height: 8),
+        _NetworkLineLegendRow(
+          dashed: true,
+          label: english ? 'Other routes' : 'Weitere Strecken',
+        ),
+      ],
+    );
+  }
+}
+
+class _NetworkLineLegendRow extends StatelessWidget {
+  const _NetworkLineLegendRow({
+    required this.dashed,
+    required this.label,
+  });
+
+  final bool dashed;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 44,
+          height: 8,
+          child: dashed
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(
+                    5,
+                    (_) => Container(
+                      width: 6,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.mapBlack,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.mapBlack,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(label)),
       ],
     );
   }

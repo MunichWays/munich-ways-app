@@ -106,6 +106,43 @@ class MapNavigationHeaderBar extends StatelessWidget {
         break;
     }
 
+    final refreshAction = IconButton.filled(
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.mapRouteColor,
+        disabledBackgroundColor: Colors.white54,
+        disabledForegroundColor: AppColors.mapRouteColor,
+        minimumSize: const Size(44, 44),
+      ),
+      padding: const EdgeInsets.all(10),
+      tooltip: route.state == MapRouteState.LOADING
+          ? (context.l10n.isEnglish
+              ? 'Calculating route'
+              : 'Route wird berechnet')
+          : (context.l10n.isEnglish
+              ? 'Recalculate route'
+              : 'Route neu berechnen'),
+      onPressed: route.state == MapRouteState.LOADING ? null : onRefreshRoute,
+      icon: route.state == MapRouteState.LOADING
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                color: AppColors.mapRouteColor,
+                strokeWidth: 2.5,
+              ),
+            )
+          : const Icon(Icons.refresh, size: 26),
+    );
+    final closeAction = IconButton(
+      color: Colors.white,
+      padding: const EdgeInsets.all(8),
+      constraints: const BoxConstraints(),
+      visualDensity: VisualDensity.compact,
+      tooltip: context.l10n.tr('Route beenden'),
+      onPressed: onEndRoute,
+      icon: const Icon(Icons.close),
+    );
     return Material(
       color: AppColors.mapRouteColor,
       elevation: 3,
@@ -148,55 +185,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ],
                 ),
               ),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                IconButton(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: route.state == MapRouteState.LOADING
-                      ? (context.l10n.isEnglish
-                          ? 'Calculating route'
-                          : 'Route wird berechnet')
-                      : (context.l10n.isEnglish
-                          ? 'Recalculate route'
-                          : 'Route neu berechnen'),
-                  onPressed: route.state == MapRouteState.LOADING
-                      ? null
-                      : onRefreshRoute,
-                  icon: route.state == MapRouteState.LOADING
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : const Icon(Icons.refresh),
-                ),
-                stats,
-                if (route.state == MapRouteState.SHOWN &&
-                    route.route != null &&
-                    !model.navigationStarted)
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: onStartNavigation,
-                    icon: const Icon(Icons.navigation, size: 18),
-                    label: Text(context.l10n.tr('Starten')),
-                  ),
+                closeAction,
+                const SizedBox(width: 4),
+                Expanded(child: stats),
                 if (route.state == MapRouteState.SHOWN &&
                     route.route != null &&
                     model.navigationStarted &&
@@ -220,17 +214,32 @@ class MapNavigationHeaderBar extends StatelessWidget {
                           : Icons.volume_off,
                     ),
                   ),
-                IconButton(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: context.l10n.tr('Route beenden'),
-                  onPressed: onEndRoute,
-                  icon: const Icon(Icons.close),
-                ),
+                const SizedBox(width: 4),
+                refreshAction,
               ],
             ),
+            if (route.state == MapRouteState.SHOWN &&
+                route.route != null &&
+                !model.navigationStarted) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: onStartNavigation,
+                  icon: const Icon(Icons.navigation, size: 18),
+                  label: Text(context.l10n.tr('Starten')),
+                ),
+              ),
+            ],
           ],
         ),
       ),
