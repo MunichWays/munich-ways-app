@@ -67,6 +67,23 @@ class DelayedGeoapifyApi extends GeoapifyApi {
       completer.future;
 }
 
+class SuccessfulGeoapifyApi extends GeoapifyApi {
+  SuccessfulGeoapifyApi() : super(apiKey: 'test');
+
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) async => [
+        Place(query, const LatLng(48.137, 11.576)),
+      ];
+}
+
+class HangingStreetCorrector extends MunichStreetCorrector {
+  HangingStreetCorrector() : super.fromStreetNames(const []);
+
+  @override
+  Future<MunichStreetCorrection?> correct(String query) =>
+      Completer<MunichStreetCorrection?>().future;
+}
+
 void main() {
   test('ignores recent searches that finish after disposal', () async {
     final store = DelayedRecentSearchesStore();
@@ -126,6 +143,19 @@ void main() {
     expect(model.errorMsg, isNull);
     expect(model.places.single.displayName, 'Marienplatz');
     expect(model.resultsFromNominatim, isTrue);
+  });
+
+  test('shows normal results without waiting for typo correction', () async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: SuccessfulGeoapifyApi(),
+      streetCorrector: HangingStreetCorrector(),
+    );
+
+    await model.startSearch('Marien');
+
+    expect(model.loading, isFalse);
+    expect(model.places.single.displayName, 'Marien');
   });
 
   testWidgets('shows map selection without redundant search hint',

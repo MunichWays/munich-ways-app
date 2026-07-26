@@ -81,6 +81,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
   StreamSubscription<Position>? _locationSubscription;
+  bool _locationStreamUsesForegroundService = false;
+  int _locationStreamGeneration = 0;
   Position? _latestPosition;
   Position? _pendingPosition;
   bool _locationRenderRunning = false;
@@ -220,6 +222,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     unawaited(_flutterTts.stop());
     model.clearDestination();
+    unawaited(_updateLocationStream(model));
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -630,7 +633,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             await model.onPressLocationBtn();
                             if (!mounted) return;
                             await _applyNativeLocationTracking(model);
-                            _updateLocationStream(model);
+                            await _updateLocationStream(model);
                           },
                           navigationBar: model.destination == null
                               ? null
@@ -769,12 +772,29 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  LocationSettings _locationSettings() {
+  LocationSettings _locationSettings({
+    required bool keepNavigationAliveInBackground,
+  }) {
     if (defaultTargetPlatform == TargetPlatform.android) {
       return AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 0,
-        intervalDuration: const Duration(milliseconds: 250),
+        intervalDuration: const Duration(seconds: 1),
+        foregroundNotificationConfig: keepNavigationAliveInBackground
+            ? ForegroundNotificationConfig(
+                notificationTitle: context.l10n.isEnglish
+                    ? 'MunichWays navigation'
+                    : 'MunichWays Navigation',
+                notificationText: context.l10n.isEnglish
+                    ? 'Voice guidance and location remain active'
+                    : 'Sprachansagen und Standort bleiben aktiv',
+                notificationChannelName:
+                    context.l10n.isEnglish ? 'Navigation' : 'Navigation',
+                enableWakeLock: true,
+                setOngoing: true,
+                color: AppColors.mapAccentColor,
+              )
+            : null,
       );
     }
     return const LocationSettings(
@@ -783,16 +803,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _updateLocationStream(MapScreenViewModel model) {
+  Future<void> _updateLocationStream(MapScreenViewModel model) async {
+    final generation = ++_locationStreamGeneration;
     if (model.locationState == LocationState.NOT_AVAILABLE) {
-      _locationSubscription?.cancel();
+      final subscription = _locationSubscription;
       _locationSubscription = null;
+      _locationStreamUsesForegroundService = false;
+      await subscription?.cancel();
       return;
     }
-    if (_locationSubscription != null) return;
+    final shouldUseForegroundService =
+        defaultTargetPlatform == TargetPlatform.android &&
+            model.navigationStarted;
+    if (_locationSubscription != null &&
+        _locationStreamUsesForegroundService == shouldUseForegroundService) {
+      return;
+    }
+    final previousSubscription = _locationSubscription;
+    if (previousSubscription != null) {
+      _locationSubscription = null;
+      await previousSubscription.cancel();
+      if (!mounted || generation != _locationStreamGeneration) return;
+    }
+    _locationStreamUsesForegroundService = shouldUseForegroundService;
 
     _locationSubscription = Geolocator.getPositionStream(
-      locationSettings: _locationSettings(),
+      locationSettings: _locationSettings(
+        keepNavigationAliveInBackground: shouldUseForegroundService,
+      ),
     ).listen(
       (position) {
         _latestPosition = position;
@@ -965,7 +1003,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
-    _updateLocationStream(model);
+    await _updateLocationStream(model);
   }
 
   Future<void> _refreshRouteAndResumeNavigation(
@@ -984,7 +1022,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.onPressLocationBtn(permissionCheck: permissionCheck);
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
-    _updateLocationStream(model);
+    await _updateLocationStream(model);
     final cachedPosition = await Geolocator.getLastKnownPosition();
     if (!mounted || cachedPosition == null) return;
     _latestPosition = cachedPosition;
@@ -997,7 +1035,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await model.refreshCurrentLocationFix();
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
-    _updateLocationStream(model);
+    await _updateLocationStream(model);
   }
 
   bool _isValidCoordinate(double latitude, double longitude) {

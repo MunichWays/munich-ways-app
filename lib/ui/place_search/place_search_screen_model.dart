@@ -88,26 +88,13 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      final correction = await streetCorrector.correct(query);
-      final correctedSearchQuery = correction?.query ?? query;
-      List<Place> newPlaces;
-      try {
-        newPlaces = await api.search(
-          correctedSearchQuery,
-          searchCenter: searchCenter,
-        );
-        resultsFromNominatim = false;
-      } catch (error, stackTrace) {
-        log.w(
-          'Geoapify search failed, trying Nominatim fallback',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        newPlaces = await fallbackApi.search(
-          correctedSearchQuery,
-          searchCenter: searchCenter,
-        );
-        resultsFromNominatim = true;
+      var newPlaces = await _searchProviders(query);
+      MunichStreetCorrection? correction;
+      if (newPlaces.isEmpty) {
+        correction = await streetCorrector.correct(query);
+        if (correction != null && correction.query != query) {
+          newPlaces = await _searchProviders(correction.query);
+        }
       }
       if (searchSequence != _searchSequence) {
         return;
@@ -127,6 +114,29 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
         loading = false;
         _notifyListeners();
       }
+    }
+  }
+
+  Future<List<Place>> _searchProviders(String query) async {
+    try {
+      final result = await api.search(
+        query,
+        searchCenter: searchCenter,
+      );
+      resultsFromNominatim = false;
+      return result;
+    } catch (error, stackTrace) {
+      log.w(
+        'Geoapify search failed, trying Nominatim fallback',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      final result = await fallbackApi.search(
+        query,
+        searchCenter: searchCenter,
+      );
+      resultsFromNominatim = true;
+      return result;
     }
   }
 
