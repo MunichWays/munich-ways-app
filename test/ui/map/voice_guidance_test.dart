@@ -218,4 +218,26 @@ void main() {
     );
     expect(guidance.update(end, english: false), isNull);
   });
+
+  test('does not announce arrival outside the 20 metre destination radius', () {
+    final guidance = VoiceGuidance();
+    guidance.setRoute(CycleRoute(
+      const [start, end],
+      170,
+      40,
+      maneuvers: const [
+        RouteManeuver(location: end, type: 'arrive'),
+      ],
+    ));
+
+    const aboutTwentyFiveMetresBeforeEnd = LatLng(48.14127, 11.5700);
+    expect(
+      guidance.update(aboutTwentyFiveMetresBeforeEnd, english: false),
+      isNull,
+    );
+    expect(
+      guidance.update(end, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+  });
 }

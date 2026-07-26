@@ -12,7 +12,7 @@ class VoiceGuidance {
     this.approachDistanceMeters = 60,
     this.nowDistanceMeters = 15,
     this.maximumRouteDistanceMeters = 25,
-    this.arrivalDistanceMeters = 25,
+    this.arrivalDistanceMeters = 20,
     this.lookAheadSeconds = 2,
     this.maximumLookAheadMeters = 15,
     this.speechLeadSeconds = 2,
