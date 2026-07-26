@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
@@ -40,6 +41,8 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
+  static const _notificationPermissionChannel =
+      MethodChannel('com.munichways.app/notification_permission');
 
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
@@ -993,6 +996,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    await _requestNavigationNotificationPermission();
+    if (!mounted) return;
     final position = _latestPosition;
     if (position != null) {
       _refreshVoiceGuidance(model, position);
@@ -1004,6 +1009,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
     await _updateLocationStream(model);
+  }
+
+  Future<void> _requestNavigationNotificationPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _notificationPermissionChannel.invokeMethod<bool>('request');
+    } on PlatformException catch (error, stackTrace) {
+      log.w(
+        'Requesting navigation notification permission failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _refreshRouteAndResumeNavigation(
