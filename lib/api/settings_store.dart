@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:munich_ways/routing/routing_preferences.dart';
 
 var settingsStore = SettingsStore();
 
@@ -75,6 +76,18 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveRoutingMode(RoutingMode routingMode) {
+    return _enqueueUpdate((current) => current.copyWith(
+          routingMode: routingMode,
+        ));
+  }
+
+  Future<void> saveBRouterProfile(BRouterProfile profile) {
+    return _enqueueUpdate((current) => current.copyWith(
+          bRouterProfile: profile,
+        ));
+  }
+
   Future<void> _enqueueUpdate(
     SettingsData Function(SettingsData current) update,
   ) {
@@ -93,6 +106,8 @@ class SettingsData {
     required this.sidePanelEdgeName,
     required this.languageCode,
     required this.voiceGuidanceEnabled,
+    required this.routingMode,
+    required this.bRouterProfile,
   });
 
   final bool showZoomButtons;
@@ -103,12 +118,16 @@ class SettingsData {
   /// `null` follows the operating system, otherwise `de` or `en`.
   final String? languageCode;
   final bool voiceGuidanceEnabled;
+  final RoutingMode routingMode;
+  final BRouterProfile bRouterProfile;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: false,
     sidePanelEdgeName: 'right',
     languageCode: null,
     voiceGuidanceEnabled: false,
+    routingMode: RoutingMode.automatic,
+    bRouterProfile: BRouterProfile.trekking,
   );
 
   Map<String, dynamic> toJson() => {
@@ -116,6 +135,8 @@ class SettingsData {
         'sidePanelEdge': sidePanelEdgeName,
         if (languageCode != null) 'language': languageCode,
         'voiceGuidanceEnabled': voiceGuidanceEnabled,
+        'routingMode': routingMode.name,
+        'bRouterProfile': bRouterProfile.name,
       };
 
   SettingsData copyWith({
@@ -124,6 +145,8 @@ class SettingsData {
     String? languageCode,
     bool clearLanguageCode = false,
     bool? voiceGuidanceEnabled,
+    RoutingMode? routingMode,
+    BRouterProfile? bRouterProfile,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -131,6 +154,8 @@ class SettingsData {
         languageCode:
             clearLanguageCode ? null : languageCode ?? this.languageCode,
         voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
+        routingMode: routingMode ?? this.routingMode,
+        bRouterProfile: bRouterProfile ?? this.bRouterProfile,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -141,6 +166,14 @@ class SettingsData {
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
       voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,
+      routingMode: json['routingMode'] == 'bRouterEverywhere' ||
+              json['routingMode'] == 'bRouter'
+          ? RoutingMode.bRouterEverywhere
+          : RoutingMode.automatic,
+      bRouterProfile: BRouterProfile.values.firstWhere(
+        (profile) => profile.name == json['bRouterProfile'],
+        orElse: () => BRouterProfile.trekking,
+      ),
     );
   }
 }

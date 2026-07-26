@@ -39,35 +39,30 @@ class MapSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 12,
-      left: 16,
-      right: 16,
-      child: Material(
-        color: Theme.of(context).colorScheme.surface,
-        elevation: 5,
-        shadowColor: Colors.black38,
-        borderRadius: BorderRadius.circular(28),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _openSearch(context),
-          child: Semantics(
-            button: true,
-            label: context.l10n.tr('Ziel suchen'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: Row(
-                children: [
-                  const Icon(Icons.search),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 5,
+      shadowColor: Colors.black38,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openSearch(context),
+        child: Semantics(
+          button: true,
+          label: context.l10n.tr('Ziel suchen'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(Icons.search),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
+                    style: const TextStyle(fontSize: 16),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

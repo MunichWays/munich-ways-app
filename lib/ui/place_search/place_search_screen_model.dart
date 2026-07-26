@@ -32,6 +32,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
 
   RecentSearchesStore recentSearchesRepo;
   int _searchSequence = 0;
+  bool _disposed = false;
 
   PlaceSearchScreenViewModel({
     required this.recentSearchesRepo,
@@ -42,10 +43,33 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
   })  : api = api ?? GeoapifyApi(),
         fallbackApi = fallbackApi ?? NominatimApi(),
         streetCorrector = streetCorrector ?? MunichStreetCorrector() {
-    recentSearchesRepo.load().then((loadedPlaces) {
-      recentSearches = loadedPlaces;
+    recentSearchesRepo.load().then(
+      (loadedPlaces) {
+        if (_disposed) return;
+        recentSearches = loadedPlaces;
+        _notifyListeners();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        log.w(
+          'Loading recent searches failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) {
       notifyListeners();
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _searchSequence++;
+    super.dispose();
   }
 
   Future<void> startSearch(String query) async {
@@ -61,7 +85,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     }
 
     loading = true;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       final correction = await streetCorrector.correct(query);
@@ -91,7 +115,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
       places = newPlaces;
       correctedQuery =
           correction?.query == query ? null : correction?.displayName;
-      notifyListeners();
+      _notifyListeners();
     } catch (e) {
       if (searchSequence != _searchSequence) {
         return;
@@ -101,19 +125,19 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     } finally {
       if (searchSequence == _searchSequence) {
         loading = false;
-        notifyListeners();
+        _notifyListeners();
       }
     }
   }
 
   void _displayErrorMsg(String msg) {
     errorMsg = msg;
-    notifyListeners();
+    _notifyListeners();
   }
 
   void clearErrorMsg() {
     errorMsg = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   void resetSearch() {
@@ -123,7 +147,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     places = [];
     correctedQuery = null;
     errorMsg = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   void addToRecentSearches(Place place) {
@@ -136,12 +160,12 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     recentSearches = recentSearches.sublist(
         0, min(recentSearches.length, maxNumberStoredRecentSearches));
     recentSearchesRepo.store(recentSearches);
-    notifyListeners();
+    _notifyListeners();
   }
 
   void clearAllRecentSearches() {
     recentSearches.clear();
     recentSearchesRepo.store(recentSearches);
-    notifyListeners();
+    _notifyListeners();
   }
 }

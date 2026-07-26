@@ -5,12 +5,14 @@ class CycleRoute {
   double distance;
   double duration;
   List<RouteManeuver> maneuvers;
+  bool supportsVoiceGuidance;
 
   CycleRoute(
     this.points,
     this.distance,
     this.duration, {
     this.maneuvers = const [],
+    this.supportsVoiceGuidance = true,
   });
 }
 

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/api/geoapify_api.dart';
+import 'package:munich_ways/api/munich_street_corrector.dart';
 import 'package:munich_ways/api/nominatim_api.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
@@ -21,6 +24,16 @@ class FakeRecentSearchesStore extends RecentSearchesStore {
   Future<void> store(List<Place> places) async {
     storedPlaces = List.of(places);
   }
+}
+
+class DelayedRecentSearchesStore extends RecentSearchesStore {
+  final Completer<List<Place>> completer = Completer<List<Place>>();
+
+  @override
+  Future<List<Place>> load() => completer.future;
+
+  @override
+  Future<void> store(List<Place> places) async {}
 }
 
 class FailingGeoapifyApi extends GeoapifyApi {
@@ -44,7 +57,49 @@ class SuccessfulNominatimApi extends NominatimApi {
       ];
 }
 
+class DelayedGeoapifyApi extends GeoapifyApi {
+  DelayedGeoapifyApi() : super(apiKey: 'test');
+
+  final Completer<List<Place>> completer = Completer<List<Place>>();
+
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) =>
+      completer.future;
+}
+
 void main() {
+  test('ignores recent searches that finish after disposal', () async {
+    final store = DelayedRecentSearchesStore();
+    final model = PlaceSearchScreenViewModel(recentSearchesRepo: store);
+
+    model.dispose();
+    store.completer.complete([
+      Place('Schloss Blutenburg', const LatLng(48.163, 11.456)),
+    ]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(model.recentSearches, isEmpty);
+  });
+
+  test('ignores an address search that finishes after disposal', () async {
+    final api = DelayedGeoapifyApi();
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: api,
+      streetCorrector: MunichStreetCorrector.fromStreetNames(const []),
+    );
+
+    final search = model.startSearch('Schlossschmidstraße 16');
+    await Future<void>.delayed(Duration.zero);
+    model.dispose();
+    api.completer.complete([
+      Place('Schlossschmidstraße 16', const LatLng(48.15, 11.5)),
+    ]);
+    await search;
+
+    expect(model.places, isEmpty);
+  });
+
   test('stops loading when address search fails', () async {
     final model = PlaceSearchScreenViewModel(
       recentSearchesRepo: FakeRecentSearchesStore([]),

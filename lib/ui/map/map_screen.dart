@@ -22,7 +22,6 @@ import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dar
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -45,7 +44,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
+  static const _kNetworkLayerCasingGesamtId =
+      'munichways_radlnetz_casing_gesamt';
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
+  static const _kNetworkLayerCasingRadlId = 'munichways_radlnetz_casing_radl';
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
@@ -302,8 +304,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.routeStream.listen((MapRoute route) {
           final position = _latestPosition;
-          if (model.navigationStarted && position != null) {
-            _refreshVoiceGuidance(model, position);
+          if (model.navigationStarted) {
+            if (position != null) {
+              _refreshVoiceGuidance(model, position);
+            }
+            // A refreshed route must not trigger the pre-navigation overview
+            // camera. It races with zoom 18 from _startNavigation and can leave
+            // active navigation zoomed out to the full route bounds.
+            return;
           }
           final controller = _mapController;
           if (controller == null || route.route == null) return;
@@ -580,26 +588,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         const MapAttribution(),
-                        if (_initialContentReady && !model.navigationStarted)
-                          MapSearchBar(
-                            model: model,
-                            searchCenterProvider: () {
-                              final position = _latestPosition;
-                              return position == null
-                                  ? null
-                                  : latlong2.LatLng(
-                                      position.latitude,
-                                      position.longitude,
-                                    );
-                            },
-                          ),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
                           mapBearingDegrees: _mapBearingDegrees,
                           compassIdleTick: _compassIdleTick,
                           additionalBottomOffset:
-                              model.destination != null ? 72 : 0,
+                              _sideControlsAdditionalBottomOffset(
+                            context,
+                            model,
+                          ),
                           onNorthUp: () async {
                             model.onCompassNorthUpPressed();
                             final c = _mapController;
@@ -614,15 +612,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             final pos = await c.queryCameraPosition();
                             return pos?.bearing;
                           },
+                        ),
+                        MapBottomActionButtons(
+                          model: model,
+                          showSearch:
+                              _initialContentReady && !model.navigationStarted,
+                          searchCenterProvider: () {
+                            final position = _latestPosition;
+                            return position == null
+                                ? null
+                                : latlong2.LatLng(
+                                    position.latitude,
+                                    position.longitude,
+                                  );
+                          },
                           onPressLocation: () async {
                             await model.onPressLocationBtn();
                             if (!mounted) return;
                             await _applyNativeLocationTracking(model);
                             _updateLocationStream(model);
                           },
-                        ),
-                        MapBottomActionButtons(
-                          model: model,
                           navigationBar: model.destination == null
                               ? null
                               : MapNavigationHeaderBar(
@@ -963,6 +972,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MapScreenViewModel model) async {
     final routeUpdated = await model.refreshRoute();
     if (!mounted || !routeUpdated) return;
+    // A successful refresh resumes navigation exactly like the Start action:
+    // navigation zoom, location tracking and direction-based map rotation.
     await _startNavigation(model);
   }
 
@@ -999,6 +1010,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
     return zoom.clamp(10, 22);
+  }
+
+  double _sideControlsAdditionalBottomOffset(
+    BuildContext context,
+    MapScreenViewModel model,
+  ) {
+    final desiredOffset = model.destination == null
+        ? 0.0
+        : !model.navigationStarted
+            ? 128.0
+            : _nextManeuver != null
+                ? 144.0
+                : 72.0;
+    if (MediaQuery.orientationOf(context) == Orientation.landscape) {
+      // Landscape has much less vertical room. Capping the offset keeps zoom
+      // and compass controls on-screen while the width-limited route panel
+      // remains clear below them.
+      return min(desiredOffset, 80.0);
+    }
+    return desiredOffset;
   }
 
   LatLngBounds _boundsFor(List<latlong2.LatLng> points) {
@@ -1207,6 +1238,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       LineLayerProperties(
         lineColor: _hexColor(AppColors.mapRouteColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,
@@ -1220,7 +1253,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
+      await controller.removeLayer(_kNetworkLayerCasingRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
+      await controller.removeLayer(_kNetworkLayerCasingGesamtId);
       await controller.removeSource(_kNetworkSourceId);
     } catch (_) {
       // Style may have already dropped layers.
@@ -1237,6 +1272,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerCasingGesamtId,
+      const LineLayerProperties(
+        lineColor: '#ffffff',
+        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        true
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
     // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
     await controller.addLineLayer(
       _kNetworkSourceId,
@@ -1253,6 +1306,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         Expressions.equal,
         [Expressions.get, 'gesamtnetz'],
         true
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerCasingRadlId,
+      const LineLayerProperties(
+        lineColor: '#ffffff',
+        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        false
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

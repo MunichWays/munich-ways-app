@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -11,14 +12,14 @@ class InfoSheetMainContent extends StatelessWidget {
     super.key,
     required this.versionLabel,
     required this.onOpenMapHelp,
-    required this.onOpenImprint,
+    required this.onOpenAbout,
   });
 
   final String versionLabel;
 
   final VoidCallback onOpenMapHelp;
 
-  final VoidCallback onOpenImprint;
+  final VoidCallback onOpenAbout;
 
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -57,6 +58,8 @@ class InfoSheetMainContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _CompactColorLegend(),
+        const SizedBox(height: 12),
         MenuGroup(
           children: [
             MenuGroupItem(
@@ -64,29 +67,6 @@ class InfoSheetMainContent extends StatelessWidget {
               label: context.l10n.tr('Legende & Tipps'),
               trailingElement: const Icon(Icons.chevron_right),
               onTap: onOpenMapHelp,
-            ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.info_outline,
-              label: context.l10n.isEnglish
-                  ? 'About MunichWays'
-                  : 'Über MunichWays',
-              onTap: () => _openUrl(
-                context,
-                'https://munichways.de',
-                'Keine App zum Öffnen von munichways.de gefunden',
-              ),
-            ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.link,
-              label:
-                  context.l10n.isEnglish ? 'About RadlNavi' : 'Über RadlNavi',
-              onTap: () => _openUrl(
-                context,
-                'https://radlnavi.de',
-                'Keine App zum Öffnen von radlnavi.de gefunden',
-              ),
             ),
             const MenuGroupDivider(),
             MenuGroupItem(
@@ -104,25 +84,66 @@ class InfoSheetMainContent extends StatelessWidget {
                 'Keine App zum Öffnen von munichways.de gefunden',
               ),
             ),
+            const MenuGroupDivider(),
+            MenuGroupItem(
+              icon: Icons.link,
+              label: context.l10n.isEnglish
+                  ? 'About & attributions'
+                  : 'Über & Quellenangaben',
+              trailingElement: const Icon(Icons.chevron_right),
+              onTap: onOpenAbout,
+            ),
           ],
         ),
-        const SizedBox(height: 20),
-        Center(
-          child: TextButton(
-            onPressed: onOpenImprint,
-            child: Text(context.l10n.tr('Impressum & Datenschutz')),
+      ],
+    );
+  }
+}
+
+class _CompactColorLegend extends StatelessWidget {
+  const _CompactColorLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (
+        AppColors.mapGreen,
+        context.l10n.isEnglish ? 'Comfortable' : 'Gemütlich',
+      ),
+      (
+        AppColors.mapYellow,
+        context.l10n.isEnglish ? 'Average' : 'Durchschnittlich',
+      ),
+      (
+        AppColors.mapRed,
+        context.l10n.isEnglish ? 'Stressful' : 'Stressig',
+      ),
+      (
+        AppColors.mapBlack,
+        context.l10n.isEnglish ? 'Very stressful' : 'Sehr stressig',
+      ),
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        for (final item in items)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: item.$1,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(item.$2),
+            ],
           ),
-        ),
-        Center(
-          child: TextButton(
-            onPressed: () => _openUrl(
-              context,
-              'https://munichways.de/nutzungbedingungen-app',
-              'Keine App zum Öffnen der Nutzungsbedingungen gefunden',
-            ),
-            child: Text(context.l10n.tr('Nutzungsbedingungen')),
-          ),
-        ),
       ],
     );
   }

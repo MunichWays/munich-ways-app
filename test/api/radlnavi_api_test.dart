@@ -16,12 +16,12 @@ void main() {
       expect(req.url.path,
           "/route/v1/bike/11.578090968904041,48.142439149231784;11.588108539581299,48.14585899848997");
       expect(req.url.query,
-          "alternatives=false&steps=true&annotations=false&geometries=polyline&overview=full&continue_straight=default");
+          "alternatives=false&steps=true&annotations=false&geometries=geojson&overview=full&continue_straight=default");
       expect(req.headers['Accept'], "application/json");
       expect(req.headers['User-Agent'], "com.munichways.app/flutter");
 
       return Response(
-          '{"code":"Ok","routes":[{"geometry":"eyydHijteAGEbC_R^G~@{FmB{@aGyBKHmASUR}CqAoAwAgBwC]cBW{DGiGMuAIB","legs":[{"steps":[],"distance":1119,"duration":319.4,"summary":"","weight":344.5}],"distance":1119,"duration":319.4,"weight_name":"cyclability","weight":344.5}],"waypoints":[{"hint":"S0cegFdHHoAOAAAARwAAAAAAAAAAAAAA4muQPw51oUAAAAAAAAAAAAkAAAAvAAAAAAAAAAAAAAAXAAAADquwAFuY3gLrqrAAZ5jeAgAAvwET0MiO","distance":2.927425,"name":"","location":[11.578126,48.142427]},{"hint":"2SgegN8oHoAVAAAAMQAAAAAAAACABwAA5KeZQK5SJkEAAAAAJwvQQw4AAAAgAAAAAAAAAOAEAAAXAAAAN9KwAMql3gIN0rAAw6XeAgAArxUT0MiO","distance":3.222205,"name":"Weidenweg","location":[11.588151,48.145866]}]}',
+          '{"code":"Ok","routes":[{"geometry":{"type":"LineString","coordinates":[[11.57812642,48.14242731],[11.58234567,48.14456789],[11.58815123,48.14586654]]},"legs":[{"steps":[],"distance":1119,"duration":319.4,"summary":"","weight":344.5}],"distance":1119,"duration":319.4,"weight_name":"cyclability","weight":344.5}]}',
           200,
           headers: {"content-type": "application/json; charset=UTF-8"});
     }));
@@ -32,7 +32,9 @@ void main() {
     CycleRoute actualRoute = await api.route([from, to]);
 
     //Then
-    expect(actualRoute.points.length, 18);
+    expect(actualRoute.points.length, 3);
+    expect(actualRoute.points.first.latitude, 48.14242731);
+    expect(actualRoute.points.first.longitude, 11.57812642);
     expect(actualRoute.duration, 319.4);
     expect(actualRoute.distance, 1119);
   });

@@ -14,6 +14,7 @@ class MapOverlayButton extends StatelessWidget {
     this.onPressed,
     this.circular = true,
     this.size = 48,
+    this.emphasizeActive = false,
     this.tooltip,
   });
 
@@ -22,6 +23,7 @@ class MapOverlayButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool circular;
   final double size;
+  final bool emphasizeActive;
   final String? tooltip;
 
   @override
@@ -34,7 +36,9 @@ class MapOverlayButton extends StatelessWidget {
           );
 
     Widget core = Material(
-      color: AppColors.mapButtonBackground.withValues(alpha: 0.80),
+      color: isActive && emphasizeActive
+          ? AppColors.mapAccentColor
+          : AppColors.mapButtonBackground.withValues(alpha: 0.80),
       shape: shape,
       clipBehavior: Clip.antiAlias,
       shadowColor: Colors.transparent,
@@ -47,7 +51,9 @@ class MapOverlayButton extends StatelessWidget {
           child: IconTheme.merge(
             data: IconThemeData(
               color: isActive
-                  ? AppColors.mapButtonForegroundActive
+                  ? emphasizeActive
+                      ? Colors.white
+                      : AppColors.mapButtonForegroundActive
                   : AppColors.mapButtonForeground,
               size: 24,
             ),
