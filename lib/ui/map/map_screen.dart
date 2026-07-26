@@ -22,7 +22,6 @@ import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dar
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -45,7 +44,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
+  static const _kNetworkLayerCasingGesamtId =
+      'munichways_radlnetz_casing_gesamt';
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
+  static const _kNetworkLayerCasingRadlId = 'munichways_radlnetz_casing_radl';
   static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
@@ -580,26 +582,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         const MapAttribution(),
-                        if (_initialContentReady && !model.navigationStarted)
-                          MapSearchBar(
-                            model: model,
-                            searchCenterProvider: () {
-                              final position = _latestPosition;
-                              return position == null
-                                  ? null
-                                  : latlong2.LatLng(
-                                      position.latitude,
-                                      position.longitude,
-                                    );
-                            },
-                          ),
                         MapSideActionButtons(
                           model: model,
                           mapController: _mapController,
                           mapBearingDegrees: _mapBearingDegrees,
                           compassIdleTick: _compassIdleTick,
-                          additionalBottomOffset:
-                              model.destination != null ? 72 : 0,
+                          additionalBottomOffset: model.destination == null
+                              ? 0
+                              : model.navigationStarted && _nextManeuver != null
+                                  ? 144
+                                  : 72,
                           onNorthUp: () async {
                             model.onCompassNorthUpPressed();
                             final c = _mapController;
@@ -623,6 +615,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                         MapBottomActionButtons(
                           model: model,
+                          showSearch:
+                              _initialContentReady && !model.navigationStarted,
+                          searchCenterProvider: () {
+                            final position = _latestPosition;
+                            return position == null
+                                ? null
+                                : latlong2.LatLng(
+                                    position.latitude,
+                                    position.longitude,
+                                  );
+                          },
                           navigationBar: model.destination == null
                               ? null
                               : MapNavigationHeaderBar(
@@ -1220,7 +1223,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
+      await controller.removeLayer(_kNetworkLayerCasingRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
+      await controller.removeLayer(_kNetworkLayerCasingGesamtId);
       await controller.removeSource(_kNetworkSourceId);
     } catch (_) {
       // Style may have already dropped layers.
@@ -1237,6 +1242,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerCasingGesamtId,
+      const LineLayerProperties(
+        lineColor: '#ffffff',
+        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        true
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
     // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
     await controller.addLineLayer(
       _kNetworkSourceId,
@@ -1253,6 +1276,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         Expressions.equal,
         [Expressions.get, 'gesamtnetz'],
         true
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerCasingRadlId,
+      const LineLayerProperties(
+        lineColor: '#ffffff',
+        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        false
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

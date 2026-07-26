@@ -199,7 +199,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ),
                 if (route.state == MapRouteState.SHOWN &&
                     route.route != null &&
-                    model.navigationStarted)
+                    model.navigationStarted &&
+                    model.voiceGuidanceAvailable)
                   IconButton(
                     color: Colors.white,
                     padding: const EdgeInsets.all(8),

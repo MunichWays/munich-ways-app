@@ -3,6 +3,8 @@ import 'package:http/http.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/json_body_extension.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/routing/routing_preferences.dart';
+import 'package:munich_ways/routing/routing_provider.dart';
 
 import '../model/route.dart';
 import 'api_exception.dart';
@@ -10,7 +12,7 @@ import 'api_exception.dart';
 // routing api based on munichways weights
 // see https://github.com/MunichWays/radlnavi for munichways routing profile
 // is based on https://github.com/Project-OSRM/osrm-backend, checkout their docs for api
-class RadlNaviApi {
+class RadlNaviApi implements RoutingProvider {
   Client? _client;
   final String baseUrl;
 
@@ -25,7 +27,11 @@ class RadlNaviApi {
   }
 
   // https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md#route-service
-  Future<CycleRoute> route(List<LatLng> coordinates) async {
+  @override
+  Future<CycleRoute> route(
+    List<LatLng> coordinates, {
+    BRouterProfile profile = BRouterProfile.trekking,
+  }) async {
     String coordinatesString = coordinates
         .map((e) => '${e.longitude.toString()},${e.latitude.toString()}')
         .join(';');

@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
-import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
-/// Bottom map controls: info (placeholder), search, settings.
+/// Bottom map controls: destination search and settings.
 class MapBottomActionButtons extends StatelessWidget {
   const MapBottomActionButtons({
     super.key,
     required this.model,
+    required this.searchCenterProvider,
+    this.showSearch = true,
     this.navigationBar,
   });
 
   final MapScreenViewModel model;
+  final LatLng? Function() searchCenterProvider;
+  final bool showSearch;
   final Widget? navigationBar;
 
   @override
@@ -35,14 +40,17 @@ class MapBottomActionButtons extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              MapOverlayButton(
-                circular: false,
-                tooltip: context.l10n.tr('Info'),
-                onPressed: () => showMapInfoSheet(context),
-                child: const Icon(Icons.info_outline),
-              ),
+              if (showSearch) ...[
+                Expanded(
+                  child: MapSearchBar(
+                    model: model,
+                    searchCenterProvider: searchCenterProvider,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ] else
+                const Spacer(),
               MapOverlayButton(
                 circular: false,
                 tooltip: context.l10n.settings,

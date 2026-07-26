@@ -27,6 +27,28 @@ class AppLocalizations {
   String get right => isEnglish ? 'Right' : 'Rechts';
   String get reloadNetwork =>
       isEnglish ? 'Reload cycling network' : 'Radnetz neu laden';
+  String get routePlanning => isEnglish ? 'Route planning' : 'Routenplanung';
+  String get routingAutomatic => isEnglish ? 'Automatic' : 'Automatisch';
+  String get routingAutomaticDescription => isEnglish
+      ? 'RadlNavi (Upper Bavaria) / BRouter (worldwide)'
+      : 'RadlNavi (Oberbayern) / BRouter (weltweit)';
+  String get routingBRouterEverywhere =>
+      isEnglish ? 'BRouter everywhere' : 'BRouter überall';
+  String get bRouterProfile => isEnglish ? 'BRouter profile' : 'BRouter Profil';
+  String get bRouterTrekking =>
+      isEnglish ? 'Trekking (default)' : 'Trekking (Standard)';
+  String get bRouterFastBike =>
+      isEnglish ? 'Road bike (fast)' : 'Rennrad (schnell)';
+  String get bRouterShortest =>
+      isEnglish ? 'Shortest route' : 'Kürzeste Strecke';
+  String get routePlanningInfo => isEnglish
+      ? 'Automatic uses RadlNavi for low-stress routes within Upper Bavaria '
+          'and BRouter outside the region or when RadlNavi is unavailable.\n\n'
+          '“BRouter everywhere” always uses BRouter worldwide.'
+      : 'Automatisch nutzt RadlNavi für stressarme Routen innerhalb '
+          'Oberbayerns und BRouter außerhalb der Region oder wenn RadlNavi '
+          'nicht erreichbar ist.\n\n'
+          '„BRouter überall“ nutzt weltweit immer BRouter.';
   String get reloadingMap => isEnglish
       ? 'Reloading map and ratings…'
       : 'Karte und Bewertungen werden neu geladen …';

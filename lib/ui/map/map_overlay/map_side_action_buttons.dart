@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
+import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 
-/// Right-hand map controls: zoom, layers, location, compass.
+/// Side map controls: zoom, info, location, compass.
 class MapSideActionButtons extends StatelessWidget {
   const MapSideActionButtons({
     super.key,
@@ -77,26 +77,9 @@ class MapSideActionButtons extends StatelessWidget {
         children: [
           ...zoomWidgets,
           MapOverlayButton(
-            tooltip: model.isRadlvorrangnetzVisible && model.isGesamtnetzVisible
-                ? (context.l10n.isEnglish
-                    ? 'Select cycling network (all layers visible)'
-                    : 'Fahrradnetz auswählen (alle Ebenen sichtbar)')
-                : (context.l10n.isEnglish
-                    ? 'Select cycling network (some layers hidden)'
-                    : 'Fahrradnetz auswählen (einige Ebenen ausgeblendet)'),
-            onPressed: () {
-              showModalBottomSheet<void>(
-                context: context,
-                useSafeArea: true,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => BikenetSelectionSheet(model: model),
-              );
-            },
-            child: Icon(
-              model.isRadlvorrangnetzVisible && model.isGesamtnetzVisible
-                  ? Icons.layers
-                  : Icons.layers_clear,
-            ),
+            tooltip: context.l10n.tr('Info'),
+            onPressed: () => showMapInfoSheet(context),
+            child: const Icon(Icons.info_outline),
           ),
           const SizedBox(height: _buttonSpacing),
           MapOverlayButton(

@@ -522,7 +522,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-dasharray": [
           0.5,
           0.25
@@ -725,7 +725,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#aeb2b5",
+          "#aeb2b5"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -764,7 +773,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -815,7 +824,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-dasharray": [
           0.5,
           0.25
@@ -915,7 +924,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffe8c8",
+        "line-color": "#dfe2e4",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1055,11 +1064,11 @@
           "base": 1.2,
           "stops": [
             [
-              13.5,
+              12.5,
               0
             ],
             [
-              14,
+              13,
               2.5
             ],
             [
@@ -1093,7 +1102,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff8ee",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#f1f2f2",
+          "#f1f2f2"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1136,7 +1154,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff8ee",
+        "line-color": "#eceeef",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1183,7 +1201,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffe6d0",
+        "line-color": "#d7dadd",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1414,7 +1432,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1641,7 +1659,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#aeb2b5",
+          "#aeb2b5"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1681,7 +1708,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1735,7 +1762,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -1839,7 +1866,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffe8c8",
+        "line-color": "#dfe2e4",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2000,11 +2027,11 @@
           "base": 1.2,
           "stops": [
             [
-              13.5,
+              12.5,
               0
             ],
             [
-              14,
+              13,
               2.5
             ],
             [
@@ -2040,7 +2067,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff2e0",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#f1f2f2",
+          "#f1f2f2"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2084,7 +2120,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff2e0",
+        "line-color": "#f1f2f2",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2139,11 +2175,11 @@
           "stops": [
             [
               5,
-              "hsl(35, 28%, 90%)"
+              "hsl(210, 4%, 88%)"
             ],
             [
               6,
-              "#ffe8c8"
+              "#dfe2e4"
             ]
           ]
         },
@@ -2394,7 +2430,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2634,7 +2670,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#aeb2b5",
+          "#aeb2b5"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2673,7 +2718,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2724,7 +2769,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "#aeb2b5",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2820,7 +2865,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffe8c8",
+        "line-color": "#dfe2e4",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -2960,11 +3005,11 @@
           "base": 1.2,
           "stops": [
             [
-              13.5,
+              12.5,
               0
             ],
             [
-              14,
+              13,
               2.5
             ],
             [
@@ -2998,7 +3043,16 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff2e0",
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "secondary",
+          "#f1f2f2",
+          "#f1f2f2"
+        ],
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -3041,7 +3095,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff2e0",
+        "line-color": "#f1f2f2",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -3088,7 +3142,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffe8c8",
+        "line-color": "#dfe2e4",
         "line-width": {
           "base": 1.2,
           "stops": [

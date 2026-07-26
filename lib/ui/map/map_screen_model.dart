@@ -4,6 +4,7 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/brouter_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/radlnavi_api.dart';
@@ -12,6 +13,9 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/routing/oberbayern_coverage.dart';
+import 'package:munich_ways/routing/routing_preferences.dart';
+import 'package:munich_ways/routing/routing_service.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -70,7 +74,7 @@ class MapScreenViewModel extends ChangeNotifier {
     if (_voiceGuidanceEnabled == value) return;
     _voiceGuidanceEnabled = value;
     notifyListeners();
-    settingsStore.saveVoiceGuidanceEnabled(value).catchError(
+    _settingsStore.saveVoiceGuidanceEnabled(value).catchError(
       (Object e, StackTrace st) {
         log.e(
           'Failed to save voice guidance setting',
@@ -81,8 +85,36 @@ class MapScreenViewModel extends ChangeNotifier {
     );
   }
 
+  void setRoutingMode(RoutingMode value) {
+    if (_routingMode == value) return;
+    _routingMode = value;
+    notifyListeners();
+    _settingsStore.saveRoutingMode(value).catchError(
+      (Object e, StackTrace st) {
+        log.e('Failed to save routing mode', error: e, stackTrace: st);
+      },
+    );
+    if (destination != null) {
+      unawaited(_requestRoute());
+    }
+  }
+
+  void setBRouterProfile(BRouterProfile value) {
+    if (_bRouterProfile == value) return;
+    _bRouterProfile = value;
+    notifyListeners();
+    _settingsStore.saveBRouterProfile(value).catchError(
+      (Object e, StackTrace st) {
+        log.e('Failed to save BRouter profile', error: e, stackTrace: st);
+      },
+    );
+    if (destination != null) {
+      unawaited(_requestRoute());
+    }
+  }
+
   void _persistSettings() {
-    settingsStore
+    _settingsStore
         .saveMapSettings(
       showZoomButtons: _showZoomButtons,
       sidePanelEdgeName: _sidePanelEdge.name,
@@ -96,14 +128,19 @@ class MapScreenViewModel extends ChangeNotifier {
     final edge = data.sidePanelEdgeName == 'left'
         ? MapSidePanelEdge.left
         : MapSidePanelEdge.right;
+    final routingMode = data.routingMode;
     if (data.showZoomButtons == _showZoomButtons &&
         edge == _sidePanelEdge &&
-        data.voiceGuidanceEnabled == _voiceGuidanceEnabled) {
+        data.voiceGuidanceEnabled == _voiceGuidanceEnabled &&
+        routingMode == _routingMode &&
+        data.bRouterProfile == _bRouterProfile) {
       return;
     }
     _showZoomButtons = data.showZoomButtons;
     _sidePanelEdge = edge;
     _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
+    _routingMode = routingMode;
+    _bRouterProfile = data.bRouterProfile;
     notifyListeners();
   }
 
@@ -138,13 +175,20 @@ class MapScreenViewModel extends ChangeNotifier {
   bool get navigationStarted => _navigationStarted;
   bool _voiceGuidanceEnabled = false;
   bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
+  bool get voiceGuidanceAvailable =>
+      route.route?.supportsVoiceGuidance ?? false;
+  RoutingMode _routingMode = RoutingMode.automatic;
+  RoutingMode get routingMode => _routingMode;
+  BRouterProfile _bRouterProfile = BRouterProfile.trekking;
+  BRouterProfile get bRouterProfile => _bRouterProfile;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
   int _networkRevision = 0;
   int get networkRevision => _networkRevision;
 
   MunichwaysApi _munichwaysApi = MunichwaysApi();
-  RadlNaviApi _radlNaviApi = RadlNaviApi();
+  late final RoutingService _routingService;
+  late final SettingsStore _settingsStore;
 
   late Stream<String> errorMsgs;
   late StreamController<String> _errorMsgsController;
@@ -167,7 +211,17 @@ class MapScreenViewModel extends ChangeNotifier {
   late Stream<MapRoute> routeStream;
   late StreamController<MapRoute> _routeStreamController;
 
-  MapScreenViewModel() {
+  MapScreenViewModel({
+    RoutingService? routingService,
+    SettingsStore? store,
+  }) {
+    _routingService = routingService ??
+        RoutingService(
+          radlNavi: RadlNaviApi(),
+          bRouter: BRouterApi(),
+          radlNaviCoverage: OberbayernCoverage(),
+        );
+    _settingsStore = store ?? settingsStore;
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
     _permissionStreamController = StreamController();
@@ -185,7 +239,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _routeStreamController = StreamController();
     routeStream = _routeStreamController.stream;
 
-    settingsStore.load().then((data) {
+    _settingsStore.load().then((data) {
       _applyLoadedSettings(data);
     }).catchError((Object e, StackTrace st) {
       log.e('Failed to load settings', error: e, stackTrace: st);
@@ -568,8 +622,13 @@ class MapScreenViewModel extends ChangeNotifier {
       return false;
     }
 
+    final coordinates = [LatLng(from.latitude, from.longitude), to.latLng];
     final request = CancelableOperation<CycleRoute>.fromFuture(
-      _radlNaviApi.route([LatLng(from.latitude, from.longitude), to.latLng]),
+      _routingService.route(
+        coordinates,
+        mode: _routingMode,
+        bRouterProfile: _bRouterProfile,
+      ),
       onCancel: () => log.d("canceled prev request"),
     );
     _routeRequest = request;

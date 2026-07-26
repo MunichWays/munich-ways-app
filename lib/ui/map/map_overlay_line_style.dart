@@ -26,6 +26,20 @@ abstract final class MapOverlayLineStyle {
     3.5,
   ];
 
+  /// Light separation from the detailed basemap so every rating color remains
+  /// readable over roads, land use and buildings.
+  static const List<Object?> networkCasingLineWidthByZoom = [
+    Expressions.interpolate,
+    ['linear'],
+    [Expressions.zoom],
+    11,
+    3.2,
+    14,
+    4.5,
+    17,
+    5.5,
+  ];
+
   static const List<Object?> radlLineOpacityByZoom = [
     Expressions.interpolate,
     ['linear'],

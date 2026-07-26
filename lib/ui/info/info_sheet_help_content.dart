@@ -29,7 +29,9 @@ class InfoSheetHelpContent extends StatelessWidget {
             ),
             InfoSheetLegendRow(
               color: AppColors.mapGreen,
-              label: context.l10n.isEnglish ? 'Comfortable' : 'Gemütlich',
+              label: context.l10n.isEnglish
+                  ? 'Comfortable and convenient'
+                  : 'Gemütlich und komfortabel',
               description: context.l10n.isEnglish
                   ? 'Cycle path is wide, safe and smooth'
                   : 'Radweg ist breit, sicher, eben',
@@ -38,22 +40,32 @@ class InfoSheetHelpContent extends StatelessWidget {
               color: AppColors.mapYellow,
               label: context.l10n.isEnglish ? 'Average' : 'Durchschnittlich',
               description: context.l10n.isEnglish
-                  ? 'Cycle path could be improved'
-                  : 'Radweg ist verbesserungswürdig',
+                  ? 'Cycle path is acceptable but could be improved'
+                  : 'Radweg ist akzeptabel, verbesserungswürdig',
             ),
             InfoSheetLegendRow(
               color: AppColors.mapRed,
               label: context.l10n.isEnglish ? 'Stressful' : 'Stressig',
               description: context.l10n.isEnglish
-                  ? 'Cycle path is narrow, uneven or uncomfortable'
-                  : 'Radweg ist eng, uneben, nicht komfortabel',
+                  ? 'Cycle path is very narrow and uncomfortable'
+                  : 'Radweg ist sehr schmal, nicht komfortabel',
             ),
             InfoSheetLegendRow(
               color: AppColors.mapBlack,
-              label: context.l10n.isEnglish ? 'No cycle path' : 'Kein Radweg',
+              label:
+                  context.l10n.isEnglish ? 'Very stressful' : 'Sehr stressig',
               description: context.l10n.isEnglish
-                  ? 'Gap in the network'
-                  : 'Lücke im Radnetz',
+                  ? 'No cycle path on busy roads'
+                  : 'Kein Radweg auf vielbefahrenen Straßen',
+            ),
+            InfoSheetLegendRow(
+              color: Colors.grey,
+              label: context.l10n.isEnglish
+                  ? 'Plan / network gap'
+                  : 'Plan / Lücke im Netz',
+              description: context.l10n.isEnglish
+                  ? 'Missing bridge or underpass'
+                  : 'Fehlende Brücke oder Unterführung',
             ),
           ],
         ),
