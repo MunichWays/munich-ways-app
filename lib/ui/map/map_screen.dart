@@ -84,6 +84,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _routeGeoJsonReady = false;
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
+  final List<Circle> _routePlanCircles = [];
   StreamSubscription<Position>? _locationSubscription;
   bool _locationStreamUsesForegroundService = false;
   int _locationStreamGeneration = 0;
@@ -481,6 +482,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               if (!mounted) return;
                               // Style rebuild clears native annotations; drop stale handles.
                               _destinationCircle = null;
+                              _routePlanCircles.clear();
                               _streetDetailsByLineId.clear();
                               _lastSyncedNetworkFingerprint = null;
                               _lastRouteFingerprint = null;
@@ -1130,6 +1132,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       lng2,
       model.destination?.latLng.latitude,
       model.destination?.latLng.longitude,
+      model.routeStart?.latLng.latitude,
+      model.routeStart?.latLng.longitude,
+      Object.hashAll(
+        model.waypoints.expand(
+          (place) => [
+            place.latLng.latitude,
+            place.latLng.longitude,
+          ],
+        ),
+      ),
     );
   }
 
@@ -1179,6 +1191,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await controller.removeCircle(_destinationCircle!);
       _destinationCircle = null;
     }
+    for (final circle in _routePlanCircles) {
+      await controller.removeCircle(circle);
+    }
+    _routePlanCircles.clear();
 
     if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
       await controller.setGeoJsonSource(_kRouteSourceId, {
@@ -1213,6 +1229,41 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         circleStrokeColor: '#ffffff',
         circleStrokeWidth: 2,
       ));
+    }
+
+    final customStart = model.routeStart;
+    if (customStart != null) {
+      _routePlanCircles.add(
+        await controller.addCircle(
+          CircleOptions(
+            geometry: LatLng(
+              customStart.latLng.latitude,
+              customStart.latLng.longitude,
+            ),
+            circleRadius: 7,
+            circleColor: '#2E7D32',
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 2.5,
+          ),
+        ),
+      );
+    }
+
+    for (final waypoint in model.waypoints) {
+      _routePlanCircles.add(
+        await controller.addCircle(
+          CircleOptions(
+            geometry: LatLng(
+              waypoint.latLng.latitude,
+              waypoint.latLng.longitude,
+            ),
+            circleRadius: 6.5,
+            circleColor: '#FF9800',
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 2.5,
+          ),
+        ),
+      );
     }
 
     if (mounted && kStoreScreenshots) {

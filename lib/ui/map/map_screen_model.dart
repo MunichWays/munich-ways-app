@@ -158,6 +158,11 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   Place? destination = null;
+  Place? routeStart;
+  final List<Place> waypoints = [];
+  int _routePlanRevision = 0;
+
+  bool get hasCustomRoute => routeStart != null || waypoints.isNotEmpty;
 
   bool _isRadlvorrangnetzVisible = true;
   bool _isGesamtnetzVisible = true;
@@ -553,6 +558,9 @@ class MapScreenViewModel extends ChangeNotifier {
         locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
       locationState = LocationState.DISPLAY;
     }
+    routeStart = null;
+    waypoints.clear();
+    _routePlanRevision++;
     this.destination = place;
     // A new destination prepares a new route. Navigation must be started
     // explicitly so tracking and guidance are initialized for that route.
@@ -566,11 +574,40 @@ class MapScreenViewModel extends ChangeNotifier {
     unawaited(_requestRoute());
   }
 
+  /// Applies the optional route-planning stops in one update.
+  ///
+  /// A null [start] keeps the established default of using the current GPS
+  /// position. The regular destination search clears these options again.
+  void setRoutePlan({
+    required Place? start,
+    required List<Place> stops,
+    required Place destination,
+  }) {
+    if (locationState == LocationState.FOLLOW ||
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      locationState = LocationState.DISPLAY;
+    }
+    routeStart = start;
+    waypoints
+      ..clear()
+      ..addAll(stops);
+    this.destination = destination;
+    _routePlanRevision++;
+    _navigationStarted = false;
+    notifyListeners();
+    _destinationStreamController.add(destination);
+    WakelockPlus.enable();
+    unawaited(_requestRoute());
+  }
+
   void clearDestination() {
     // Drop any in-flight route so a late response cannot repopulate the map.
     _routeRequest?.cancel();
     _routeRequest = null;
     this.destination = null;
+    routeStart = null;
+    waypoints.clear();
+    _routePlanRevision++;
     _navigationStarted = false;
     notifyListeners();
 
@@ -593,6 +630,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<bool> _requestRoute() async {
     final to = this.destination;
+    final planRevision = _routePlanRevision;
     if (to == null) {
       _displayErrorMsg("Keine Route, da kein Ziel vorhanden");
       return false;
@@ -606,15 +644,17 @@ class MapScreenViewModel extends ChangeNotifier {
 
     // New destination / retry: abandon the previous request.
     await _routeRequest?.cancel();
-    if (destination != to) {
+    if (destination != to || _routePlanRevision != planRevision) {
       return false;
     }
 
-    final from = await resolveRouteStartPosition();
-    if (destination != to) {
+    final customStart = routeStart;
+    final plannedStops = List<Place>.of(waypoints);
+    final from = customStart == null ? await resolveRouteStartPosition() : null;
+    if (destination != to || _routePlanRevision != planRevision) {
       return false;
     }
-    if (from == null) {
+    if (customStart == null && from == null) {
       _displayErrorMsg(
           "Keine Route, da kein aktueller Standort als Start vorhanden");
       this.route = MapRoute(null, MapRouteState.ERROR);
@@ -622,7 +662,11 @@ class MapScreenViewModel extends ChangeNotifier {
       return false;
     }
 
-    final coordinates = [LatLng(from.latitude, from.longitude), to.latLng];
+    final coordinates = [
+      customStart?.latLng ?? LatLng(from!.latitude, from.longitude),
+      ...plannedStops.map((place) => place.latLng),
+      to.latLng,
+    ];
     final request = CancelableOperation<CycleRoute>.fromFuture(
       _routingService.route(
         coordinates,
@@ -638,6 +682,7 @@ class MapScreenViewModel extends ChangeNotifier {
       // User may have cleared the destination while the request was running.
       if (!identical(_routeRequest, request) ||
           destination == null ||
+          _routePlanRevision != planRevision ||
           value == null) {
         return false;
       }
@@ -647,7 +692,9 @@ class MapScreenViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       // Same as success path: ignore errors from superseded/cancelled requests.
-      if (!identical(_routeRequest, request) || destination == null) {
+      if (!identical(_routeRequest, request) ||
+          destination == null ||
+          _routePlanRevision != planRevision) {
         return false;
       }
       _displayErrorMsg("Fehler bei Routensuche $e");
