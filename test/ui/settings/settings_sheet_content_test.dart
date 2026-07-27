@@ -67,8 +67,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('groups Settings directly left of Info',
-      (tester) async {
+  testWidgets('groups Settings directly left of Info', (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore());
 
     await tester.pumpWidget(

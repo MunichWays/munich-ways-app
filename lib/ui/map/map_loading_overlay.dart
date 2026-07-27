@@ -77,8 +77,7 @@ class _MapInitialLoadingOverlayState extends State<MapInitialLoadingOverlay>
                               builder: (context, child) {
                                 final progress =
                                     reduceMotion ? .35 : _controller.value;
-                                final wave =
-                                    math.sin(progress * math.pi * 2);
+                                final wave = math.sin(progress * math.pi * 2);
                                 final scale =
                                     reduceMotion ? 1.0 : 1 + wave * .018;
                                 return Column(
