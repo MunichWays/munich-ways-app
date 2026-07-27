@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
 import 'package:latlong2/latlong.dart';
@@ -26,6 +27,12 @@ class MapSearchBar extends StatelessWidget {
     }
     if (result is Place) {
       model.setDestination(result);
+    } else if (result == PlaceSearchSheetResult.planRoute) {
+      await showRoutePlannerSheet(
+        context,
+        model: model,
+        searchCenter: searchCenterProvider(),
+      );
     } else if (result == PlaceSearchSheetResult.selectOnMap) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -1,1 +1,1 @@
-enum PlaceSearchSheetResult { selectOnMap }
+enum PlaceSearchSheetResult { selectOnMap, planRoute }

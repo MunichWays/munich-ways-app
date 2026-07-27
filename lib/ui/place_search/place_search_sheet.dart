@@ -6,12 +6,14 @@ import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
+import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:provider/provider.dart';
 
 Future<Object?> showPlaceSearchSheet(
   BuildContext context, {
   LatLng? searchCenter,
+  bool showRoutePlannerOption = true,
 }) {
   return showModalBottomSheet<Object?>(
     context: context,
@@ -23,13 +25,17 @@ Future<Object?> showPlaceSearchSheet(
         recentSearchesRepo: recentSearchesRepo,
         searchCenter: searchCenter,
       ),
-      child: const _PlaceSearchSheet(),
+      child: _PlaceSearchSheet(
+        showRoutePlannerOption: showRoutePlannerOption,
+      ),
     ),
   );
 }
 
 class _PlaceSearchSheet extends StatefulWidget {
-  const _PlaceSearchSheet();
+  const _PlaceSearchSheet({required this.showRoutePlannerOption});
+
+  final bool showRoutePlannerOption;
 
   @override
   State<_PlaceSearchSheet> createState() => _PlaceSearchSheetState();
@@ -134,6 +140,24 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                     ],
                   ),
                 ),
+                if (widget.showRoutePlannerOption)
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.of(context).pop(
+                          PlaceSearchSheetResult.planRoute,
+                        ),
+                        icon: const Icon(Icons.route, size: 20),
+                        label: Text(
+                          context.l10n.isEnglish
+                              ? 'Plan route'
+                              : 'Route planen',
+                        ),
+                      ),
+                    ),
+                  ),
                 const Divider(height: 1),
                 Expanded(
                   child: Consumer<PlaceSearchScreenViewModel>(
