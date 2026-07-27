@@ -14,7 +14,7 @@ class AppColors {
   static const mapButtonForegroundActive = Color(0xFF65B8FF);
 
   static const mapAccentColor = Color(0xFF2196F3);
-  static const mapRouteColor = mapAccentColor;
+  static const mapRouteColor = Color(0xFF0D47A1);
 
   static Color getPolylineColor(_color) {
     switch (_color) {

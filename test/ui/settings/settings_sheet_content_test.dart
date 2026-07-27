@@ -67,8 +67,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('left controls show Tracking, Settings, Info from left to right',
-      (tester) async {
+  testWidgets('groups Settings directly left of Info', (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore());
 
     await tester.pumpWidget(
@@ -100,6 +99,7 @@ void main() {
     final infoX = tester.getCenter(find.byIcon(Icons.info_outline)).dx;
     expect(trackingX, lessThan(settingsX));
     expect(settingsX, lessThan(infoX));
+    expect(infoX - settingsX, lessThan(80));
     expect(tester.takeException(), isNull);
   });
 

@@ -25,6 +25,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
+import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
@@ -423,7 +424,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           compassEnabled: false,
                           trackCameraPosition: true,
                           minMaxZoomPreference:
-                              const MinMaxZoomPreference(10, 22),
+                              const MinMaxZoomPreference(3, 22),
                           attributionButtonMargins: const Point(-200, -200),
                           myLocationEnabled: false,
                           myLocationTrackingMode:
@@ -665,64 +666,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  if (!_initialContentReady || model.loading)
+                  if (!_initialContentReady)
+                    Positioned.fill(
+                      child: MapInitialLoadingOverlay(
+                        message: '${context.l10n.loadingMap} …',
+                      ),
+                    )
+                  else if (model.loading)
                     Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
-                      child: SafeArea(
-                        child: IgnorePointer(
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                              child: Material(
-                                color: Colors.white,
-                                elevation: 4,
-                                shadowColor: Colors.black38,
-                                borderRadius: BorderRadius.circular(14),
-                                child: Semantics(
-                                  label: _initialContentReady
-                                      ? context.l10n.reloadingMap
-                                      : context.l10n.loadingMap,
-                                  liveRegion: true,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 14,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Flexible(
-                                          child: Text(
-                                            _initialContentReady
-                                                ? context.l10n.reloadingMap
-                                                : '${context.l10n.loadingMap} …',
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              color: Colors.black87,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w500,
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      child: MapReloadingBanner(
+                        message: context.l10n.reloadingMap,
                       ),
                     ),
                 ],
@@ -1065,7 +1021,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
-    return zoom.clamp(10, 22);
+    return zoom.clamp(3, 22);
   }
 
   double _sideControlsAdditionalBottomOffset(

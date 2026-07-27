@@ -123,21 +123,24 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
         query,
         searchCenter: searchCenter,
       );
-      resultsFromNominatim = false;
-      return result;
+      if (result.isNotEmpty) {
+        resultsFromNominatim = false;
+        return result;
+      }
+      log.d('Geoapify returned no places, trying Nominatim fallback');
     } catch (error, stackTrace) {
       log.w(
         'Geoapify search failed, trying Nominatim fallback',
         error: error,
         stackTrace: stackTrace,
       );
-      final result = await fallbackApi.search(
-        query,
-        searchCenter: searchCenter,
-      );
-      resultsFromNominatim = true;
-      return result;
     }
+    final result = await fallbackApi.search(
+      query,
+      searchCenter: searchCenter,
+    );
+    resultsFromNominatim = true;
+    return result;
   }
 
   void _displayErrorMsg(String msg) {

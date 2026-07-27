@@ -32,24 +32,49 @@ class BRouterApi implements RoutingProvider {
     final lonLats = coordinates
         .map((point) => '${point.longitude},${point.latitude}')
         .join('|');
-    final uri = Uri.https(baseUrl, '/brouter', {
+    final queryParameters = {
       'lonlats': lonLats,
       'profile': profile.apiName,
       'alternativeidx': '0',
       'format': 'geojson',
-    });
-    log.d(uri.toString());
+    };
 
-    final response = await _client.get(uri, headers: const {
-      'Accept': 'application/geo+json, application/json',
-      'User-Agent': 'com.munichways.app/flutter',
-    });
-    if (response.statusCode != 200) {
+    Response? response;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final attemptProfile = attempt == 1 && profile != BRouterProfile.shortest
+          ? BRouterProfile.shortest
+          : profile;
+      final uri = Uri.https(baseUrl, '/brouter', {
+        ...queryParameters,
+        'profile': attemptProfile.apiName,
+      });
+      log.d(uri.toString());
+      response = await _client.get(uri, headers: const {
+        'Accept': 'application/geo+json, application/json',
+        'User-Agent': 'com.munichways.app/flutter',
+      });
+      if (response.statusCode == 200) break;
+      if (attempt == 0 && _isTemporaryServerFailure(response)) {
+        log.i(
+          attemptProfile == BRouterProfile.shortest
+              ? 'BRouter is temporarily overloaded; retrying route calculation'
+              : 'BRouter watchdog stopped the selected profile; '
+                  'retrying with shortest',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 750));
+        continue;
+      }
+      if (_isTemporaryServerFailure(response)) {
+        throw ApiException(
+          'BRouter ist momentan ausgelastet. '
+          'Bitte versuche die Route in Kürze erneut.',
+        );
+      }
       throw ApiException('Error retrieving BRouter route: ${response.body}');
     }
 
     try {
-      final json = response.jsonBody();
+      final json = response!.jsonBody();
       final feature = (json['features'] as List).first as Map<String, dynamic>;
       final geometry = feature['geometry'] as Map<String, dynamic>;
       final properties =
@@ -71,6 +96,13 @@ class BRouterApi implements RoutingProvider {
     } catch (error) {
       throw ApiException('Invalid BRouter response: $error');
     }
+  }
+
+  bool _isTemporaryServerFailure(Response response) {
+    final body = response.body.toLowerCase();
+    return response.statusCode == 429 ||
+        response.statusCode >= 500 ||
+        body.contains('thread-priority-watchdog');
   }
 
   double _number(Object? value, String name) {

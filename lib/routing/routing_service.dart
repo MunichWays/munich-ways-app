@@ -13,12 +13,14 @@ class RoutingService {
     required this.bRouter,
     required this.radlNaviCoverage,
     this.requestTimeout = const Duration(seconds: 20),
+    this.bRouterRequestTimeout = const Duration(seconds: 75),
   });
 
   final RoutingProvider radlNavi;
   final RoutingProvider bRouter;
   final RoutingCoverage radlNaviCoverage;
   final Duration requestTimeout;
+  final Duration bRouterRequestTimeout;
 
   Future<CycleRoute> route(
     List<LatLng> coordinates, {
@@ -61,5 +63,7 @@ class RoutingService {
     List<LatLng> coordinates,
     BRouterProfile profile,
   ) =>
-      bRouter.route(coordinates, profile: profile).timeout(requestTimeout);
+      bRouter
+          .route(coordinates, profile: profile)
+          .timeout(bRouterRequestTimeout);
 }

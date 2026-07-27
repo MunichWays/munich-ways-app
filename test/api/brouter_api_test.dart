@@ -53,6 +53,31 @@ void main() {
     );
   });
 
+  test('retries once when the BRouter watchdog stops a request', () async {
+    var requestCount = 0;
+    final api = BRouterApi(client: MockClient((request) async {
+      requestCount++;
+      if (requestCount == 1) {
+        expect(request.url.queryParameters['profile'], 'trekking');
+        return Response('killed by thread-priority-watchdog', 503);
+      }
+      expect(request.url.queryParameters['profile'], 'shortest');
+      return Response(
+        '{"features":[{"properties":{"track-length":1,"total-time":1},'
+        '"geometry":{"coordinates":[[11.57,48.14],[12.3155,45.4408]]}}]}',
+        200,
+      );
+    }));
+
+    final route = await api.route(const [
+      LatLng(48.14, 11.57),
+      LatLng(45.4408, 12.3155),
+    ]);
+
+    expect(requestCount, 2);
+    expect(route.points, hasLength(2));
+  });
+
   test('sends the selected BRouter profile', () async {
     final api = BRouterApi(client: MockClient((request) async {
       expect(request.url.queryParameters['profile'], 'shortest');
