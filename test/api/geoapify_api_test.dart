@@ -143,12 +143,14 @@ void main() {
             '"street":"Berliner Straße","postcode":"80807","city":"München",'
             '"lat":48.18,"lon":11.59}]}',
             200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
         return Response(
           '{"results":[{"name":"Berlin","city":"Berlin","country":"Deutschland",'
           '"lat":52.52,"lon":13.405}]}',
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       }),
     );
