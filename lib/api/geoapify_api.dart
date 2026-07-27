@@ -45,20 +45,44 @@ class GeoapifyApi {
       return cached;
     }
 
-    var places = await _requestAutocomplete(
-      normalizedQuery,
-      localOnly: true,
-      center: center,
-    );
-    if (places.isEmpty) {
-      places = await _requestAutocomplete(
+    final results = await Future.wait([
+      _requestAutocomplete(
         normalizedQuery,
         localOnly: false,
         center: center,
-      );
-    }
+      ),
+      _requestAutocomplete(
+        normalizedQuery,
+        localOnly: true,
+        center: center,
+      ),
+    ]);
+    final places = _mergePlaces(
+      worldwide: results[0],
+      local: results[1],
+    );
     _cache[cacheKey] = places;
     return places;
+  }
+
+  /// Worldwide results come first so an exact city such as "Berlin" is not
+  /// hidden by loosely matching streets or POIs inside the Munich bounds.
+  static List<Place> _mergePlaces({
+    required List<Place> worldwide,
+    required List<Place> local,
+  }) {
+    final placesByName = <String, Place>{};
+    for (final place in [...worldwide, ...local]) {
+      final normalizedName = place.displayName?.toLowerCase().trim();
+      final key = normalizedName != null && normalizedName.isNotEmpty
+          ? normalizedName
+          : '${place.latLng.latitude},${place.latLng.longitude}';
+      placesByName.putIfAbsent(
+        key,
+        () => place,
+      );
+    }
+    return placesByName.values.toList(growable: false);
   }
 
   Future<List<Place>> _requestAutocomplete(
@@ -71,7 +95,7 @@ class GeoapifyApi {
       'format': 'json',
       'lang': 'de',
       'limit': '15',
-      'filter': localOnly ? 'rect:${_boundingBox(center)}' : 'countrycode:de',
+      if (localOnly) 'filter': 'rect:${_boundingBox(center)}',
       'bias': 'proximity:${center.longitude},${center.latitude}',
       'apiKey': apiKey,
     });

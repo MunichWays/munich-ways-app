@@ -423,7 +423,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           compassEnabled: false,
                           trackCameraPosition: true,
                           minMaxZoomPreference:
-                              const MinMaxZoomPreference(10, 22),
+                              const MinMaxZoomPreference(3, 22),
                           attributionButtonMargins: const Point(-200, -200),
                           myLocationEnabled: false,
                           myLocationTrackingMode:
@@ -1065,7 +1065,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
-    return zoom.clamp(10, 22);
+    return zoom.clamp(3, 22);
   }
 
   double _sideControlsAdditionalBottomOffset(

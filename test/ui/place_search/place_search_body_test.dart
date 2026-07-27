@@ -76,6 +76,13 @@ class SuccessfulGeoapifyApi extends GeoapifyApi {
       ];
 }
 
+class EmptyGeoapifyApi extends GeoapifyApi {
+  EmptyGeoapifyApi() : super(apiKey: 'test');
+
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) async => [];
+}
+
 class HangingStreetCorrector extends MunichStreetCorrector {
   HangingStreetCorrector() : super.fromStreetNames(const []);
 
@@ -142,6 +149,21 @@ void main() {
     expect(model.loading, isFalse);
     expect(model.errorMsg, isNull);
     expect(model.places.single.displayName, 'Marienplatz');
+    expect(model.resultsFromNominatim, isTrue);
+  });
+
+  test('uses Nominatim when primary address search has no results', () async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: EmptyGeoapifyApi(),
+      fallbackApi: SuccessfulNominatimApi(),
+    );
+
+    await model.startSearch('Venedig Italien');
+
+    expect(model.loading, isFalse);
+    expect(model.errorMsg, isNull);
+    expect(model.places, isNotEmpty);
     expect(model.resultsFromNominatim, isTrue);
   });
 

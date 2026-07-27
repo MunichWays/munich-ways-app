@@ -9,7 +9,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
-/// Bottom map controls: destination search and settings.
+/// Bottom map controls: destination search, location, settings and info.
 class MapBottomActionButtons extends StatelessWidget {
   const MapBottomActionButtons({
     super.key,
@@ -53,9 +53,17 @@ class MapBottomActionButtons extends StatelessWidget {
       onPressed: onPressLocation,
       child: _locationIcon(model.locationState),
     );
+    final settingsAndInfoButtons = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        settingsButton,
+        const SizedBox(width: 8),
+        infoButton,
+      ],
+    );
     final actionButtons = controlsOnLeft
-        ? [trackingButton, settingsButton, infoButton]
-        : [infoButton, settingsButton, trackingButton];
+        ? [trackingButton, settingsAndInfoButtons]
+        : [settingsAndInfoButtons, trackingButton];
 
     return Positioned(
       left: 16,

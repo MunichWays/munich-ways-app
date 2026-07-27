@@ -2,14 +2,18 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// MapLibre zoom expressions for route / Radl-Netz GeoJSON line paint.
 abstract final class MapOverlayLineStyle {
+  /// The route sits below the colored rating segments. Keep it deliberately
+  /// wider at city-overview zooms so its blue shoulders remain easy to follow.
   static const List<Object?> routeLineWidthByZoom = [
     Expressions.interpolate,
     ['linear'],
     [Expressions.zoom],
+    10,
+    14.0,
     11,
-    6.0,
+    13.0,
     14,
-    8.5,
+    10.5,
     17,
     10.0,
   ];

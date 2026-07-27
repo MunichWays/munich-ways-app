@@ -12,9 +12,13 @@ void main() {
       client: MockClient((request) async {
         expect(request.url.path, '/v1/geocode/autocomplete');
         expect(request.url.queryParameters['text'], 'Marienplaz');
+        final filter = request.url.queryParameters['filter'];
         expect(
-          request.url.queryParameters['filter'],
-          'rect:11.226124,47.887154,11.926124,48.387154',
+          filter,
+          anyOf(
+            isNull,
+            'rect:11.226124,47.887154,11.926124,48.387154',
+          ),
         );
         expect(
           request.url.queryParameters['bias'],
@@ -101,32 +105,59 @@ void main() {
     );
   });
 
-  test('retries nationwide when Munich has no results', () async {
+  test('returns worldwide results when Munich has no results', () async {
     var requestCount = 0;
     final api = GeoapifyApi(
       apiKey: 'test-key',
       client: MockClient((request) async {
         requestCount++;
         final filter = request.url.queryParameters['filter'];
-        if (requestCount == 1) {
+        if (filter != null) {
           expect(
             filter,
             'rect:11.226124,47.887154,11.926124,48.387154',
           );
           return Response('{"results":[]}', 200);
         }
-        expect(filter, 'countrycode:de');
         return Response(
-          '{"results":[{"address_line1":"Alexanderplatz","postcode":"10178","city":"Berlin","lat":52.5219,"lon":13.4132}]}',
+          '{"results":[{"address_line1":"Venezia","postcode":"30100","city":"Venezia","country":"Italia","lat":45.4408,"lon":12.3155}]}',
           200,
         );
       }),
     );
 
-    final places = await api.search('Alexanderplatz Berlin');
+    final places = await api.search('Venedig Italien');
 
     expect(requestCount, 2);
-    expect(places.single.displayName, 'Alexanderplatz, 10178 Berlin');
+    expect(places.single.displayName, 'Venezia, 30100 Venezia');
+  });
+
+  test('puts an exact worldwide city before loose Munich matches', () async {
+    final api = GeoapifyApi(
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        final localOnly = request.url.queryParameters['filter'] != null;
+        if (localOnly) {
+          return Response(
+            '{"results":[{"address_line1":"Berliner Straße",'
+            '"street":"Berliner Straße","postcode":"80807","city":"München",'
+            '"lat":48.18,"lon":11.59}]}',
+            200,
+          );
+        }
+        return Response(
+          '{"results":[{"name":"Berlin","city":"Berlin","country":"Deutschland",'
+          '"lat":52.52,"lon":13.405}]}',
+          200,
+        );
+      }),
+    );
+
+    final places = await api.search('Berlin');
+
+    expect(places, hasLength(2));
+    expect(places.first.displayName, 'Berlin');
+    expect(places.last.displayName, 'Berliner Straße, 80807 München');
   });
 
   test('collapses house results to a street while query has no number',
