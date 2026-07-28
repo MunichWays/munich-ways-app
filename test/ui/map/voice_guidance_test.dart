@@ -132,7 +132,7 @@ void main() {
             speedMetersPerSecond: 20 / 3.6,
           )
           ?.text,
-      'In 70 m links',
+      'In 60 m links',
     );
   });
 
