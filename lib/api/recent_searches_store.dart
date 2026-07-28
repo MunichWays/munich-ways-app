@@ -5,9 +5,14 @@ import 'package:munich_ways/model/place.dart';
 import 'package:path_provider/path_provider.dart';
 
 var recentSearchesRepo = RecentSearchesStore();
+var favoritePlacesRepo = RecentSearchesStore(fileName: "favoritePlaces.json");
 
 class RecentSearchesStore {
-  String _fileName = "recentSearches.json";
+  static const maxEntries = 25;
+  RecentSearchesStore({String fileName = "recentSearches.json"})
+      : _fileName = fileName;
+
+  final String _fileName;
 
   Future<File> _getJsonFile() async {
     Directory directory = await getApplicationSupportDirectory();
@@ -30,6 +35,21 @@ class RecentSearchesStore {
     await file.create(recursive: true);
     String json = jsonEncode(RecentSearchesFile(places));
     file.writeAsString(json);
+  }
+
+  Future<void> add(
+    Place place, {
+    int maxEntries = RecentSearchesStore.maxEntries,
+  }) async {
+    final places = await load();
+    places.removeWhere(
+      (entry) =>
+          entry.displayName == place.displayName ||
+          (entry.latLng.latitude == place.latLng.latitude &&
+              entry.latLng.longitude == place.latLng.longitude),
+    );
+    places.insert(0, place);
+    await store(places.take(maxEntries).toList());
   }
 }
 

@@ -180,8 +180,7 @@ void main() {
     expect(model.places.single.displayName, 'Marien');
   });
 
-  testWidgets('shows map selection without redundant search hint',
-      (tester) async {
+  testWidgets('does not show a redundant search hint', (tester) async {
     final model = PlaceSearchScreenViewModel(
       recentSearchesRepo: FakeRecentSearchesStore([]),
     );
@@ -194,7 +193,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Suchbegriff eingeben'), findsNothing);
-    expect(find.text('Auf Karte auswählen'), findsOneWidget);
     expect(find.byIcon(Icons.help_outline), findsNothing);
   });
 
@@ -235,7 +233,7 @@ void main() {
     expect(store.storedPlaces, [home, work]);
   });
 
-  testWidgets('offers map selection before recent searches without results',
+  testWidgets('shows recent searches after the no-results message',
       (tester) async {
     final model = PlaceSearchScreenViewModel(
       recentSearchesRepo: FakeRecentSearchesStore([
@@ -253,12 +251,9 @@ void main() {
 
     final noResultsTop =
         tester.getTopLeft(find.textContaining('Keine Ergebnisse')).dy;
-    final mapSelectionTop =
-        tester.getTopLeft(find.text('Auf Karte auswählen')).dy;
     final recentSearchesTop = tester.getTopLeft(find.text('Letzte Ziele')).dy;
 
-    expect(mapSelectionTop, greaterThan(noResultsTop));
-    expect(recentSearchesTop, greaterThan(mapSelectionTop));
+    expect(recentSearchesTop, greaterThan(noResultsTop));
   });
 
   testWidgets('lays out recent search controls vertically with large text',

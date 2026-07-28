@@ -161,6 +161,7 @@ class MapScreenViewModel extends ChangeNotifier {
   Place? routeStart;
   final List<Place> waypoints = [];
   int _routePlanRevision = 0;
+  int _lastPassedWaypointIndex = -1;
 
   bool get hasCustomRoute => routeStart != null || waypoints.isNotEmpty;
 
@@ -560,6 +561,7 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     routeStart = null;
     waypoints.clear();
+    _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     this.destination = place;
     // A new destination prepares a new route. Navigation must be started
@@ -583,17 +585,20 @@ class MapScreenViewModel extends ChangeNotifier {
     required List<Place> stops,
     required Place destination,
   }) {
-    if (locationState == LocationState.FOLLOW ||
-        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+    final wasNavigating = _navigationStarted;
+    if (!wasNavigating &&
+        (locationState == LocationState.FOLLOW ||
+            locationState == LocationState.FOLLOW_AND_ROTATE_MAP)) {
       locationState = LocationState.DISPLAY;
     }
-    routeStart = start;
+    routeStart = wasNavigating ? null : start;
     waypoints
       ..clear()
       ..addAll(stops);
+    _lastPassedWaypointIndex = -1;
     this.destination = destination;
     _routePlanRevision++;
-    _navigationStarted = false;
+    _navigationStarted = wasNavigating;
     notifyListeners();
     _destinationStreamController.add(destination);
     WakelockPlus.enable();
@@ -607,6 +612,7 @@ class MapScreenViewModel extends ChangeNotifier {
     this.destination = null;
     routeStart = null;
     waypoints.clear();
+    _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     _navigationStarted = false;
     notifyListeners();
@@ -622,7 +628,43 @@ class MapScreenViewModel extends ChangeNotifier {
     if (destination == null) {
       return Future<bool>.value(false);
     }
+    if (_navigationStarted) {
+      routeStart = null;
+      if (_lastPassedWaypointIndex >= 0) {
+        final passedCount =
+            (_lastPassedWaypointIndex + 1).clamp(0, waypoints.length).toInt();
+        waypoints.removeRange(0, passedCount);
+      }
+      _lastPassedWaypointIndex = -1;
+      _routePlanRevision++;
+      notifyListeners();
+    }
     return _requestRoute();
+  }
+
+  /// Records the furthest intermediate stop reached during this navigation.
+  ///
+  /// Reaching a later stop also marks every earlier stop as obsolete. Stops
+  /// that were passed at a distance remain pending and are kept on refresh.
+  void updateWaypointProgress(
+    LatLng position, {
+    double reachedDistanceMeters = 30,
+  }) {
+    if (!_navigationStarted || waypoints.isEmpty) return;
+    for (var index = _lastPassedWaypointIndex + 1;
+        index < waypoints.length;
+        index++) {
+      final waypoint = waypoints[index].latLng;
+      final distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        waypoint.latitude,
+        waypoint.longitude,
+      );
+      if (distance <= reachedDistanceMeters) {
+        _lastPassedWaypointIndex = index;
+      }
+    }
   }
 
   /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.

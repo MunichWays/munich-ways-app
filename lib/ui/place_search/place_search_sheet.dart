@@ -140,24 +140,41 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                     ],
                   ),
                 ),
-                if (widget.showRoutePlannerOption)
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                      child: TextButton.icon(
-                        onPressed: () => Navigator.of(context).pop(
-                          PlaceSearchSheetResult.planRoute,
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (widget.showRoutePlannerOption)
+                          TextButton.icon(
+                            onPressed: () => Navigator.of(context).pop(
+                              PlaceSearchSheetResult.planRoute,
+                            ),
+                            icon: const Icon(Icons.route, size: 20),
+                            label: Text(
+                              context.l10n.isEnglish
+                                  ? 'Plan route'
+                                  : 'Route planen',
+                            ),
+                          ),
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).pop(
+                            PlaceSearchSheetResult.selectOnMap,
+                          ),
+                          icon: const Icon(
+                            Icons.add_location_alt_outlined,
+                            size: 20,
+                          ),
+                          label: Text(
+                            context.l10n.tr('Auf Karte auswählen'),
+                          ),
                         ),
-                        icon: const Icon(Icons.route, size: 20),
-                        label: Text(
-                          context.l10n.isEnglish
-                              ? 'Plan route'
-                              : 'Route planen',
-                        ),
-                      ),
+                      ],
                     ),
                   ),
+                ),
                 const Divider(height: 1),
                 Expanded(
                   child: Consumer<PlaceSearchScreenViewModel>(

@@ -10,6 +10,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -31,6 +32,7 @@ import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
+import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
@@ -95,6 +97,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final FlutterTts _flutterTts = FlutterTts();
   final VoiceGuidance _voiceGuidance = VoiceGuidance();
   VoiceGuidanceDisplay? _nextManeuver;
+  RoutePlannerMapSelection? _pendingRouteMapSelection;
+  Timer? _voiceSignalTimer;
+  bool _notificationPermissionExplained = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
@@ -158,6 +163,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    _voiceSignalTimer?.cancel();
     unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
@@ -215,13 +221,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         english ? 'Voice guidance enabled.' : 'Sprachansagen aktiviert.',
         english: english,
       ));
+      _armVoiceSignalWarning(model);
     } else {
+      _voiceSignalTimer?.cancel();
       unawaited(_flutterTts.stop());
     }
   }
 
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
+    _voiceSignalTimer?.cancel();
     if (_nextManeuver != null) {
       setState(() => _nextManeuver = null);
     }
@@ -506,10 +515,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             unawaited(afterStyle());
                           },
                           onMapLongClick: (screenPoint, latLng) {
-                            model.setDestination(Place(
-                                null,
+                            unawaited(
+                              _handleMapPlaceSelection(
+                                model,
                                 latlong2.LatLng(
-                                    latLng.latitude, latLng.longitude)));
+                                  latLng.latitude,
+                                  latLng.longitude,
+                                ),
+                              ),
+                            );
                           },
                           onCameraMove: (CameraPosition position) {
                             _mapBearingDegrees.value = position.bearing;
@@ -626,6 +640,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           model: model,
                           showSearch:
                               _initialContentReady && !model.navigationStarted,
+                          onPlanRoute: () => _openRoutePlanner(model),
                           searchCenterProvider: () {
                             final position = _latestPosition;
                             return position == null
@@ -647,6 +662,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   model: model,
                                   onRefreshRoute: () =>
                                       _refreshRouteAndResumeNavigation(model),
+                                  onEditRoute: () => _openRoutePlanner(model),
                                   onStartNavigation: () =>
                                       _startNavigation(model),
                                   onToggleVoiceGuidance: () =>
@@ -831,6 +847,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
 
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    model.updateWaypointProgress(rawPosition);
     _refreshVoiceGuidance(model, position);
 
     final controller = _mapController;
@@ -916,6 +933,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       return;
     }
 
+    _armVoiceSignalWarning(model);
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
     _voiceGuidance.setRoute(
       model.navigationStarted ? model.route.route : null,
@@ -954,6 +972,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    _armVoiceSignalWarning(model);
     await _requestNavigationNotificationPermission();
     if (!mounted) return;
     final position = _latestPosition;
@@ -969,9 +988,171 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _updateLocationStream(model);
   }
 
+  Future<void> _openRoutePlanner(
+    MapScreenViewModel model, {
+    RoutePlannerMapSelection? initialPlan,
+  }) async {
+    if (!mounted) return;
+    if (initialPlan == null) {
+      _pendingRouteMapSelection = null;
+    }
+    final selection = await showRoutePlannerSheet(
+      context,
+      model: model,
+      searchCenter: _latestPosition == null
+          ? null
+          : latlong2.LatLng(
+              _latestPosition!.latitude,
+              _latestPosition!.longitude,
+            ),
+      initialPlan: initialPlan,
+    );
+    if (!mounted || selection == null) return;
+
+    _pendingRouteMapSelection = selection;
+    final pointName = switch (selection.type) {
+      RoutePlannerPointType.start =>
+        context.l10n.isEnglish ? 'start' : 'Startpunkt',
+      RoutePlannerPointType.stop =>
+        context.l10n.isEnglish ? 'intermediate stop' : 'Zwischenhalt',
+      RoutePlannerPointType.destination =>
+        context.l10n.isEnglish ? 'destination' : 'Ziel',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.l10n.isEnglish
+              ? 'Touch and hold the $pointName on the map.'
+              : '$pointName auf der Karte lange antippen.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleMapPlaceSelection(
+    MapScreenViewModel model,
+    latlong2.LatLng position,
+  ) async {
+    // MapLibre invokes this from a platform callback. Defer route changes until
+    // Flutter has finished the current frame before mounting a dialog.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    var enteredName = '';
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.l10n.isEnglish ? 'Name this place' : 'Punkt benennen',
+        ),
+        content: TextField(
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            hintText: context.l10n.isEnglish
+                ? 'e.g. hotel or station'
+                : 'z. B. Hotel oder Bahnhof',
+          ),
+          onChanged: (value) => enteredName = value,
+          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              context.l10n.isEnglish ? 'Skip' : 'Überspringen',
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              enteredName,
+            ),
+            child: Text(
+              context.l10n.isEnglish ? 'Save' : 'Speichern',
+            ),
+          ),
+        ],
+      ),
+    );
+    // Let the dialog route and its inherited dependencies deactivate fully
+    // before opening the route planner again.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final trimmedName = name?.trim();
+    final place = Place(
+      trimmedName == null || trimmedName.isEmpty ? null : trimmedName,
+      position,
+    );
+    if (place.displayName != null) {
+      try {
+        await recentSearchesRepo.add(place);
+      } catch (error, stackTrace) {
+        log.w(
+          'Saving map-selected place failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+    if (!mounted) return;
+
+    final pendingSelection = _pendingRouteMapSelection;
+    if (pendingSelection == null) {
+      model.setDestination(place);
+      return;
+    }
+    _pendingRouteMapSelection = null;
+    await _openRoutePlanner(
+      model,
+      initialPlan: pendingSelection.withSelectedPlace(place),
+    );
+  }
+
   Future<void> _requestNavigationNotificationPermission() async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     try {
+      final granted = await _notificationPermissionChannel
+              .invokeMethod<bool>('isGranted') ??
+          false;
+      if (granted || !mounted) return;
+
+      if (!_notificationPermissionExplained) {
+        final proceed = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(
+                  context.l10n.isEnglish
+                      ? 'Allow navigation notifications?'
+                      : 'Navigations-Mitteilungen erlauben?',
+                ),
+                content: Text(
+                  context.l10n.isEnglish
+                      ? 'So spoken directions continue when the screen is off.'
+                      : 'Damit Sprachansagen auch bei ausgeschaltetem Bildschirm '
+                          'weiterlaufen.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: Text(
+                      context.l10n.isEnglish ? 'Not now' : 'Nicht jetzt',
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: Text(
+                      context.l10n.isEnglish ? 'Continue' : 'Weiter',
+                    ),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+        _notificationPermissionExplained = true;
+        if (!proceed || !mounted) return;
+      }
       await _notificationPermissionChannel.invokeMethod<bool>('request');
     } on PlatformException catch (error, stackTrace) {
       log.w(
@@ -980,6 +1161,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _armVoiceSignalWarning(MapScreenViewModel model) {
+    _voiceSignalTimer?.cancel();
+    if (!model.navigationStarted || !model.voiceGuidanceEnabled) return;
+    _voiceSignalTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted || !model.navigationStarted || !model.voiceGuidanceEnabled) {
+        return;
+      }
+      unawaited(
+        _speak(
+          context.l10n.isEnglish
+              ? 'No directions. Route may have been left or no GPS signal.'
+              : 'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.',
+          english: context.l10n.isEnglish,
+        ),
+      );
+    });
   }
 
   Future<void> _refreshRouteAndResumeNavigation(

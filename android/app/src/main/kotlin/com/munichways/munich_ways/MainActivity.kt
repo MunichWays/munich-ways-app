@@ -16,27 +16,33 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             NOTIFICATION_PERMISSION_CHANNEL
         ).setMethodCallHandler { call, result ->
-            if (call.method != "request") {
-                result.notImplemented()
-                return@setMethodCallHandler
+            when (call.method) {
+                "isGranted" -> result.success(isNotificationPermissionGranted())
+                "request" -> requestNotificationPermission(result)
+                else -> result.notImplemented()
             }
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                result.success(true)
-                return@setMethodCallHandler
-            }
-            if (notificationPermissionResult != null) {
-                result.success(false)
-                return@setMethodCallHandler
-            }
-            notificationPermissionResult = result
-            requestPermissions(
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                NOTIFICATION_PERMISSION_REQUEST
-            )
         }
+    }
+
+    private fun isNotificationPermissionGranted(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun requestNotificationPermission(result: MethodChannel.Result) {
+        if (isNotificationPermissionGranted()) {
+            result.success(true)
+            return
+        }
+        if (notificationPermissionResult != null) {
+            result.success(false)
+            return
+        }
+        notificationPermissionResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST
+        )
     }
 
     override fun onRequestPermissionsResult(

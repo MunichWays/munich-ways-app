@@ -11,6 +11,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     super.key,
     required this.model,
     required this.onRefreshRoute,
+    required this.onEditRoute,
     required this.onStartNavigation,
     required this.onToggleVoiceGuidance,
     required this.onEndRoute,
@@ -19,6 +20,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
 
   final MapScreenViewModel model;
   final Future<void> Function() onRefreshRoute;
+  final VoidCallback onEditRoute;
   final Future<void> Function() onStartNavigation;
   final VoidCallback onToggleVoiceGuidance;
   final VoidCallback onEndRoute;
@@ -191,6 +193,14 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 closeAction,
                 const SizedBox(width: 4),
                 Expanded(child: stats),
+                IconButton(
+                  color: Colors.white,
+                  tooltip: context.l10n.isEnglish
+                      ? 'Edit route'
+                      : 'Route bearbeiten',
+                  onPressed: onEditRoute,
+                  icon: const Icon(Icons.edit_location_alt),
+                ),
                 if (route.state == MapRouteState.SHOWN &&
                     route.route != null &&
                     model.navigationStarted &&
@@ -220,7 +230,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
             ),
             if (route.state == MapRouteState.SHOWN &&
                 route.route != null &&
-                !model.navigationStarted) ...[
+                !model.navigationStarted &&
+                model.routeStart == null) ...[
               const SizedBox(height: 8),
               Align(
                 alignment: AlignmentDirectional.centerEnd,

@@ -28,19 +28,23 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
   String? errorMsg = null;
 
   List<Place> recentSearches = [];
+  List<Place> favoritePlaces = [];
   String? correctedQuery;
 
   RecentSearchesStore recentSearchesRepo;
+  RecentSearchesStore favoritesRepo;
   int _searchSequence = 0;
   bool _disposed = false;
 
   PlaceSearchScreenViewModel({
     required this.recentSearchesRepo,
+    RecentSearchesStore? favoritesRepo,
     GeoapifyApi? api,
     NominatimApi? fallbackApi,
     MunichStreetCorrector? streetCorrector,
     this.searchCenter,
-  })  : api = api ?? GeoapifyApi(),
+  })  : favoritesRepo = favoritesRepo ?? favoritePlacesRepo,
+        api = api ?? GeoapifyApi(),
         fallbackApi = fallbackApi ?? NominatimApi(),
         streetCorrector = streetCorrector ?? MunichStreetCorrector() {
     recentSearchesRepo.load().then(
@@ -52,6 +56,20 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
       onError: (Object error, StackTrace stackTrace) {
         log.w(
           'Loading recent searches failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
+    this.favoritesRepo.load().then(
+      (loadedPlaces) {
+        if (_disposed) return;
+        favoritePlaces = loadedPlaces.take(3).toList();
+        _notifyListeners();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        log.w(
+          'Loading favorite places failed',
           error: error,
           stackTrace: stackTrace,
         );
@@ -174,6 +192,52 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
         0, min(recentSearches.length, maxNumberStoredRecentSearches));
     recentSearchesRepo.store(recentSearches);
     _notifyListeners();
+  }
+
+  bool isFavorite(Place place) => favoritePlaces.any(
+        (favorite) =>
+            favorite.latLng.latitude == place.latLng.latitude &&
+            favorite.latLng.longitude == place.latLng.longitude,
+      );
+
+  Future<bool> toggleFavorite(Place place) async {
+    final index = favoritePlaces.indexWhere(
+      (favorite) =>
+          favorite.latLng.latitude == place.latLng.latitude &&
+          favorite.latLng.longitude == place.latLng.longitude,
+    );
+    if (index >= 0) {
+      favoritePlaces.removeAt(index);
+    } else {
+      if (favoritePlaces.length >= 3) return false;
+      favoritePlaces.add(place);
+    }
+    _notifyListeners();
+    await favoritesRepo.store(favoritePlaces);
+    return true;
+  }
+
+  Future<void> renameFavorite(Place place, String name) async {
+    final favoriteIndex = favoritePlaces.indexWhere(
+      (favorite) =>
+          favorite.latLng.latitude == place.latLng.latitude &&
+          favorite.latLng.longitude == place.latLng.longitude,
+    );
+    if (favoriteIndex < 0) return;
+    final renamed = Place(name, place.latLng);
+    favoritePlaces[favoriteIndex] = renamed;
+
+    final recentIndex = recentSearches.indexWhere(
+      (recent) =>
+          recent.latLng.latitude == place.latLng.latitude &&
+          recent.latLng.longitude == place.latLng.longitude,
+    );
+    if (recentIndex >= 0) {
+      recentSearches[recentIndex] = renamed;
+      await recentSearchesRepo.store(recentSearches);
+    }
+    _notifyListeners();
+    await favoritesRepo.store(favoritePlaces);
   }
 
   void clearAllRecentSearches() {
