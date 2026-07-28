@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
-import 'package:munich_ways/ui/place_search/place_search_result.dart';
+import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,7 +27,6 @@ class PlaceSearchBody extends StatelessWidget {
 
     final children = <Widget>[];
     var showAttribution = false;
-    var mapSelectionAdded = false;
 
     if (model.errorMsg != null) {
       children.add(
@@ -40,7 +39,7 @@ class PlaceSearchBody extends StatelessWidget {
           ),
         ),
       );
-      children.addAll(_recentSearchWidgets(context, model));
+      children.addAll(_savedPlaceWidgets(context, model));
     } else if (model.places.isNotEmpty) {
       if (model.correctedQuery case final correctedQuery?) {
         children.add(
@@ -98,17 +97,8 @@ class PlaceSearchBody extends StatelessWidget {
           ),
         );
         children.add(const Divider(height: 1));
-        children.add(_mapSelectionWidget(context));
-        mapSelectionAdded = true;
       }
-      children.addAll(_recentSearchWidgets(context, model));
-    }
-
-    if (!mapSelectionAdded) {
-      if (children.isNotEmpty) {
-        children.add(const Divider(height: 1));
-      }
-      children.add(_mapSelectionWidget(context));
+      children.addAll(_savedPlaceWidgets(context, model));
     }
 
     final results = ListView(
@@ -168,25 +158,102 @@ class PlaceSearchBody extends StatelessWidget {
     );
   }
 
-  Widget _mapSelectionWidget(BuildContext context) {
-    return ListTile(
-      dense: true,
-      visualDensity: const VisualDensity(vertical: -2),
-      leading: Icon(
-        Icons.add_location_alt_outlined,
-        color: Theme.of(context).colorScheme.primary,
+  List<Widget> _savedPlaceWidgets(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+  ) {
+    return [
+      ..._favoriteWidgets(context, model),
+      ..._recentSearchWidgets(context, model),
+    ];
+  }
+
+  List<Widget> _favoriteWidgets(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+  ) {
+    if (model.favoritePlaces.isEmpty) return [];
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+        child: Text(
+          context.l10n.isEnglish ? 'Favorites' : 'Favoriten',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
       ),
-      title: Text(
-        context.l10n.tr('Auf Karte auswählen'),
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
+      for (final favorite in model.favoritePlaces) ...[
+        const Divider(height: 1),
+        ListTile(
+          dense: true,
+          leading: Icon(
+            Icons.star,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: Text(
+            favorite.displayName!,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: context.l10n.isEnglish ? 'Rename' : 'Umbenennen',
+                onPressed: () => _renameFavorite(context, model, favorite),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: context.l10n.isEnglish ? 'Remove' : 'Entfernen',
+                onPressed: () => model.toggleFavorite(favorite),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+          onTap: () {
+            model.addToRecentSearches(favorite);
+            Navigator.pop(context, favorite);
+          },
+        ),
+      ],
+    ];
+  }
+
+  Future<void> _renameFavorite(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Place favorite,
+  ) async {
+    var name = favorite.displayName ?? '';
+    final updatedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.l10n.isEnglish ? 'Rename favorite' : 'Favorit umbenennen',
+        ),
+        content: TextFormField(
+          initialValue: name,
+          autofocus: true,
+          onChanged: (value) => name = value,
+          onFieldSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.tr('Abbrechen')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, name),
+            child: Text(
+              context.l10n.isEnglish ? 'Save' : 'Speichern',
             ),
-      ),
-      onTap: () => Navigator.pop(
-        context,
-        PlaceSearchSheetResult.selectOnMap,
+          ),
+        ],
       ),
     );
+    final trimmedName = updatedName?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) return;
+    await model.renameFavorite(favorite, trimmedName);
   }
 
   List<Widget> _recentSearchWidgets(
@@ -213,11 +280,33 @@ class PlaceSearchBody extends StatelessWidget {
             recentSearch.displayName!,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          trailing: Icon(
-            Icons.chevron_right,
-            color: Colors.black45,
-            semanticLabel:
-                context.l10n.selectDestination(recentSearch.displayName!),
+          trailing: IconButton(
+            tooltip: model.isFavorite(recentSearch)
+                ? (context.l10n.isEnglish
+                    ? 'Remove favorite'
+                    : 'Favorit entfernen')
+                : (context.l10n.isEnglish
+                    ? 'Add favorite'
+                    : 'Als Favorit speichern'),
+            onPressed: () async {
+              final isFavorite = model.isFavorite(recentSearch);
+              if (!isFavorite && model.favoritePlaces.length >= 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      context.l10n.isEnglish
+                          ? 'A maximum of three favorites is possible.'
+                          : 'Es sind maximal drei Favoriten möglich.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              await model.toggleFavorite(recentSearch);
+            },
+            icon: Icon(
+              model.isFavorite(recentSearch) ? Icons.star : Icons.star_border,
+            ),
           ),
           onTap: () {
             model.addToRecentSearches(recentSearch);

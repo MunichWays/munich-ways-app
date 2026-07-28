@@ -15,8 +15,10 @@ class VoiceGuidance {
     this.arrivalDistanceMeters = 20,
     this.lookAheadSeconds = 2,
     this.maximumLookAheadMeters = 15,
-    this.speechLeadSeconds = 2,
+    this.speechLeadSeconds = 1,
     this.maximumSpeechLookAheadMeters = 30,
+    this.closeManeuverDistanceMeters = 35,
+    this.offRouteUpdatesBeforeWarning = 3,
   });
 
   final double approachDistanceMeters;
@@ -27,6 +29,8 @@ class VoiceGuidance {
   final double maximumLookAheadMeters;
   final double speechLeadSeconds;
   final double maximumSpeechLookAheadMeters;
+  final double closeManeuverDistanceMeters;
+  final int offRouteUpdatesBeforeWarning;
 
   CycleRoute? _route;
   List<_GuidanceManeuver> _maneuvers = const [];
@@ -34,6 +38,8 @@ class VoiceGuidance {
   bool _approachSpoken = false;
   bool _nowSpoken = false;
   bool _arrivalSpoken = false;
+  int _offRouteUpdates = 0;
+  bool _offRouteWarningSpoken = false;
   RouteManeuver? _arrival;
 
   void setRoute(CycleRoute? route) {
@@ -43,6 +49,8 @@ class VoiceGuidance {
     _approachSpoken = false;
     _nowSpoken = false;
     _arrivalSpoken = false;
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
     _arrival = null;
     if (route == null || route.points.length < 2) {
       _maneuvers = const [];
@@ -120,8 +128,18 @@ class VoiceGuidance {
 
     final projection = _projectOntoRoute(route.points, position);
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
+      _offRouteUpdates++;
+      if (!_offRouteWarningSpoken &&
+          _offRouteUpdates >= offRouteUpdatesBeforeWarning) {
+        _offRouteWarningSpoken = true;
+        return english
+            ? 'No directions. Route may have been left or no GPS signal.'
+            : 'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.';
+      }
       return null;
     }
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
 
     final arrival = _arrival;
     if (!_arrivalSpoken &&
@@ -146,20 +164,48 @@ class VoiceGuidance {
     final remaining = target.routeDistance - travelled;
     if (!_nowSpoken && remaining >= -5 && remaining <= nowDistanceMeters) {
       _nowSpoken = true;
-      return formatManeuver(target.maneuver, english: english, now: true);
+      return _formatSpokenManeuver(
+        target,
+        english: english,
+        now: true,
+      );
     }
     if (!_approachSpoken &&
         target.maneuver.type != 'arrive' &&
         remaining > nowDistanceMeters &&
         remaining <= approachDistanceMeters) {
       _approachSpoken = true;
-      return formatManeuver(
-        target.maneuver,
+      return _formatSpokenManeuver(
+        target,
         english: english,
         distanceMeters: _roundedDistance(remaining),
       );
     }
     return null;
+  }
+
+  String _formatSpokenManeuver(
+    _GuidanceManeuver target, {
+    required bool english,
+    bool now = false,
+    int? distanceMeters,
+  }) {
+    final first = formatManeuver(
+      target.maneuver,
+      english: english,
+      now: now,
+      distanceMeters: distanceMeters,
+    );
+    if (_index + 1 >= _maneuvers.length) return first;
+
+    final next = _maneuvers[_index + 1];
+    final gap = next.routeDistance - target.routeDistance;
+    if (gap <= 0 || gap > closeManeuverDistanceMeters) return first;
+
+    final nextAction = _action(next.maneuver, english);
+    return english
+        ? '${first.substring(0, first.length - 1)}, then immediately $nextAction.'
+        : '${first.substring(0, first.length - 1)}, danach sofort $nextAction.';
   }
 
   void _next() {

@@ -3,14 +3,54 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
 
-Future<void> showRoutePlannerSheet(
+enum RoutePlannerPointType { start, stop, destination }
+
+class RoutePlannerMapSelection {
+  const RoutePlannerMapSelection({
+    required this.type,
+    required this.stopIndex,
+    required this.start,
+    required this.stops,
+    required this.destination,
+  });
+
+  final RoutePlannerPointType type;
+  final int? stopIndex;
+  final Place? start;
+  final List<Place> stops;
+  final Place? destination;
+
+  RoutePlannerMapSelection withSelectedPlace(Place place) {
+    final updatedStops = List<Place>.of(stops);
+    if (type == RoutePlannerPointType.stop) {
+      final index = stopIndex ?? updatedStops.length;
+      if (index < updatedStops.length) {
+        updatedStops[index] = place;
+      } else {
+        updatedStops.add(place);
+      }
+    }
+    return RoutePlannerMapSelection(
+      type: type,
+      stopIndex: stopIndex,
+      start: type == RoutePlannerPointType.start ? place : start,
+      stops: updatedStops,
+      destination:
+          type == RoutePlannerPointType.destination ? place : destination,
+    );
+  }
+}
+
+Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
   BuildContext context, {
   required MapScreenViewModel model,
   LatLng? searchCenter,
+  RoutePlannerMapSelection? initialPlan,
 }) {
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<RoutePlannerMapSelection>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -18,6 +58,7 @@ Future<void> showRoutePlannerSheet(
     builder: (_) => _RoutePlannerSheet(
       model: model,
       searchCenter: searchCenter,
+      initialPlan: initialPlan,
     ),
   );
 }
@@ -26,10 +67,12 @@ class _RoutePlannerSheet extends StatefulWidget {
   const _RoutePlannerSheet({
     required this.model,
     required this.searchCenter,
+    required this.initialPlan,
   });
 
   final MapScreenViewModel model;
   final LatLng? searchCenter;
+  final RoutePlannerMapSelection? initialPlan;
 
   @override
   State<_RoutePlannerSheet> createState() => _RoutePlannerSheetState();
@@ -45,18 +88,55 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   @override
   void initState() {
     super.initState();
-    _start = widget.model.routeStart;
-    _destination = widget.model.destination;
-    _stops = List.of(widget.model.waypoints);
+    final initialPlan = widget.initialPlan;
+    _start = initialPlan?.start ??
+        (widget.model.navigationStarted ? null : widget.model.routeStart);
+    _destination = initialPlan?.destination ?? widget.model.destination;
+    _stops = List.of(initialPlan?.stops ?? widget.model.waypoints);
   }
 
-  Future<Place?> _searchPlace() async {
+  Future<void> _selectPlace(
+    RoutePlannerPointType type, {
+    int? stopIndex,
+  }) async {
     final result = await showPlaceSearchSheet(
       context,
       searchCenter: widget.searchCenter,
       showRoutePlannerOption: false,
     );
-    return result is Place ? result : null;
+    if (!mounted) return;
+    if (result == PlaceSearchSheetResult.selectOnMap) {
+      Navigator.pop(
+        context,
+        RoutePlannerMapSelection(
+          type: type,
+          stopIndex: stopIndex,
+          start: _start,
+          stops: List.of(_stops),
+          destination: _destination,
+        ),
+      );
+      return;
+    }
+    if (result is! Place) return;
+    setState(() {
+      switch (type) {
+        case RoutePlannerPointType.start:
+          _start = result;
+          break;
+        case RoutePlannerPointType.stop:
+          final index = stopIndex ?? _stops.length;
+          if (index < _stops.length) {
+            _stops[index] = result;
+          } else {
+            _stops.add(result);
+          }
+          break;
+        case RoutePlannerPointType.destination:
+          _destination = result;
+          break;
+      }
+    });
   }
 
   String _name(Place place) {
@@ -103,10 +183,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 value: _start == null
                     ? (_english ? 'Current position' : 'Aktueller Standort')
                     : _name(_start!),
-                onTap: () async {
-                  final place = await _searchPlace();
-                  if (place != null && mounted) setState(() => _start = place);
-                },
+                onTap: () => _selectPlace(RoutePlannerPointType.start),
                 onClear:
                     _start == null ? null : () => setState(() => _start = null),
               ),
@@ -115,21 +192,17 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   icon: Icons.circle_outlined,
                   title: '${_english ? 'Stop' : 'Zwischenstopp'} ${index + 1}',
                   value: _name(_stops[index]),
-                  onTap: () async {
-                    final place = await _searchPlace();
-                    if (place != null && mounted) {
-                      setState(() => _stops[index] = place);
-                    }
-                  },
+                  onTap: () => _selectPlace(
+                    RoutePlannerPointType.stop,
+                    stopIndex: index,
+                  ),
                   onClear: () => setState(() => _stops.removeAt(index)),
                 ),
               TextButton.icon(
-                onPressed: () async {
-                  final place = await _searchPlace();
-                  if (place != null && mounted) {
-                    setState(() => _stops.add(place));
-                  }
-                },
+                onPressed: () => _selectPlace(
+                  RoutePlannerPointType.stop,
+                  stopIndex: _stops.length,
+                ),
                 icon: const Icon(Icons.add_location_alt_outlined),
                 label: Text(
                   _english
@@ -143,12 +216,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 value: _destination == null
                     ? (_english ? 'Select destination' : 'Ziel auswählen')
                     : _name(_destination!),
-                onTap: () async {
-                  final place = await _searchPlace();
-                  if (place != null && mounted) {
-                    setState(() => _destination = place);
-                  }
-                },
+                onTap: () => _selectPlace(RoutePlannerPointType.destination),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(

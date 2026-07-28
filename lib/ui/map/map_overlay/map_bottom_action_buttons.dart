@@ -15,6 +15,7 @@ class MapBottomActionButtons extends StatelessWidget {
     super.key,
     required this.model,
     required this.searchCenterProvider,
+    required this.onPlanRoute,
     required this.onPressLocation,
     this.showSearch = true,
     this.navigationBar,
@@ -22,6 +23,7 @@ class MapBottomActionButtons extends StatelessWidget {
 
   final MapScreenViewModel model;
   final LatLng? Function() searchCenterProvider;
+  final Future<void> Function() onPlanRoute;
   final VoidCallback onPressLocation;
   final bool showSearch;
   final Widget? navigationBar;
@@ -85,6 +87,7 @@ class MapBottomActionButtons extends StatelessWidget {
               child: MapSearchBar(
                 model: model,
                 searchCenterProvider: searchCenterProvider,
+                onPlanRoute: onPlanRoute,
               ),
             ),
             const SizedBox(height: 8),

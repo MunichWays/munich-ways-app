@@ -98,7 +98,7 @@ void main() {
   });
 
   test('announces the approach earlier based on bicycle speed', () {
-    const position = LatLng(48.14028, 11.5700);
+    const position = LatLng(48.14032, 11.5700);
     final stationaryGuidance = VoiceGuidance()
       ..setRoute(routeWith(const RouteManeuver(
         location: turn,
@@ -198,6 +198,51 @@ void main() {
     expect(
       guidance.update(beforeTurn, english: false),
       'In 60 Metern links abbiegen.',
+    );
+  });
+
+  test('warns once after repeated positions off the route', () {
+    final guidance = VoiceGuidance();
+    guidance.setRoute(routeWith(const RouteManeuver(
+      location: turn,
+      type: 'turn',
+      modifier: 'left',
+    )));
+    const offRoute = LatLng(48.1405, 11.57054);
+
+    expect(guidance.update(offRoute, english: false), isNull);
+    expect(guidance.update(offRoute, english: false), isNull);
+    expect(
+      guidance.update(offRoute, english: false),
+      'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.',
+    );
+    expect(guidance.update(offRoute, english: false), isNull);
+  });
+
+  test('combines two closely spaced turns in one announcement', () {
+    const secondTurn = LatLng(48.14118, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, beforeTurn, turn, secondTurn, end],
+        170,
+        40,
+        maneuvers: const [
+          RouteManeuver(
+            location: turn,
+            type: 'turn',
+            modifier: 'right',
+          ),
+          RouteManeuver(
+            location: secondTurn,
+            type: 'turn',
+            modifier: 'left',
+          ),
+        ],
+      ));
+
+    expect(
+      guidance.update(beforeTurn, english: false),
+      'In 60 Metern rechts abbiegen, danach sofort links abbiegen.',
     );
   });
 

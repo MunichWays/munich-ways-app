@@ -44,6 +44,7 @@ void main() {
               child: MapNavigationHeaderBar(
                 model: model,
                 onRefreshRoute: () async {},
+                onEditRoute: () {},
                 onStartNavigation: () async {},
                 onToggleVoiceGuidance: () {},
                 onEndRoute: () {},
@@ -80,6 +81,7 @@ void main() {
                 builder: (context, _) => MapBottomActionButtons(
                   model: model,
                   searchCenterProvider: () => null,
+                  onPlanRoute: () async {},
                   onPressLocation: () {},
                   showSearch: false,
                 ),
