@@ -264,6 +264,33 @@ void main() {
     expect(guidance.update(end, english: false), isNull);
   });
 
+  test('announces a named intermediate destination separately', () {
+    const intermediate = LatLng(48.1410, 11.5690);
+    final guidance = VoiceGuidance();
+    guidance.setRoute(
+      CycleRoute(
+        const [start, intermediate, end],
+        200,
+        50,
+        maneuvers: const [
+          RouteManeuver(location: intermediate, type: 'arrive'),
+          RouteManeuver(location: end, type: 'arrive'),
+        ],
+      ),
+      intermediateDestinationNames: const ['Marienplatz'],
+    );
+
+    expect(
+      guidance.update(intermediate, english: false),
+      'Sie haben das Zwischenziel Marienplatz erreicht.',
+    );
+    expect(guidance.update(intermediate, english: false), isNull);
+    expect(
+      guidance.update(end, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+  });
+
   test('does not announce arrival outside the 20 metre destination radius', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(CycleRoute(

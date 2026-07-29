@@ -14,6 +14,7 @@ import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
+import 'package:munich_ways/routing/route_error_message.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/routing/routing_service.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
@@ -27,6 +28,8 @@ enum MapSidePanelEdge {
 }
 
 class MapScreenViewModel extends ChangeNotifier {
+  static const _ratingsRequestTimeout = Duration(seconds: 6);
+
   static const _refreshLocationSettings = LocationSettings(
     accuracy: LocationAccuracy.medium,
     timeLimit: Duration(seconds: 10),
@@ -220,6 +223,7 @@ class MapScreenViewModel extends ChangeNotifier {
   MapScreenViewModel({
     RoutingService? routingService,
     SettingsStore? store,
+    MunichwaysApi? munichwaysApi,
   }) {
     _routingService = routingService ??
         RoutingService(
@@ -228,6 +232,7 @@ class MapScreenViewModel extends ChangeNotifier {
           radlNaviCoverage: OberbayernCoverage(),
         );
     _settingsStore = store ?? settingsStore;
+    _munichwaysApi = munichwaysApi ?? MunichwaysApi();
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
     _permissionStreamController = StreamController();
@@ -471,15 +476,17 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Future<bool> refreshRadlnetze({
     Duration minimumLoadingDuration = Duration.zero,
+    Duration requestTimeout = _ratingsRequestTimeout,
   }) async {
     final startedAt = DateTime.now();
     loading = true;
     notifyListeners();
+    var receivedData = false;
 
     try {
-      var receivedData = false;
-      await for (final polylines
-          in _munichwaysApi.getRadlvorrangnetzUpdates()) {
+      await for (final polylines in _munichwaysApi
+          .getRadlvorrangnetzUpdates()
+          .timeout(requestTimeout)) {
         _polylinesGesamtnetz = polylines;
         _networkRevision++;
         receivedData = true;
@@ -493,9 +500,14 @@ class MapScreenViewModel extends ChangeNotifier {
       }
       return receivedData;
     } catch (e) {
-      _displayErrorMsg(e.toString());
+      if (!receivedData) {
+        _displayErrorMsg(
+          'Bewertungen konnten nicht geladen werden. '
+          'Die Karte kann weiterhin verwendet werden.',
+        );
+      }
       log.e("Error loading Netze", error: e);
-      return false;
+      return receivedData;
     } finally {
       final remaining =
           minimumLoadingDuration - DateTime.now().difference(startedAt);
@@ -739,7 +751,7 @@ class MapScreenViewModel extends ChangeNotifier {
           _routePlanRevision != planRevision) {
         return false;
       }
-      _displayErrorMsg("Fehler bei Routensuche $e");
+      _displayErrorMsg(routeErrorMessage(e));
       this.route = MapRoute(null, MapRouteState.ERROR);
       notifyListeners();
       return false;

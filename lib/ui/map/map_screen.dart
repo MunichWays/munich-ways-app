@@ -99,6 +99,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   VoiceGuidanceDisplay? _nextManeuver;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   Timer? _voiceSignalTimer;
+  Timer? _initialContentFallbackTimer;
   bool _notificationPermissionExplained = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
@@ -164,6 +165,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     _locationSubscription?.cancel();
     _voiceSignalTimer?.cancel();
+    _initialContentFallbackTimer?.cancel();
     unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
@@ -364,6 +366,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             });
           }
           _scheduleOverlaySync(model);
+          _scheduleInitialContentFallback(model);
 
           if (kStoreScreenshots &&
               _storeScreenshotNetworkSynced &&
@@ -542,6 +545,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               return;
                             }
                             setState(() {
+                              _initialContentFallbackTimer?.cancel();
                               _initialRatingsAwaitingMapIdle = false;
                               _initialContentReady = true;
                             });
@@ -937,6 +941,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
     _voiceGuidance.setRoute(
       model.navigationStarted ? model.route.route : null,
+      intermediateDestinationNames:
+          model.waypoints.map((place) => place.displayName).toList(),
     );
     final nextManeuver = model.navigationStarted
         ? _voiceGuidance.display(
@@ -1014,7 +1020,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       RoutePlannerPointType.start =>
         context.l10n.isEnglish ? 'start' : 'Startpunkt',
       RoutePlannerPointType.stop =>
-        context.l10n.isEnglish ? 'intermediate stop' : 'Zwischenhalt',
+        context.l10n.isEnglish ? 'intermediate stop' : 'Zwischenziel',
       RoutePlannerPointType.destination =>
         context.l10n.isEnglish ? 'destination' : 'Ziel',
     };
@@ -1041,38 +1047,58 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     var enteredName = '';
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          context.l10n.isEnglish ? 'Name this place' : 'Punkt benennen',
-        ),
-        content: TextField(
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: context.l10n.isEnglish
-                ? 'e.g. hotel or station'
-                : 'z. B. Hotel oder Bahnhof',
-          ),
-          onChanged: (value) => enteredName = value,
-          onSubmitted: (value) => Navigator.pop(dialogContext, value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(
-              context.l10n.isEnglish ? 'Skip' : 'Überspringen',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final canSave = enteredName.trim().isNotEmpty;
+          return AlertDialog(
+            title: Text(
+              context.l10n.isEnglish ? 'Name this place' : 'Punkt benennen',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              enteredName,
+            content: TextField(
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                hintText: context.l10n.isEnglish
+                    ? 'e.g. hotel or station'
+                    : 'z. B. Hotel oder Bahnhof',
+              ),
+              onChanged: (value) {
+                setDialogState(() => enteredName = value);
+              },
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  Navigator.pop(dialogContext, value);
+                }
+              },
             ),
-            child: Text(
-              context.l10n.isEnglish ? 'Save' : 'Speichern',
-            ),
-          ),
-        ],
+            actions: [
+              SizedBox(
+                width: 152,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    context.l10n.isEnglish ? 'Skip' : 'Überspringen',
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 152,
+                child: FilledButton(
+                  onPressed: canSave
+                      ? () => Navigator.pop(dialogContext, enteredName)
+                      : null,
+                  child: Text(
+                    context.l10n.isEnglish ? 'Save' : 'Speichern',
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
     // Let the dialog route and its inherited dependencies deactivate fully
@@ -1279,6 +1305,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _overlaySyncScheduled = false;
       _syncOverlays(model);
+    });
+  }
+
+  void _scheduleInitialContentFallback(MapScreenViewModel model) {
+    if (_initialContentReady ||
+        !model.initialLoadComplete ||
+        model.loading ||
+        _initialContentFallbackTimer != null) {
+      return;
+    }
+    _initialContentFallbackTimer = Timer(const Duration(seconds: 1), () {
+      _initialContentFallbackTimer = null;
+      if (!mounted || _initialContentReady) return;
+      setState(() {
+        _initialRatingsAwaitingMapIdle = false;
+        _initialContentReady = true;
+      });
     });
   }
 
