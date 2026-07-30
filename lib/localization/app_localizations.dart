@@ -58,6 +58,9 @@ class AppLocalizations {
   String get loadingMap => isEnglish
       ? 'Loading map and ratings'
       : 'Karte und Bewertungen werden geladen';
+  String get loadingRatingsInBackground => isEnglish
+      ? 'Loading ratings in the background…'
+      : 'Bewertungen werden im Hintergrund geladen …';
 
   String selectDestination(String name) =>
       isEnglish ? 'Select destination: $name' : 'Ziel auswählen: $name';

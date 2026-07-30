@@ -172,7 +172,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 _english
                     ? 'Optionally select a different start or intermediate stop. '
                         'The default is your current position to the selected destination.'
-                    : 'Optional anderen Startpunkt oder Zwischenhalt wählen. '
+                    : 'Optional anderen Startpunkt oder Zwischenziel wählen. '
                         'Standard ist: Aktueller Standort zum gewählten Ziel.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -190,7 +190,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
               for (var index = 0; index < _stops.length; index++)
                 _PlaceRow(
                   icon: Icons.circle_outlined,
-                  title: '${_english ? 'Stop' : 'Zwischenstopp'} ${index + 1}',
+                  title: '${_english ? 'Stop' : 'Zwischenziel'} ${index + 1}',
                   value: _name(_stops[index]),
                   onTap: () => _selectPlace(
                     RoutePlannerPointType.stop,
@@ -207,7 +207,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 label: Text(
                   _english
                       ? 'Add intermediate stop'
-                      : 'Zwischenstation hinzufügen',
+                      : 'Zwischenziel hinzufügen',
                 ),
               ),
               _PlaceRow(

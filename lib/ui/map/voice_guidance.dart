@@ -37,21 +37,27 @@ class VoiceGuidance {
   int _index = 0;
   bool _approachSpoken = false;
   bool _nowSpoken = false;
-  bool _arrivalSpoken = false;
+  final Set<int> _spokenArrivals = {};
   int _offRouteUpdates = 0;
   bool _offRouteWarningSpoken = false;
-  RouteManeuver? _arrival;
+  List<RouteManeuver> _arrivals = const [];
+  List<String?> _intermediateDestinationNames = const [];
 
-  void setRoute(CycleRoute? route) {
+  void setRoute(
+    CycleRoute? route, {
+    List<String?> intermediateDestinationNames = const [],
+  }) {
     if (identical(route, _route)) return;
     _route = route;
     _index = 0;
     _approachSpoken = false;
     _nowSpoken = false;
-    _arrivalSpoken = false;
+    _spokenArrivals.clear();
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
-    _arrival = null;
+    _arrivals = const [];
+    _intermediateDestinationNames =
+        List<String?>.of(intermediateDestinationNames);
     if (route == null || route.points.length < 2) {
       _maneuvers = const [];
       return;
@@ -64,12 +70,9 @@ class VoiceGuidance {
                   .distanceAlongRoute,
             ))
         .toList();
-    for (final maneuver in route.maneuvers) {
-      if (maneuver.type == 'arrive') {
-        _arrival = maneuver;
-        break;
-      }
-    }
+    _arrivals = route.maneuvers
+        .where((maneuver) => maneuver.type == 'arrive')
+        .toList(growable: false);
   }
 
   void reset() => setRoute(null);
@@ -87,12 +90,10 @@ class VoiceGuidance {
       return null;
     }
 
-    final arrival = _arrival;
-    if (arrival != null &&
-        const Distance().as(LengthUnit.Meter, position, arrival.location) <=
-            arrivalDistanceMeters) {
+    final arrivalIndex = _arrivalIndexAt(position);
+    if (arrivalIndex != null) {
       return VoiceGuidanceDisplay(
-        text: english ? 'Destination reached' : 'Ziel erreicht',
+        text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
       );
     }
@@ -141,13 +142,9 @@ class VoiceGuidance {
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
 
-    final arrival = _arrival;
-    if (!_arrivalSpoken &&
-        arrival != null &&
-        const Distance().as(LengthUnit.Meter, position, arrival.location) <=
-            arrivalDistanceMeters) {
-      _arrivalSpoken = true;
-      return formatManeuver(arrival, english: english, now: true);
+    final arrivalIndex = _arrivalIndexAt(position);
+    if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
+      return _arrivalAnnouncement(arrivalIndex, english);
     }
 
     if (_index >= _maneuvers.length) return null;
@@ -182,6 +179,56 @@ class VoiceGuidance {
       );
     }
     return null;
+  }
+
+  int? _arrivalIndexAt(LatLng position) {
+    for (var index = 0; index < _arrivals.length; index++) {
+      if (const Distance().as(
+            LengthUnit.Meter,
+            position,
+            _arrivals[index].location,
+          ) <=
+          arrivalDistanceMeters) {
+        return index;
+      }
+    }
+    return null;
+  }
+
+  bool _isIntermediateArrival(int index) => index < _arrivals.length - 1;
+
+  String? _intermediateName(int index) {
+    if (index >= _intermediateDestinationNames.length) return null;
+    final name = _intermediateDestinationNames[index]?.trim();
+    return name == null || name.isEmpty ? null : name;
+  }
+
+  String _arrivalDisplay(int index, bool english) {
+    if (!_isIntermediateArrival(index)) {
+      return english ? 'Destination reached' : 'Ziel erreicht';
+    }
+    final name = _intermediateName(index);
+    if (english) {
+      return name == null ? 'Intermediate destination reached' : name;
+    }
+    return name == null ? 'Zwischenziel erreicht' : name;
+  }
+
+  String _arrivalAnnouncement(int index, bool english) {
+    if (!_isIntermediateArrival(index)) {
+      return english
+          ? 'You have reached your destination.'
+          : 'Sie haben das Ziel erreicht.';
+    }
+    final name = _intermediateName(index);
+    if (english) {
+      return name == null
+          ? 'You have reached the intermediate destination.'
+          : 'You have reached the intermediate destination $name.';
+    }
+    return name == null
+        ? 'Sie haben das Zwischenziel erreicht.'
+        : 'Sie haben das Zwischenziel $name erreicht.';
   }
 
   String _formatSpokenManeuver(
