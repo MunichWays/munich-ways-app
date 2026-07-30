@@ -75,6 +75,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
+  bool _cameraReady = false;
+  bool _cameraUpdateRunning = false;
+  bool _firstCameraUpdate = true;
+  CameraUpdate? _pendingCameraUpdate;
   bool _initialContentReady = false;
   bool _mapReadyNotified = false;
   bool _locationPrimeStarted = false;
@@ -294,12 +298,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           if (!_isValidCoordinate(location.latitude, location.longitude))
             return;
           final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-          controller.animateCamera(
+          unawaited(_scheduleCameraUpdate(
             CameraUpdate.newLatLngZoom(
               LatLng(location.latitude, location.longitude),
               max(currentZoom, 17),
             ),
-          );
+          ));
         });
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
@@ -314,12 +318,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             return;
           }
           final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-          controller.animateCamera(
+          unawaited(_scheduleCameraUpdate(
             CameraUpdate.newLatLngZoom(
               LatLng(place.latLng.latitude, place.latLng.longitude),
               currentZoom,
             ),
-          );
+          ));
         });
         model.routeStream.listen((MapRoute route) {
           final position = _latestPosition;
@@ -341,18 +345,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
           if (validPoints.length == 1) {
             final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-            controller.animateCamera(
+            unawaited(_scheduleCameraUpdate(
               CameraUpdate.newLatLngZoom(
                 LatLng(validPoints.first.latitude, validPoints.first.longitude),
                 currentZoom,
               ),
-            );
+            ));
             return;
           }
 
           final bounds = _boundsFor(validPoints);
-          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds,
-              left: 24, top: 24, right: 24, bottom: 24));
+          unawaited(_scheduleCameraUpdate(
+            CameraUpdate.newLatLngBounds(
+              bounds,
+              left: 24,
+              top: 24,
+              right: 24,
+              bottom: 24,
+            ),
+          ));
         });
         return model;
       },
@@ -502,6 +513,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _lastRouteFingerprint = null;
                               setState(() {
                                 _styleLoaded = true;
+                                _cameraReady = false;
                                 // Ratings are optional background content. The
                                 // map is usable as soon as its style is ready.
                                 _initialContentReady = true;
@@ -542,6 +554,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           },
                           onCameraIdle: () {
                             _compassIdleTick.value++;
+                            if (_styleLoaded && !_cameraReady) {
+                              _cameraReady = true;
+                              unawaited(_flushPendingCameraUpdate());
+                            }
                           },
                         ),
                       ),
@@ -844,7 +860,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _refreshVoiceGuidance(model, position);
 
     final controller = _mapController;
-    if (!mounted || !_styleLoaded || controller == null) return;
+    if (!mounted || !_styleLoaded || !_cameraReady || controller == null) {
+      return;
+    }
     var displayedPosition = rawPosition;
     final routePoints = model.route.route?.points;
     if (model.navigationStarted &&
@@ -1238,6 +1256,48 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
     return zoom.clamp(3, 22);
+  }
+
+  /// Defers camera operations until MapLibre has completed its first native
+  /// render. Calling `animateCamera` earlier can abort MapLibre iOS inside
+  /// `TransformState::constrainCameraAndZoomToBounds`.
+  Future<void> _scheduleCameraUpdate(CameraUpdate update) async {
+    _pendingCameraUpdate = update;
+    await _flushPendingCameraUpdate();
+  }
+
+  Future<void> _flushPendingCameraUpdate() async {
+    if (!mounted || !_styleLoaded || !_cameraReady || _cameraUpdateRunning) {
+      return;
+    }
+    final controller = _mapController;
+    final update = _pendingCameraUpdate;
+    if (controller == null || update == null) return;
+
+    _pendingCameraUpdate = null;
+    _cameraUpdateRunning = true;
+    try {
+      // Avoid MapLibre's native easeTo path for the first iOS camera update.
+      // This is the path confirmed by the TestFlight SIGABRT reports.
+      if (Platform.isIOS && _firstCameraUpdate) {
+        await controller.moveCamera(update);
+      } else {
+        await controller.animateCamera(update);
+      }
+      _firstCameraUpdate = false;
+    } catch (error, stackTrace) {
+      log.w(
+        'Map camera update failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _cameraUpdateRunning = false;
+    }
+
+    if (_pendingCameraUpdate != null) {
+      await _flushPendingCameraUpdate();
+    }
   }
 
   double _sideControlsAdditionalBottomOffset(
