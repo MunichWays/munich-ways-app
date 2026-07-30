@@ -54,7 +54,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'munichways_radlnetz_casing_gesamt';
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
   static const _kNetworkLayerCasingRadlId = 'munichways_radlnetz_casing_radl';
-  static const _kNetworkLayerHitId = 'munichways_radlnetz_hit';
+  static const _kNetworkLayerHitGesamtId = 'munichways_radlnetz_hit_gesamt';
+  static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
+  static const _kRadlVorrangMinZoom = 8.0;
+  static const _kGesamtnetzMinZoom = 13.0;
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
   /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
@@ -73,7 +76,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
   bool _initialContentReady = false;
-  bool _initialRatingsAwaitingMapIdle = false;
   bool _mapReadyNotified = false;
   bool _locationPrimeStarted = false;
   bool _overlaySyncScheduled = false;
@@ -99,7 +101,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   VoiceGuidanceDisplay? _nextManeuver;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   Timer? _voiceSignalTimer;
-  Timer? _initialContentFallbackTimer;
   bool _notificationPermissionExplained = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
@@ -165,7 +166,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     _locationSubscription?.cancel();
     _voiceSignalTimer?.cancel();
-    _initialContentFallbackTimer?.cancel();
     unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
@@ -366,7 +366,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             });
           }
           _scheduleOverlaySync(model);
-          _scheduleInitialContentFallback(model);
 
           if (kStoreScreenshots &&
               _storeScreenshotNetworkSynced &&
@@ -464,7 +463,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _featureTapHandlerAttached = true;
                               controller.onFeatureTapped.add(
                                 (point, latLng, id, layerId, annotation) {
-                                  if (layerId != _kNetworkLayerHitId) {
+                                  if (layerId != _kNetworkLayerHitGesamtId &&
+                                      layerId != _kNetworkLayerHitRadlId) {
                                     return;
                                   }
                                   final details =
@@ -500,6 +500,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _lastRouteFingerprint = null;
                               setState(() {
                                 _styleLoaded = true;
+                                // Ratings are optional background content. The
+                                // map is usable as soon as its style is ready.
+                                _initialContentReady = true;
                                 if (kStoreScreenshots) {
                                   _storeScreenshotNetworkSynced = false;
                                   _storeScreenshotIdleCameraDone = false;
@@ -537,18 +540,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           },
                           onCameraIdle: () {
                             _compassIdleTick.value++;
-                          },
-                          onMapIdle: () {
-                            if (!_initialRatingsAwaitingMapIdle ||
-                                _initialContentReady ||
-                                !mounted) {
-                              return;
-                            }
-                            setState(() {
-                              _initialContentFallbackTimer?.cancel();
-                              _initialRatingsAwaitingMapIdle = false;
-                              _initialContentReady = true;
-                            });
                           },
                         ),
                       ),
@@ -688,19 +679,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                  if (!_initialContentReady)
-                    Positioned.fill(
-                      child: MapInitialLoadingOverlay(
-                        message: '${context.l10n.loadingMap} …',
-                      ),
-                    )
-                  else if (model.loading)
+                  if (model.loading)
                     Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
                       child: MapReloadingBanner(
-                        message: context.l10n.reloadingMap,
+                        message: model.initialLoadComplete
+                            ? context.l10n.reloadingMap
+                            : context.l10n.loadingRatingsInBackground,
                       ),
                     ),
                 ],
@@ -1308,23 +1295,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _scheduleInitialContentFallback(MapScreenViewModel model) {
-    if (_initialContentReady ||
-        !model.initialLoadComplete ||
-        model.loading ||
-        _initialContentFallbackTimer != null) {
-      return;
-    }
-    _initialContentFallbackTimer = Timer(const Duration(seconds: 1), () {
-      _initialContentFallbackTimer = null;
-      if (!mounted || _initialContentReady) return;
-      setState(() {
-        _initialRatingsAwaitingMapIdle = false;
-        _initialContentReady = true;
-      });
-    });
-  }
-
   /// Identifies the current radl / gesamtnetz overlay set (not route/destination).
   int _networkFingerprint(MapScreenViewModel model) {
     final pl = model.polylines.toList()
@@ -1556,7 +1526,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MapLibreMapController controller) async {
     if (!_networkGeoJsonReady) return;
     try {
-      await controller.removeLayer(_kNetworkLayerHitId);
+      await controller.removeLayer(_kNetworkLayerHitRadlId);
+      await controller.removeLayer(_kNetworkLayerHitGesamtId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
       await controller.removeLayer(_kNetworkLayerCasingRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
@@ -1593,6 +1564,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         true
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kGesamtnetzMinZoom,
       enableInteraction: false,
     );
     // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
@@ -1613,6 +1585,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         true
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kGesamtnetzMinZoom,
       enableInteraction: false,
     );
     await controller.addLineLayer(
@@ -1631,6 +1604,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         false
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kRadlVorrangMinZoom,
       enableInteraction: false,
     );
     await controller.addLineLayer(
@@ -1649,19 +1623,43 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         false
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kRadlVorrangMinZoom,
       enableInteraction: false,
     );
     // lineOpacity must stay > 0: some MapLibre builds skip hit-testing for fully
     // transparent lines, so taps never reach feature#onTap.
     await controller.addLineLayer(
       _kNetworkSourceId,
-      _kNetworkLayerHitId,
+      _kNetworkLayerHitGesamtId,
       const LineLayerProperties(
         lineColor: '#000000',
         lineWidth: MapOverlayLineStyle.networkHitLineWidthByZoom,
         lineOpacity: 0.01,
       ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        true
+      ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kGesamtnetzMinZoom,
+      enableInteraction: true,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerHitRadlId,
+      const LineLayerProperties(
+        lineColor: '#000000',
+        lineWidth: MapOverlayLineStyle.networkHitLineWidthByZoom,
+        lineOpacity: 0.01,
+      ),
+      filter: [
+        Expressions.equal,
+        [Expressions.get, 'gesamtnetz'],
+        false
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kRadlVorrangMinZoom,
       enableInteraction: true,
     );
     _networkGeoJsonReady = true;
@@ -1669,11 +1667,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _syncNetworkLayers(
       MapScreenViewModel model, MapLibreMapController controller) async {
-    // Capture this before building the GeoJSON. The initial empty-layer sync can
-    // overlap the ratings download; checking the live model only after the await
-    // would then hide the loader even though this sync contains no ratings yet.
-    final containsInitialLoadResult =
-        model.initialLoadComplete && !model.loading;
     final visiblePolylines = model.polylines.toList();
     final result = buildNetworkGeoJson(
       visiblePolylines,
@@ -1687,12 +1680,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _ensureNetworkGeoJsonLayers(controller);
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
-    if (mounted && !_initialContentReady && containsInitialLoadResult) {
-      // setGeoJsonSource completes when the data has been handed to MapLibre.
-      // Keep showing the loader until onMapIdle confirms that these ratings
-      // have also been rendered.
-      _initialRatingsAwaitingMapIdle = true;
-    }
     if (mounted && kStoreScreenshots) {
       setState(() {
         _storeScreenshotNetworkSynced = true;

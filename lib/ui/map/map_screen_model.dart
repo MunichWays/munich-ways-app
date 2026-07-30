@@ -484,9 +484,9 @@ class MapScreenViewModel extends ChangeNotifier {
     var receivedData = false;
 
     try {
-      await for (final polylines in _munichwaysApi
-          .getRadlvorrangnetzUpdates()
-          .timeout(requestTimeout)) {
+      await for (final polylines in _munichwaysApi.getRadlvorrangnetzUpdates(
+          responseTimeout: requestTimeout)) {
+        log.d('ratings received by map model: ${polylines.length} polylines');
         _polylinesGesamtnetz = polylines;
         _networkRevision++;
         receivedData = true;

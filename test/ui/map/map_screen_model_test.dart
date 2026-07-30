@@ -25,8 +25,12 @@ void main() {
 
 class _StalledMunichwaysApi extends MunichwaysApi {
   @override
-  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates() =>
-      StreamController<Set<MPolyline>>().stream;
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
+    Duration? responseTimeout,
+  }) =>
+      StreamController<Set<MPolyline>>()
+          .stream
+          .timeout(responseTimeout ?? const Duration(seconds: 6));
 }
 
 class _MemorySettingsStore extends SettingsStore {
