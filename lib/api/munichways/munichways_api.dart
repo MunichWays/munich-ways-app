@@ -7,12 +7,15 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:munich_ways/api/munichways/geojson_converter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/polyline.dart';
+import 'package:munich_ways/model/street_details.dart';
 
 import '../api_exception.dart';
 
 class MunichwaysApi {
-  final String _radlvorrangnetzUrl =
-      "https://www.munichways.de/App/radlvorrangnetz_app_V07.geojson";
+  final String _happyBikeLevelUrl =
+      "https://www.munichways.de/App/happy_bike_level_munich.geojson";
+  final String _detailsUrl =
+      "https://www.munichways.de/App/IST_RadlVorrangNetz_MunichWays_V20.geojson";
 
   Future<Set<MPolyline>> _parse(File geojsonFile) async {
     final total = Stopwatch()..start();
@@ -26,7 +29,7 @@ class MunichwaysApi {
       );
 
       final parse = Stopwatch()..start();
-      final polylines = await compute(_parseGeojson, contents);
+      final polylines = await compute(_parseHappyBikeLevelGeojson, contents);
       parse.stop();
       total.stop();
       log.d(
@@ -52,7 +55,7 @@ class MunichwaysApi {
   }) async* {
     final responses = StreamIterator(
       DefaultCacheManager().getFileStream(
-        _radlvorrangnetzUrl,
+        _happyBikeLevelUrl,
         withProgress: false,
       ),
     );
@@ -76,12 +79,35 @@ class MunichwaysApi {
   Future<Set<MPolyline>> getRadlvorrangnetz() =>
       getRadlvorrangnetzUpdates().first;
 
+  Future<Map<String, StreetDetails>> getStreetDetails() async {
+    final response = await DefaultCacheManager().getSingleFile(_detailsUrl);
+    final contents = await response.readAsString();
+    return compute(_parseV20Details, contents);
+  }
+
   /// Removes only the ratings file. Other cached app resources stay intact.
-  Future<void> removeRatingsCache() {
-    return DefaultCacheManager().removeFile(_radlvorrangnetzUrl);
+  Future<void> removeRatingsCache() async {
+    await Future.wait([
+      DefaultCacheManager().removeFile(_happyBikeLevelUrl),
+      DefaultCacheManager().removeFile(_detailsUrl),
+    ]);
   }
 }
 
-Set<MPolyline> _parseGeojson(String contents) {
-  return GeojsonConverter().getPolylines(geojson: json.decode(contents));
+Set<MPolyline> _parseHappyBikeLevelGeojson(String contents) {
+  return GeojsonConverter().getPolylines(
+    geojson: json.decode(contents),
+    happyBikeLevelFormat: true,
+  );
+}
+
+Map<String, StreetDetails> _parseV20Details(String contents) {
+  final geojson = json.decode(contents) as Map<String, dynamic>;
+  final result = <String, StreetDetails>{};
+  for (final feature in geojson['features'] as List<dynamic>) {
+    final details = StreetDetails.fromV20Json(feature);
+    final id = streetDetailsFeatureId(details);
+    if (id != null) result[id] = details;
+  }
+  return result;
 }

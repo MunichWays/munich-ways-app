@@ -5,7 +5,10 @@ import 'package:munich_ways/model/street_details.dart';
 
 /// Converts geojson to google maps polylines
 class GeojsonConverter {
-  Set<MPolyline> getPolylines({required geojson}) {
+  Set<MPolyline> getPolylines({
+    required geojson,
+    bool happyBikeLevelFormat = false,
+  }) {
     Set<MPolyline> polylines = {};
     var _features;
     if (geojson['type'].toString() == "FeatureCollection") {
@@ -22,7 +25,12 @@ class GeojsonConverter {
             lCoordinates.forEach((eCoordinate) {
               polylineCoordinates.add(LatLng(eCoordinate[1], eCoordinate[0]));
             });
-            _addPolyline(polylines, feature, polylineCoordinates);
+            _addPolyline(
+              polylines,
+              feature,
+              polylineCoordinates,
+              happyBikeLevelFormat,
+            );
             break;
           case "MultiLineString":
             List<dynamic> mlCoordinates = feature['geometry']['coordinates'];
@@ -32,7 +40,12 @@ class GeojsonConverter {
                 polylineCoordinates.add(LatLng(eCoordinate[1], eCoordinate[0]));
               });
             });
-            _addPolyline(polylines, feature, polylineCoordinates);
+            _addPolyline(
+              polylines,
+              feature,
+              polylineCoordinates,
+              happyBikeLevelFormat,
+            );
             break;
           default:
             log.d("unknown geometry ${feature['geometry']['type']}");
@@ -46,15 +59,19 @@ class GeojsonConverter {
     Set<MPolyline> polylines,
     dynamic feature,
     List<LatLng> coordinates,
+    bool happyBikeLevelFormat,
   ) {
-    String color = feature['properties']['farbe'].toString();
-    if ('grau' == color) {
+    final colorProperty = happyBikeLevelFormat ? 'color' : 'farbe';
+    String color = feature['properties'][colorProperty].toString();
+    if (['grau', 'blue'].contains(color)) {
       log.d('ignore grau ${feature['properties']['munichways_id']}');
       return;
     }
 
     polylines.add(MPolyline(
-      details: StreetDetails.fromJson(feature),
+      details: happyBikeLevelFormat
+          ? StreetDetails.fromHappyBikeLevelJson(feature)
+          : StreetDetails.fromJson(feature),
       points: coordinates,
     ));
   }

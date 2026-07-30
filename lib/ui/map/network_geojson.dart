@@ -17,8 +17,8 @@ class NetworkGeoJsonResult {
 
 /// Stable id for a polyline feature (used as GeoJSON Feature `id`).
 String networkFeatureId(MPolyline polyline) {
-  final m = polyline.details?.munichwaysId;
-  if (m != null && m.isNotEmpty) return m;
+  final detailsId = streetDetailsFeatureId(polyline.details);
+  if (detailsId != null) return detailsId;
   final c = polyline.details?.cartoDbId;
   if (c != null) return 'carto_$c';
   final pts = polyline.points;

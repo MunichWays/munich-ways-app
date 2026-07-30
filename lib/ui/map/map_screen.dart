@@ -452,7 +452,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             if (!_lineTapHandlerAttached) {
                               _lineTapHandlerAttached = true;
                               controller.onLineTapped.add((line) {
-                                final details =
+                                final details = mapViewModel
+                                        .streetDetailsForFeatureId(line.id) ??
                                     _streetDetailsForNetworkFeatureId(line.id);
                                 if (details != null) {
                                   mapViewModel.onTap(details);
@@ -467,7 +468,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                       layerId != _kNetworkLayerHitRadlId) {
                                     return;
                                   }
-                                  final details =
+                                  final details = mapViewModel
+                                          .streetDetailsForFeatureId(id) ??
                                       _streetDetailsForNetworkFeatureId(id);
                                   if (details != null) {
                                     mapViewModel.onTap(details);

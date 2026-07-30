@@ -192,8 +192,29 @@ class MapScreenViewModel extends ChangeNotifier {
   BRouterProfile get bRouterProfile => _bRouterProfile;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
+  Map<String, StreetDetails> _streetDetailsByFeatureId = {};
   int _networkRevision = 0;
   int get networkRevision => _networkRevision;
+
+  StreetDetails? streetDetailsForFeatureId(dynamic rawId) {
+    if (rawId == null) return null;
+    return _streetDetailsByFeatureId[rawId.toString()];
+  }
+
+  Future<void> _loadStreetDetailsInBackground() async {
+    try {
+      final details = await _munichwaysApi.getStreetDetails();
+      _streetDetailsByFeatureId = details;
+      log.d('street details loaded in background: ${details.length}');
+    } catch (e, st) {
+      // Details are optional. Ratings, routing and navigation remain usable.
+      log.e(
+        'Street details background load failed',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
 
   MunichwaysApi _munichwaysApi = MunichwaysApi();
   late final RoutingService _routingService;
@@ -498,6 +519,9 @@ class MapScreenViewModel extends ChangeNotifier {
         }
         notifyListeners();
       }
+      if (receivedData) {
+        unawaited(_loadStreetDetailsInBackground());
+      }
       return receivedData;
     } catch (e) {
       if (!receivedData) {
@@ -506,7 +530,9 @@ class MapScreenViewModel extends ChangeNotifier {
           'Die Karte kann weiterhin verwendet werden.',
         );
       }
-      log.e("Error loading Netze", error: e);
+      if (e is! TimeoutException) {
+        log.e("Error loading Netze", error: e);
+      }
       return receivedData;
     } finally {
       final remaining =

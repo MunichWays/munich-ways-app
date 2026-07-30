@@ -4,12 +4,14 @@ class ListItem extends StatelessWidget {
   final String label;
   final String? value;
   final VoidCallback? onTap;
+  final bool isLink;
 
   const ListItem({
     Key? key,
     required this.label,
     required this.value,
     this.onTap,
+    this.isLink = false,
   }) : super(key: key);
 
   @override
@@ -44,8 +46,23 @@ class ListItem extends StatelessWidget {
                             SizedBox(
                               height: 6,
                             ),
-                            Text(this.value!,
-                                style: Theme.of(context).textTheme.titleMedium)
+                            Text(
+                              this.value!,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: isLink
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
+                                    decoration: isLink
+                                        ? TextDecoration.underline
+                                        : TextDecoration.none,
+                                    decorationColor: isLink
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
+                                  ),
+                            )
                           ],
                         ),
                       ),
