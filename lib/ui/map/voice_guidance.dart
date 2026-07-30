@@ -18,7 +18,7 @@ class VoiceGuidance {
     this.speechLeadSeconds = 1,
     this.maximumSpeechLookAheadMeters = 30,
     this.closeManeuverDistanceMeters = 35,
-    this.offRouteUpdatesBeforeWarning = 3,
+    this.offRouteUpdatesBeforeWarning = 10,
   });
 
   final double approachDistanceMeters;

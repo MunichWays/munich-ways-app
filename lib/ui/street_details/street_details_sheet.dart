@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:munich_ways/api/mapillary/mapillary_service.dart';
 import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
@@ -10,6 +12,8 @@ import 'package:munich_ways/ui/street_details/mapillary_image.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class StreetDetailsSheet extends StatefulWidget {
@@ -54,8 +58,8 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
   List<Widget> _namesAndRating(BuildContext context) {
     final bothNames = _hasText(d.osmName) && _hasText(d.munichwaysName);
     final ratingParts = [
-      if (_hasText(d.farbe)) _colorLabel(d.farbe).toLowerCase(),
-      if (_hasText(d.happyBikeLevel)) d.happyBikeLevel!,
+      if (_hasText(d.farbe)) context.l10n.tr(d.farbe!),
+      if (_hasText(d.happyBikeLevel)) context.l10n.tr(d.happyBikeLevel!),
       if (_hasText(d.osmClassBicycle)) d.osmClassBicycle!,
     ];
     return [
@@ -63,7 +67,9 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
       if (bothNames) ListItem(label: 'MunichWays', value: d.munichwaysName),
       if (ratingParts.isNotEmpty)
         ListItem(
-          label: 'Bewertung | Happy Bike Level | OSM class:bicycle',
+          label: context.l10n.tr(
+            'Bewertung | Happy Bike Level | OSM class:bicycle',
+          ),
           value: ratingParts.join(' = '),
         ),
     ];
@@ -82,49 +88,57 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
           value: d.description,
         ),
       for (final link in d.routeLinks ?? const <Link>[])
-        if (_isVisibleRouteLink(link)) _linkItem('Strecke', link),
+        if (_isVisibleRouteLink(link))
+          _linkItem(context.l10n.tr('Strecke'), link),
       if (_hasText(d.mwRvRoute) && d.mwRvRoute != '-')
-        ListItem(label: 'RadlVorrangNetz', value: d.mwRvRoute),
+        ListItem(
+          label: context.l10n.tr('RadlVorrangNetz'),
+          value: d.mwRvRoute,
+        ),
       if (_hasText(d.neuralgischerPunkt))
         ListItem(
-          label: 'Neuralgischer Punkt',
+          label: context.l10n.tr('Neuralgischer Punkt'),
           value: d.neuralgischerPunkt,
         ),
       if (_hasText(d.osmHighway))
         ListItem(
-          label: 'Straßenart',
-          value: _translateOsmValue('highway', d.osmHighway!),
+          label: context.l10n.tr('Straßenart'),
+          value: d.osmHighway,
         ),
       if (_hasText(d.osmSurface))
         ListItem(
-          label: 'Oberfläche',
-          value: _translateOsmValue('surface', d.osmSurface!),
+          label: context.l10n.tr('Oberfläche'),
+          value: d.osmSurface,
         ),
       if (_hasText(d.osmSmoothness))
         ListItem(
-          label: 'Ebenheit',
-          value: _translateOsmValue('smoothness', d.osmSmoothness!),
+          label: context.l10n.tr('Ebenheit'),
+          value: d.osmSmoothness,
         ),
       if (_hasText(d.osmBicycle))
         ListItem(
-          label: 'Fahrradregelung',
-          value: _translateOsmValue('bicycle', d.osmBicycle!),
+          label: context.l10n.tr('Fahrradregelung'),
+          value: d.osmBicycle,
         ),
       if (_hasText(d.osmAccess))
         ListItem(
-          label: 'Zugang',
-          value: _translateOsmValue('access', d.osmAccess!),
+          label: context.l10n.tr('Zugang'),
+          value: d.osmAccess,
         ),
-      if (_hasText(d.osmWidth)) ListItem(label: 'Breite', value: d.osmWidth),
+      if (_hasText(d.osmWidth))
+        ListItem(
+          label: context.l10n.tr('Breite'),
+          value: _formatWidth(context, d.osmWidth!),
+        ),
       if (_hasText(d.osmLit))
         ListItem(
-          label: 'Beleuchtung',
-          value: _translateOsmValue('lit', d.osmLit!),
+          label: context.l10n.tr('Beleuchtung'),
+          value: d.osmLit,
         ),
       for (final link in (d.mapillaryLinks ?? const <String>[]).skip(1))
         ListItem(
-          label: 'Weiteres Mapillary-Bild',
-          value: 'Auf Mapillary ansehen',
+          label: context.l10n.tr('Weiteres Mapillary-Bild'),
+          value: context.l10n.tr('Auf Mapillary ansehen'),
           isLink: true,
           onTap: () => _launchWebsite(link),
         ),
@@ -139,22 +153,29 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
           value: d.soll,
         ),
       for (final link in d.measureCategoryLinks ?? const <Link>[])
-        if (_hasText(link.url)) _linkItem('Maßnahmenkategorie', link),
+        if (_hasText(link.url))
+          _linkItem(context.l10n.tr('Maßnahmen-Kategorie'), link),
       if (_hasText(d.statusUmsetzung))
         ListItem(
-          label: 'Umsetzungsstatus',
+          label: context.l10n.tr('Status-Umsetzung'),
           value: d.statusUmsetzung,
         ),
       if (_hasText(d.netTypePlan))
-        ListItem(label: 'Netztyp Planung', value: d.netTypePlan),
+        ListItem(
+          label: context.l10n.tr('Netztyp Planung'),
+          value: d.netTypePlan,
+        ),
       if (_hasText(d.netTypeTarget))
-        ListItem(label: 'Netztyp Ziel', value: d.netTypeTarget),
+        ListItem(
+          label: context.l10n.tr('Netztyp Ziel'),
+          value: d.netTypeTarget,
+        ),
       for (final link in d.districtLinks ?? const <Link>[])
-        if (_hasText(link.url)) _linkItem('Bezirk', link),
+        if (_hasText(link.url)) _linkItem(context.l10n.tr('Bezirk'), link),
     ];
   }
 
-  List<Widget> _technicalItems() {
+  List<Widget> _technicalItems(BuildContext context) {
     final validOsmId = _hasText(d.osmId) && RegExp(r'^\d+$').hasMatch(d.osmId!);
     return [
       if (_hasText(d.munichwaysId))
@@ -163,7 +184,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
       if (validOsmId)
         ListItem(
           label: 'OpenStreetMap',
-          value: 'Auf OpenStreetMap ansehen',
+          value: context.l10n.tr('Auf OpenStreetMap ansehen'),
           isLink: true,
           onTap: () => _launchWebsite(
             'https://www.openstreetmap.org/way/${d.osmId}',
@@ -186,7 +207,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
         if (snapshot.hasError) {
           return ListItem(
             label: 'Mapillary',
-            value: 'Auf Mapillary ansehen',
+            value: context.l10n.tr('Auf Mapillary ansehen'),
             isLink: true,
             onTap: () => _launchWebsite(d.mapillaryLinks!.first),
           );
@@ -202,7 +223,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
   ListItem _linkItem(String label, Link link) {
     return ListItem(
       label: label,
-      value: _hasText(link.title) ? link.title : 'Link öffnen',
+      value: _hasText(link.title) ? link.title : context.l10n.tr('Link öffnen'),
       isLink: true,
       onTap: () => _launchWebsite(link.url),
     );
@@ -267,9 +288,10 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
     final planning = _planningItems(context);
     final additionalLinks = [
       for (final link in d.links ?? const <Link>[])
-        if (_hasText(link.url)) _linkItem('Weiterer Link', link),
+        if (_hasText(link.url))
+          _linkItem(context.l10n.tr('Weiterer Link'), link),
     ];
-    final technical = _technicalItems();
+    final technical = _technicalItems(context);
 
     return Material(
       color: Colors.transparent,
@@ -295,29 +317,35 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
                       ..._namesAndRating(context),
                       if (currentState.isNotEmpty)
                         _section(
-                          title: 'Ist-Zustand',
+                          title: context.l10n.tr('Ist-Zustand'),
                           icon: Icons.directions_bike_outlined,
                           children: currentState,
                           initiallyExpanded: true,
                         ),
                       if (planning.isNotEmpty)
                         _section(
-                          title: 'Forderungen und Netzplanung',
+                          title: context.l10n.tr('Forderungen und Netzplanung'),
                           icon: Icons.route_outlined,
                           children: planning,
                         ),
                       if (additionalLinks.isNotEmpty)
                         _section(
-                          title: 'Weitere Links',
+                          title: context.l10n.tr('Weitere Links'),
                           icon: Icons.link_outlined,
                           children: additionalLinks,
                         ),
                       if (technical.isNotEmpty)
                         _section(
-                          title: 'Technische Angaben',
+                          title: context.l10n.tr('Technische Angaben'),
                           icon: Icons.data_object_outlined,
                           children: technical,
                         ),
+                      ListItem(
+                        label: context.l10n.tr('Feedback'),
+                        value: context.l10n.tr('Feedback per E-Mail senden'),
+                        isLink: true,
+                        onTap: () => _sendFeedback(context),
+                      ),
                     ],
                   ),
                 ),
@@ -336,6 +364,81 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
       await launchUrlString(encodedUrl);
     } else {
       log.e('Could not launch $encodedUrl');
+    }
+  }
+
+  String _formatWidth(BuildContext context, String value) {
+    final trimmed = value.trim();
+    if (!RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(trimmed)) return trimmed;
+    return '$trimmed ${context.l10n.isEnglish ? 'meters' : 'Meter'}';
+  }
+
+  Future<void> _sendFeedback(BuildContext context) async {
+    var versionLabel = 'unbekannt';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      versionLabel =
+          '${info.version} (${info.buildNumber}) ${Platform.isIOS ? 'iOS' : 'Android'}';
+    } catch (error, stackTrace) {
+      log.w(
+        'Reading app version for feedback failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (!context.mounted) return;
+
+    final headerName = _hasText(d.name) ? d.name! : 'Streckenabschnitt';
+    final subject = 'Feedback MunichWays App: $headerName';
+    final bothNames = _hasText(d.osmName) && _hasText(d.munichwaysName);
+    final ratingParts = [
+      if (_hasText(d.farbe)) 'Farbe: ${d.farbe}',
+      if (_hasText(d.happyBikeLevel)) 'Happy Bike Level: ${d.happyBikeLevel}',
+      if (_hasText(d.osmClassBicycle))
+        'OSM class:bicycle: ${d.osmClassBicycle}',
+    ];
+    final osmTags = [
+      if (_hasText(d.osmHighway)) 'OSM highway: ${d.osmHighway}',
+      if (_hasText(d.osmSurface)) 'OSM surface: ${d.osmSurface}',
+      if (_hasText(d.osmSmoothness)) 'OSM smoothness: ${d.osmSmoothness}',
+      if (_hasText(d.osmBicycle)) 'OSM bicycle: ${d.osmBicycle}',
+      if (_hasText(d.osmAccess)) 'OSM access: ${d.osmAccess}',
+      if (_hasText(d.osmWidth)) 'OSM width: ${d.osmWidth}',
+      if (_hasText(d.osmLit)) 'OSM lit: ${d.osmLit}',
+    ];
+    final lines = <String>[
+      'Appversion: $versionLabel',
+      '',
+      'Name: $headerName',
+      if (bothNames) 'OSM-Name: ${d.osmName}',
+      if (bothNames) 'MunichWays-Name: ${d.munichwaysName}',
+      if (ratingParts.isNotEmpty) ratingParts.join(' = '),
+      if (_hasText(d.ist)) 'Ist-Situation: ${d.ist}',
+      if (_hasText(d.description)) 'Beschreibung: ${d.description}',
+      if (_hasText(d.mwRvRoute)) 'RadlVorrangNetz: ${d.mwRvRoute}',
+      if (_hasText(d.neuralgischerPunkt))
+        'Neuralgischer Punkt: ${d.neuralgischerPunkt}',
+      if (osmTags.isNotEmpty) osmTags.join(', '),
+      if (_hasText(d.soll)) 'Soll-Maßnahmen: ${d.soll}',
+      if (_hasText(d.osmId)) 'OSM-ID: ${d.osmId}',
+      if (_hasText(d.munichwaysId)) 'MunichWays-ID: ${d.munichwaysId}',
+      '',
+      context.l10n.isEnglish ? 'Feedback:' : 'Rückmeldung:',
+    ];
+    final uri = Uri.parse(
+      'mailto:mail@munichways.de'
+      '?subject=${Uri.encodeComponent(subject)}'
+      '&body=${Uri.encodeComponent(lines.join('\n'))}',
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.tr('Keine E-Mail-App gefunden'),
+          ),
+        ),
+      );
     }
   }
 }
@@ -381,84 +484,4 @@ class _Header extends StatelessWidget {
       ),
     );
   }
-}
-
-String _colorLabel(String? color) {
-  switch (color) {
-    case 'grün':
-      return 'Grün';
-    case 'gelb':
-      return 'Gelb';
-    case 'rot':
-      return 'Rot';
-    case 'schwarz':
-      return 'Schwarz';
-    default:
-      return color ?? '';
-  }
-}
-
-String _translateOsmValue(String key, String value) {
-  const translations = {
-    'highway': {
-      'cycleway': 'Radweg',
-      'path': 'Pfad/Weg',
-      'residential': 'Wohnstraße',
-      'living_street': 'Verkehrsberuhigter Bereich',
-      'service': 'Erschließungsweg',
-      'primary': 'Hauptstraße',
-      'secondary': 'Sekundärstraße',
-      'tertiary': 'Verbindungsstraße',
-      'unclassified': 'Nebenstraße',
-      'track': 'Wirtschaftsweg',
-      'pedestrian': 'Fußgängerzone',
-      'footway': 'Fußweg',
-    },
-    'surface': {
-      'asphalt': 'Asphalt',
-      'concrete': 'Beton',
-      'concrete:plates': 'Betonplatten',
-      'paving_stones': 'Pflastersteine',
-      'sett': 'Natursteinpflaster',
-      'cobblestone': 'Kopfsteinpflaster',
-      'compacted': 'Verdichtete Oberfläche',
-      'fine_gravel': 'Feiner Schotter',
-      'gravel': 'Schotter',
-      'ground': 'Naturboden',
-      'dirt': 'Erde',
-      'unpaved': 'Unbefestigt',
-    },
-    'smoothness': {
-      'excellent': 'ausgezeichnet',
-      'good': 'gut',
-      'intermediate': 'mittel',
-      'bad': 'schlecht',
-      'very_bad': 'sehr schlecht',
-      'horrible': 'äußerst schlecht',
-      'very_horrible': 'kaum befahrbar',
-      'impassable': 'unpassierbar',
-    },
-    'bicycle': {
-      'yes': 'erlaubt',
-      'designated': 'ausgewiesen',
-      'permissive': 'geduldet',
-      'no': 'nicht erlaubt',
-      'dismount': 'Absteigen',
-      'use_sidepath': 'Radweg benutzen',
-    },
-    'access': {
-      'yes': 'öffentlich zugänglich',
-      'permissive': 'geduldet',
-      'private': 'privat',
-      'no': 'kein Zugang',
-      'destination': 'nur Anlieger/Zielverkehr',
-    },
-    'lit': {
-      'yes': 'ja',
-      'no': 'nein',
-      'automatic': 'automatisch',
-      'limited': 'teilweise',
-    },
-  };
-  return translations[key]?[value] ?? value;
 }

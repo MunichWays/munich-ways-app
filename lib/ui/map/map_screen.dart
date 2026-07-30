@@ -44,6 +44,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
+  static const _voiceSignalWarningDelay = Duration(seconds: 30);
   static const _notificationPermissionChannel =
       MethodChannel('com.munichways.app/notification_permission');
 
@@ -99,6 +100,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Position? _latestPosition;
   Position? _pendingPosition;
   bool _locationRenderRunning = false;
+  latlong2.LatLng? _lastLocationCameraPosition;
+  double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
   final FlutterTts _flutterTts = FlutterTts();
   final VoiceGuidance _voiceGuidance = VoiceGuidance();
@@ -456,10 +459,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _renderModeFor(model.locationState),
                           onMapCreated: (controller) {
                             _mapController = controller;
-                            if (!kStoreScreenshots && !_locationPrimeStarted) {
-                              _locationPrimeStarted = true;
-                              unawaited(_primeLocationOnStart(model));
-                            }
                             if (!_lineTapHandlerAttached) {
                               _lineTapHandlerAttached = true;
                               controller.onLineTapped.add((line) {
@@ -525,11 +524,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 }
                               });
                               _scheduleOverlaySync(model);
+                              if (!kStoreScreenshots &&
+                                  !_locationPrimeStarted) {
+                                _locationPrimeStarted = true;
+                                unawaited(_primeLocationOnStart(model));
+                              }
                               final position = _latestPosition;
                               if (position != null) {
                                 _pendingPosition = position;
-                                unawaited(_drainLocationUpdates(model));
                               }
+                              unawaited(_activateCameraAfterStyle(model));
                             }
 
                             unawaited(afterStyle());
@@ -554,10 +558,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           },
                           onCameraIdle: () {
                             _compassIdleTick.value++;
-                            if (_styleLoaded && !_cameraReady) {
-                              _cameraReady = true;
-                              unawaited(_flushPendingCameraUpdate());
-                            }
+                            _activateCamera(model);
                           },
                         ),
                       ),
@@ -830,7 +831,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _drainLocationUpdates(MapScreenViewModel model) async {
-    if (_locationRenderRunning) return;
+    if (_locationRenderRunning ||
+        !mounted ||
+        !_styleLoaded ||
+        !_cameraReady ||
+        _mapController == null) {
+      return;
+    }
     _locationRenderRunning = true;
     try {
       while (_pendingPosition != null) {
@@ -885,6 +892,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (state != LocationState.FOLLOW &&
           state != LocationState.FOLLOW_AND_ROTATE_MAP) {
         _smoothedMovementBearing = null;
+        _lastLocationCameraPosition = null;
+        _lastLocationCameraBearing = null;
         return;
       }
       if (state == LocationState.FOLLOW) {
@@ -908,6 +917,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         _smoothedMovementBearing = bearing;
       }
 
+      final previousPosition = _lastLocationCameraPosition;
+      final movedMeters = previousPosition == null
+          ? double.infinity
+          : Geolocator.distanceBetween(
+              previousPosition.latitude,
+              previousPosition.longitude,
+              displayedPosition.latitude,
+              displayedPosition.longitude,
+            );
+      final previousBearing = _lastLocationCameraBearing;
+      final bearingDelta = previousBearing == null
+          ? double.infinity
+          : ((bearing - previousBearing + 540) % 360 - 180).abs();
+      final minimumMovementMeters = (position.accuracy * 0.25).clamp(3.0, 10.0);
+      if (movedMeters < minimumMovementMeters &&
+          (state != LocationState.FOLLOW_AND_ROTATE_MAP || bearingDelta < 5)) {
+        return;
+      }
+
       await controller.moveCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
@@ -917,6 +945,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ),
         ),
       );
+      _lastLocationCameraPosition = displayedPosition;
+      _lastLocationCameraBearing = bearing;
     } catch (error, stackTrace) {
       log.d(
         'render location skipped while map is updating',
@@ -1199,7 +1229,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
     if (!model.navigationStarted || !model.voiceGuidanceEnabled) return;
-    _voiceSignalTimer = Timer(const Duration(seconds: 15), () {
+    _voiceSignalTimer = Timer(_voiceSignalWarningDelay, () {
       if (!mounted || !model.navigationStarted || !model.voiceGuidanceEnabled) {
         return;
       }
@@ -1256,6 +1286,32 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
     return zoom.clamp(3, 22);
+  }
+
+  Future<void> _activateCameraAfterStyle(MapScreenViewModel model) async {
+    await WidgetsBinding.instance.endOfFrame;
+    // Give the native platform view one layout pass after Flutter's frame.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted || !_styleLoaded || _cameraReady) return;
+
+    final renderObject = _mapLibreViewKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.hasSize ||
+        renderObject.size.isEmpty) {
+      return;
+    }
+    _activateCamera(model);
+  }
+
+  void _activateCamera(MapScreenViewModel model) {
+    if (!mounted || !_styleLoaded || _cameraReady) return;
+    _cameraReady = true;
+    unawaited(_flushPendingCameraUpdate());
+    final position = _latestPosition;
+    if (position != null) {
+      _pendingPosition = position;
+      unawaited(_drainLocationUpdates(model));
+    }
   }
 
   /// Defers camera operations until MapLibre has completed its first native

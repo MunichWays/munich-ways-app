@@ -210,8 +210,9 @@ void main() {
     )));
     const offRoute = LatLng(48.1405, 11.57054);
 
-    expect(guidance.update(offRoute, english: false), isNull);
-    expect(guidance.update(offRoute, english: false), isNull);
+    for (var update = 0; update < 9; update++) {
+      expect(guidance.update(offRoute, english: false), isNull);
+    }
     expect(
       guidance.update(offRoute, english: false),
       'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.',
