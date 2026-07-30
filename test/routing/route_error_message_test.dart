@@ -31,8 +31,7 @@ void main() {
   });
 
   test('keeps the actionable BRouter overload message', () {
-    const message =
-        'BRouter ist momentan ausgelastet. '
+    const message = 'BRouter ist momentan ausgelastet. '
         'Bitte versuche die Route in Kürze erneut.';
 
     expect(routeErrorMessage(ApiException(message)), message);
