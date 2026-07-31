@@ -136,14 +136,22 @@ class MapNavigationHeaderBar extends StatelessWidget {
             )
           : const Icon(Icons.refresh, size: 26),
     );
-    final closeAction = IconButton(
-      color: Colors.white,
-      padding: const EdgeInsets.all(8),
-      constraints: const BoxConstraints(),
-      visualDensity: VisualDensity.compact,
-      tooltip: context.l10n.tr('Route beenden'),
-      onPressed: onEndRoute,
-      icon: const Icon(Icons.close),
+    final closeLabel = context.l10n.tr('Route beenden');
+    final closeAction = Semantics(
+      container: true,
+      button: true,
+      label: closeLabel,
+      onTap: onEndRoute,
+      excludeSemantics: true,
+      child: SizedBox.square(
+        dimension: 56,
+        child: IconButton(
+          color: Colors.white,
+          tooltip: closeLabel,
+          onPressed: onEndRoute,
+          icon: const Icon(Icons.close),
+        ),
+      ),
     );
     return Material(
       color: AppColors.mapRouteColor,

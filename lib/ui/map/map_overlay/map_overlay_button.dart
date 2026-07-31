@@ -64,7 +64,15 @@ class MapOverlayButton extends StatelessWidget {
     );
 
     if (tooltip != null) {
-      core = Tooltip(message: tooltip!, child: core);
+      core = Semantics(
+        container: true,
+        button: true,
+        enabled: onPressed != null,
+        label: tooltip,
+        onTap: onPressed,
+        excludeSemantics: true,
+        child: Tooltip(message: tooltip!, child: core),
+      );
     }
     return core;
   }

@@ -43,6 +43,7 @@ class MapSideActionButtons extends StatelessWidget {
       if (model.showZoomButtons) ...[
         MapOverlayButton(
           tooltip: context.l10n.tr('Vergrößern'),
+          size: 56,
           onPressed: () {
             final c = mapController;
             if (c == null) return;
@@ -53,6 +54,7 @@ class MapSideActionButtons extends StatelessWidget {
         const SizedBox(height: _buttonSpacing),
         MapOverlayButton(
           tooltip: context.l10n.tr('Verkleinern'),
+          size: 56,
           onPressed: () {
             final c = mapController;
             if (c == null) return;

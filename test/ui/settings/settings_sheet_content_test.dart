@@ -82,6 +82,7 @@ void main() {
                   model: model,
                   searchCenterProvider: () => null,
                   onPlanRoute: () async {},
+                  onSelectOnMap: () {},
                   onPressLocation: () {},
                   showSearch: false,
                 ),

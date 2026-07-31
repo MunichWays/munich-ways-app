@@ -12,11 +12,13 @@ class MapSearchBar extends StatelessWidget {
     required this.model,
     required this.searchCenterProvider,
     required this.onPlanRoute,
+    required this.onSelectOnMap,
   });
 
   final MapScreenViewModel model;
   final LatLng? Function() searchCenterProvider;
   final Future<void> Function() onPlanRoute;
+  final VoidCallback onSelectOnMap;
 
   Future<void> _openSearch(BuildContext context) async {
     final result = await showPlaceSearchSheet(
@@ -31,6 +33,7 @@ class MapSearchBar extends StatelessWidget {
     } else if (result == PlaceSearchSheetResult.planRoute) {
       await onPlanRoute();
     } else if (result == PlaceSearchSheetResult.selectOnMap) {
+      onSelectOnMap();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
