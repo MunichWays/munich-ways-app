@@ -62,7 +62,7 @@ class VoiceGuidance {
       _maneuvers = const [];
       return;
     }
-    _maneuvers = route.maneuvers
+    final routedManeuvers = route.maneuvers
         .where(_isRelevant)
         .map((maneuver) => _GuidanceManeuver(
               maneuver,
@@ -70,6 +70,10 @@ class VoiceGuidance {
                   .distanceAlongRoute,
             ))
         .toList();
+    _maneuvers = [
+      ...routedManeuvers,
+      ..._geometryTurns(route, routedManeuvers),
+    ]..sort((a, b) => a.routeDistance.compareTo(b.routeDistance));
     _arrivals = route.maneuvers
         .where((maneuver) => maneuver.type == 'arrive')
         .toList(growable: false);
@@ -291,6 +295,81 @@ class VoiceGuidance {
       maneuver.type != 'notification' &&
       !(maneuver.type == 'new name' &&
           (maneuver.modifier == null || maneuver.modifier == 'straight'));
+
+  /// Adds clear corners that routing services sometimes omit when the route
+  /// follows the same named foot/cycle way through a junction.
+  static List<_GuidanceManeuver> _geometryTurns(
+    CycleRoute route,
+    List<_GuidanceManeuver> routedManeuvers,
+  ) {
+    const minimumLegMeters = 7.0;
+    const minimumTurnDegrees = 60.0;
+    const maximumTurnDegrees = 135.0;
+    const duplicateDistanceMeters = 25.0;
+    final result = <_GuidanceManeuver>[];
+    final protectedDistances = route.maneuvers
+        .map(
+          (maneuver) => _projectOntoRoute(route.points, maneuver.location)
+              .distanceAlongRoute,
+        )
+        .toList(growable: false);
+    var routeDistance = 0.0;
+
+    for (var index = 1; index < route.points.length - 1; index++) {
+      final before = route.points[index - 1];
+      final corner = route.points[index];
+      final after = route.points[index + 1];
+      final latitudeRadians = corner.latitude * pi / 180;
+      final metersPerLon = 111320.0 * cos(latitudeRadians);
+      const metersPerLat = 111320.0;
+      final incomingX = (corner.longitude - before.longitude) * metersPerLon;
+      final incomingY = (corner.latitude - before.latitude) * metersPerLat;
+      final outgoingX = (after.longitude - corner.longitude) * metersPerLon;
+      final outgoingY = (after.latitude - corner.latitude) * metersPerLat;
+      final incomingLength =
+          sqrt(incomingX * incomingX + incomingY * incomingY);
+      final outgoingLength =
+          sqrt(outgoingX * outgoingX + outgoingY * outgoingY);
+      routeDistance += incomingLength;
+      if (incomingLength < minimumLegMeters ||
+          outgoingLength < minimumLegMeters) {
+        continue;
+      }
+
+      final signedTurn = atan2(
+            incomingX * outgoingY - incomingY * outgoingX,
+            incomingX * outgoingX + incomingY * outgoingY,
+          ) *
+          180 /
+          pi;
+      final turnDegrees = signedTurn.abs();
+      if (turnDegrees < minimumTurnDegrees ||
+          turnDegrees > maximumTurnDegrees) {
+        continue;
+      }
+
+      final isDuplicate = [...routedManeuvers, ...result].any(
+            (maneuver) =>
+                (maneuver.routeDistance - routeDistance).abs() <
+                duplicateDistanceMeters,
+          ) ||
+          protectedDistances.any(
+            (distance) =>
+                (distance - routeDistance).abs() < duplicateDistanceMeters,
+          );
+      if (isDuplicate) continue;
+
+      result.add(_GuidanceManeuver(
+        RouteManeuver(
+          location: corner,
+          type: 'turn',
+          modifier: signedTurn < 0 ? 'right' : 'left',
+        ),
+        routeDistance,
+      ));
+    }
+    return result;
+  }
 
   static int _roundedDistance(double meters) =>
       max(10, (meters / 10).round() * 10);

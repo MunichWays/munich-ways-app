@@ -998,12 +998,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         speedMetersPerSecond: position.speed,
       );
       if (instruction != null) {
+        if (instruction.startsWith('Keine Ansage') ||
+            instruction.startsWith('No directions')) {
+          unawaited(_zoomOutAfterMissingDirections());
+        }
         unawaited(_speak(
           instruction,
           english: context.l10n.isEnglish,
         ));
       }
     }
+  }
+
+  Future<void> _zoomOutAfterMissingDirections() async {
+    final controller = _mapController;
+    if (!mounted || controller == null) return;
+    final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
+    await controller.animateCamera(
+      CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
+    );
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -1233,6 +1246,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (!mounted || !model.navigationStarted || !model.voiceGuidanceEnabled) {
         return;
       }
+      unawaited(_zoomOutAfterMissingDirections());
       unawaited(
         _speak(
           context.l10n.isEnglish

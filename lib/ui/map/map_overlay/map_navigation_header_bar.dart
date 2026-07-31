@@ -233,20 +233,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 !model.navigationStarted &&
                 model.routeStart == null) ...[
               const SizedBox(height: 8),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.munichWaysYellow,
                     foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white),
+                    minimumSize: const Size.fromHeight(54),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
+                      horizontal: 20,
+                      vertical: 14,
                     ),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   onPressed: onStartNavigation,
-                  icon: const Icon(Icons.navigation, size: 18),
+                  icon: const Icon(Icons.navigation, size: 24),
                   label: Text(context.l10n.tr('Starten')),
                 ),
               ),

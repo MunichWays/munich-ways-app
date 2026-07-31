@@ -58,6 +58,53 @@ void main() {
     expect(now?.text, 'Jetzt rechts');
   });
 
+  test('announces a right-angle corner omitted by the routing service', () {
+    const corner = LatLng(48.1410, 11.5700);
+    const afterCorner = LatLng(48.1410, 11.5710);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, beforeTurn, corner, afterCorner],
+        190,
+        45,
+      ));
+
+    expect(
+      guidance.update(beforeTurn, english: false),
+      'In 60 Metern rechts abbiegen.',
+    );
+  });
+
+  test('does not duplicate a routed maneuver at a geometry corner', () {
+    const corner = LatLng(48.1410, 11.5700);
+    const afterCorner = LatLng(48.1410, 11.5710);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, beforeTurn, corner, afterCorner],
+        190,
+        45,
+        maneuvers: const [
+          RouteManeuver(
+            location: corner,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ],
+      ));
+
+    expect(
+      guidance.update(beforeTurn, english: false),
+      'In 60 Metern rechts abbiegen.',
+    );
+    expect(
+      guidance.update(const LatLng(48.1409, 11.5700), english: false),
+      'Jetzt rechts abbiegen.',
+    );
+    expect(
+      guidance.update(const LatLng(48.1410, 11.5701), english: false),
+      isNull,
+    );
+  });
+
   test('looks ahead by about eleven metres at normal bicycle speed', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(routeWith(const RouteManeuver(

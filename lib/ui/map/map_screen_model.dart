@@ -49,8 +49,8 @@ class MapScreenViewModel extends ChangeNotifier {
   /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
   bool storeScreenshotLocationPrimeComplete = false;
 
-  /// Zoom +/- overlay buttons; default off.
-  bool _showZoomButtons = false;
+  /// Zoom +/- overlay buttons; default on.
+  bool _showZoomButtons = true;
 
   /// Side column for layers / location / compass (zoom if enabled).
   MapSidePanelEdge _sidePanelEdge = MapSidePanelEdge.right;
