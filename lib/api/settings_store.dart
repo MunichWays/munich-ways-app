@@ -122,7 +122,7 @@ class SettingsData {
   final BRouterProfile bRouterProfile;
 
   static const SettingsData defaults = SettingsData(
-    showZoomButtons: false,
+    showZoomButtons: true,
     sidePanelEdgeName: 'right',
     languageCode: null,
     voiceGuidanceEnabled: false,
@@ -162,7 +162,7 @@ class SettingsData {
     final edge = json['sidePanelEdge'] as String?;
     final language = json['language'] as String?;
     return SettingsData(
-      showZoomButtons: json['showZoomButtons'] as bool? ?? false,
+      showZoomButtons: json['showZoomButtons'] as bool? ?? true,
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
       voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,

@@ -3,6 +3,11 @@ import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 
 void main() {
+  test('shows zoom buttons by default, including older settings files', () {
+    expect(SettingsData.defaults.showZoomButtons, isTrue);
+    expect(SettingsData.fromJson(const {}).showZoomButtons, isTrue);
+  });
+
   test('loads routing mode and BRouter profile', () {
     final data = SettingsData.fromJson({
       'routingMode': 'bRouterEverywhere',

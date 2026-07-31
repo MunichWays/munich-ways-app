@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 
 class AppColors {
-  static const munichWaysBlue = Color(0xff61A1D8);
+  // MunichWays corporate identity colors.
+  static const munichWaysBlue = Color(0xFF6699CC);
+  static const munichWaysGrey = Color(0xFF9C9D9F);
+  static const munichWaysYellow = Color(0xFFFBBA00);
+  static const munichWaysOrange = Color(0xFFFF6600);
+  static const munichWaysGreen = Color(0xFF298A63);
+
   static const mapBlack = Colors.black;
   static const mapGreen = Color(0xff27f5a5);
   static const mapYellow = Color(0xffffd000);
