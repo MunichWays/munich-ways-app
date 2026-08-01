@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/polyline.dart';
+import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
 void main() {
@@ -31,6 +32,9 @@ class _StalledMunichwaysApi extends MunichwaysApi {
       StreamController<Set<MPolyline>>()
           .stream
           .timeout(responseTimeout ?? const Duration(seconds: 6));
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
 }
 
 class _MemorySettingsStore extends SettingsStore {

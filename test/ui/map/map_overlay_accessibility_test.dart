@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
@@ -55,6 +56,44 @@ void main() {
     final button = find.bySemanticsLabel('Route beenden');
     expect(button, findsOneWidget);
     expect(tester.getSize(button), const Size.square(56));
+  });
+
+  testWidgets('route stats share a full row above the action buttons',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: MapNavigationHeaderBar(
+              model: model,
+              onRefreshRoute: () async {},
+              onEditRoute: () {},
+              onStartNavigation: () async {},
+              onToggleVoiceGuidance: () {},
+              onEndRoute: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final distance = find.text('4,2 km');
+    final duration = find.text('20 Min');
+    final close = find.byIcon(Icons.close);
+    expect(tester.getCenter(distance).dy, tester.getCenter(duration).dy);
+    expect(
+      tester.getBottomLeft(distance).dy,
+      lessThanOrEqualTo(tester.getTopLeft(close).dy),
+    );
+    expect(tester.takeException(), isNull);
   });
 }
 

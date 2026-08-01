@@ -87,14 +87,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
         }
         stats = Padding(
           padding: const EdgeInsets.all(8),
-          child: Wrap(
-            spacing: 4,
-            runSpacing: 2,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_formatKm(r.distance), style: emphasisStyle),
+              Text(
+                _formatKm(r.distance),
+                softWrap: false,
+                style: emphasisStyle,
+              ),
+              const SizedBox(width: 4),
               Text('·', style: baseStyle),
-              Text(_formatMin(r.duration), style: emphasisStyle),
+              const SizedBox(width: 4),
+              Text(
+                _formatMin(r.duration),
+                softWrap: false,
+                style: emphasisStyle,
+              ),
             ],
           ),
         );
@@ -195,12 +204,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ],
                 ),
               ),
+            Center(child: stats),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 closeAction,
-                const SizedBox(width: 4),
-                Expanded(child: stats),
+                const Spacer(),
                 IconButton(
                   color: Colors.white,
                   tooltip: context.l10n.isEnglish

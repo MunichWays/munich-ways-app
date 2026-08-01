@@ -503,6 +503,7 @@ class MapScreenViewModel extends ChangeNotifier {
     loading = true;
     notifyListeners();
     var receivedData = false;
+    var detailsLoadStarted = false;
 
     try {
       await for (final polylines in _munichwaysApi.getRadlvorrangnetzUpdates(
@@ -511,16 +512,23 @@ class MapScreenViewModel extends ChangeNotifier {
         _polylinesGesamtnetz = polylines;
         _networkRevision++;
         receivedData = true;
+        if (!detailsLoadStarted) {
+          detailsLoadStarted = true;
+          // Prioritize the bundled geometry, then load full Munich details in
+          // parallel with the lightweight Upper Bavaria update.
+          unawaited(_loadStreetDetailsInBackground());
+        }
         if (_firstLoad) {
           _firstLoad = false;
         }
         if (minimumLoadingDuration == Duration.zero) {
           loading = false;
         }
+        log.d(
+          'ratings ready: sourceSize=${polylines.length}, '
+          'loading=$loading, revision=$_networkRevision',
+        );
         notifyListeners();
-      }
-      if (receivedData) {
-        unawaited(_loadStreetDetailsInBackground());
       }
       return receivedData;
     } catch (e) {
@@ -544,6 +552,10 @@ class MapScreenViewModel extends ChangeNotifier {
         _firstLoad = false;
       }
       loading = false;
+      log.d(
+        'ratings refresh finished: receivedData=$receivedData, '
+        'loading=$loading, revision=$_networkRevision',
+      );
       notifyListeners();
     }
   }

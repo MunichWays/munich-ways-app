@@ -163,6 +163,7 @@ class StreetDetails extends Equatable {
       munichwaysId: properties['munichways_id']?.toString(),
       osmId: properties['osm_id']?.toString(),
       farbe: _germanColor(properties['color']),
+      mwRvRoute: properties['munichways_mw_rv_route']?.toString(),
       isMunichWaysRadlVorrangNetz:
           !['-', null, ''].contains(properties['munichways_mw_rv_route']),
     );

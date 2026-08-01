@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:munich_ways/api/munichways/geojson_converter.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -12,8 +13,10 @@ import 'package:munich_ways/model/street_details.dart';
 import '../api_exception.dart';
 
 class MunichwaysApi {
+  static const _bundledRadlVorrangAsset =
+      'assets/radlnetz/happy_bike_level_munich_RV.geojson';
   final String _happyBikeLevelUrl =
-      "https://www.munichways.de/App/happy_bike_level_munich.geojson";
+      "https://www.munichways.de/App/happy_bike_level_oberbayern.geojson";
   final String _detailsUrl =
       "https://www.munichways.de/App/IST_RadlVorrangNetz_MunichWays_V20.geojson";
 
@@ -48,11 +51,29 @@ class MunichwaysApi {
     }
   }
 
-  /// Emits cached ratings immediately, then a refreshed file when the cached
-  /// response is stale. This keeps subsequent starts independent of the network.
+  Future<Set<MPolyline>> getBundledRadlVorrangnetz() async {
+    final contents = await rootBundle.loadString(_bundledRadlVorrangAsset);
+    return compute(_parseHappyBikeLevelGeojson, contents);
+  }
+
+  /// Emits the bundled Munich RadlVorrang network first, followed by cached or
+  /// downloaded ratings for all of Upper Bavaria.
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
   }) async* {
+    try {
+      final bundled = await getBundledRadlVorrangnetz();
+      log.d('bundled RadlVorrang network loaded: ${bundled.length} polylines');
+      yield bundled;
+    } catch (e, st) {
+      // A broken asset must not prevent the network-backed data from loading.
+      log.e(
+        'bundled RadlVorrang network load failed',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
     final responses = StreamIterator(
       DefaultCacheManager().getFileStream(
         _happyBikeLevelUrl,
@@ -85,7 +106,7 @@ class MunichwaysApi {
     return compute(_parseV20Details, contents);
   }
 
-  /// Removes only the ratings file. Other cached app resources stay intact.
+  /// Removes only downloaded network data. The bundled fallback stays intact.
   Future<void> removeRatingsCache() async {
     await Future.wait([
       DefaultCacheManager().removeFile(_happyBikeLevelUrl),

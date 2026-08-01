@@ -72,6 +72,7 @@ flutter:
      - images/
      - assets/map/openfreemap_positron_style.json
      - assets/map/osm_openmaptiles_style.json
+     - assets/radlnetz/happy_bike_level_munich_RV.geojson
      - assets/search/munich_streets.txt
      - assets/routing/oberbayern.json
 

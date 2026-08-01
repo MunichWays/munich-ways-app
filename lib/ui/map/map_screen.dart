@@ -1811,7 +1811,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _syncNetworkLayers(
       MapScreenViewModel model, MapLibreMapController controller) async {
+    final stopwatch = Stopwatch()..start();
     final visiblePolylines = model.polylines.toList();
+    log.d(
+      'network layer sync started: ${visiblePolylines.length} polylines, '
+      'revision=${model.networkRevision}',
+    );
     final result = buildNetworkGeoJson(
       visiblePolylines,
       (farbe) => _hexColor(AppColors.getPolylineColor(farbe)),
@@ -1824,6 +1829,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _ensureNetworkGeoJsonLayers(controller);
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
+    stopwatch.stop();
+    log.d(
+      'network layer sync finished: ${result.detailsByFeatureId.length} '
+      'features in ${stopwatch.elapsedMilliseconds} ms',
+    );
     if (mounted && kStoreScreenshots) {
       setState(() {
         _storeScreenshotNetworkSynced = true;

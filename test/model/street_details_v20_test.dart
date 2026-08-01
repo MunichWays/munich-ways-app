@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/model/street_details.dart';
 
 void main() {
+  test('keeps RadlVorrang type in lightweight fallback details', () {
+    final details = StreetDetails.fromHappyBikeLevelJson({
+      'properties': {
+        'munichways_id': 'LHM-RV',
+        'osm_id': '123',
+        'color': 'green',
+        'munichways_mw_rv_route': 'Premium',
+      },
+    });
+
+    expect(details.mwRvRoute, 'Premium');
+    expect(details.isMunichWaysRadlVorrangNetz, isTrue);
+  });
+
   test('maps V20 current-state, planning and link fields', () {
     final details = StreetDetails.fromV20Json({
       'properties': {
