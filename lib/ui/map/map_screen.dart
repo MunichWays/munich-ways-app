@@ -1099,8 +1099,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted) return;
 
     final pendingSelection = _pendingRouteMapSelection;
-    final shouldNamePlace =
-        _nameNextMapSelection || pendingSelection != null;
+    final shouldNamePlace = _nameNextMapSelection || pendingSelection != null;
     _nameNextMapSelection = false;
     if (!shouldNamePlace) {
       model.setDestination(Place(null, position));
