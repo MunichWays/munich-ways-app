@@ -107,6 +107,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final VoiceGuidance _voiceGuidance = VoiceGuidance();
   VoiceGuidanceDisplay? _nextManeuver;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
+  bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
   bool _notificationPermissionExplained = false;
 
@@ -655,6 +656,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           showSearch:
                               _initialContentReady && !model.navigationStarted,
                           onPlanRoute: () => _openRoutePlanner(model),
+                          onSelectOnMap: () {
+                            _nameNextMapSelection = true;
+                          },
                           searchCenterProvider: () {
                             final position = _latestPosition;
                             return position == null
@@ -1094,6 +1098,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
 
+    final pendingSelection = _pendingRouteMapSelection;
+    final shouldNamePlace = _nameNextMapSelection || pendingSelection != null;
+    _nameNextMapSelection = false;
+    if (!shouldNamePlace) {
+      model.setDestination(Place(null, position));
+      return;
+    }
+
     var enteredName = '';
     final name = await showDialog<String>(
       context: context,
@@ -1174,7 +1186,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     if (!mounted) return;
 
-    final pendingSelection = _pendingRouteMapSelection;
     if (pendingSelection == null) {
       model.setDestination(place);
       return;
@@ -1799,7 +1810,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _syncNetworkLayers(
       MapScreenViewModel model, MapLibreMapController controller) async {
+    final stopwatch = Stopwatch()..start();
     final visiblePolylines = model.polylines.toList();
+    log.d(
+      'network layer sync started: ${visiblePolylines.length} polylines, '
+      'revision=${model.networkRevision}',
+    );
     final result = buildNetworkGeoJson(
       visiblePolylines,
       (farbe) => _hexColor(AppColors.getPolylineColor(farbe)),
@@ -1812,6 +1828,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _ensureNetworkGeoJsonLayers(controller);
     await controller.setGeoJsonSource(
         _kNetworkSourceId, result.featureCollection);
+    stopwatch.stop();
+    log.d(
+      'network layer sync finished: ${result.detailsByFeatureId.length} '
+      'features in ${stopwatch.elapsedMilliseconds} ms',
+    );
     if (mounted && kStoreScreenshots) {
       setState(() {
         _storeScreenshotNetworkSynced = true;

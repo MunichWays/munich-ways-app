@@ -87,14 +87,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
         }
         stats = Padding(
           padding: const EdgeInsets.all(8),
-          child: Wrap(
-            spacing: 4,
-            runSpacing: 2,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_formatKm(r.distance), style: emphasisStyle),
+              Text(
+                _formatKm(r.distance),
+                softWrap: false,
+                style: emphasisStyle,
+              ),
+              const SizedBox(width: 4),
               Text('·', style: baseStyle),
-              Text(_formatMin(r.duration), style: emphasisStyle),
+              const SizedBox(width: 4),
+              Text(
+                _formatMin(r.duration),
+                softWrap: false,
+                style: emphasisStyle,
+              ),
             ],
           ),
         );
@@ -136,14 +145,22 @@ class MapNavigationHeaderBar extends StatelessWidget {
             )
           : const Icon(Icons.refresh, size: 26),
     );
-    final closeAction = IconButton(
-      color: Colors.white,
-      padding: const EdgeInsets.all(8),
-      constraints: const BoxConstraints(),
-      visualDensity: VisualDensity.compact,
-      tooltip: context.l10n.tr('Route beenden'),
-      onPressed: onEndRoute,
-      icon: const Icon(Icons.close),
+    final closeLabel = context.l10n.tr('Route beenden');
+    final closeAction = Semantics(
+      container: true,
+      button: true,
+      label: closeLabel,
+      onTap: onEndRoute,
+      excludeSemantics: true,
+      child: SizedBox.square(
+        dimension: 56,
+        child: IconButton(
+          color: Colors.white,
+          tooltip: closeLabel,
+          onPressed: onEndRoute,
+          icon: const Icon(Icons.close),
+        ),
+      ),
     );
     return Material(
       color: AppColors.mapRouteColor,
@@ -187,12 +204,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ],
                 ),
               ),
+            Center(child: stats),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 closeAction,
-                const SizedBox(width: 4),
-                Expanded(child: stats),
+                const Spacer(),
                 IconButton(
                   color: Colors.white,
                   tooltip: context.l10n.isEnglish
