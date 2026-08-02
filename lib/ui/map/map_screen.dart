@@ -127,6 +127,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _storeScreenshotNetworkSynced = false;
   bool _storeScreenshotIdleCameraDone = false;
   bool _storeScreenshotIdleCameraScheduled = false;
+  bool _initialRatingsRetryOffered = false;
   bool _storeScreenshotRouteVisualReady = false;
 
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
@@ -381,6 +382,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             });
           }
           _scheduleOverlaySync(model);
+
+          if (model.initialRatingsLoadFailed &&
+              !_initialRatingsRetryOffered) {
+            _initialRatingsRetryOffered = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _offerInitialRatingsReload(model);
+            });
+          }
 
           if (kStoreScreenshots &&
               _storeScreenshotNetworkSynced &&
@@ -1044,6 +1053,47 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _offerInitialRatingsReload(MapScreenViewModel model) {
+    final messenger = scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    final strings = context.l10n;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 12),
+          content: Text(
+            strings.isEnglish
+                ? 'Ratings could not be loaded.'
+                : 'Bewertungen konnten nicht geladen werden.',
+          ),
+          action: SnackBarAction(
+            label: strings.reloadNetwork,
+            onPressed: () {
+              unawaited(_reloadRadnetzAfterInitialFailure(model));
+            },
+          ),
+        ),
+      );
+  }
+
+  Future<void> _reloadRadnetzAfterInitialFailure(
+    MapScreenViewModel model,
+  ) async {
+    final updated = await model.reloadRadnetz();
+    if (!mounted) return;
+    final strings = context.l10n;
+    scaffoldMessengerKey.currentState
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            updated ? strings.mapUpdated : strings.mapUpdateFailed,
+          ),
+        ),
+      );
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {

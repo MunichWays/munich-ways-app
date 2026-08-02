@@ -45,6 +45,7 @@ class MapScreenViewModel extends ChangeNotifier {
   bool _firstLoad = true;
   bool _initialLoadStarted = false;
   bool get initialLoadComplete => !_firstLoad;
+  bool initialRatingsLoadFailed = false;
 
   /// Set true after [primeLocationForStoreScreenshots] finishes (success or hard failure).
   bool storeScreenshotLocationPrimeComplete = false;
@@ -506,9 +507,11 @@ class MapScreenViewModel extends ChangeNotifier {
     Duration requestTimeout = _ratingsRequestTimeout,
   }) async {
     final startedAt = DateTime.now();
+    final isInitialLoad = _firstLoad;
     loading = true;
     notifyListeners();
     var receivedData = false;
+    var refreshFailed = false;
     var detailsLoadStarted = false;
 
     try {
@@ -538,6 +541,7 @@ class MapScreenViewModel extends ChangeNotifier {
       }
       return receivedData;
     } catch (e) {
+      refreshFailed = true;
       if (!receivedData) {
         _displayErrorMsg(
           'Bewertungen konnten nicht geladen werden. '
@@ -547,7 +551,7 @@ class MapScreenViewModel extends ChangeNotifier {
       if (e is! TimeoutException) {
         log.e("Error loading Netze", error: e);
       }
-      return receivedData;
+      return false;
     } finally {
       final remaining =
           minimumLoadingDuration - DateTime.now().difference(startedAt);
@@ -556,6 +560,9 @@ class MapScreenViewModel extends ChangeNotifier {
       }
       if (_firstLoad) {
         _firstLoad = false;
+      }
+      if (isInitialLoad && refreshFailed) {
+        initialRatingsLoadFailed = true;
       }
       loading = false;
       log.d(
@@ -569,6 +576,7 @@ class MapScreenViewModel extends ChangeNotifier {
   /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
   /// overlay can update without leaving the screen.
   Future<bool> reloadRadnetz() async {
+    initialRatingsLoadFailed = false;
     loading = true;
     notifyListeners();
     await _munichwaysApi.removeRatingsCache();

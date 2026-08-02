@@ -62,7 +62,9 @@ class MunichwaysApi {
     Duration? responseTimeout,
   }) async* {
     try {
-      final bundled = await getBundledRadlVorrangnetz();
+      final bundled = await (responseTimeout == null
+          ? getBundledRadlVorrangnetz()
+          : getBundledRadlVorrangnetz().timeout(responseTimeout));
       log.d('bundled RadlVorrang network loaded: ${bundled.length} polylines');
       yield bundled;
     } catch (e, st) {
