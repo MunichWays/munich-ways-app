@@ -119,9 +119,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
 
     final refreshEnabled = route.state != MapRouteState.LOADING;
     final refreshLabel = refreshEnabled
-        ? (context.l10n.isEnglish
-            ? 'Recalculate route'
-            : 'Route neu berechnen')
+        ? (context.l10n.isEnglish ? 'Recalculate route' : 'Route neu berechnen')
         : (context.l10n.isEnglish
             ? 'Calculating route'
             : 'Route wird berechnet');
@@ -155,7 +153,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
               ),
       ),
     );
-    final editLabel = context.l10n.isEnglish ? 'Edit route' : 'Route bearbeiten';
+    final editLabel =
+        context.l10n.isEnglish ? 'Edit route' : 'Route bearbeiten';
     final editAction = Semantics(
       container: true,
       button: true,
