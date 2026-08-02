@@ -66,6 +66,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// depends on network layer ids being present.
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
+  static const _kRouteConnectorSourceId = 'munichways_route_connector';
+  static const _kRouteConnectorLayerId = 'munichways_route_connector_line';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
@@ -383,8 +385,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           }
           _scheduleOverlaySync(model);
 
-          if (model.initialRatingsLoadFailed &&
-              !_initialRatingsRetryOffered) {
+          if (model.initialRatingsLoadFailed && !_initialRatingsRetryOffered) {
             _initialRatingsRetryOffered = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _offerInitialRatingsReload(model);
@@ -1549,6 +1550,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   int _routeFingerprint(MapScreenViewModel model) {
     final r = model.route.route;
     final pts = r?.points;
+    final connector = r?.destinationConnector;
     double? lat1, lng1, lat2, lng2;
     if (pts != null && pts.isNotEmpty) {
       lat1 = pts.first.latitude;
@@ -1563,6 +1565,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       lng1,
       lat2,
       lng2,
+      connector?.length,
+      connector?.firstOrNull?.latitude,
+      connector?.firstOrNull?.longitude,
+      connector?.lastOrNull?.latitude,
+      connector?.lastOrNull?.longitude,
       model.destination?.latLng.latitude,
       model.destination?.latLng.longitude,
       model.routeStart?.latLng.latitude,
@@ -1630,6 +1637,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _routePlanCircles.clear();
 
     if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
+      final route = model.route.route!;
       await controller.setGeoJsonSource(_kRouteSourceId, {
         'type': 'FeatureCollection',
         'features': [
@@ -1637,15 +1645,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             'type': 'Feature',
             'geometry': {
               'type': 'LineString',
-              'coordinates': model.route.route!.points
-                  .map((p) => [p.longitude, p.latitude])
-                  .toList(),
+              'coordinates':
+                  route.points.map((p) => [p.longitude, p.latitude]).toList(),
             },
           },
         ],
       });
+      await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
+        'type': 'FeatureCollection',
+        'features': route.destinationConnector.length < 2
+            ? <dynamic>[]
+            : [
+                {
+                  'type': 'Feature',
+                  'geometry': {
+                    'type': 'LineString',
+                    'coordinates': route.destinationConnector
+                        .map((p) => [p.longitude, p.latitude])
+                        .toList(),
+                  },
+                },
+              ],
+      });
     } else {
       await controller.setGeoJsonSource(_kRouteSourceId, {
+        'type': 'FeatureCollection',
+        'features': <dynamic>[],
+      });
+      await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
         'type': 'FeatureCollection',
         'features': <dynamic>[],
       });
@@ -1715,7 +1742,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!_routeGeoJsonReady) return;
     try {
       await controller.removeLayer(_kRouteLayerId);
+      await controller.removeLayer(_kRouteConnectorLayerId);
       await controller.removeSource(_kRouteSourceId);
+      await controller.removeSource(_kRouteConnectorSourceId);
     } catch (_) {
       // Style may have already dropped layers.
     }
@@ -1728,6 +1757,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    await controller.addGeoJsonSource(_kRouteConnectorSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
     await controller.addLineLayer(
       _kRouteSourceId,
       _kRouteLayerId,
@@ -1736,6 +1769,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
+      ),
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kRouteConnectorSourceId,
+      _kRouteConnectorLayerId,
+      LineLayerProperties(
+        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineDasharray: const [1.5, 1.5],
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

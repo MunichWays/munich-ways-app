@@ -6,6 +6,7 @@ class CycleRoute {
   double duration;
   List<RouteManeuver> maneuvers;
   bool supportsVoiceGuidance;
+  List<LatLng> destinationConnector;
 
   CycleRoute(
     this.points,
@@ -13,6 +14,7 @@ class CycleRoute {
     this.duration, {
     this.maneuvers = const [],
     this.supportsVoiceGuidance = true,
+    this.destinationConnector = const [],
   });
 }
 

@@ -183,37 +183,32 @@ class PlaceSearchBody extends StatelessWidget {
       ),
       for (final favorite in model.favoritePlaces) ...[
         const Divider(height: 1),
-        ListTile(
-          dense: true,
-          leading: Icon(
-            Icons.star,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          title: Text(
-            favorite.displayName!,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: context.l10n.isEnglish ? 'Rename' : 'Umbenennen',
-                onPressed: () => _renameFavorite(context, model, favorite),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: context.l10n.isEnglish ? 'Remove' : 'Entfernen',
-                onPressed: () => model.toggleFavorite(favorite),
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
-          ),
-          onTap: () {
-            model.addToRecentSearches(favorite);
-            Navigator.pop(context, favorite);
-          },
+        _savedPlaceTile(
+          context,
+          favorite,
+          actions: [
+            _routeButton(context, model, favorite),
+            IconButton(
+              tooltip: context.l10n.isEnglish ? 'Rename' : 'Umbenennen',
+              onPressed: () => _renameFavorite(context, model, favorite),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: context.l10n.isEnglish
+                  ? 'Remove favorite'
+                  : 'Favorit entfernen',
+              onPressed: () => model.toggleFavorite(favorite),
+              icon: const Icon(Icons.star),
+            ),
+            IconButton(
+              tooltip: context.l10n.isEnglish
+                  ? 'Delete permanently'
+                  : 'Endgültig löschen',
+              onPressed: () => model.deleteSavedPlace(favorite),
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+          onRoute: () => _selectPlace(context, model, favorite),
         ),
       ],
     ];
@@ -273,45 +268,57 @@ class PlaceSearchBody extends StatelessWidget {
       ),
       for (final recentSearch in model.recentSearches) ...[
         const Divider(height: 1),
-        ListTile(
-          dense: true,
-          leading: const Icon(Icons.history, color: Colors.black45),
-          title: Text(
-            recentSearch.displayName!,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          trailing: IconButton(
-            tooltip: model.isFavorite(recentSearch)
-                ? (context.l10n.isEnglish
-                    ? 'Remove favorite'
-                    : 'Favorit entfernen')
-                : (context.l10n.isEnglish
-                    ? 'Add favorite'
-                    : 'Als Favorit speichern'),
-            onPressed: () async {
-              final isFavorite = model.isFavorite(recentSearch);
-              if (!isFavorite && model.favoritePlaces.length >= 3) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      context.l10n.isEnglish
-                          ? 'A maximum of three favorites is possible.'
-                          : 'Es sind maximal drei Favoriten möglich.',
-                    ),
-                  ),
-                );
-                return;
-              }
-              await model.toggleFavorite(recentSearch);
-            },
-            icon: Icon(
-              model.isFavorite(recentSearch) ? Icons.star : Icons.star_border,
+        _savedPlaceTile(
+          context,
+          recentSearch,
+          actions: [
+            _routeButton(context, model, recentSearch),
+            IconButton(
+              tooltip: context.l10n.isEnglish ? 'Rename' : 'Umbenennen',
+              onPressed: () => _renameRecentSearch(
+                context,
+                model,
+                recentSearch,
+              ),
+              icon: const Icon(Icons.edit_outlined),
             ),
-          ),
-          onTap: () {
-            model.addToRecentSearches(recentSearch);
-            Navigator.pop(context, recentSearch);
-          },
+            IconButton(
+              tooltip: model.isFavorite(recentSearch)
+                  ? (context.l10n.isEnglish
+                      ? 'Remove favorite'
+                      : 'Favorit entfernen')
+                  : (context.l10n.isEnglish
+                      ? 'Add favorite'
+                      : 'Als Favorit speichern'),
+              onPressed: () async {
+                final isFavorite = model.isFavorite(recentSearch);
+                if (!isFavorite && model.favoritePlaces.length >= 3) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        context.l10n.isEnglish
+                            ? 'A maximum of three favorites is possible.'
+                            : 'Es sind maximal drei Favoriten möglich.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                await model.toggleFavorite(recentSearch);
+              },
+              icon: Icon(
+                model.isFavorite(recentSearch) ? Icons.star : Icons.star_border,
+              ),
+            ),
+            IconButton(
+              tooltip: context.l10n.isEnglish
+                  ? 'Delete permanently'
+                  : 'Endgültig löschen',
+              onPressed: () => model.deleteSavedPlace(recentSearch),
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+          onRoute: () => _selectPlace(context, model, recentSearch),
         ),
       ],
       Align(
@@ -323,5 +330,88 @@ class PlaceSearchBody extends StatelessWidget {
         ),
       ),
     ];
+  }
+
+  Future<void> _renameRecentSearch(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Place recentSearch,
+  ) async {
+    var name = recentSearch.displayName ?? '';
+    final updatedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.l10n.isEnglish ? 'Rename destination' : 'Ziel umbenennen',
+        ),
+        content: TextFormField(
+          initialValue: name,
+          autofocus: true,
+          onChanged: (value) => name = value,
+          onFieldSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.tr('Abbrechen')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, name),
+            child: Text(context.l10n.isEnglish ? 'Save' : 'Speichern'),
+          ),
+        ],
+      ),
+    );
+    final trimmedName = updatedName?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) return;
+    await model.renameRecentSearch(recentSearch, trimmedName);
+  }
+
+  Widget _savedPlaceTile(
+    BuildContext context,
+    Place place, {
+    required List<Widget> actions,
+    required VoidCallback onRoute,
+  }) {
+    return InkWell(
+      onTap: onRoute,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 2, 4, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(
+                place.displayName!,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _routeButton(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Place place,
+  ) {
+    return IconButton(
+      tooltip: context.l10n.isEnglish ? 'Calculate route' : 'Route berechnen',
+      onPressed: () => _selectPlace(context, model, place),
+      icon: const Icon(Icons.directions_bike_outlined),
+    );
+  }
+
+  void _selectPlace(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Place place,
+  ) {
+    model.addToRecentSearches(place);
+    Navigator.pop(context, place);
   }
 }

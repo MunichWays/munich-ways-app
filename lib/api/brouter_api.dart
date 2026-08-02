@@ -86,12 +86,22 @@ class BRouterApi implements RoutingProvider {
           (coordinate[0] as num).toDouble(),
         );
       }).toList(growable: false);
+      final destination = coordinates.last;
+      final destinationConnector = const Distance().as(
+                LengthUnit.Meter,
+                points.last,
+                destination,
+              ) >
+              1
+          ? [points.last, destination]
+          : <LatLng>[];
 
       return CycleRoute(
         points,
         _number(properties['track-length'], 'track-length'),
         _number(properties['total-time'], 'total-time'),
         supportsVoiceGuidance: false,
+        destinationConnector: destinationConnector,
       );
     } catch (error) {
       throw ApiException('Invalid BRouter response: $error');
