@@ -295,14 +295,21 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   /// Requests a fresh GPS fix so Android's cached last-known location is updated.
-  /// Failures are logged and ignored so callers can continue either way.
-  Future<void> refreshCurrentLocationFix() async {
+  /// Returns false without requesting a fix when system location is disabled.
+  Future<bool> refreshCurrentLocationFix() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      locationState = LocationState.NOT_AVAILABLE;
+      notifyListeners();
+      return false;
+    }
     try {
       await Geolocator.getCurrentPosition(
         locationSettings: _refreshLocationSettings,
       );
+      return true;
     } catch (e, st) {
       log.d('refreshCurrentLocationFix failed', error: e, stackTrace: st);
+      return false;
     }
   }
 
@@ -403,15 +410,14 @@ class MapScreenViewModel extends ChangeNotifier {
   Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
     log.d("onPressLocationBtn");
     bool isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (permissionCheck && !permissionCheck) {
-      log.d("ignore disable location service after return from settings");
-      return;
-    }
-
     if (!isLocationServiceEnabled) {
       locationState = LocationState.NOT_AVAILABLE;
       notifyListeners();
-      _showEnableLocationServiceDialogController.add("");
+      if (permissionCheck) {
+        _showEnableLocationServiceDialogController.add("");
+      } else {
+        log.d("location service disabled; continue without location");
+      }
       return;
     }
 

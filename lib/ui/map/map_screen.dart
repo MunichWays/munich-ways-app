@@ -609,6 +609,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+                  if (Platform.isAndroid)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: MediaQuery.paddingOf(context).top,
+                      child: const ColoredBox(color: Colors.white),
+                    ),
                   SafeArea(
                     child: Stack(
                       clipBehavior: Clip.none,
@@ -1017,10 +1025,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _zoomOutAfterMissingDirections() async {
     final controller = _mapController;
     if (!mounted || controller == null) return;
-    final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-    await controller.animateCamera(
-      CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
-    );
+    try {
+      // `controller.cameraPosition` can remain at the value from before a
+      // programmatic camera animation. Reading the native position prevents
+      // subsequent warnings from repeatedly targeting the already active zoom.
+      final position = await controller.queryCameraPosition();
+      if (!mounted || controller != _mapController) return;
+      final currentZoom = _safeZoom(
+        position?.zoom ?? controller.cameraPosition?.zoom,
+      );
+      await controller.animateCamera(
+        CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
+      );
+    } catch (error, stackTrace) {
+      log.d(
+        'Zooming out after missing directions skipped while map is updating',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -1295,8 +1318,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
     if (model.locationState == LocationState.NOT_AVAILABLE) return;
-    await model.refreshCurrentLocationFix();
+    final locationAvailable = await model.refreshCurrentLocationFix();
     if (!mounted) return;
+    if (!locationAvailable) {
+      await _applyNativeLocationTracking(model);
+      await _updateLocationStream(model);
+      return;
+    }
     await _applyNativeLocationTracking(model);
     await _updateLocationStream(model);
   }
