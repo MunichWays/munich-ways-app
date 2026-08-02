@@ -12,7 +12,8 @@ void main() {
       //Then
       expect(req.url.path, "/search");
       expect(req.url.queryParameters['q'], 'Marienplatz');
-      expect(req.url.queryParameters['format'], 'jsonv2');
+      expect(req.url.queryParameters['format'], 'geocodejson');
+      expect(req.url.queryParameters['addressdetails'], '1');
       expect(
         req.url.queryParameters['viewbox'],
         '11.226124,48.387154,11.926124,47.887154',
@@ -60,5 +61,23 @@ void main() {
 
     expect(requestCount, 2);
     expect(places.single.displayName, 'Alexanderplatz, Berlin');
+  });
+
+  test('uses the highest admin level as the single district name', () async {
+    final api = NominatimApi(client: MockClient((request) async {
+      return Response(
+        '{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[11.557,48.128]},"properties":{"geocoding":{"name":"Doctor Drooly","housenumber":"7","street":"Häberlstraße","postcode":"80337","city":"München","admin":{"level6":"München","level9":"Ludwigsvorstadt-Isarvorstadt","level10":"Ludwigsvorstadt"},"label":"Doctor Drooly, Häberlstraße 7, München"}}}]}',
+        200,
+        headers: {'content-type': 'application/json; charset=UTF-8'},
+      );
+    }));
+
+    final places = await api.search('Drooly');
+
+    expect(
+      places.single.displayName,
+      'Doctor Drooly, Häberlstraße 7, Ludwigsvorstadt, 80337 München',
+    );
+    expect(places.single.latLng, const LatLng(48.128, 11.557));
   });
 }

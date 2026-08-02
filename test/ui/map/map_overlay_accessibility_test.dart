@@ -58,6 +58,34 @@ void main() {
     expect(tester.getSize(button), const Size.square(56));
   });
 
+  testWidgets('route edit and refresh buttons have explicit labels',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
+    expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
+  });
+
   testWidgets('route stats share a full row above the action buttons',
       (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore())

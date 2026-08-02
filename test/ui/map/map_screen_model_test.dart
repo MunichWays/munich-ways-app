@@ -21,6 +21,22 @@ void main() {
     expect(result, isFalse);
     expect(model.loading, isFalse);
     expect(model.initialLoadComplete, isTrue);
+    expect(model.initialRatingsLoadFailed, isTrue);
+  });
+
+  test('offers retry when only the bundled fallback was loaded', () async {
+    final model = MapScreenViewModel(
+      store: _MemorySettingsStore(),
+      munichwaysApi: _FallbackOnlyMunichwaysApi(),
+    );
+
+    final result = await model.refreshRadlnetze(
+      requestTimeout: const Duration(milliseconds: 20),
+    );
+
+    expect(result, isFalse);
+    expect(model.loading, isFalse);
+    expect(model.initialRatingsLoadFailed, isTrue);
   });
 }
 
@@ -32,6 +48,21 @@ class _StalledMunichwaysApi extends MunichwaysApi {
       StreamController<Set<MPolyline>>()
           .stream
           .timeout(responseTimeout ?? const Duration(seconds: 6));
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+}
+
+class _FallbackOnlyMunichwaysApi extends MunichwaysApi {
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
+    Duration? responseTimeout,
+  }) async* {
+    yield <MPolyline>{};
+    await Completer<void>().future.timeout(
+          responseTimeout ?? const Duration(seconds: 6),
+        );
+  }
 
   @override
   Future<Map<String, StreetDetails>> getStreetDetails() async => {};

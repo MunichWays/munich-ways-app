@@ -68,9 +68,11 @@ class RadlNaviApi implements RoutingProvider {
         var distance = firstRoute['distance'] as num;
         var duration = firstRoute['duration'] as num;
         final maneuvers = <RouteManeuver>[];
+        final steps = <Map<String, dynamic>>[];
         for (final leg in firstRoute['legs'] as List? ?? const []) {
           for (final rawStep in leg['steps'] as List? ?? const []) {
             final step = rawStep as Map<String, dynamic>;
+            steps.add(step);
             final maneuver =
                 step['maneuver'] as Map<String, dynamic>? ?? const {};
             final location = maneuver['location'] as List?;
@@ -88,11 +90,33 @@ class RadlNaviApi implements RoutingProvider {
           }
         }
 
-        return CycleRoute(
+        final access = _splitDestinationAccess(
           points,
+          steps,
+          coordinates.last,
+        );
+        var spokenManeuvers = maneuvers;
+        if (access.walkingStart != null) {
+          final firstWalkingManeuver = maneuvers.indexWhere(
+            (maneuver) =>
+                const Distance().as(
+                  LengthUnit.Meter,
+                  maneuver.location,
+                  access.walkingStart!,
+                ) <=
+                1,
+          );
+          if (firstWalkingManeuver >= 0) {
+            spokenManeuvers = maneuvers.sublist(0, firstWalkingManeuver);
+          }
+        }
+
+        return CycleRoute(
+          access.route,
           distance.toDouble(),
           duration.toDouble(),
-          maneuvers: maneuvers,
+          maneuvers: spokenManeuvers,
+          destinationConnector: access.connector,
         );
       default:
         throw ApiException("Error retrieving route: " + response.body);
@@ -127,4 +151,71 @@ class RadlNaviApi implements RoutingProvider {
     }
     throw ApiException('Missing RadlNavi route geometry');
   }
+
+  _DestinationAccess _splitDestinationAccess(
+    List<LatLng> route,
+    List<Map<String, dynamic>> steps,
+    LatLng destination,
+  ) {
+    LatLng? walkingStart;
+    for (final step in steps.reversed) {
+      final maneuver = step['maneuver'] as Map<String, dynamic>? ?? const {};
+      if (maneuver['type'] == 'arrive') continue;
+      if (!_isUnriddenMode(step['mode'])) break;
+      final location = maneuver['location'] as List?;
+      if (location != null && location.length >= 2) {
+        walkingStart = LatLng(
+          (location[1] as num).toDouble(),
+          (location[0] as num).toDouble(),
+        );
+      }
+    }
+
+    var splitIndex = route.length - 1;
+    if (walkingStart != null && route.length > 1) {
+      var nearestDistance = double.infinity;
+      for (var index = route.length - 1; index >= 1; index--) {
+        final candidateDistance = const Distance().as(
+          LengthUnit.Meter,
+          route[index],
+          walkingStart,
+        );
+        if (candidateDistance < nearestDistance) {
+          nearestDistance = candidateDistance;
+          splitIndex = index;
+        }
+      }
+    }
+
+    final solidRoute = route.sublist(0, splitIndex + 1);
+    final connector =
+        walkingStart == null ? <LatLng>[] : route.sublist(splitIndex).toList();
+    final connectorStart = connector.isEmpty ? route.last : connector.last;
+    if (const Distance().as(
+          LengthUnit.Meter,
+          connectorStart,
+          destination,
+        ) >
+        1) {
+      if (connector.isEmpty) connector.add(route.last);
+      connector.add(destination);
+    }
+    return _DestinationAccess(solidRoute, connector, walkingStart);
+  }
+
+  static bool _isUnriddenMode(Object? mode) {
+    final value = mode?.toString().toLowerCase() ?? '';
+    return value == 'walking' ||
+        value == 'pushing bike' ||
+        value == 'pushing' ||
+        value == 'inaccessible';
+  }
+}
+
+class _DestinationAccess {
+  const _DestinationAccess(this.route, this.connector, this.walkingStart);
+
+  final List<LatLng> route;
+  final List<LatLng> connector;
+  final LatLng? walkingStart;
 }

@@ -281,7 +281,87 @@ void main() {
         tester.getTopLeft(find.text('(Suchverlauf löschen)')).dy;
 
     expect(clearButtonTop, greaterThan(headingTop));
-    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('renames a recent destination with the edit button',
+      (tester) async {
+    final store = FakeRecentSearchesStore([
+      Place('Doctor Drooly', const LatLng(48.128, 11.557)),
+    ]);
+    final model = PlaceSearchScreenViewModel(recentSearchesRepo: store);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byTooltip('Umbenennen'), findsOneWidget);
+    await tester.tap(find.byTooltip('Umbenennen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ziel umbenennen'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField), 'Tierarzt');
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+
+    expect(model.recentSearches.single.displayName, 'Tierarzt');
+    expect(store.storedPlaces?.single.displayName, 'Tierarzt');
+  });
+
+  testWidgets('removes a single recent destination with its delete button',
+      (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final work = Place('Work', const LatLng(48.1, 11.5));
+    final store = FakeRecentSearchesStore([home, work]);
+    final favoritesStore = FakeRecentSearchesStore([home]);
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: store,
+      favoritesRepo: favoritesStore,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byTooltip('Route berechnen'), findsNWidgets(3));
+    await tester.tap(find.byTooltip('Endgültig löschen').first);
+    await tester.pump();
+
+    expect(model.recentSearches, [work]);
+    expect(model.favoritePlaces, isEmpty);
+    expect(store.storedPlaces, [work]);
+    expect(favoritesStore.storedPlaces, isEmpty);
+  });
+
+  testWidgets('favorite star only disables favorite status', (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final recentStore = FakeRecentSearchesStore([home]);
+    final favoritesStore = FakeRecentSearchesStore([home]);
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: recentStore,
+      favoritesRepo: favoritesStore,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Favorit entfernen').first);
+    await tester.pump();
+
+    expect(model.favoritePlaces, isEmpty);
+    expect(model.recentSearches, [home]);
+    expect(favoritesStore.storedPlaces, isEmpty);
+    expect(recentStore.storedPlaces, isNull);
   });
 }

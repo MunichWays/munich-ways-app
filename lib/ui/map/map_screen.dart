@@ -66,6 +66,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// depends on network layer ids being present.
   static const _kRouteSourceId = 'munichways_route';
   static const _kRouteLayerId = 'munichways_route_line';
+  static const _kRouteConnectorSourceId = 'munichways_route_connector';
+  static const _kRouteConnectorLayerId = 'munichways_route_connector_line';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
@@ -127,6 +129,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _storeScreenshotNetworkSynced = false;
   bool _storeScreenshotIdleCameraDone = false;
   bool _storeScreenshotIdleCameraScheduled = false;
+  bool _initialRatingsRetryOffered = false;
   bool _storeScreenshotRouteVisualReady = false;
 
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
@@ -382,6 +385,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           }
           _scheduleOverlaySync(model);
 
+          if (model.initialRatingsLoadFailed && !_initialRatingsRetryOffered) {
+            _initialRatingsRetryOffered = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _offerInitialRatingsReload(model);
+            });
+          }
+
           if (kStoreScreenshots &&
               _storeScreenshotNetworkSynced &&
               !_storeScreenshotIdleCameraDone &&
@@ -608,6 +618,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       ),
+                    ),
+                  if (Platform.isAndroid)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: MediaQuery.paddingOf(context).top,
+                      child: const ColoredBox(color: Colors.white),
                     ),
                   SafeArea(
                     child: Stack(
@@ -1017,10 +1035,66 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _zoomOutAfterMissingDirections() async {
     final controller = _mapController;
     if (!mounted || controller == null) return;
-    final currentZoom = _safeZoom(controller.cameraPosition?.zoom);
-    await controller.animateCamera(
-      CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
-    );
+    try {
+      // `controller.cameraPosition` can remain at the value from before a
+      // programmatic camera animation. Reading the native position prevents
+      // subsequent warnings from repeatedly targeting the already active zoom.
+      final position = await controller.queryCameraPosition();
+      if (!mounted || controller != _mapController) return;
+      final currentZoom = _safeZoom(
+        position?.zoom ?? controller.cameraPosition?.zoom,
+      );
+      await controller.animateCamera(
+        CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
+      );
+    } catch (error, stackTrace) {
+      log.d(
+        'Zooming out after missing directions skipped while map is updating',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _offerInitialRatingsReload(MapScreenViewModel model) {
+    final messenger = scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    final strings = context.l10n;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 12),
+          content: Text(
+            strings.isEnglish
+                ? 'Ratings could not be loaded.'
+                : 'Bewertungen konnten nicht geladen werden.',
+          ),
+          action: SnackBarAction(
+            label: strings.reloadNetwork,
+            onPressed: () {
+              unawaited(_reloadRadnetzAfterInitialFailure(model));
+            },
+          ),
+        ),
+      );
+  }
+
+  Future<void> _reloadRadnetzAfterInitialFailure(
+    MapScreenViewModel model,
+  ) async {
+    final updated = await model.reloadRadnetz();
+    if (!mounted) return;
+    final strings = context.l10n;
+    scaffoldMessengerKey.currentState
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            updated ? strings.mapUpdated : strings.mapUpdateFailed,
+          ),
+        ),
+      );
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -1295,8 +1369,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {
     if (model.locationState == LocationState.NOT_AVAILABLE) return;
-    await model.refreshCurrentLocationFix();
+    final locationAvailable = await model.refreshCurrentLocationFix();
     if (!mounted) return;
+    if (!locationAvailable) {
+      await _applyNativeLocationTracking(model);
+      await _updateLocationStream(model);
+      return;
+    }
     await _applyNativeLocationTracking(model);
     await _updateLocationStream(model);
   }
@@ -1471,6 +1550,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   int _routeFingerprint(MapScreenViewModel model) {
     final r = model.route.route;
     final pts = r?.points;
+    final connector = r?.destinationConnector;
     double? lat1, lng1, lat2, lng2;
     if (pts != null && pts.isNotEmpty) {
       lat1 = pts.first.latitude;
@@ -1485,6 +1565,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       lng1,
       lat2,
       lng2,
+      connector?.length,
+      connector?.firstOrNull?.latitude,
+      connector?.firstOrNull?.longitude,
+      connector?.lastOrNull?.latitude,
+      connector?.lastOrNull?.longitude,
       model.destination?.latLng.latitude,
       model.destination?.latLng.longitude,
       model.routeStart?.latLng.latitude,
@@ -1552,6 +1637,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _routePlanCircles.clear();
 
     if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
+      final route = model.route.route!;
       await controller.setGeoJsonSource(_kRouteSourceId, {
         'type': 'FeatureCollection',
         'features': [
@@ -1559,15 +1645,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             'type': 'Feature',
             'geometry': {
               'type': 'LineString',
-              'coordinates': model.route.route!.points
-                  .map((p) => [p.longitude, p.latitude])
-                  .toList(),
+              'coordinates':
+                  route.points.map((p) => [p.longitude, p.latitude]).toList(),
             },
           },
         ],
       });
+      await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
+        'type': 'FeatureCollection',
+        'features': route.destinationConnector.length < 2
+            ? <dynamic>[]
+            : [
+                {
+                  'type': 'Feature',
+                  'geometry': {
+                    'type': 'LineString',
+                    'coordinates': route.destinationConnector
+                        .map((p) => [p.longitude, p.latitude])
+                        .toList(),
+                  },
+                },
+              ],
+      });
     } else {
       await controller.setGeoJsonSource(_kRouteSourceId, {
+        'type': 'FeatureCollection',
+        'features': <dynamic>[],
+      });
+      await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
         'type': 'FeatureCollection',
         'features': <dynamic>[],
       });
@@ -1637,7 +1742,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!_routeGeoJsonReady) return;
     try {
       await controller.removeLayer(_kRouteLayerId);
+      await controller.removeLayer(_kRouteConnectorLayerId);
       await controller.removeSource(_kRouteSourceId);
+      await controller.removeSource(_kRouteConnectorSourceId);
     } catch (_) {
       // Style may have already dropped layers.
     }
@@ -1650,6 +1757,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    await controller.addGeoJsonSource(_kRouteConnectorSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
     await controller.addLineLayer(
       _kRouteSourceId,
       _kRouteLayerId,
@@ -1658,6 +1769,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
+      ),
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kRouteConnectorSourceId,
+      _kRouteConnectorLayerId,
+      LineLayerProperties(
+        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineDasharray: const [1.5, 1.5],
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

@@ -60,6 +60,33 @@ void main() {
     expect(route.maneuvers.last.type, 'arrive');
   });
 
+  test('separates a final walking section from the cycling route', () async {
+    final api = RadlNaviApi(client: MockClient((_) async {
+      return Response(
+        '{"code":"Ok","routes":[{"geometry":{"type":"LineString","coordinates":[[11.5700,48.1400],[11.5710,48.1410],[11.5715,48.1415]]},"legs":[{"steps":[{"mode":"cycling","name":"Straße","maneuver":{"location":[11.5700,48.1400],"type":"depart"}},{"mode":"walking","name":"Gehweg","maneuver":{"location":[11.5710,48.1410],"type":"turn"}},{"mode":"walking","name":"","maneuver":{"location":[11.5715,48.1415],"type":"arrive"}}]}],"distance":200,"duration":60}]}',
+        200,
+        headers: {'content-type': 'application/json; charset=UTF-8'},
+      );
+    }));
+
+    final route = await api.route(const [
+      LatLng(48.1400, 11.5700),
+      LatLng(48.1416, 11.5716),
+    ]);
+
+    expect(route.points, const [
+      LatLng(48.1400, 11.5700),
+      LatLng(48.1410, 11.5710),
+    ]);
+    expect(route.destinationConnector, const [
+      LatLng(48.1410, 11.5710),
+      LatLng(48.1415, 11.5715),
+      LatLng(48.1416, 11.5716),
+    ]);
+    expect(route.maneuvers, hasLength(1));
+    expect(route.maneuvers.single.type, 'depart');
+  });
+
   test('response with error message, route should throw ApiException',
       () async {
     //Given

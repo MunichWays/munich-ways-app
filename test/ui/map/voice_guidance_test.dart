@@ -360,4 +360,88 @@ void main() {
       'Sie haben das Ziel erreicht.',
     );
   });
+
+  test('keeps maneuvers in route order on an overlapping return section', () {
+    const junction = LatLng(48.1400, 11.5710);
+    const intermediate = LatLng(48.1400, 11.5720);
+    const destination = LatLng(48.1400, 11.5690);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, junction, intermediate, junction, destination],
+        300,
+        70,
+        maneuvers: const [
+          RouteManeuver(
+            location: junction,
+            type: 'turn',
+            modifier: 'right',
+          ),
+          RouteManeuver(location: intermediate, type: 'arrive'),
+          RouteManeuver(
+            location: junction,
+            type: 'turn',
+            modifier: 'left',
+          ),
+          RouteManeuver(location: destination, type: 'arrive'),
+        ],
+      ));
+
+    expect(
+      guidance.update(intermediate, english: false),
+      'Sie haben das Zwischenziel erreicht.',
+    );
+    expect(
+      guidance.display(junction, english: false)?.text,
+      'Jetzt links',
+    );
+  });
+
+  test('does not reach the final destination before an overlapping stop', () {
+    const intermediate = LatLng(48.1400, 11.5720);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, intermediate, start],
+        300,
+        70,
+        maneuvers: const [
+          RouteManeuver(location: intermediate, type: 'arrive'),
+          RouteManeuver(location: start, type: 'arrive'),
+        ],
+      ));
+
+    expect(guidance.update(start, english: false), isNull);
+    expect(
+      guidance.update(intermediate, english: false),
+      'Sie haben das Zwischenziel erreicht.',
+    );
+    expect(
+      guidance.update(start, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+  });
+
+  test('disables directions for a route overlapping around a stop', () {
+    const intermediate = LatLng(48.1400, 11.5720);
+    final guidance = VoiceGuidance();
+    guidance.setRoute(
+      CycleRoute(
+        const [start, beforeTurn, intermediate, beforeTurn, end],
+        300,
+        70,
+      ),
+      intermediateDestinationNames: const ['Zwischenziel'],
+    );
+
+    expect(
+      guidance.display(start, english: false)?.text,
+      'Keine Abbiegehinweise bei überlappendem Hin- und Rückweg',
+    );
+    expect(
+      guidance.update(start, english: false),
+      'Hin- und Rückweg überlappen. Keine Abbiegehinweise. '
+      'Bitte der Route auf der Karte folgen.',
+    );
+    expect(guidance.update(start, english: false), isNull);
+    expect(guidance.update(intermediate, english: false), isNull);
+  });
 }

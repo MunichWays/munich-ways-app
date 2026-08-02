@@ -240,9 +240,50 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     await favoritesRepo.store(favoritePlaces);
   }
 
+  Future<void> renameRecentSearch(Place place, String name) async {
+    final recentIndex = recentSearches.indexWhere(
+      (recent) =>
+          recent.latLng.latitude == place.latLng.latitude &&
+          recent.latLng.longitude == place.latLng.longitude,
+    );
+    if (recentIndex < 0) return;
+    final renamed = Place(name, place.latLng);
+    recentSearches[recentIndex] = renamed;
+
+    final favoriteIndex = favoritePlaces.indexWhere(
+      (favorite) =>
+          favorite.latLng.latitude == place.latLng.latitude &&
+          favorite.latLng.longitude == place.latLng.longitude,
+    );
+    if (favoriteIndex >= 0) {
+      favoritePlaces[favoriteIndex] = renamed;
+      await favoritesRepo.store(favoritePlaces);
+    }
+    _notifyListeners();
+    await recentSearchesRepo.store(recentSearches);
+  }
+
   void clearAllRecentSearches() {
     recentSearches.clear();
     recentSearchesRepo.store(recentSearches);
     _notifyListeners();
+  }
+
+  Future<void> deleteSavedPlace(Place place) async {
+    recentSearches.removeWhere(
+      (recent) =>
+          recent.latLng.latitude == place.latLng.latitude &&
+          recent.latLng.longitude == place.latLng.longitude,
+    );
+    favoritePlaces.removeWhere(
+      (favorite) =>
+          favorite.latLng.latitude == place.latLng.latitude &&
+          favorite.latLng.longitude == place.latLng.longitude,
+    );
+    _notifyListeners();
+    await Future.wait([
+      recentSearchesRepo.store(recentSearches),
+      favoritesRepo.store(favoritePlaces),
+    ]);
   }
 }

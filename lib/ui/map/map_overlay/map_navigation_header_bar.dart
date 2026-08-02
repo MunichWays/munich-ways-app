@@ -117,33 +117,56 @@ class MapNavigationHeaderBar extends StatelessWidget {
         break;
     }
 
-    final refreshAction = IconButton.filled(
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.mapRouteColor,
-        disabledBackgroundColor: Colors.white54,
-        disabledForegroundColor: AppColors.mapRouteColor,
-        minimumSize: const Size(44, 44),
-      ),
-      padding: const EdgeInsets.all(10),
-      tooltip: route.state == MapRouteState.LOADING
-          ? (context.l10n.isEnglish
-              ? 'Calculating route'
-              : 'Route wird berechnet')
-          : (context.l10n.isEnglish
-              ? 'Recalculate route'
-              : 'Route neu berechnen'),
-      onPressed: route.state == MapRouteState.LOADING ? null : onRefreshRoute,
-      icon: route.state == MapRouteState.LOADING
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                color: AppColors.mapRouteColor,
-                strokeWidth: 2.5,
+    final refreshEnabled = route.state != MapRouteState.LOADING;
+    final refreshLabel = refreshEnabled
+        ? (context.l10n.isEnglish ? 'Recalculate route' : 'Route neu berechnen')
+        : (context.l10n.isEnglish
+            ? 'Calculating route'
+            : 'Route wird berechnet');
+    final refreshAction = Semantics(
+      container: true,
+      button: true,
+      enabled: refreshEnabled,
+      label: refreshLabel,
+      onTap: refreshEnabled ? onRefreshRoute : null,
+      excludeSemantics: true,
+      child: IconButton.filled(
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.mapRouteColor,
+          disabledBackgroundColor: Colors.white54,
+          disabledForegroundColor: AppColors.mapRouteColor,
+          minimumSize: const Size(44, 44),
+        ),
+        padding: const EdgeInsets.all(10),
+        tooltip: refreshLabel,
+        onPressed: refreshEnabled ? onRefreshRoute : null,
+        icon: refreshEnabled
+            ? const Icon(Icons.refresh, size: 26)
+            : const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: AppColors.mapRouteColor,
+                  strokeWidth: 2.5,
+                ),
               ),
-            )
-          : const Icon(Icons.refresh, size: 26),
+      ),
+    );
+    final editLabel =
+        context.l10n.isEnglish ? 'Edit route' : 'Route bearbeiten';
+    final editAction = Semantics(
+      container: true,
+      button: true,
+      label: editLabel,
+      onTap: onEditRoute,
+      excludeSemantics: true,
+      child: IconButton(
+        color: Colors.white,
+        tooltip: editLabel,
+        onPressed: onEditRoute,
+        icon: const Icon(Icons.edit_location_alt),
+      ),
     );
     final closeLabel = context.l10n.tr('Route beenden');
     final closeAction = Semantics(
@@ -210,14 +233,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
               children: [
                 closeAction,
                 const Spacer(),
-                IconButton(
-                  color: Colors.white,
-                  tooltip: context.l10n.isEnglish
-                      ? 'Edit route'
-                      : 'Route bearbeiten',
-                  onPressed: onEditRoute,
-                  icon: const Icon(Icons.edit_location_alt),
-                ),
+                editAction,
                 if (route.state == MapRouteState.SHOWN &&
                     route.route != null &&
                     model.navigationStarted &&
