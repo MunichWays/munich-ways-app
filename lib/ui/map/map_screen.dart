@@ -692,6 +692,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             await _applyNativeLocationTracking(model);
                             await _updateLocationStream(model);
                           },
+                          onReloadNetwork: () =>
+                              _reloadRadnetzAfterInitialFailure(model),
                           navigationBar: model.destination == null
                               ? null
                               : MapNavigationHeaderBar(

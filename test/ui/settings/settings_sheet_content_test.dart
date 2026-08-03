@@ -106,6 +106,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('shows a persistent network reload action after initial failure',
+      (tester) async {
+    var reloadPressed = false;
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..initialRatingsLoadFailed = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapBottomActionButtons(
+                model: model,
+                searchCenterProvider: () => null,
+                onPlanRoute: () async {},
+                onSelectOnMap: () {},
+                onPressLocation: () {},
+                onReloadNetwork: () async {
+                  reloadPressed = true;
+                },
+                showSearch: false,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final reload = find.text('Radnetz neu laden');
+    expect(reload, findsOneWidget);
+    await tester.tap(reload);
+    expect(reloadPressed, isTrue);
+  });
+
   testWidgets('selects routing mode and BRouter profile and shows info',
       (tester) async {
     final store = _MemorySettingsStore();

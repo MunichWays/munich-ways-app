@@ -38,6 +38,19 @@ void main() {
     expect(model.loading, isFalse);
     expect(model.initialRatingsLoadFailed, isTrue);
   });
+
+  test('keeps retry available when reloading the full network fails', () async {
+    final model = MapScreenViewModel(
+      store: _MemorySettingsStore(),
+      munichwaysApi: _ReloadFailureMunichwaysApi(),
+    )..initialRatingsLoadFailed = true;
+
+    final result = await model.reloadRadnetz();
+
+    expect(result, isFalse);
+    expect(model.loading, isFalse);
+    expect(model.initialRatingsLoadFailed, isTrue);
+  });
 }
 
 class _StalledMunichwaysApi extends MunichwaysApi {
@@ -62,6 +75,22 @@ class _FallbackOnlyMunichwaysApi extends MunichwaysApi {
     await Completer<void>().future.timeout(
           responseTimeout ?? const Duration(seconds: 6),
         );
+  }
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+}
+
+class _ReloadFailureMunichwaysApi extends MunichwaysApi {
+  @override
+  Future<void> removeRatingsCache() async {}
+
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
+    Duration? responseTimeout,
+  }) async* {
+    yield <MPolyline>{};
+    throw TimeoutException('offline');
   }
 
   @override
