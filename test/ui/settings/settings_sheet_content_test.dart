@@ -179,8 +179,59 @@ void main() {
     );
     await tester.pump();
 
+    final shortest = find.text('Kürzeste Strecke');
+    final zoom = find.text('Zoom-Buttons');
+    final mapButtons = find.text('Karten-Buttons');
+    final more = find.text('Weitere Einstellungen');
+    expect(shortest, findsOneWidget);
+    expect(zoom, findsOneWidget);
+    expect(mapButtons, findsOneWidget);
+    expect(more, findsOneWidget);
+    expect(
+        tester.getTopLeft(shortest).dy, lessThan(tester.getTopLeft(zoom).dy));
+    expect(
+      tester.getTopLeft(zoom).dy,
+      lessThan(tester.getTopLeft(mapButtons).dy),
+    );
+    expect(
+      tester.getTopLeft(mapButtons).dy,
+      lessThan(tester.getTopLeft(more).dy),
+    );
+
+    await tester.tap(find.byType(Switch).first);
+    await tester.pumpAndSettle();
+    expect(model.shortestRouteEnabled, isTrue);
+    expect(store.data.routingMode, RoutingMode.bRouterEverywhere);
+    expect(store.data.bRouterProfile, BRouterProfile.shortest);
+    await tester.tap(find.byType(Switch).first);
+    await tester.pumpAndSettle();
+    expect(model.shortestRouteEnabled, isFalse);
+    expect(store.data.routingMode, RoutingMode.automatic);
+    expect(store.data.bRouterProfile, BRouterProfile.trekking);
+
+    expect(find.text('Routenplanung'), findsNothing);
+    await tester.tap(more);
+    await tester.pumpAndSettle();
     expect(find.text('Routenplanung'), findsOneWidget);
     expect(find.text('Automatisch · Trekking (Standard)'), findsOneWidget);
+    final language = find.text('Sprache');
+    final bikeNetwork = find.text('Fahrradnetz auswählen');
+    final reloadNetwork = find.text('Radnetz neu laden');
+    expect(language, findsOneWidget);
+    expect(bikeNetwork, findsOneWidget);
+    expect(reloadNetwork, findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Routenplanung')).dy,
+      lessThan(tester.getTopLeft(language).dy),
+    );
+    expect(
+      tester.getTopLeft(language).dy,
+      lessThan(tester.getTopLeft(bikeNetwork).dy),
+    );
+    expect(
+      tester.getTopLeft(bikeNetwork).dy,
+      lessThan(tester.getTopLeft(reloadNetwork).dy),
+    );
     expect(
       find.text('RadlNavi (Oberbayern) / BRouter (weltweit)'),
       findsNothing,
@@ -206,10 +257,19 @@ void main() {
     expect(store.data.bRouterProfile, BRouterProfile.fastBike);
     expect(find.text('BRouter überall · Rennrad (schnell)'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.info_outline));
+    await tester.tap(find.byTooltip('Info: Routenplanung'));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Automatisch nutzt RadlNavi'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Schließen'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Info: BRouter überall'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Abbiegehinweise und Sprachansagen sind nicht'),
       findsOneWidget,
     );
   });

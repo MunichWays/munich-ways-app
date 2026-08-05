@@ -226,11 +226,33 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.widgetWithText(InkWell, 'Home'));
     await tester.pump();
 
     expect(model.recentSearches, [home, work]);
     expect(store.storedPlaces, [home, work]);
+  });
+
+  testWidgets('checkbox selects actions without accepting the destination',
+      (tester) async {
+    final work = Place('Work', const LatLng(48.1, 11.5));
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final store = FakeRecentSearchesStore([work, home]);
+    final model = PlaceSearchScreenViewModel(recentSearchesRepo: store);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pump();
+
+    expect(model.recentSearches, [work, home]);
+    expect(store.storedPlaces, isNull);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox).last).value, isTrue);
   });
 
   testWidgets('shows recent searches after the no-results message',
@@ -282,6 +304,35 @@ void main() {
 
     expect(clearButtonTop, greaterThan(headingTop));
     expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
+    final delete = find.byTooltip('Endgültig löschen');
+    final confirm = find.byTooltip('Auswahl übernehmen');
+    final edit = find.byTooltip('Umbenennen');
+    final favorite = find.byTooltip('Als Favorit speichern');
+    final confirmIcon = find.byIcon(Icons.check_circle);
+    expect(confirmIcon, findsOneWidget);
+    final confirmButton = find.ancestor(
+      of: confirmIcon,
+      matching: find.byType(IconButton),
+    );
+    expect(tester.widget<IconButton>(confirmButton).iconSize, 32);
+    expect(
+      find.ancestor(of: delete, matching: find.byType(Scrollable)),
+      findsNothing,
+    );
+    expect(
+      find.ancestor(of: confirm, matching: find.byType(Scrollable)),
+      findsOneWidget,
+    );
+    expect(tester.getCenter(delete).dx, lessThan(tester.getCenter(edit).dx));
+    expect(tester.getCenter(edit).dx, lessThan(tester.getCenter(favorite).dx));
+    final deleteIconButton = find.ancestor(
+      of: delete,
+      matching: find.byType(IconButton),
+    );
+    expect(
+      tester.widget<IconButton>(deleteIconButton).color,
+      Theme.of(tester.element(delete)).colorScheme.error,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -300,6 +351,8 @@ void main() {
     await tester.pump();
 
     expect(find.byTooltip('Umbenennen'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
     await tester.tap(find.byTooltip('Umbenennen'));
     await tester.pumpAndSettle();
     expect(find.text('Ziel umbenennen'), findsOneWidget);
@@ -330,9 +383,18 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byTooltip('Route berechnen'), findsNWidgets(3));
-    await tester.tap(find.byTooltip('Endgültig löschen').first);
+    expect(find.byTooltip('Auswahl übernehmen'), findsNWidgets(3));
+    await tester.tap(find.byType(Checkbox).first);
     await tester.pump();
+    await tester.tap(find.byTooltip('Endgültig löschen'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ziel löschen?'), findsOneWidget);
+    expect(model.recentSearches, [home, work]);
+    expect(model.favoritePlaces, [home]);
+
+    await tester.tap(find.text('Löschen'));
+    await tester.pumpAndSettle();
 
     expect(model.recentSearches, [work]);
     expect(model.favoritePlaces, isEmpty);
@@ -356,7 +418,9 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byTooltip('Favorit entfernen').first);
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Favorit entfernen'));
     await tester.pump();
 
     expect(model.favoritePlaces, isEmpty);

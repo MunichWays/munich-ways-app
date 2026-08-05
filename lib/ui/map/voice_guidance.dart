@@ -50,8 +50,9 @@ class VoiceGuidance {
     CycleRoute? route, {
     List<String?> intermediateDestinationNames = const [],
   }) {
-    if (identical(route, _route)) return;
-    _route = route;
+    final guidanceRoute = route?.supportsVoiceGuidance == true ? route : null;
+    if (identical(guidanceRoute, _route)) return;
+    _route = guidanceRoute;
     _index = 0;
     _approachSpoken = false;
     _nowSpoken = false;
@@ -64,17 +65,17 @@ class VoiceGuidance {
     _overlappingRouteWarningSpoken = false;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
-    if (route == null || route.points.length < 2) {
+    if (guidanceRoute == null || guidanceRoute.points.length < 2) {
       _maneuvers = const [];
       return;
     }
     _overlappingRouteUnsupported = intermediateDestinationNames.isNotEmpty &&
-        _hasRepeatedRouteSegment(route.points);
+        _hasRepeatedRouteSegment(guidanceRoute.points);
     final projectedManeuvers = <_GuidanceManeuver>[];
     var previousManeuverDistance = 0.0;
-    for (final maneuver in route.maneuvers) {
+    for (final maneuver in guidanceRoute.maneuvers) {
       final projection = _projectOntoRoute(
-        route.points,
+        guidanceRoute.points,
         maneuver.location,
         minimumDistanceAlongRoute: previousManeuverDistance,
       );
@@ -88,7 +89,7 @@ class VoiceGuidance {
         .toList();
     _maneuvers = [
       ...routedManeuvers,
-      ..._geometryTurns(route, routedManeuvers),
+      ..._geometryTurns(guidanceRoute, routedManeuvers),
     ]..sort((a, b) => a.routeDistance.compareTo(b.routeDistance));
     _arrivals = projectedManeuvers
         .where((maneuver) => maneuver.maneuver.type == 'arrive')
@@ -106,10 +107,8 @@ class VoiceGuidance {
     if (route == null) return null;
     if (_overlappingRouteUnsupported) {
       return VoiceGuidanceDisplay(
-        text: english
-            ? 'No turn directions for overlapping route sections'
-            : 'Keine Abbiegehinweise bei überlappendem Hin- und Rückweg',
-        type: 'notification',
+        text: english ? 'Follow map' : 'Karte beachten',
+        type: 'map',
       );
     }
 

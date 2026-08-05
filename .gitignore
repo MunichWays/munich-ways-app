@@ -19,7 +19,8 @@
 .classpath
 .project
 .settings/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 
 # integration_test screenshot outputs (generated locally / CI)
 integration_test/screenshots/*.png

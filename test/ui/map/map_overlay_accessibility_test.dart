@@ -123,6 +123,41 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('shows a positive map hint when no directions are available',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          supportsVoiceGuidance: false,
+        ),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.map_outlined), findsOneWidget);
+    expect(find.text('Karte beachten'), findsOneWidget);
+  });
 }
 
 class _MemorySettingsStore extends SettingsStore {

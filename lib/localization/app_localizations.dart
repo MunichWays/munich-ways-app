@@ -28,6 +28,8 @@ class AppLocalizations {
   String get reloadNetwork =>
       isEnglish ? 'Reload cycling network' : 'Radnetz neu laden';
   String get routePlanning => isEnglish ? 'Route planning' : 'Routenplanung';
+  String get moreSettings =>
+      isEnglish ? 'More settings' : 'Weitere Einstellungen';
   String get routingAutomatic => isEnglish ? 'Automatic' : 'Automatisch';
   String get routingAutomaticDescription => isEnglish
       ? 'RadlNavi (Upper Bavaria) / BRouter (worldwide)'
@@ -41,6 +43,14 @@ class AppLocalizations {
       isEnglish ? 'Road bike (fast)' : 'Rennrad (schnell)';
   String get bRouterShortest =>
       isEnglish ? 'Shortest route' : 'Kürzeste Strecke';
+  String get bRouterGuidanceInfo => isEnglish
+      ? 'BRouter is used for route calculation only. Turn-by-turn directions '
+          'and voice guidance are unavailable because BRouter does not provide '
+          'sufficiently reliable maneuver data.'
+      : 'BRouter wird nur zur Routenberechnung verwendet. Abbiegehinweise und '
+          'Sprachansagen sind nicht verfügbar, da BRouter keine ausreichend '
+          'zuverlässigen Abbiegedaten liefert.';
+  String get followRouteOnMap => isEnglish ? 'Follow map' : 'Karte beachten';
   String get routePlanningInfo => isEnglish
       ? 'Automatic uses RadlNavi for low-stress routes within Upper Bavaria '
           'and BRouter outside the region or when RadlNavi is unavailable.\n\n'

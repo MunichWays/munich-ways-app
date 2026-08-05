@@ -16,6 +16,26 @@ void main() {
         maneuvers: [maneuver],
       );
 
+  test('does not derive directions for routes without guidance support', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [
+            LatLng(48.1000, 11.5000),
+            LatLng(48.1000, 11.5010),
+            LatLng(48.1010, 11.5010),
+          ],
+          200,
+          60,
+          supportsVoiceGuidance: false,
+        ),
+      );
+
+    const position = LatLng(48.1000, 11.5005);
+    expect(guidance.display(position, english: false), isNull);
+    expect(guidance.update(position, english: false), isNull);
+  });
+
   test('announces approach and turn only once', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(routeWith(const RouteManeuver(
@@ -434,7 +454,7 @@ void main() {
 
     expect(
       guidance.display(start, english: false)?.text,
-      'Keine Abbiegehinweise bei überlappendem Hin- und Rückweg',
+      'Karte beachten',
     );
     expect(
       guidance.update(start, english: false),

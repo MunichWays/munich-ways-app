@@ -37,6 +37,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   }
 
   static IconData _maneuverIcon(VoiceGuidanceDisplay maneuver) {
+    if (maneuver.type == 'map') return Icons.map_outlined;
     if (maneuver.type == 'arrive') return Icons.location_on;
     if (maneuver.type == 'roundabout' ||
         maneuver.type == 'rotary' ||
@@ -68,6 +69,13 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
+    final guidanceDisplay = model.navigationStarted
+        ? (nextManeuver?.type == 'notification' ? null : nextManeuver) ??
+            VoiceGuidanceDisplay(
+              text: context.l10n.followRouteOnMap,
+              type: 'map',
+            )
+        : null;
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
@@ -196,23 +204,26 @@ class MapNavigationHeaderBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (model.navigationStarted && nextManeuver != null)
+            if (guidanceDisplay != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
                 child: Row(
                   children: [
                     Icon(
-                      _maneuverIcon(nextManeuver!),
+                      _maneuverIcon(guidanceDisplay),
                       size: 32,
                       color: Colors.white,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        nextManeuver!.text,
-                        maxLines: 2,
+                        guidanceDisplay.text,
+                        maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: (guidanceDisplay.type == 'map'
+                                    ? theme.textTheme.titleMedium
+                                    : theme.textTheme.titleLarge)
+                                ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                               height: 1.15,

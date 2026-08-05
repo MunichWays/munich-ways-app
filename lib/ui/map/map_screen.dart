@@ -1328,9 +1328,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
-    if (!model.navigationStarted || !model.voiceGuidanceEnabled) return;
+    if (!model.navigationStarted ||
+        !model.voiceGuidanceEnabled ||
+        !model.voiceGuidanceAvailable) {
+      return;
+    }
     _voiceSignalTimer = Timer(_voiceSignalWarningDelay, () {
-      if (!mounted || !model.navigationStarted || !model.voiceGuidanceEnabled) {
+      if (!mounted ||
+          !model.navigationStarted ||
+          !model.voiceGuidanceEnabled ||
+          !model.voiceGuidanceAvailable) {
         return;
       }
       unawaited(_zoomOutAfterMissingDirections());

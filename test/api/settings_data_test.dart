@@ -8,6 +8,15 @@ void main() {
     expect(SettingsData.fromJson(const {}).showZoomButtons, isTrue);
   });
 
+  test('uses automatic RadlNavi and BRouter trekking by default', () {
+    expect(SettingsData.defaults.routingMode, RoutingMode.automatic);
+    expect(SettingsData.defaults.bRouterProfile, BRouterProfile.trekking);
+
+    final freshInstall = SettingsData.fromJson(const {});
+    expect(freshInstall.routingMode, RoutingMode.automatic);
+    expect(freshInstall.bRouterProfile, BRouterProfile.trekking);
+  });
+
   test('loads routing mode and BRouter profile', () {
     final data = SettingsData.fromJson({
       'routingMode': 'bRouterEverywhere',

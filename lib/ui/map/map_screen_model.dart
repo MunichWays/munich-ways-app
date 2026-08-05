@@ -587,6 +587,34 @@ class MapScreenViewModel extends ChangeNotifier {
     return updated;
   }
 
+  bool get shortestRouteEnabled =>
+      _routingMode == RoutingMode.bRouterEverywhere &&
+      _bRouterProfile == BRouterProfile.shortest;
+
+  void setShortestRouteEnabled(bool enabled) {
+    final routingMode =
+        enabled ? RoutingMode.bRouterEverywhere : RoutingMode.automatic;
+    final profile = enabled ? BRouterProfile.shortest : BRouterProfile.trekking;
+    if (_routingMode == routingMode && _bRouterProfile == profile) return;
+    _routingMode = routingMode;
+    _bRouterProfile = profile;
+    notifyListeners();
+    Future.wait([
+      _settingsStore.saveRoutingMode(routingMode),
+      _settingsStore.saveBRouterProfile(profile),
+    ]).catchError((Object e, StackTrace st) {
+      log.e(
+        'Failed to save shortest route setting',
+        error: e,
+        stackTrace: st,
+      );
+      return <void>[];
+    });
+    if (destination != null) {
+      unawaited(_requestRoute());
+    }
+  }
+
   void onTap(StreetDetails? details) {
     log.d(details);
     showStreetDetailsController.add(details);
