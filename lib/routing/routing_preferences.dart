@@ -3,6 +3,16 @@ enum RoutingMode {
   bRouterEverywhere,
 }
 
+enum RouteRecommendation {
+  standard,
+  shortest,
+  aloneAfterDark,
+  hotWeather,
+  snowAndMud,
+  trekking,
+  roadBike,
+}
+
 enum BRouterProfile {
   trekking('trekking'),
   fastBike('fastbike'),

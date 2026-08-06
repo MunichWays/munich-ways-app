@@ -179,7 +179,7 @@ void main() {
     );
     await tester.pump();
 
-    final shortest = find.text('Kürzeste Strecke');
+    final shortest = find.text('Kürzeste Strecke').first;
     final zoom = find.text('Zoom-Buttons');
     final mapButtons = find.text('Karten-Buttons');
     final more = find.text('Weitere Einstellungen');
@@ -209,11 +209,11 @@ void main() {
     expect(store.data.routingMode, RoutingMode.automatic);
     expect(store.data.bRouterProfile, BRouterProfile.trekking);
 
-    expect(find.text('Routenplanung'), findsNothing);
+    expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
-    expect(find.text('Routenplanung'), findsOneWidget);
-    expect(find.text('Automatisch · Trekking (Standard)'), findsOneWidget);
+    expect(find.text('Routenwunsch'), findsOneWidget);
+    expect(find.text('Routenberechnung'), findsNothing);
     final language = find.text('Sprache');
     final bikeNetwork = find.text('Fahrradnetz auswählen');
     final reloadNetwork = find.text('Radnetz neu laden');
@@ -221,7 +221,7 @@ void main() {
     expect(bikeNetwork, findsOneWidget);
     expect(reloadNetwork, findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Routenplanung')).dy,
+      tester.getTopLeft(find.text('Routenwunsch')).dy,
       lessThan(tester.getTopLeft(language).dy),
     );
     expect(
@@ -237,27 +237,64 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.text('Routenplanung'));
+    await tester.tap(find.text('Routenwunsch'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('RadlNavi (Oberbayern) / BRouter (weltweit)'),
-      findsOneWidget,
-    );
+    expect(find.text('Standard (empfohlen)'), findsOneWidget);
+    expect(find.text('Trekking'), findsOneWidget);
+    expect(find.text('Rennrad (schnell)'), findsOneWidget);
+    expect(find.text('Allein im Dunkeln (Beta)'), findsOneWidget);
+    expect(find.text('Bei Hitze (Beta)'), findsOneWidget);
+    expect(find.text('Bei Schnee und Matsch (Beta)'), findsOneWidget);
 
-    await tester.tap(find.text('BRouter überall'));
+    await tester.tap(find.text('Allein im Dunkeln (Beta)'));
     await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.aloneAfterDark);
     expect(model.routingMode, RoutingMode.bRouterEverywhere);
-    expect(store.data.routingMode, RoutingMode.bRouterEverywhere);
+    expect(model.bRouterProfile, BRouterProfile.fastBike);
 
-    await tester.ensureVisible(find.text('Rennrad (schnell)'));
+    await tester.tap(find.byTooltip('Info: Allein im Dunkeln (Beta)'));
     await tester.pumpAndSettle();
+    expect(find.textContaining('besonders Frauen'), findsOneWidget);
+    await tester.tap(find.text('Schließen'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Bei Hitze (Beta)'));
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.hotWeather);
+    expect(model.routingMode, RoutingMode.automatic);
+    expect(model.bRouterProfile, BRouterProfile.trekking);
+
+    await tester.tap(find.text('Bei Schnee und Matsch (Beta)'));
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.snowAndMud);
+    expect(model.routingMode, RoutingMode.bRouterEverywhere);
+    expect(model.bRouterProfile, BRouterProfile.fastBike);
+
+    await tester.tap(find.text('Kürzeste Strecke').last);
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.shortest);
+    expect(model.shortestRouteEnabled, isTrue);
+
+    await tester.tap(find.text('Standard (empfohlen)'));
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.standard);
+    expect(model.routingMode, RoutingMode.automatic);
+    expect(model.bRouterProfile, BRouterProfile.trekking);
+    expect(model.shortestRouteEnabled, isFalse);
+
+    await tester.tap(find.text('Trekking'));
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.trekking);
+    expect(model.routingMode, RoutingMode.bRouterEverywhere);
+    expect(model.bRouterProfile, BRouterProfile.trekking);
+
     await tester.tap(find.text('Rennrad (schnell)'));
     await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.roadBike);
+    expect(model.routingMode, RoutingMode.bRouterEverywhere);
     expect(model.bRouterProfile, BRouterProfile.fastBike);
-    expect(store.data.bRouterProfile, BRouterProfile.fastBike);
-    expect(find.text('BRouter überall · Rennrad (schnell)'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Info: Routenplanung'));
+    await tester.tap(find.byTooltip('Info: Routenwunsch'));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Automatisch nutzt RadlNavi'),
@@ -265,13 +302,6 @@ void main() {
     );
     await tester.tap(find.text('Schließen'));
     await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('Info: BRouter überall'));
-    await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Abbiegehinweise und Sprachansagen sind nicht'),
-      findsOneWidget,
-    );
   });
 }
 
@@ -289,6 +319,16 @@ class _MemorySettingsStore extends SettingsStore {
   @override
   Future<void> saveBRouterProfile(BRouterProfile profile) async {
     data = data.copyWith(bRouterProfile: profile);
+  }
+
+  @override
+  Future<void> saveRouteRecommendation(
+    RouteRecommendation? recommendation,
+  ) async {
+    data = data.copyWith(
+      routeRecommendation: recommendation,
+      clearRouteRecommendation: recommendation == null,
+    );
   }
 }
 

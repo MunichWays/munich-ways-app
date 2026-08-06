@@ -87,10 +87,14 @@ class VoiceGuidance {
     final routedManeuvers = projectedManeuvers
         .where((maneuver) => _isRelevant(maneuver.maneuver))
         .toList();
-    _maneuvers = [
+    final sortedManeuvers = [
       ...routedManeuvers,
       ..._geometryTurns(guidanceRoute, routedManeuvers),
     ]..sort((a, b) => a.routeDistance.compareTo(b.routeDistance));
+    _maneuvers = _withoutStraightOffsetPairs(
+      guidanceRoute.points,
+      sortedManeuvers,
+    );
     _arrivals = projectedManeuvers
         .where((maneuver) => maneuver.maneuver.type == 'arrive')
         .toList(growable: false);
@@ -362,6 +366,108 @@ class VoiceGuidance {
   static String _routePointKey(LatLng point) =>
       '${(point.latitude * 100000).round()}:'
       '${(point.longitude * 100000).round()}';
+
+  /// Removes short left/right chicanes where the route continues in nearly
+  /// the same direction. Routing services can otherwise describe a slightly
+  /// offset cycle crossing as two turns instead of simply going straight.
+  static List<_GuidanceManeuver> _withoutStraightOffsetPairs(
+    List<LatLng> route,
+    List<_GuidanceManeuver> maneuvers,
+  ) {
+    const maximumGapMeters = 30.0;
+    const sampleDistanceMeters = 12.0;
+    const maximumHeadingChangeDegrees = 25.0;
+    final result = <_GuidanceManeuver>[];
+
+    for (var index = 0; index < maneuvers.length; index++) {
+      final first = maneuvers[index];
+      if (index + 1 >= maneuvers.length) {
+        result.add(first);
+        continue;
+      }
+      final second = maneuvers[index + 1];
+      final gap = second.routeDistance - first.routeDistance;
+      if (!_areOppositeTurns(first.maneuver, second.maneuver) ||
+          gap <= 0 ||
+          gap > maximumGapMeters) {
+        result.add(first);
+        continue;
+      }
+
+      final before = _pointAlongRoute(
+        route,
+        max(0, first.routeDistance - sampleDistanceMeters),
+      );
+      final atFirst = _pointAlongRoute(route, first.routeDistance);
+      final atSecond = _pointAlongRoute(route, second.routeDistance);
+      final after = _pointAlongRoute(
+        route,
+        second.routeDistance + sampleDistanceMeters,
+      );
+      final headingChange = _angleBetweenSegments(
+        before,
+        atFirst,
+        atSecond,
+        after,
+      );
+      if (headingChange <= maximumHeadingChangeDegrees) {
+        index++;
+        continue;
+      }
+      result.add(first);
+    }
+    return result;
+  }
+
+  static bool _areOppositeTurns(RouteManeuver first, RouteManeuver second) {
+    final firstModifier = first.modifier ?? '';
+    final secondModifier = second.modifier ?? '';
+    return firstModifier.contains('left') && secondModifier.contains('right') ||
+        firstModifier.contains('right') && secondModifier.contains('left');
+  }
+
+  static LatLng _pointAlongRoute(List<LatLng> route, double targetDistance) {
+    var travelled = 0.0;
+    const distance = Distance();
+    for (var index = 0; index < route.length - 1; index++) {
+      final start = route[index];
+      final end = route[index + 1];
+      final segmentLength =
+          distance.as(LengthUnit.Meter, start, end).toDouble();
+      if (travelled + segmentLength >= targetDistance && segmentLength > 0) {
+        final fraction =
+            ((targetDistance - travelled) / segmentLength).clamp(0.0, 1.0);
+        return LatLng(
+          start.latitude + (end.latitude - start.latitude) * fraction,
+          start.longitude + (end.longitude - start.longitude) * fraction,
+        );
+      }
+      travelled += segmentLength;
+    }
+    return route.last;
+  }
+
+  static double _angleBetweenSegments(
+    LatLng before,
+    LatLng atFirst,
+    LatLng atSecond,
+    LatLng after,
+  ) {
+    final latitudeRadians = atFirst.latitude * pi / 180;
+    final metersPerLon = 111320.0 * cos(latitudeRadians);
+    const metersPerLat = 111320.0;
+    final incomingX = (atFirst.longitude - before.longitude) * metersPerLon;
+    final incomingY = (atFirst.latitude - before.latitude) * metersPerLat;
+    final outgoingX = (after.longitude - atSecond.longitude) * metersPerLon;
+    final outgoingY = (after.latitude - atSecond.latitude) * metersPerLat;
+    return (atan2(
+              incomingX * outgoingY - incomingY * outgoingX,
+              incomingX * outgoingX + incomingY * outgoingY,
+            ) *
+            180 /
+            pi)
+        .abs();
+  }
 
   /// Adds clear corners that routing services sometimes omit when the route
   /// follows the same named foot/cycle way through a junction.

@@ -314,6 +314,44 @@ void main() {
     );
   });
 
+  test('ignores the offset straight crossing at Balanstraße', () {
+    const startOnCyclePath = LatLng(48.104805, 11.605651);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          LatLng(48.104810, 11.605648),
+          LatLng(48.104772, 11.605490),
+          LatLng(48.104770, 11.605477),
+          LatLng(48.104724, 11.605284),
+          LatLng(48.104743, 11.605201),
+          LatLng(48.104719, 11.605100),
+          LatLng(48.104691, 11.604985),
+          LatLng(48.104650, 11.604948),
+          LatLng(48.104568, 11.604590),
+          LatLng(48.104562, 11.604566),
+          LatLng(48.104485, 11.604226),
+          LatLng(48.104425, 11.603980),
+        ],
+        133.7,
+        32.1,
+        maneuvers: const [
+          RouteManeuver(
+            location: LatLng(48.104743, 11.605201),
+            type: 'turn',
+            modifier: 'left',
+          ),
+          RouteManeuver(
+            location: LatLng(48.104650, 11.604948),
+            type: 'turn',
+            modifier: 'slight right',
+          ),
+        ],
+      ));
+
+    expect(guidance.display(startOnCyclePath, english: false), isNull);
+    expect(guidance.update(startOnCyclePath, english: false), isNull);
+  });
+
   test('announces arrival independently of route progress projection', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(CycleRoute(

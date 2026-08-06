@@ -93,7 +93,10 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         title: Text(strings.moreSettings),
                         children: [
                           const MenuGroupDivider(),
-                          _RoutingSettings(model: model, strings: strings),
+                          _RouteRecommendationSettings(
+                            model: model,
+                            strings: strings,
+                          ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
                             label: strings.language,
@@ -171,8 +174,8 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
   }
 }
 
-class _RoutingSettings extends StatelessWidget {
-  const _RoutingSettings({
+class _RouteRecommendationSettings extends StatelessWidget {
+  const _RouteRecommendationSettings({
     required this.model,
     required this.strings,
   });
@@ -182,98 +185,64 @@ class _RoutingSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileLabel = switch (model.bRouterProfile) {
-      BRouterProfile.trekking => strings.bRouterTrekking,
-      BRouterProfile.fastBike => strings.bRouterFastBike,
-      BRouterProfile.shortest => strings.bRouterShortest,
-    };
-    final modeLabel = model.routingMode == RoutingMode.automatic
-        ? strings.routingAutomatic
-        : strings.routingBRouterEverywhere;
-
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.only(left: 16, right: 8),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
         childrenPadding: const EdgeInsets.only(bottom: 8),
         title: Row(
           children: [
-            Expanded(child: Text(strings.routePlanning)),
+            Expanded(child: Text(strings.routeRecommendation)),
             IconButton(
               visualDensity: VisualDensity.compact,
-              tooltip:
-                  '${AppLocalizations.of(context).tr('Info')}: ${strings.routePlanning}',
-              onPressed: () => _showRoutingInfo(context),
+              tooltip: '${strings.tr('Info')}: ${strings.routeRecommendation}',
+              onPressed: () => _showOverviewInfo(context),
               icon: const Icon(Icons.info_outline),
             ),
           ],
         ),
-        subtitle: Text('$modeLabel · $profileLabel'),
+        subtitle: model.routeRecommendation == null
+            ? null
+            : Text(_label(model.routeRecommendation!)),
         children: [
           const MenuGroupDivider(),
-          _RadioMenuItem<RoutingMode>(
-            title: strings.routingAutomatic,
-            subtitle: strings.routingAutomaticDescription,
-            value: RoutingMode.automatic,
-            groupValue: model.routingMode,
-            onChanged: model.setRoutingMode,
-          ),
-          const MenuGroupDivider(),
-          _RadioMenuItem<RoutingMode>(
-            title: strings.routingBRouterEverywhere,
-            value: RoutingMode.bRouterEverywhere,
-            groupValue: model.routingMode,
-            onChanged: model.setRoutingMode,
-            trailing: IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip:
-                  '${AppLocalizations.of(context).tr('Info')}: ${strings.routingBRouterEverywhere}',
-              onPressed: () => _showBRouterInfo(context),
-              icon: const Icon(Icons.info_outline),
-            ),
-          ),
-          const MenuGroupDivider(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(
-                strings.bRouterProfile,
-                style: Theme.of(context).textTheme.titleSmall,
+          for (final recommendation in RouteRecommendation.values) ...[
+            _RadioMenuItem<RouteRecommendation>(
+              title: _label(recommendation),
+              value: recommendation,
+              groupValue: model.routeRecommendation,
+              onChanged: model.setRouteRecommendation,
+              trailing: IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: '${strings.tr('Info')}: ${_label(recommendation)}',
+                onPressed: () => _showInfo(context, recommendation),
+                icon: const Icon(Icons.info_outline),
               ),
             ),
-          ),
-          _RadioMenuItem<BRouterProfile>(
-            title: strings.bRouterTrekking,
-            value: BRouterProfile.trekking,
-            groupValue: model.bRouterProfile,
-            onChanged: model.setBRouterProfile,
-          ),
-          _RadioMenuItem<BRouterProfile>(
-            title: strings.bRouterFastBike,
-            value: BRouterProfile.fastBike,
-            groupValue: model.bRouterProfile,
-            onChanged: model.setBRouterProfile,
-          ),
-          _RadioMenuItem<BRouterProfile>(
-            title: strings.bRouterShortest,
-            value: BRouterProfile.shortest,
-            groupValue: model.bRouterProfile,
-            onChanged: model.setBRouterProfile,
-          ),
+            if (recommendation != RouteRecommendation.values.last)
+              const MenuGroupDivider(),
+          ],
         ],
       ),
     );
   }
 
-  void _showRoutingInfo(BuildContext context) {
+  String _label(RouteRecommendation recommendation) => switch (recommendation) {
+        RouteRecommendation.standard => strings.standardRoute,
+        RouteRecommendation.trekking => strings.bRouterTrekking,
+        RouteRecommendation.roadBike => strings.bRouterFastBike,
+        RouteRecommendation.shortest => strings.bRouterShortest,
+        RouteRecommendation.aloneAfterDark => strings.aloneAfterDark,
+        RouteRecommendation.hotWeather => strings.hotWeather,
+        RouteRecommendation.snowAndMud => strings.snowAndMud,
+      };
+
+  void _showOverviewInfo(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(strings.routePlanning),
-        content: SingleChildScrollView(
-          child: Text(strings.routePlanningInfo),
-        ),
+        title: Text(strings.routeRecommendation),
+        content: SingleChildScrollView(child: Text(strings.routePlanningInfo)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -284,12 +253,12 @@ class _RoutingSettings extends StatelessWidget {
     );
   }
 
-  void _showBRouterInfo(BuildContext context) {
+  void _showInfo(BuildContext context, RouteRecommendation recommendation) {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('BRouter'),
-        content: Text(strings.bRouterGuidanceInfo),
+        title: Text(_label(recommendation)),
+        content: Text(strings.routeRecommendationInfo(recommendation)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -314,7 +283,7 @@ class _RadioMenuItem<T> extends StatelessWidget {
   final String title;
   final String? subtitle;
   final T value;
-  final T groupValue;
+  final T? groupValue;
   final ValueChanged<T> onChanged;
   final Widget? trailing;
 

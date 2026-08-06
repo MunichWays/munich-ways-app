@@ -88,6 +88,15 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveRouteRecommendation(
+    RouteRecommendation? recommendation,
+  ) {
+    return _enqueueUpdate((current) => current.copyWith(
+          routeRecommendation: recommendation,
+          clearRouteRecommendation: recommendation == null,
+        ));
+  }
+
   Future<void> _enqueueUpdate(
     SettingsData Function(SettingsData current) update,
   ) {
@@ -108,6 +117,7 @@ class SettingsData {
     required this.voiceGuidanceEnabled,
     required this.routingMode,
     required this.bRouterProfile,
+    required this.routeRecommendation,
   });
 
   final bool showZoomButtons;
@@ -120,6 +130,7 @@ class SettingsData {
   final bool voiceGuidanceEnabled;
   final RoutingMode routingMode;
   final BRouterProfile bRouterProfile;
+  final RouteRecommendation? routeRecommendation;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: true,
@@ -128,6 +139,7 @@ class SettingsData {
     voiceGuidanceEnabled: false,
     routingMode: RoutingMode.automatic,
     bRouterProfile: BRouterProfile.trekking,
+    routeRecommendation: RouteRecommendation.standard,
   );
 
   Map<String, dynamic> toJson() => {
@@ -137,6 +149,8 @@ class SettingsData {
         'voiceGuidanceEnabled': voiceGuidanceEnabled,
         'routingMode': routingMode.name,
         'bRouterProfile': bRouterProfile.name,
+        if (routeRecommendation != null)
+          'routeRecommendation': routeRecommendation!.name,
       };
 
   SettingsData copyWith({
@@ -147,6 +161,8 @@ class SettingsData {
     bool? voiceGuidanceEnabled,
     RoutingMode? routingMode,
     BRouterProfile? bRouterProfile,
+    RouteRecommendation? routeRecommendation,
+    bool clearRouteRecommendation = false,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -156,24 +172,43 @@ class SettingsData {
         voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
         routingMode: routingMode ?? this.routingMode,
         bRouterProfile: bRouterProfile ?? this.bRouterProfile,
+        routeRecommendation: clearRouteRecommendation
+            ? null
+            : routeRecommendation ?? this.routeRecommendation,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
     final edge = json['sidePanelEdge'] as String?;
     final language = json['language'] as String?;
+    final routingMode = json['routingMode'] == 'bRouterEverywhere' ||
+            json['routingMode'] == 'bRouter'
+        ? RoutingMode.bRouterEverywhere
+        : RoutingMode.automatic;
+    final bRouterProfile = BRouterProfile.values.firstWhere(
+      (profile) => profile.name == json['bRouterProfile'],
+      orElse: () => BRouterProfile.trekking,
+    );
+    final storedRecommendation = RouteRecommendation.values
+        .where(
+          (recommendation) =>
+              recommendation.name == json['routeRecommendation'],
+        )
+        .firstOrNull;
+    final inferredRecommendation = routingMode == RoutingMode.automatic &&
+            bRouterProfile == BRouterProfile.trekking
+        ? RouteRecommendation.standard
+        : routingMode == RoutingMode.bRouterEverywhere &&
+                bRouterProfile == BRouterProfile.shortest
+            ? RouteRecommendation.shortest
+            : null;
     return SettingsData(
       showZoomButtons: json['showZoomButtons'] as bool? ?? true,
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
       voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,
-      routingMode: json['routingMode'] == 'bRouterEverywhere' ||
-              json['routingMode'] == 'bRouter'
-          ? RoutingMode.bRouterEverywhere
-          : RoutingMode.automatic,
-      bRouterProfile: BRouterProfile.values.firstWhere(
-        (profile) => profile.name == json['bRouterProfile'],
-        orElse: () => BRouterProfile.trekking,
-      ),
+      routingMode: routingMode,
+      bRouterProfile: bRouterProfile,
+      routeRecommendation: storedRecommendation ?? inferredRecommendation,
     );
   }
 }
