@@ -15,6 +15,7 @@ class GeoapifyApi {
   static const double _munichLatitude = 48.137154;
   static const double _munichLongitude = 11.576124;
   static const LatLng _munichCenter = LatLng(_munichLatitude, _munichLongitude);
+  static const int _maxReverseAddressLookups = 5;
 
   final String apiKey;
   final String baseUrl;
@@ -111,11 +112,21 @@ class GeoapifyApi {
     log.d(response.body);
     final json = response.jsonBody() as Map<String, dynamic>;
     final results = json['results'] as List<dynamic>? ?? const [];
+    final rawResults = results.cast<Map<String, dynamic>>();
+    var reverseLookups = 0;
+    final enrichedResults = await Future.wait(rawResults.map((result) {
+      if (_needsReverseAddress(result) &&
+          reverseLookups < _maxReverseAddressLookups) {
+        reverseLookups++;
+        return _withReverseAddress(result);
+      }
+      return Future.value(result);
+    }));
     final placesByAddress = <String, Place>{};
     final queryContainsHouseNumber =
         RegExp(r'\b\d+\s*[a-zA-Z]?\b').hasMatch(query);
 
-    for (final result in results.cast<Map<String, dynamic>>()) {
+    for (final result in enrichedResults) {
       final lat = result['lat'];
       final lon = result['lon'];
       if (lat is! num || lon is! num) {
@@ -145,6 +156,48 @@ class GeoapifyApi {
     return placesByAddress.values.toList();
   }
 
+  static bool _needsReverseAddress(Map<String, dynamic> result) =>
+      _value(result, 'name').isNotEmpty &&
+      _value(result, 'street').isEmpty &&
+      _value(result, 'housenumber').isEmpty &&
+      result['lat'] is num &&
+      result['lon'] is num;
+
+  Future<Map<String, dynamic>> _withReverseAddress(
+    Map<String, dynamic> result,
+  ) async {
+    final uri = Uri.https(baseUrl, '/v1/geocode/reverse', {
+      'lat': result['lat'].toString(),
+      'lon': result['lon'].toString(),
+      'format': 'json',
+      'lang': 'de',
+      'limit': '1',
+      'apiKey': apiKey,
+    });
+    try {
+      final response = await client.get(uri, headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'com.munichways.app/flutter',
+      }).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return result;
+
+      final json = response.jsonBody() as Map<String, dynamic>;
+      final reverseResults = json['results'] as List<dynamic>? ?? const [];
+      if (reverseResults.isEmpty) return result;
+      final address = reverseResults.first as Map<String, dynamic>;
+      return {
+        ...result,
+        for (final key in ['street', 'housenumber', 'postcode', 'city'])
+          if (_value(result, key).isEmpty && _value(address, key).isNotEmpty)
+            key: address[key],
+      };
+    } catch (_) {
+      // Address enrichment is optional; keep the original search result if it
+      // is unavailable or times out.
+      return result;
+    }
+  }
+
   static String _boundingBox(LatLng center) =>
       '${center.longitude - 0.35},${center.latitude - 0.25},'
       '${center.longitude + 0.35},${center.latitude + 0.25}';
@@ -159,6 +212,33 @@ class GeoapifyApi {
     final houseNumber = _value(result, 'housenumber');
     final postcode = _value(result, 'postcode');
     final city = _value(result, 'city');
+    final formatted = _value(result, 'formatted');
+
+    if (!generalizeStreet &&
+        name.isNotEmpty &&
+        addressLine1 == name &&
+        street.isNotEmpty) {
+      final streetAddress =
+          [street, houseNumber].where((part) => part.isNotEmpty).join(' ');
+      final cityPart =
+          [postcode, city].where((part) => part.isNotEmpty).join(' ');
+      return [name, streetAddress, cityPart]
+          .where((part) => part.isNotEmpty)
+          .toSet()
+          .join(', ');
+    }
+
+    // Some POIs expose only their name in address_line1 even though formatted
+    // still contains the complete street address. Prefer that information so
+    // equally named branches remain distinguishable in search results.
+    if (!generalizeStreet &&
+        street.isEmpty &&
+        houseNumber.isEmpty &&
+        name.isNotEmpty &&
+        addressLine1 == name &&
+        formatted.isNotEmpty) {
+      return _formattedWithoutCountry(result, formatted);
+    }
 
     final mainPart = generalizeStreet
         ? street
@@ -174,6 +254,24 @@ class GeoapifyApi {
         .where((part) => part.isNotEmpty)
         .toSet()
         .join(', ');
+  }
+
+  static String _formattedWithoutCountry(
+    Map<String, dynamic> result,
+    String formatted,
+  ) {
+    final parts = formatted
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+    final country = _value(result, 'country');
+    if (country.isNotEmpty &&
+        parts.isNotEmpty &&
+        parts.last.toLowerCase() == country.toLowerCase()) {
+      parts.removeLast();
+    }
+    return parts.join(', ');
   }
 
   /// Postcode and district are intentionally ignored so minor OSM address

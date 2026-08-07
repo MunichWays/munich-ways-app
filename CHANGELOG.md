@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.13+52 - 2026-08-03
+* Added saved destinations and improved place search and route planning guidance.
+* Improved voice guidance, maneuver instructions, and the visual connection between routes and their destinations.
+* Added a bundled cycling-network fallback so ratings remain available when the full network cannot be downloaded at startup.
+* Added retry feedback when the initial cycling-network download fails.
+* Improved Android map startup, location handling, and behavior when returning to the app.
+* Improved accessibility labels and touch targets for important map and route controls.
+
 ## 3.0.0+31
 * Migrated the map stack from `flutter_map` to MapLibre and removed legacy map code paths.
 * Introduced a new map overlay layout with modal sheets for info, settings, bike network selection, place search, and street details.

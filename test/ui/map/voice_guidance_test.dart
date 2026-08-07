@@ -16,6 +16,26 @@ void main() {
         maneuvers: [maneuver],
       );
 
+  test('does not derive directions for routes without guidance support', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [
+            LatLng(48.1000, 11.5000),
+            LatLng(48.1000, 11.5010),
+            LatLng(48.1010, 11.5010),
+          ],
+          200,
+          60,
+          supportsVoiceGuidance: false,
+        ),
+      );
+
+    const position = LatLng(48.1000, 11.5005);
+    expect(guidance.display(position, english: false), isNull);
+    expect(guidance.update(position, english: false), isNull);
+  });
+
   test('announces approach and turn only once', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(routeWith(const RouteManeuver(
@@ -268,10 +288,11 @@ void main() {
   });
 
   test('combines two closely spaced turns in one announcement', () {
-    const secondTurn = LatLng(48.14118, 11.5700);
+    const secondTurn = LatLng(48.1410, 11.5703);
+    const afterSecondTurn = LatLng(48.1413, 11.5698);
     final guidance = VoiceGuidance()
       ..setRoute(CycleRoute(
-        const [start, beforeTurn, turn, secondTurn, end],
+        const [start, beforeTurn, turn, secondTurn, afterSecondTurn],
         170,
         40,
         maneuvers: const [
@@ -292,6 +313,44 @@ void main() {
       guidance.update(beforeTurn, english: false),
       'In 60 Metern rechts abbiegen, danach sofort links abbiegen.',
     );
+  });
+
+  test('ignores the offset straight crossing at Balanstraße', () {
+    const startOnCyclePath = LatLng(48.104805, 11.605651);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          LatLng(48.104810, 11.605648),
+          LatLng(48.104772, 11.605490),
+          LatLng(48.104770, 11.605477),
+          LatLng(48.104724, 11.605284),
+          LatLng(48.104743, 11.605201),
+          LatLng(48.104719, 11.605100),
+          LatLng(48.104691, 11.604985),
+          LatLng(48.104650, 11.604948),
+          LatLng(48.104568, 11.604590),
+          LatLng(48.104562, 11.604566),
+          LatLng(48.104485, 11.604226),
+          LatLng(48.104425, 11.603980),
+        ],
+        133.7,
+        32.1,
+        maneuvers: const [
+          RouteManeuver(
+            location: LatLng(48.104743, 11.605201),
+            type: 'turn',
+            modifier: 'left',
+          ),
+          RouteManeuver(
+            location: LatLng(48.104650, 11.604948),
+            type: 'turn',
+            modifier: 'slight right',
+          ),
+        ],
+      ));
+
+    expect(guidance.display(startOnCyclePath, english: false), isNull);
+    expect(guidance.update(startOnCyclePath, english: false), isNull);
   });
 
   test('announces arrival independently of route progress projection', () {
@@ -434,7 +493,7 @@ void main() {
 
     expect(
       guidance.display(start, english: false)?.text,
-      'Keine Abbiegehinweise bei überlappendem Hin- und Rückweg',
+      'Karte beachten',
     );
     expect(
       guidance.update(start, english: false),

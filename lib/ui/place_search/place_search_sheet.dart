@@ -140,15 +140,13 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                     ],
                   ),
                 ),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (widget.showRoutePlannerOption)
-                          TextButton.icon(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                  child: Row(
+                    children: [
+                      if (widget.showRoutePlannerOption) ...[
+                        Expanded(
+                          child: TextButton.icon(
                             onPressed: () => Navigator.of(context).pop(
                               PlaceSearchSheetResult.planRoute,
                             ),
@@ -159,7 +157,11 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                                   : 'Route planen',
                             ),
                           ),
-                        TextButton.icon(
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                        child: TextButton.icon(
                           onPressed: () => Navigator.of(context).pop(
                             PlaceSearchSheetResult.selectOnMap,
                           ),
@@ -171,8 +173,8 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                             context.l10n.tr('Auf Karte auswählen'),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1),

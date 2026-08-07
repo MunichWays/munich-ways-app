@@ -96,6 +96,77 @@ void main() {
     );
   });
 
+  test('uses the formatted street address for named POIs', () async {
+    final api = GeoapifyApi(
+      apiKey: 'test-key',
+      client: MockClient((_) async => Response(
+            '''
+            {"results":[{
+              "name":"Katzentempel München",
+              "address_line1":"Katzentempel München",
+              "formatted":"Katzentempel München, Türkenstraße 29, 80799 München, Deutschland",
+              "postcode":"80799",
+              "city":"München",
+              "country":"Deutschland",
+              "lat":48.151,
+              "lon":11.575
+            }]}
+            ''',
+            200,
+            headers: {'content-type': 'application/json; charset=UTF-8'},
+          )),
+    );
+
+    final places = await api.search('Katzentempel');
+
+    expect(places.single.displayName,
+        'Katzentempel München, Türkenstraße 29, 80799 München');
+  });
+
+  test('adds a reverse-geocoded street address to named POIs', () async {
+    final api = GeoapifyApi(
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        if (request.url.path == '/v1/geocode/reverse') {
+          return Response(
+            '''
+            {"results":[{
+              "street":"Pasinger Bahnhofsplatz",
+              "housenumber":"5",
+              "postcode":"81241",
+              "city":"München"
+            }]}
+            ''',
+            200,
+            headers: {'content-type': 'application/json; charset=UTF-8'},
+          );
+        }
+        return Response(
+          '''
+          {"results":[{
+            "name":"ROSSMANN",
+            "address_line1":"ROSSMANN",
+            "postcode":"81241",
+            "city":"München",
+            "lat":48.149,
+            "lon":11.461
+          }]}
+          ''',
+          200,
+          headers: {'content-type': 'application/json; charset=UTF-8'},
+        );
+      }),
+    );
+
+    final places = await api.search('Rossmann');
+
+    expect(places, hasLength(1));
+    expect(
+      places.single.displayName,
+      'ROSSMANN, Pasinger Bahnhofsplatz 5, 81241 München',
+    );
+  });
+
   test('fails clearly when API key is missing', () async {
     final api = GeoapifyApi(apiKey: '');
 

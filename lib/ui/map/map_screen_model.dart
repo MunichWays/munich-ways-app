@@ -92,12 +92,14 @@ class MapScreenViewModel extends ChangeNotifier {
   void setRoutingMode(RoutingMode value) {
     if (_routingMode == value) return;
     _routingMode = value;
+    _routeRecommendation = null;
     notifyListeners();
     _settingsStore.saveRoutingMode(value).catchError(
       (Object e, StackTrace st) {
         log.e('Failed to save routing mode', error: e, stackTrace: st);
       },
     );
+    _settingsStore.saveRouteRecommendation(null);
     if (destination != null) {
       unawaited(_requestRoute());
     }
@@ -106,12 +108,14 @@ class MapScreenViewModel extends ChangeNotifier {
   void setBRouterProfile(BRouterProfile value) {
     if (_bRouterProfile == value) return;
     _bRouterProfile = value;
+    _routeRecommendation = null;
     notifyListeners();
     _settingsStore.saveBRouterProfile(value).catchError(
       (Object e, StackTrace st) {
         log.e('Failed to save BRouter profile', error: e, stackTrace: st);
       },
     );
+    _settingsStore.saveRouteRecommendation(null);
     if (destination != null) {
       unawaited(_requestRoute());
     }
@@ -137,7 +141,8 @@ class MapScreenViewModel extends ChangeNotifier {
         edge == _sidePanelEdge &&
         data.voiceGuidanceEnabled == _voiceGuidanceEnabled &&
         routingMode == _routingMode &&
-        data.bRouterProfile == _bRouterProfile) {
+        data.bRouterProfile == _bRouterProfile &&
+        data.routeRecommendation == _routeRecommendation) {
       return;
     }
     _showZoomButtons = data.showZoomButtons;
@@ -145,6 +150,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
     _routingMode = routingMode;
     _bRouterProfile = data.bRouterProfile;
+    _routeRecommendation = data.routeRecommendation;
     notifyListeners();
   }
 
@@ -191,6 +197,8 @@ class MapScreenViewModel extends ChangeNotifier {
   RoutingMode get routingMode => _routingMode;
   BRouterProfile _bRouterProfile = BRouterProfile.trekking;
   BRouterProfile get bRouterProfile => _bRouterProfile;
+  RouteRecommendation? _routeRecommendation = RouteRecommendation.standard;
+  RouteRecommendation? get routeRecommendation => _routeRecommendation;
 
   Set<MPolyline> _polylinesGesamtnetz = {};
   Map<String, StreetDetails> _streetDetailsByFeatureId = {};
@@ -576,13 +584,89 @@ class MapScreenViewModel extends ChangeNotifier {
   /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
   /// overlay can update without leaving the screen.
   Future<bool> reloadRadnetz() async {
-    initialRatingsLoadFailed = false;
     loading = true;
     notifyListeners();
     await _munichwaysApi.removeRatingsCache();
-    return refreshRadlnetze(
+    final updated = await refreshRadlnetze(
       minimumLoadingDuration: const Duration(milliseconds: 1500),
     );
+    initialRatingsLoadFailed = !updated;
+    notifyListeners();
+    return updated;
+  }
+
+  bool get shortestRouteEnabled =>
+      _routingMode == RoutingMode.bRouterEverywhere &&
+      _bRouterProfile == BRouterProfile.shortest;
+
+  void setShortestRouteEnabled(bool enabled) {
+    final routingMode =
+        enabled ? RoutingMode.bRouterEverywhere : RoutingMode.automatic;
+    final profile = enabled ? BRouterProfile.shortest : BRouterProfile.trekking;
+    if (_routingMode == routingMode && _bRouterProfile == profile) return;
+    _routingMode = routingMode;
+    _bRouterProfile = profile;
+    _routeRecommendation =
+        enabled ? RouteRecommendation.shortest : RouteRecommendation.standard;
+    notifyListeners();
+    Future.wait([
+      _settingsStore.saveRoutingMode(routingMode),
+      _settingsStore.saveBRouterProfile(profile),
+      _settingsStore.saveRouteRecommendation(_routeRecommendation),
+    ]).catchError((Object e, StackTrace st) {
+      log.e(
+        'Failed to save shortest route setting',
+        error: e,
+        stackTrace: st,
+      );
+      return <void>[];
+    });
+    if (destination != null) {
+      unawaited(_requestRoute());
+    }
+  }
+
+  void setRouteRecommendation(RouteRecommendation recommendation) {
+    final (routingMode, profile) = switch (recommendation) {
+      RouteRecommendation.standard || RouteRecommendation.hotWeather => (
+          RoutingMode.automatic,
+          BRouterProfile.trekking
+        ),
+      RouteRecommendation.trekking => (
+          RoutingMode.bRouterEverywhere,
+          BRouterProfile.trekking
+        ),
+      RouteRecommendation.roadBike => (
+          RoutingMode.bRouterEverywhere,
+          BRouterProfile.fastBike
+        ),
+      RouteRecommendation.shortest => (
+          RoutingMode.bRouterEverywhere,
+          BRouterProfile.shortest
+        ),
+      RouteRecommendation.aloneAfterDark || RouteRecommendation.snowAndMud => (
+          RoutingMode.bRouterEverywhere,
+          BRouterProfile.fastBike
+        ),
+    };
+    if (_routeRecommendation == recommendation &&
+        _routingMode == routingMode &&
+        _bRouterProfile == profile) {
+      return;
+    }
+    _routeRecommendation = recommendation;
+    _routingMode = routingMode;
+    _bRouterProfile = profile;
+    notifyListeners();
+    Future.wait([
+      _settingsStore.saveRouteRecommendation(recommendation),
+      _settingsStore.saveRoutingMode(routingMode),
+      _settingsStore.saveBRouterProfile(profile),
+    ]).catchError((Object e, StackTrace st) {
+      log.e('Failed to save route recommendation', error: e, stackTrace: st);
+      return <void>[];
+    });
+    if (destination != null) unawaited(_requestRoute());
   }
 
   void onTap(StreetDetails? details) {

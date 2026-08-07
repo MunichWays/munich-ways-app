@@ -18,6 +18,7 @@ class MapBottomActionButtons extends StatelessWidget {
     required this.onPlanRoute,
     required this.onSelectOnMap,
     required this.onPressLocation,
+    this.onReloadNetwork,
     this.showSearch = true,
     this.navigationBar,
   });
@@ -27,6 +28,7 @@ class MapBottomActionButtons extends StatelessWidget {
   final Future<void> Function() onPlanRoute;
   final VoidCallback onSelectOnMap;
   final VoidCallback onPressLocation;
+  final Future<void> Function()? onReloadNetwork;
   final bool showSearch;
   final Widget? navigationBar;
 
@@ -76,6 +78,22 @@ class MapBottomActionButtons extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (model.initialRatingsLoadFailed && onReloadNetwork != null) ...[
+            _WidthLimitedMapContent(
+              maxWidth: _maxLandscapeContentWidth,
+              child: FilledButton.icon(
+                onPressed: model.loading ? null : onReloadNetwork,
+                icon: model.loading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(context.l10n.reloadNetwork),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           if (navigationBar case final bar?) ...[
             _WidthLimitedMapContent(
               maxWidth: _maxLandscapeContentWidth,

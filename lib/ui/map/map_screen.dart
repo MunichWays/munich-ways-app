@@ -692,6 +692,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             await _applyNativeLocationTracking(model);
                             await _updateLocationStream(model);
                           },
+                          onReloadNetwork: () =>
+                              _reloadRadnetzAfterInitialFailure(model),
                           navigationBar: model.destination == null
                               ? null
                               : MapNavigationHeaderBar(
@@ -1326,9 +1328,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
-    if (!model.navigationStarted || !model.voiceGuidanceEnabled) return;
+    if (!model.navigationStarted ||
+        !model.voiceGuidanceEnabled ||
+        !model.voiceGuidanceAvailable) {
+      return;
+    }
     _voiceSignalTimer = Timer(_voiceSignalWarningDelay, () {
-      if (!mounted || !model.navigationStarted || !model.voiceGuidanceEnabled) {
+      if (!mounted ||
+          !model.navigationStarted ||
+          !model.voiceGuidanceEnabled ||
+          !model.voiceGuidanceAvailable) {
         return;
       }
       unawaited(_zoomOutAfterMissingDirections());
@@ -1464,13 +1473,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     BuildContext context,
     MapScreenViewModel model,
   ) {
+    // The navigation header always contains a guidance row. If there is no
+    // maneuver, it shows "Karte beachten" instead, with the same height.
     final desiredOffset = model.destination == null
         ? 0.0
-        : !model.navigationStarted
-            ? 128.0
-            : _nextManeuver != null
-                ? 144.0
-                : 72.0;
+        : model.navigationStarted
+            ? 144.0
+            : 128.0;
     if (MediaQuery.orientationOf(context) == Orientation.landscape) {
       // Landscape has much less vertical room. Capping the offset keeps zoom
       // and compass controls on-screen while the width-limited route panel

@@ -26,6 +26,9 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 
 ## Release
 * change version in code pubspec.yaml and commit to master as "Bump version to 2.0.2+26"
+* Update the bundled RadlVorrang network in VS Code: `Terminal` > `Run Task...` > `RadlVorrang-Netz aktualisieren`
+  * The task downloads the current network, validates it and only then replaces the offline asset.
+  * Review and commit the changed file in `assets/radlnetz/` together with the release.
 * commit and push
 
 ### iOS

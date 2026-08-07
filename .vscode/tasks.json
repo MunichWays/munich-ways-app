@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "RadlVorrang-Netz aktualisieren",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\update_radlvorrang_asset.ps1"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
