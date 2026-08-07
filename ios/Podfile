@@ -61,6 +61,10 @@ post_install do |installer|
       if t.nil? || t.to_s.empty? || t.to_f < 13.0
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
       end
+      # Pod library targets can't take a provisioning profile; only the app target
+      # (Runner) needs manual signing for release archives (see ios/fastlane/Fastfile).
+      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+      config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
     end
   end
 end
