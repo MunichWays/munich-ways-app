@@ -218,9 +218,8 @@ class GeoapifyApi {
         name.isNotEmpty &&
         addressLine1 == name &&
         street.isNotEmpty) {
-      final streetAddress = [street, houseNumber]
-          .where((part) => part.isNotEmpty)
-          .join(' ');
+      final streetAddress =
+          [street, houseNumber].where((part) => part.isNotEmpty).join(' ');
       final cityPart =
           [postcode, city].where((part) => part.isNotEmpty).join(' ');
       return [name, streetAddress, cityPart]
