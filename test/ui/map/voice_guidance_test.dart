@@ -288,10 +288,11 @@ void main() {
   });
 
   test('combines two closely spaced turns in one announcement', () {
-    const secondTurn = LatLng(48.14118, 11.5700);
+    const secondTurn = LatLng(48.1410, 11.5703);
+    const afterSecondTurn = LatLng(48.1413, 11.5698);
     final guidance = VoiceGuidance()
       ..setRoute(CycleRoute(
-        const [start, beforeTurn, turn, secondTurn, end],
+        const [start, beforeTurn, turn, secondTurn, afterSecondTurn],
         170,
         40,
         maneuvers: const [

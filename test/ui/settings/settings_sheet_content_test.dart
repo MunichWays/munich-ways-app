@@ -239,14 +239,21 @@ void main() {
 
     await tester.tap(find.text('Routenwunsch'));
     await tester.pumpAndSettle();
-    expect(find.text('Standard (empfohlen)'), findsOneWidget);
-    expect(find.text('Trekking'), findsOneWidget);
-    expect(find.text('Rennrad (schnell)'), findsOneWidget);
-    expect(find.text('Allein im Dunkeln (Beta)'), findsOneWidget);
-    expect(find.text('Bei Hitze (Beta)'), findsOneWidget);
-    expect(find.text('Bei Schnee und Matsch (Beta)'), findsOneWidget);
+    Finder recommendation(String label) => find.descendant(
+          of: find.byType(RadioListTile<RouteRecommendation>),
+          matching: find.text(label),
+        );
+    final standardRecommendation = recommendation('Standard (empfohlen)');
+    expect(standardRecommendation, findsOneWidget);
+    expect(recommendation('Trekking'), findsOneWidget);
+    expect(recommendation('Rennrad (schnell)'), findsOneWidget);
+    expect(recommendation('Allein im Dunkeln (Beta)'), findsOneWidget);
+    expect(recommendation('Bei Hitze (Beta)'), findsOneWidget);
+    expect(recommendation('Bei Schnee und Matsch (Beta)'), findsOneWidget);
 
-    await tester.tap(find.text('Allein im Dunkeln (Beta)'));
+    final aloneAfterDark = recommendation('Allein im Dunkeln (Beta)');
+    await tester.ensureVisible(aloneAfterDark);
+    await tester.tap(aloneAfterDark);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.aloneAfterDark);
     expect(model.routingMode, RoutingMode.bRouterEverywhere);
@@ -258,43 +265,56 @@ void main() {
     await tester.tap(find.text('Schließen'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Bei Hitze (Beta)'));
+    final hotWeather = recommendation('Bei Hitze (Beta)');
+    await tester.ensureVisible(hotWeather);
+    await tester.tap(hotWeather);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.hotWeather);
     expect(model.routingMode, RoutingMode.automatic);
     expect(model.bRouterProfile, BRouterProfile.trekking);
 
-    await tester.tap(find.text('Bei Schnee und Matsch (Beta)'));
+    final snowAndMud = recommendation('Bei Schnee und Matsch (Beta)');
+    await tester.ensureVisible(snowAndMud);
+    await tester.tap(snowAndMud);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.snowAndMud);
     expect(model.routingMode, RoutingMode.bRouterEverywhere);
     expect(model.bRouterProfile, BRouterProfile.fastBike);
 
-    await tester.tap(find.text('Kürzeste Strecke').last);
+    final shortestRecommendation = recommendation('Kürzeste Strecke');
+    await tester.ensureVisible(shortestRecommendation);
+    await tester.tap(shortestRecommendation);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.shortest);
     expect(model.shortestRouteEnabled, isTrue);
 
-    await tester.tap(find.text('Standard (empfohlen)'));
+    await tester.ensureVisible(standardRecommendation);
+    await tester.tap(standardRecommendation);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.standard);
     expect(model.routingMode, RoutingMode.automatic);
     expect(model.bRouterProfile, BRouterProfile.trekking);
     expect(model.shortestRouteEnabled, isFalse);
 
-    await tester.tap(find.text('Trekking'));
+    final trekking = recommendation('Trekking');
+    await tester.ensureVisible(trekking);
+    await tester.tap(trekking);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.trekking);
     expect(model.routingMode, RoutingMode.bRouterEverywhere);
     expect(model.bRouterProfile, BRouterProfile.trekking);
 
-    await tester.tap(find.text('Rennrad (schnell)'));
+    final roadBike = recommendation('Rennrad (schnell)');
+    await tester.ensureVisible(roadBike);
+    await tester.tap(roadBike);
     await tester.pump();
     expect(model.routeRecommendation, RouteRecommendation.roadBike);
     expect(model.routingMode, RoutingMode.bRouterEverywhere);
     expect(model.bRouterProfile, BRouterProfile.fastBike);
 
-    await tester.tap(find.byTooltip('Info: Routenwunsch'));
+    final routeRecommendationInfo = find.byTooltip('Info: Routenwunsch');
+    await tester.ensureVisible(routeRecommendationInfo);
+    await tester.tap(routeRecommendationInfo);
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Automatisch nutzt RadlNavi'),
