@@ -41,6 +41,17 @@ end
 platform :ios do
   desc "Create/update cert+profile and upload TestFlight build"
   lane :beta do
+    # 0a) Regenerate ios/Flutter/Generated.xcconfig from pubspec.yaml. CFBundleShortVersionString/
+    #     CFBundleVersion in Info.plist read $(FLUTTER_BUILD_NAME)/$(FLUTTER_BUILD_NUMBER) from that
+    #     file, but it's only written by the `flutter` CLI — build_app below calls xcodebuild
+    #     directly and would otherwise archive whatever version was cached from the last `flutter
+    #     build`/`flutter run`, silently diverging from pubspec.yaml.
+    repo_root = File.expand_path("../..", __dir__)
+    sh(%(cd "#{repo_root}" && flutter build ios --release --no-codesign))
+
+    # 0b) Register ASC API key (if present) so cert/sigh/upload_to_testflight all use it
+    #    instead of prompting for an Apple ID login. Must run before cert/sigh.
+    asc_key = app_store_connect_api_key_from_env
     # 1) Ensure distribution certificate exists in keychain
     cert(
       development: false,
@@ -52,15 +63,24 @@ platform :ios do
       force: false
     )
     # 3) Build with explicit export options/profile mapping
+    # The Xcode project uses Automatic signing, which needs an Xcode-level Apple ID
+    # session. We're authenticating via ASC API key instead, so force manual signing
+    # at archive time using the certificate/profile cert+sigh just installed.
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
-      export_method: "app-store"
+      export_method: "app-store",
+      xcargs: [
+        "CODE_SIGN_STYLE=Manual",
+        "CODE_SIGN_IDENTITY=\"Apple Distribution\"",
+        "PROVISIONING_PROFILE_SPECIFIER=#{lane_context[SharedValues::SIGH_UUID]}",
+        "DEVELOPMENT_TEAM=#{team_id}"
+      ].join(" ")
     )
     # 4) Upload to TestFlight
     upload_options = { skip_waiting_for_build_processing: true }
-    k = app_store_connect_api_key_from_env
-    upload_options[:api_key] = k if k
+    upload_options[:api_key] = asc_key if asc_key
     upload_to_testflight(upload_options)
   end
 
