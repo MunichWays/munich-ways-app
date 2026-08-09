@@ -94,12 +94,12 @@ class MapScreenViewModel extends ChangeNotifier {
     _automaticReroutingEnabled = value;
     notifyListeners();
     _settingsStore.saveAutomaticReroutingEnabled(value).catchError(
-      (Object e, StackTrace st) => log.e(
-        'Failed to save automatic rerouting setting',
-        error: e,
-        stackTrace: st,
-      ),
-    );
+          (Object e, StackTrace st) => log.e(
+            'Failed to save automatic rerouting setting',
+            error: e,
+            stackTrace: st,
+          ),
+        );
   }
 
   void setRoutingMode(RoutingMode value) {
