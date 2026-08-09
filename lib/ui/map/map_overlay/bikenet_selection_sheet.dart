@@ -45,9 +45,10 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
         children: [
           _BikenetLayerRow(
             selected: widget.model.isRadlvorrangnetzVisible,
-            dashed: false,
             title: context.l10n.tr('Radl-Vorrang-Netz'),
-            subtitle: context.l10n.tr('Linie durchgezogen'),
+            subtitle: context.l10n.isEnglish
+                ? 'Line style shows the Happy-Bike level'
+                : 'Linienart zeigt das Happy-Bike-Level',
             lineColors: _lineColors,
             onTap: () {
               widget.model.toggleRadvorrangnetzVisible();
@@ -58,9 +59,10 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
           ),
           _BikenetLayerRow(
             selected: widget.model.isGesamtnetzVisible,
-            dashed: true,
             title: context.l10n.tr('Weitere Strecken'),
-            subtitle: context.l10n.tr('Linie gestrichelt'),
+            subtitle: context.l10n.isEnglish
+                ? 'Line style shows the Happy-Bike level'
+                : 'Linienart zeigt das Happy-Bike-Level',
             lineColors: _lineColors,
             onTap: () {
               widget.model.toggleGesamtnetzVisible();
@@ -78,7 +80,6 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
 class _BikenetLayerRow extends StatelessWidget {
   const _BikenetLayerRow({
     required this.selected,
-    required this.dashed,
     required this.title,
     required this.subtitle,
     required this.lineColors,
@@ -88,7 +89,6 @@ class _BikenetLayerRow extends StatelessWidget {
   });
 
   final bool selected;
-  final bool dashed;
   final String title;
   final String subtitle;
   final List<Color> lineColors;
@@ -120,7 +120,6 @@ class _BikenetLayerRow extends StatelessWidget {
                   child: _LinePreviewBadge(
                     size: _previewSize,
                     selected: selected,
-                    dashed: dashed,
                     lineColors: lineColors,
                     lineThickness: _lineThickness,
                     lineGap: _lineGap,
@@ -152,7 +151,6 @@ class _LinePreviewBadge extends StatelessWidget {
   const _LinePreviewBadge({
     required this.size,
     required this.selected,
-    required this.dashed,
     required this.lineColors,
     required this.lineThickness,
     required this.lineGap,
@@ -160,7 +158,6 @@ class _LinePreviewBadge extends StatelessWidget {
 
   final double size;
   final bool selected;
-  final bool dashed;
   final List<Color> lineColors;
   final double lineThickness;
   final double lineGap;
@@ -175,7 +172,7 @@ class _LinePreviewBadge extends StatelessWidget {
         children: [
           for (var i = 0; i < lineColors.length; i++) ...[
             if (i > 0) SizedBox(height: lineGap),
-            dashed
+            i >= 2
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       return CustomPaint(

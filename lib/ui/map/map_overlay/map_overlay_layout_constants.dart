@@ -1,6 +1,8 @@
-/// Pixels above [MediaQuery.padding.bottom] for the bottom action row (OSM
-/// attribution sits below). Keep in sync with [MapBottomActionButtons].
-const double kMapBottomActionRowPaddingAboveSafeBottom = 26;
+/// Bottom padding while the attribution links are hidden.
+const double kMapBottomActionRowCollapsedPadding = 4;
+
+/// Bottom padding while the narrow attribution link row is visible.
+const double kMapBottomActionRowExpandedPadding = 26;
 
 /// Default width/height of [MapOverlayButton].
 const double kMapOverlayControlSize = 48;

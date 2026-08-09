@@ -29,46 +29,44 @@ class InfoSheetHelpContent extends StatelessWidget {
             ),
             InfoSheetLegendRow(
               color: AppColors.mapGreen,
+              dashed: false,
               label: context.l10n.isEnglish
-                  ? 'Comfortable and convenient'
-                  : 'Gemütlich und komfortabel',
+                  ? 'Comfortable and convenient – solid line'
+                  : 'Gemütlich und komfortabel – durchgezogene Linie',
               description: context.l10n.isEnglish
                   ? 'Cycle path is wide, safe and smooth'
                   : 'Radweg ist breit, sicher, eben',
             ),
             InfoSheetLegendRow(
               color: AppColors.mapYellow,
-              label: context.l10n.isEnglish ? 'Average' : 'Durchschnittlich',
+              dashed: false,
+              label: context.l10n.isEnglish
+                  ? 'Average – solid line'
+                  : 'Durchschnittlich – durchgezogene Linie',
               description: context.l10n.isEnglish
                   ? 'Cycle path is acceptable but could be improved'
                   : 'Radweg ist akzeptabel, verbesserungswürdig',
             ),
             InfoSheetLegendRow(
               color: AppColors.mapRed,
-              label: context.l10n.isEnglish ? 'Stressful' : 'Stressig',
+              dashed: true,
+              label: context.l10n.isEnglish
+                  ? 'Stressful – dashed line'
+                  : 'Stressig – gestrichelte Linie',
               description: context.l10n.isEnglish
                   ? 'Cycle path is very narrow and uncomfortable'
                   : 'Radweg ist sehr schmal, nicht komfortabel',
             ),
             InfoSheetLegendRow(
               color: AppColors.mapBlack,
-              label:
-                  context.l10n.isEnglish ? 'Very stressful' : 'Sehr stressig',
+              dashed: true,
+              label: context.l10n.isEnglish
+                  ? 'Very stressful – dashed line'
+                  : 'Sehr stressig – gestrichelte Linie',
               description: context.l10n.isEnglish
                   ? 'No cycle path on busy roads'
                   : 'Kein Radweg auf vielbefahrenen Straßen',
             ),
-            InfoSheetLegendRow(
-              color: Colors.grey,
-              label: context.l10n.isEnglish
-                  ? 'Plan / network gap'
-                  : 'Plan / Lücke im Netz',
-              description: context.l10n.isEnglish
-                  ? 'Missing bridge or underpass'
-                  : 'Fehlende Brücke oder Unterführung',
-            ),
-            const SizedBox(height: 4),
-            const _NetworkLineLegend(),
           ],
         ),
         const SizedBox(height: 24),
@@ -87,78 +85,6 @@ class InfoSheetHelpContent extends StatelessWidget {
         Text(context.l10n.isEnglish
             ? 'Tap a colored line on the map to see its rating, measures and links.'
             : 'Tippe auf eine farbige Linie auf der Karte. Es öffnet sich eine Übersicht mit Details zu diesem Straßenabschnitt (Bewertung, Maßnahmen, Links).'),
-      ],
-    );
-  }
-}
-
-class _NetworkLineLegend extends StatelessWidget {
-  const _NetworkLineLegend();
-
-  @override
-  Widget build(BuildContext context) {
-    final english = context.l10n.isEnglish;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _NetworkLineLegendRow(
-          dashed: false,
-          label: english ? 'Priority cycling network' : 'RadlVorrang-Netz',
-        ),
-        const SizedBox(height: 8),
-        _NetworkLineLegendRow(
-          dashed: true,
-          label: english ? 'Other routes' : 'Weitere Strecken',
-        ),
-      ],
-    );
-  }
-}
-
-class _NetworkLineLegendRow extends StatelessWidget {
-  const _NetworkLineLegendRow({
-    required this.dashed,
-    required this.label,
-  });
-
-  final bool dashed;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 44,
-          height: 8,
-          child: dashed
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    5,
-                    (_) => Container(
-                      width: 6,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.mapBlack,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                )
-              : Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.mapBlack,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(label)),
       ],
     );
   }

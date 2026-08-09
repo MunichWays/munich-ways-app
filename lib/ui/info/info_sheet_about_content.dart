@@ -38,8 +38,9 @@ class InfoSheetAboutContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sourceTitle =
-        context.l10n.isEnglish ? 'Map data & sources' : 'Kartendaten & Quellen';
+    final sourceTitle = context.l10n.isEnglish
+        ? 'Sources & routing services'
+        : 'Quellen & Routendienste';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -54,82 +55,109 @@ class InfoSheetAboutContent extends StatelessWidget {
                   : 'Über MunichWays',
               onTap: () => _openUrl(context, 'https://munichways.de'),
             ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.open_in_new,
-              label:
-                  context.l10n.isEnglish ? 'About RadlNavi' : 'Über RadlNavi',
-              onTap: () => _openUrl(context, 'https://radlnavi.de'),
+          ],
+        ),
+        const SizedBox(height: 20),
+        ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(top: 8),
+          title: Text(
+            sourceTitle,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          children: [
+            MenuGroup(
+              children: [
+                MenuGroupItem(
+                  icon: Icons.open_in_new,
+                  label: context.l10n.isEnglish
+                      ? 'About RadlNavi'
+                      : 'Über RadlNavi',
+                  onTap: () => _openUrl(context, 'https://radlnavi.de'),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.open_in_new,
+                  label: 'BRouter',
+                  onTap: () => _openUrl(context, 'https://brouter.de/brouter/'),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.open_in_new,
+                  label: 'OpenStreetMap',
+                  onTap: () => _openUrl(
+                    context,
+                    'https://www.openstreetmap.org/copyright',
+                  ),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.open_in_new,
+                  label: 'OpenMapTiles',
+                  onTap: () =>
+                      _openUrl(context, 'https://www.openmaptiles.org/'),
+                ),
+                const MenuGroupDivider(),
+                MenuGroupItem(
+                  icon: Icons.open_in_new,
+                  label: 'OpenFreeMap',
+                  onTap: () => _openUrl(context, 'https://openfreemap.org/'),
+                ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 20),
-        Text(
-          sourceTitle,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        MenuGroup(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MenuGroupItem(
-              icon: Icons.open_in_new,
-              label: 'OpenStreetMap',
-              onTap: () => _openUrl(
-                context,
-                'https://www.openstreetmap.org/copyright',
-              ),
-            ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.open_in_new,
-              label: 'OpenMapTiles',
-              onTap: () => _openUrl(context, 'https://www.openmaptiles.org/'),
-            ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.open_in_new,
-              label: 'OpenFreeMap',
-              onTap: () => _openUrl(context, 'https://openfreemap.org/'),
-            ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.open_in_new,
-              label: 'BRouter',
-              onTap: () => _openUrl(context, 'https://brouter.de/brouter/'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        MenuGroup(
-          children: [
-            MenuGroupItem(
-              icon: Icons.policy_outlined,
+            _LegalLink(
               label: context.l10n.tr('Impressum & Datenschutz'),
-              onTap: onOpenImprint,
+              onPressed: onOpenImprint,
             ),
-            const MenuGroupDivider(),
-            MenuGroupItem(
-              icon: Icons.description_outlined,
+            _LegalLink(
               label: context.l10n.tr('Nutzungsbedingungen'),
-              onTap: () => _openUrl(
+              onPressed: () => _openUrl(
                 context,
                 'https://munichways.de/nutzungbedingungen-app',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        Center(
-          child: Text(
-            versionLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
-                ),
-          ),
+        const SizedBox(height: 12),
+        Text(
+          versionLabel,
+          textAlign: TextAlign.left,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
         ),
       ],
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.black87,
+        textStyle: Theme.of(context).textTheme.bodyMedium,
+        padding: EdgeInsets.zero,
+        alignment: Alignment.centerLeft,
+      ),
+      child: Text(label),
     );
   }
 }

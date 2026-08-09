@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
-import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
-import 'package:munich_ways/ui/info/info_sheet.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
-import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
@@ -21,6 +17,8 @@ class MapBottomActionButtons extends StatelessWidget {
     this.onReloadNetwork,
     this.showSearch = true,
     this.navigationBar,
+    this.attributionExpanded = false,
+    this.onToggleAttribution,
   });
 
   final MapScreenViewModel model;
@@ -31,46 +29,17 @@ class MapBottomActionButtons extends StatelessWidget {
   final Future<void> Function()? onReloadNetwork;
   final bool showSearch;
   final Widget? navigationBar;
+  final bool attributionExpanded;
+  final VoidCallback? onToggleAttribution;
 
   static const double _maxLandscapeContentWidth = 480;
 
   @override
   Widget build(BuildContext context) {
-    // Sit above the OSM attribution strip at the bottom of the map.
     final bottomInset = MediaQuery.paddingOf(context).bottom +
-        kMapBottomActionRowPaddingAboveSafeBottom;
-    final controlsOnLeft = model.sidePanelEdge == MapSidePanelEdge.left;
-    final infoButton = MapOverlayButton(
-      tooltip: context.l10n.tr('Info'),
-      onPressed: () => showMapInfoSheet(context),
-      child: const Icon(Icons.info_outline),
-    );
-    final settingsButton = MapOverlayButton(
-      tooltip: context.l10n.settings,
-      onPressed: () => showMapSettingsSheet(context, model),
-      child: const Icon(Icons.settings),
-    );
-    final trackingButton = MapOverlayButton(
-      circular: false,
-      tooltip: _locationTooltip(context, model.locationState),
-      isActive: model.locationState == LocationState.FOLLOW ||
-          model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
-      emphasizeActive: true,
-      onPressed: onPressLocation,
-      child: _locationIcon(model.locationState),
-    );
-    final settingsAndInfoButtons = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        settingsButton,
-        const SizedBox(width: 8),
-        infoButton,
-      ],
-    );
-    final actionButtons = controlsOnLeft
-        ? [trackingButton, settingsAndInfoButtons]
-        : [settingsAndInfoButtons, trackingButton];
-
+        (attributionExpanded
+            ? kMapBottomActionRowExpandedPadding
+            : kMapBottomActionRowCollapsedPadding);
     return Positioned(
       left: 16,
       right: 16,
@@ -113,42 +82,9 @@ class MapBottomActionButtons extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: actionButtons,
-          ),
         ],
       ),
     );
-  }
-
-  Widget _locationIcon(LocationState state) {
-    return switch (state) {
-      LocationState.NOT_AVAILABLE =>
-        const Icon(Icons.location_searching, color: Colors.white38),
-      LocationState.DISPLAY => const Icon(Icons.my_location),
-      LocationState.FOLLOW => const Icon(Icons.my_location),
-      LocationState.FOLLOW_AND_ROTATE_MAP =>
-        const Icon(MunichwaysIcons.compass),
-    };
-  }
-
-  String _locationTooltip(BuildContext context, LocationState state) {
-    final english = context.l10n.isEnglish;
-    return switch (state) {
-      LocationState.NOT_AVAILABLE => english
-          ? 'Location unavailable – tap to grant permission'
-          : 'Standort nicht verfügbar – antippen, um Berechtigung zu erteilen',
-      LocationState.DISPLAY => english
-          ? 'Show location – tap to follow your position'
-          : 'Standort anzeigen – antippen, um der Position zu folgen',
-      LocationState.FOLLOW => english
-          ? 'Following location – tap to rotate the map'
-          : 'Folgt Standort – antippen, um Karte mitzudrehen',
-      LocationState.FOLLOW_AND_ROTATE_MAP => english
-          ? 'Following location and rotating map – tap to stop'
-          : 'Folgt Standort und dreht Karte – antippen, um Standort-Verfolgung zu beenden',
-    };
   }
 }
 

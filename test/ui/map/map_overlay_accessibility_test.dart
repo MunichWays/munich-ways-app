@@ -6,10 +6,43 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
 void main() {
+  testWidgets('left-side controls include the position button', (tester) async {
+    final model = _LeftMapScreenViewModel();
+    final bearing = ValueNotifier<double>(0);
+    final idle = ValueNotifier<int>(0);
+    addTearDown(bearing.dispose);
+    addTearDown(idle.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapSideActionButtons(
+                model: model,
+                mapController: null,
+                mapBearingDegrees: bearing,
+                compassIdleTick: idle,
+                onNorthUp: () async {},
+                queryMapBearingDegrees: () async => 0,
+                onPressLocation: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final position = find.byIcon(Icons.location_searching);
+    expect(position, findsOneWidget);
+    expect(tester.getCenter(position).dx, lessThan(100));
+  });
+
   testWidgets('zoom button has an explicit label and a large tap target',
       (tester) async {
     await tester.pumpWidget(
@@ -84,6 +117,51 @@ void main() {
 
     expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
     expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
+  });
+
+  testWidgets('navigation actions use large evenly spaced tap targets',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: MapNavigationHeaderBar(
+              model: model,
+              onRefreshRoute: () async {},
+              onEditRoute: () {},
+              onStartNavigation: () async {},
+              onToggleVoiceGuidance: () {},
+              onEndRoute: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final edit = find.bySemanticsLabel('Route bearbeiten');
+    final voice = find.bySemanticsLabel('Sprachansagen einschalten');
+    final refresh = find.bySemanticsLabel('Route neu berechnen');
+    expect(tester.getSize(edit), const Size.square(52));
+    expect(tester.getSize(voice), const Size.square(52));
+    expect(tester.getSize(refresh), const Size.square(52));
+    expect(
+      tester.getCenter(voice).dx - tester.getCenter(edit).dx,
+      closeTo(62, 0.1),
+    );
+    expect(
+      tester.getCenter(refresh).dx - tester.getCenter(voice).dx,
+      closeTo(62, 0.1),
+    );
   });
 
   testWidgets('route stats share a full row above the action buttons',
@@ -163,4 +241,11 @@ void main() {
 class _MemorySettingsStore extends SettingsStore {
   @override
   Future<SettingsData> load() async => SettingsData.defaults;
+}
+
+class _LeftMapScreenViewModel extends MapScreenViewModel {
+  _LeftMapScreenViewModel() : super(store: _MemorySettingsStore());
+
+  @override
+  MapSidePanelEdge get sidePanelEdge => MapSidePanelEdge.left;
 }

@@ -21,6 +21,143 @@ BoxDecoration bottomSheetDecoration() {
   );
 }
 
+class BottomSheetDragHandle extends StatelessWidget {
+  const BottomSheetDragHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 5, bottom: 3),
+        child: Container(
+          width: 32,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade400,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DraggableBottomSheetHandle extends StatefulWidget {
+  const DraggableBottomSheetHandle({
+    super.key,
+    required this.controller,
+    this.snapSizes = const [0.28, 0.55, 1],
+    this.onDismiss,
+  });
+
+  final DraggableScrollableController controller;
+  final List<double> snapSizes;
+  final VoidCallback? onDismiss;
+
+  @override
+  State<DraggableBottomSheetHandle> createState() =>
+      _DraggableBottomSheetHandleState();
+}
+
+class DraggableBottomSheetRegion extends StatefulWidget {
+  const DraggableBottomSheetRegion({
+    super.key,
+    required this.controller,
+    required this.child,
+    this.snapSizes = const [0.28, 0.55, 1],
+    this.onDismiss,
+  });
+
+  final DraggableScrollableController controller;
+  final Widget child;
+  final List<double> snapSizes;
+  final VoidCallback? onDismiss;
+
+  @override
+  State<DraggableBottomSheetRegion> createState() =>
+      _DraggableBottomSheetRegionState();
+}
+
+class _DraggableBottomSheetRegionState
+    extends State<DraggableBottomSheetRegion> {
+  double? _dragStartSize;
+  double _downwardDragDistance = 0;
+
+  void _start(DragStartDetails details) {
+    if (widget.controller.isAttached) {
+      _dragStartSize = widget.controller.size;
+      _downwardDragDistance = 0;
+    }
+  }
+
+  void _update(DragUpdateDetails details) {
+    if (!widget.controller.isAttached) return;
+    _downwardDragDistance += details.delta.dy;
+    final pixels = widget.controller.pixels - details.delta.dy;
+    widget.controller.jumpTo(
+      widget.controller.pixelsToSize(pixels).clamp(0.0, 1.0),
+    );
+  }
+
+  void _end(DragEndDetails details) {
+    if (!widget.controller.isAttached) return;
+    final current = widget.controller.size;
+    final velocity = details.primaryVelocity ?? 0;
+    final startedSmall =
+        (_dragStartSize ?? current) <= widget.snapSizes.first + 0.02;
+    _dragStartSize = null;
+    if (startedSmall && (velocity > 300 || _downwardDragDistance > 40)) {
+      widget.onDismiss?.call();
+      return;
+    }
+    double target;
+    if (velocity < -300) {
+      target = widget.snapSizes.firstWhere(
+        (size) => size > current + 0.01,
+        orElse: () => widget.snapSizes.last,
+      );
+    } else if (velocity > 300) {
+      target = widget.snapSizes.reversed.firstWhere(
+        (size) => size < current - 0.01,
+        orElse: () => widget.snapSizes.first,
+      );
+    } else {
+      target = widget.snapSizes.reduce(
+        (a, b) => (a - current).abs() <= (b - current).abs() ? a : b,
+      );
+    }
+    widget.controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragStart: _start,
+      onVerticalDragUpdate: _update,
+      onVerticalDragEnd: _end,
+      child: widget.child,
+    );
+  }
+}
+
+class _DraggableBottomSheetHandleState
+    extends State<DraggableBottomSheetHandle> {
+  @override
+  Widget build(BuildContext context) {
+    return DraggableBottomSheetRegion(
+      controller: widget.controller,
+      snapSizes: widget.snapSizes,
+      onDismiss: widget.onDismiss,
+      child: const BottomSheetDragHandle(),
+    );
+  }
+}
+
 /// Inset below status bar / notch for sheet layout math.
 ///
 /// For [showModalBottomSheet], default `useSafeArea: false` applies
@@ -158,8 +295,9 @@ class _BottomSheetFrameState extends State<BottomSheetFrame> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          const BottomSheetDragHandle(),
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                             child: Row(
                               children: [
                                 if (widget.startingElement != null)

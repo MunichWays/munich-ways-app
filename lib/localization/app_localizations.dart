@@ -87,11 +87,12 @@ class AppLocalizations {
           'zuverlässigen Abbiegedaten liefert.';
   String get followRouteOnMap => isEnglish ? 'Follow map' : 'Karte beachten';
   String get routePlanningInfo => isEnglish
-      ? 'Automatic uses RadlNavi for low-stress routes within Upper Bavaria '
-          'and BRouter outside the region or when RadlNavi is unavailable.'
-      : 'Automatisch nutzt RadlNavi für stressarme Routen innerhalb '
-          'Oberbayerns und BRouter außerhalb der Region oder wenn RadlNavi '
-          'nicht erreichbar ist.';
+      ? 'Standard finds low-stress cycling routes whenever possible. '
+          'Outside Upper Bavaria, or if the routing service is unavailable, '
+          'the app automatically uses an alternative.'
+      : 'Standard sucht möglichst stressarme Fahrradrouten. '
+          'Außerhalb Oberbayerns oder wenn der Routendienst nicht erreichbar '
+          'ist, verwendet die App automatisch eine Alternative.';
   String get reloadingMap => isEnglish
       ? 'Reloading map and ratings…'
       : 'Karte und Bewertungen werden neu geladen …';
@@ -117,6 +118,7 @@ class AppLocalizations {
     'Keine Ergebnisse vorhanden.\\nBitte überprüfe den Suchbegriff.':
         'No results found.\\nPlease check your search term.',
     'Auf Karte auswählen': 'Select on map',
+    'Auf Karte wählen': 'Select on map',
     'Letzte Ziele': 'Recent destinations',
     '(Suchverlauf löschen)': '(Clear search history)',
     'Fehler beim Laden.': 'Error while loading.',

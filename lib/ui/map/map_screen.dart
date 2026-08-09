@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,10 @@ import 'package:munich_ways/screenshots/store_screenshot_controls.dart';
 import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_home_destination_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_selection_panel.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
@@ -34,6 +38,9 @@ import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
+import 'package:munich_ways/ui/info/info_sheet.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -45,15 +52,26 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
+  static const _offRouteAnnouncementDelay = Duration(seconds: 10);
+  static const _automaticRerouteDelay = Duration(seconds: 30);
+  static const _maximumConsecutiveReroutes = 3;
+  static const _onRouteDistanceToResetReroutes = 500.0;
+  static const _maximumOnRouteProgressStep = 200.0;
+  static const _navigationStartZoom = 18.0;
+  static const _offRouteZoom = _navigationStartZoom - 2;
   static const _notificationPermissionChannel =
       MethodChannel('com.munichways.app/notification_permission');
 
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
+  static const _kNetworkLayerDashedGesamtId =
+      'munichways_radlnetz_lines_gesamt_dashed';
   static const _kNetworkLayerCasingGesamtId =
       'munichways_radlnetz_casing_gesamt';
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
+  static const _kNetworkLayerDashedRadlId =
+      'munichways_radlnetz_lines_radl_dashed';
   static const _kNetworkLayerCasingRadlId = 'munichways_radlnetz_casing_radl';
   static const _kNetworkLayerHitGesamtId = 'munichways_radlnetz_hit_gesamt';
   static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
@@ -96,6 +114,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _featureTapHandlerAttached = false;
   Circle? _destinationCircle;
   final List<Circle> _routePlanCircles = [];
+  final List<Symbol> _routePlanSymbols = [];
+  final Set<int> _routeWaypointImages = {};
   StreamSubscription<Position>? _locationSubscription;
   bool _locationStreamUsesForegroundService = false;
   int _locationStreamGeneration = 0;
@@ -106,12 +126,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
   final FlutterTts _flutterTts = FlutterTts();
-  final VoiceGuidance _voiceGuidance = VoiceGuidance();
+  final VoiceGuidance _voiceGuidance = VoiceGuidance(
+    announceOffRouteWarning: false,
+  );
   VoiceGuidanceDisplay? _nextManeuver;
+  VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
+  Timer? _offRouteAnnouncementTimer;
+  Timer? _automaticRerouteTimer;
+  bool _offRouteEpisodeActive = false;
+  bool _automaticReroutingSuspended = false;
+  int _consecutiveAutomaticReroutes = 0;
+  double _onRouteDistanceSinceReroute = 0;
+  latlong2.LatLng? _lastOnRoutePosition;
   bool _notificationPermissionExplained = false;
+  bool _mapAttributionExpanded = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
@@ -134,6 +165,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
   late bool _mountMapView;
+  String? _mapStyleString;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -147,6 +179,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_configureTextToSpeech());
+    unawaited(_loadMapStyle());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
     // UIKit/Metal window phase and abort on cold start; a short defer avoids that. Android is fine.
     if (Platform.isIOS) {
@@ -159,6 +192,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     } else {
       _mountMapView = true;
     }
+  }
+
+  Future<void> _loadMapStyle() async {
+    String style;
+    try {
+      style = await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    } catch (error, stackTrace) {
+      log.w(
+        'Loading bundled map style failed; falling back to asset path',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      style = kOpenFreeMapLibertyStyleAsset;
+    }
+    if (mounted) setState(() => _mapStyleString = style);
   }
 
   @override
@@ -177,6 +225,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     _locationSubscription?.cancel();
     _voiceSignalTimer?.cancel();
+    _cancelAutomaticRerouting(resetAttempts: false);
     unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
@@ -244,12 +293,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
     _voiceSignalTimer?.cancel();
+    _cancelAutomaticRerouting();
     if (_nextManeuver != null) {
       setState(() => _nextManeuver = null);
     }
     unawaited(_flutterTts.stop());
     model.clearDestination();
     unawaited(_updateLocationStream(model));
+    // Native tracking changes can finish without onCameraMove. Explicitly
+    // publish the retained bearing so the compass remains visible when the
+    // route ends on a rotated map.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_syncCompassBearingFromMap());
+      _compassIdleTick.value++;
+    });
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -314,6 +372,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
+          _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
           }
@@ -418,6 +477,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               model.route.route != null &&
               model.route.route!.points.isNotEmpty &&
               _storeScreenshotRouteVisualReady;
+          final bottomActionRowPadding = _mapAttributionExpanded
+              ? kMapBottomActionRowExpandedPadding
+              : kMapBottomActionRowCollapsedPadding;
 
           return ScaffoldMessenger(
             key: scaffoldMessengerKey,
@@ -426,7 +488,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               body: Stack(
                 children: [
                   const StreetDetailsModalListener(),
-                  if (!_mountMapView)
+                  if (!_mountMapView || _mapStyleString == null)
                     const Positioned.fill(
                       child: ColoredBox(
                         color: Colors.white,
@@ -439,7 +501,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                  if (_mountMapView)
+                  if (_mountMapView && _mapStyleString != null)
                     Listener(
                       onPointerDown: (_) {
                         if (model.locationState == LocationState.FOLLOW ||
@@ -451,7 +513,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: RepaintBoundary(
                         key: _mapLibreViewKey,
                         child: MapLibreMap(
-                          styleString: kOpenFreeMapLibertyStyleAsset,
+                          styleString: _mapStyleString!,
                           initialCameraPosition: CameraPosition(
                             target:
                                 LatLng(_stachus.latitude, _stachus.longitude),
@@ -518,6 +580,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               // Style rebuild clears native annotations; drop stale handles.
                               _destinationCircle = null;
                               _routePlanCircles.clear();
+                              _routePlanSymbols.clear();
+                              _routeWaypointImages.clear();
                               _streetDetailsByLineId.clear();
                               _lastSyncedNetworkFingerprint = null;
                               _lastRouteFingerprint = null;
@@ -627,99 +691,172 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       height: MediaQuery.paddingOf(context).top,
                       child: const ColoredBox(color: Colors.white),
                     ),
-                  SafeArea(
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        if (model.destination != null &&
-                            _styleLoaded &&
-                            _mapController != null)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: MapDestinationOffScreenOverlay(
-                                mapLayerKey: _mapLibreViewKey,
-                                controller: _mapController,
-                                destination: model.destination!,
+                  Positioned.fill(
+                    child: SafeArea(
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          if (model.destination != null &&
+                              _styleLoaded &&
+                              _mapController != null)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: MapDestinationOffScreenOverlay(
+                                  mapLayerKey: _mapLibreViewKey,
+                                  controller: _mapController,
+                                  destination: model.destination!,
+                                  bottomActionRowPadding:
+                                      bottomActionRowPadding,
+                                ),
                               ),
                             ),
+                          if (model.destination != null)
+                            MapAttribution(expanded: _mapAttributionExpanded),
+                          MapSideActionButtons(
+                            model: model,
+                            mapController: _mapController,
+                            mapBearingDegrees: _mapBearingDegrees,
+                            compassIdleTick: _compassIdleTick,
+                            bottomActionRowPadding:
+                                kMapBottomActionRowCollapsedPadding,
+                            additionalBottomOffset:
+                                _sideControlsAdditionalBottomOffset(
+                              context,
+                              model,
+                            ),
+                            onNorthUp: () async {
+                              model.onCompassNorthUpPressed();
+                              final c = _mapController;
+                              if (c != null) {
+                                await c
+                                    .animateCamera(CameraUpdate.bearingTo(0));
+                                await _syncCompassBearingFromMap();
+                              }
+                            },
+                            queryMapBearingDegrees: () async {
+                              final c = _mapController;
+                              if (c == null) return null;
+                              final pos = await c.queryCameraPosition();
+                              return pos?.bearing;
+                            },
+                            onPressLocation: () async {
+                              await model.onPressLocationBtn();
+                              if (!mounted) return;
+                              await _applyNativeLocationTracking(model);
+                              await _updateLocationStream(model);
+                            },
                           ),
-                        const MapAttribution(),
-                        MapSideActionButtons(
-                          model: model,
-                          mapController: _mapController,
-                          mapBearingDegrees: _mapBearingDegrees,
-                          compassIdleTick: _compassIdleTick,
-                          additionalBottomOffset:
-                              _sideControlsAdditionalBottomOffset(
-                            context,
-                            model,
-                          ),
-                          onNorthUp: () async {
-                            model.onCompassNorthUpPressed();
-                            final c = _mapController;
-                            if (c != null) {
-                              await c.animateCamera(CameraUpdate.bearingTo(0));
-                              await _syncCompassBearingFromMap();
-                            }
-                          },
-                          queryMapBearingDegrees: () async {
-                            final c = _mapController;
-                            if (c == null) return null;
-                            final pos = await c.queryCameraPosition();
-                            return pos?.bearing;
-                          },
-                        ),
-                        MapBottomActionButtons(
-                          model: model,
-                          showSearch:
-                              _initialContentReady && !model.navigationStarted,
-                          onPlanRoute: () => _openRoutePlanner(model),
-                          onSelectOnMap: () {
-                            _nameNextMapSelection = true;
-                          },
-                          searchCenterProvider: () {
-                            final position = _latestPosition;
-                            return position == null
-                                ? null
-                                : latlong2.LatLng(
-                                    position.latitude,
-                                    position.longitude,
+                          if (model.destination != null ||
+                              model.initialRatingsLoadFailed)
+                            MapBottomActionButtons(
+                              model: model,
+                              showSearch: false,
+                              onPlanRoute: () => _openRoutePlanner(model),
+                              onSelectOnMap: () {
+                                _nameNextMapSelection = true;
+                              },
+                              searchCenterProvider: () {
+                                final position = _latestPosition;
+                                return position == null
+                                    ? null
+                                    : latlong2.LatLng(
+                                        position.latitude,
+                                        position.longitude,
+                                      );
+                              },
+                              onPressLocation: () async {
+                                await model.onPressLocationBtn();
+                                if (!mounted) return;
+                                await _applyNativeLocationTracking(model);
+                                await _updateLocationStream(model);
+                              },
+                              onReloadNetwork: () =>
+                                  _reloadRadnetzAfterInitialFailure(model),
+                              attributionExpanded: _mapAttributionExpanded,
+                              onToggleAttribution: () => setState(() {
+                                _mapAttributionExpanded =
+                                    !_mapAttributionExpanded;
+                              }),
+                              navigationBar: model.destination == null
+                                  ? null
+                                  : MapNavigationHeaderBar(
+                                      model: model,
+                                      onRefreshRoute: () =>
+                                          _refreshRouteAndResumeNavigation(
+                                              model),
+                                      onEditRoute: () =>
+                                          _openRoutePlanner(model),
+                                      onStartNavigation: () =>
+                                          _startNavigation(model),
+                                      onToggleVoiceGuidance: () =>
+                                          _toggleVoiceGuidance(
+                                        model,
+                                        english: context.l10n.isEnglish,
+                                      ),
+                                      onEndRoute: () => _endRoute(model),
+                                      nextManeuver: _nextManeuver,
+                                    ),
+                            ),
+                          if (_initialContentReady &&
+                              !model.navigationStarted &&
+                              model.destination == null &&
+                              _pendingRouteMapSelection == null)
+                            MapHomeDestinationSheet(
+                              searchCenter: _latestPosition == null
+                                  ? null
+                                  : latlong2.LatLng(
+                                      _latestPosition!.latitude,
+                                      _latestPosition!.longitude,
+                                    ),
+                              onSelected: (selection) {
+                                if (selection is Place) {
+                                  model.setDestination(selection);
+                                } else if (selection is SavedRoute) {
+                                  model.setRoutePlan(
+                                    start: selection.start,
+                                    stops: selection.stops,
+                                    destination: selection.destination,
                                   );
-                          },
-                          onPressLocation: () async {
-                            await model.onPressLocationBtn();
-                            if (!mounted) return;
-                            await _applyNativeLocationTracking(model);
-                            await _updateLocationStream(model);
-                          },
-                          onReloadNetwork: () =>
-                              _reloadRadnetzAfterInitialFailure(model),
-                          navigationBar: model.destination == null
-                              ? null
-                              : MapNavigationHeaderBar(
-                                  model: model,
-                                  onRefreshRoute: () =>
-                                      _refreshRouteAndResumeNavigation(model),
-                                  onEditRoute: () => _openRoutePlanner(model),
-                                  onStartNavigation: () =>
-                                      _startNavigation(model),
-                                  onToggleVoiceGuidance: () =>
-                                      _toggleVoiceGuidance(
-                                    model,
-                                    english: context.l10n.isEnglish,
+                                }
+                              },
+                              onPlanRoute: () => _openRoutePlanner(model),
+                              onSelectOnMap: () {
+                                _nameNextMapSelection = true;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      context.l10n.tr(
+                                        'Gewünschtes Ziel auf der Karte lange antippen.',
+                                      ),
+                                    ),
                                   ),
-                                  onEndRoute: () => _endRoute(model),
-                                  nextManeuver: _nextManeuver,
-                                ),
-                        ),
-                        if (kStoreScreenshots) ...[
-                          StoreScreenshotMapReadySemantics(
-                            storeIdleReady: storeIdleReady,
-                            storeRouteReady: storeRouteReady,
-                          ),
-                          StoreScreenshotControls(model: model),
+                                );
+                              },
+                              onShowInfo: () => showMapInfoSheet(context),
+                              onToggleAttribution: () => setState(() {
+                                _mapAttributionExpanded =
+                                    !_mapAttributionExpanded;
+                              }),
+                              onShowSettings: () =>
+                                  showMapSettingsSheet(context, model),
+                              attributionExpanded: _mapAttributionExpanded,
+                            ),
+                          if (_pendingRouteMapSelection case final selection?)
+                            MapRouteSelectionPanel(
+                              type: selection.type,
+                              onCancel: () => setState(() {
+                                _pendingRouteMapSelection = null;
+                              }),
+                            ),
+                          if (kStoreScreenshots) ...[
+                            StoreScreenshotMapReadySemantics(
+                              storeIdleReady: storeIdleReady,
+                              storeRouteReady: storeRouteReady,
+                            ),
+                            StoreScreenshotControls(model: model),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                   if (model.loading)
@@ -1005,12 +1142,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
+    _updateAutomaticRerouting(model, rawPosition);
     final nextManeuver = model.navigationStarted
-        ? _voiceGuidance.display(
-            rawPosition,
-            english: context.l10n.isEnglish,
-            speedMetersPerSecond: position.speed,
-          )
+        ? _reroutingDisplay ??
+            _voiceGuidance.display(
+              rawPosition,
+              english: context.l10n.isEnglish,
+              speedMetersPerSecond: position.speed,
+            )
         : null;
     if (nextManeuver != _nextManeuver) {
       setState(() => _nextManeuver = nextManeuver);
@@ -1034,21 +1173,190 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _updateAutomaticRerouting(
+    MapScreenViewModel model,
+    latlong2.LatLng position,
+  ) {
+    if (!model.navigationStarted || !_voiceGuidance.isOffRoute(position)) {
+      if (model.navigationStarted) {
+        _recordOnRouteProgress(position);
+      }
+      if (_offRouteEpisodeActive || _reroutingDisplay != null) {
+        _cancelAutomaticRerouting(resetAttempts: false);
+      }
+      return;
+    }
+    _lastOnRoutePosition = null;
+    if (_offRouteEpisodeActive) return;
+
+    _offRouteEpisodeActive = true;
+    _setReroutingDisplay(
+      context.l10n.isEnglish
+          ? 'Route left or no GPS signal'
+          : 'Route verlassen oder kein GPS-Signal',
+    );
+    unawaited(_zoomOutAfterMissingDirections());
+
+    // Three consecutive recalculations only pause automation for this
+    // navigation. While paused, keep the map status useful but do not annoy a
+    // rider without a phone mount with more off-route announcements.
+    if (_automaticReroutingSuspended && model.automaticReroutingEnabled) {
+      _setReroutingDisplay(
+        context.l10n.isEnglish ? 'Follow map' : 'Karte beachten',
+      );
+      return;
+    }
+
+    _offRouteAnnouncementTimer = Timer(_offRouteAnnouncementDelay, () {
+      if (!_stillOffRoute(model)) return;
+      final automatic =
+          model.automaticReroutingEnabled && !_automaticReroutingSuspended;
+      final isLastAutomaticAnnouncement = automatic &&
+          _consecutiveAutomaticReroutes == _maximumConsecutiveReroutes - 1;
+      final message = context.l10n.isEnglish
+          ? automatic
+              ? isLastAutomaticAnnouncement
+                  ? 'Last automatic recalculation shortly. No further '
+                      'directions while off the route.'
+                  : 'Route left or no GPS signal. '
+                      'Recalculating automatically shortly.'
+              : 'Route left or no GPS signal.'
+          : automatic
+              ? isLastAutomaticAnnouncement
+                  ? 'Letzte automatische Neuberechnung in Kürze. Keine '
+                      'weiteren Ansagen außerhalb der Route.'
+                  : 'Route verlassen oder kein GPS-Signal. Automatische '
+                      'Neuberechnung in Kürze.'
+              : 'Route verlassen oder kein GPS-Signal.';
+      _setReroutingDisplay(message);
+      if (model.voiceGuidanceEnabled && model.voiceGuidanceAvailable) {
+        unawaited(_speak(message, english: context.l10n.isEnglish));
+      }
+    });
+
+    if (model.automaticReroutingEnabled && !_automaticReroutingSuspended) {
+      _automaticRerouteTimer = Timer(_automaticRerouteDelay, () {
+        if (model.automaticReroutingEnabled && _stillOffRoute(model)) {
+          unawaited(_performAutomaticReroute(model));
+        }
+      });
+    }
+  }
+
+  bool _stillOffRoute(MapScreenViewModel model) {
+    final position = _latestPosition;
+    return mounted &&
+        model.navigationStarted &&
+        position != null &&
+        position.accuracy.isFinite &&
+        position.accuracy <= 50 &&
+        _voiceGuidance.isOffRoute(
+          latlong2.LatLng(position.latitude, position.longitude),
+        );
+  }
+
+  Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
+    if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
+      _automaticReroutingSuspended = true;
+      _voiceSignalTimer?.cancel();
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Automatic recalculation paused. Recalculate manually to resume.'
+            : 'Automatische Neuberechnung pausiert. Zum Fortsetzen manuell '
+                'neu berechnen.',
+      );
+      return;
+    }
+    _consecutiveAutomaticReroutes++;
+    _onRouteDistanceSinceReroute = 0;
+    _lastOnRoutePosition = null;
+    _setReroutingDisplay(
+      context.l10n.isEnglish
+          ? 'Recalculating route...'
+          : 'Route wird neu berechnet...',
+    );
+    final updated = await model.refreshRoute();
+    if (!mounted) return;
+    if (!updated) {
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Recalculation failed. Will retry later.'
+            : 'Neuberechnung fehlgeschlagen. Neuer Versuch später.',
+      );
+    }
+    if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
+      _automaticReroutingSuspended = true;
+      _voiceSignalTimer?.cancel();
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Automatic recalculation paused after 3 consecutive '
+                'recalculations. Recalculate manually to resume.'
+            : 'Automatische Neuberechnung nach 3 aufeinanderfolgenden '
+                'Neuberechnungen pausiert. Zum Fortsetzen manuell neu '
+                'berechnen.',
+      );
+    }
+    _offRouteEpisodeActive = false;
+  }
+
+  void _recordOnRouteProgress(latlong2.LatLng position) {
+    final previous = _lastOnRoutePosition;
+    _lastOnRoutePosition = position;
+    if (_consecutiveAutomaticReroutes == 0 || previous == null) return;
+
+    final step = Geolocator.distanceBetween(
+      previous.latitude,
+      previous.longitude,
+      position.latitude,
+      position.longitude,
+    );
+    // Ignore implausible GPS jumps; they must not make separate reroutes look
+    // independent without 500 metres of actual on-route riding.
+    if (!step.isFinite || step <= 0 || step > _maximumOnRouteProgressStep) {
+      return;
+    }
+    _onRouteDistanceSinceReroute += step;
+    if (_onRouteDistanceSinceReroute < _onRouteDistanceToResetReroutes) {
+      return;
+    }
+
+    _consecutiveAutomaticReroutes = 0;
+    _onRouteDistanceSinceReroute = 0;
+  }
+
+  void _setReroutingDisplay(String text) {
+    if (!mounted || _reroutingDisplay?.text == text) return;
+    setState(() {
+      _reroutingDisplay = VoiceGuidanceDisplay(
+        text: text,
+        type: 'notification',
+      );
+      _nextManeuver = _reroutingDisplay;
+    });
+  }
+
+  void _cancelAutomaticRerouting({bool resetAttempts = true}) {
+    _offRouteAnnouncementTimer?.cancel();
+    _automaticRerouteTimer?.cancel();
+    _offRouteAnnouncementTimer = null;
+    _automaticRerouteTimer = null;
+    _offRouteEpisodeActive = false;
+    if (resetAttempts) {
+      _automaticReroutingSuspended = false;
+      _consecutiveAutomaticReroutes = 0;
+      _onRouteDistanceSinceReroute = 0;
+      _lastOnRoutePosition = null;
+    }
+    _reroutingDisplay = null;
+  }
+
   Future<void> _zoomOutAfterMissingDirections() async {
     final controller = _mapController;
     if (!mounted || controller == null) return;
     try {
-      // `controller.cameraPosition` can remain at the value from before a
-      // programmatic camera animation. Reading the native position prevents
-      // subsequent warnings from repeatedly targeting the already active zoom.
-      final position = await controller.queryCameraPosition();
-      if (!mounted || controller != _mapController) return;
-      final currentZoom = _safeZoom(
-        position?.zoom ?? controller.cameraPosition?.zoom,
-      );
-      await controller.animateCamera(
-        CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
-      );
+      // Always use the same overview. Subtracting from the current zoom here
+      // would zoom farther out after every repeated rerouting attempt.
+      await controller.animateCamera(CameraUpdate.zoomTo(_offRouteZoom));
     } catch (error, stackTrace) {
       log.d(
         'Zooming out after missing directions skipped while map is updating',
@@ -1103,7 +1411,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     // Camera animations performed after entering native tracking can trigger
     // onCameraTrackingDismissed. Set the navigation zoom first, then enable
     // follow-and-rotate so the final state remains native location tracking.
-    await _mapController?.animateCamera(CameraUpdate.zoomTo(18));
+    await _mapController?.animateCamera(
+      CameraUpdate.zoomTo(_navigationStartZoom),
+    );
     if (!mounted) return;
 
     final started = await model.startNavigation();
@@ -1145,7 +1455,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     if (!mounted || selection == null) return;
 
-    _pendingRouteMapSelection = selection;
+    setState(() => _pendingRouteMapSelection = selection);
     final pointName = switch (selection.type) {
       RoutePlannerPointType.start =>
         context.l10n.isEnglish ? 'start' : 'Startpunkt',
@@ -1178,7 +1488,28 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final shouldNamePlace = _nameNextMapSelection || pendingSelection != null;
     _nameNextMapSelection = false;
     if (!shouldNamePlace) {
-      model.setDestination(Place(null, position));
+      final place = Place(null, position);
+      final addToDisplayedRoute = !model.navigationStarted &&
+          model.route.state == MapRouteState.SHOWN &&
+          model.destination != null;
+      if (addToDisplayedRoute) {
+        model.setRoutePlan(
+          start: model.routeStart,
+          stops: [...model.waypoints, place],
+          destination: model.destination!,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.isEnglish
+                  ? 'Intermediate stop added.'
+                  : 'Zwischenziel hinzugefügt.',
+            ),
+          ),
+        );
+      } else {
+        model.setDestination(place);
+      }
       return;
     }
 
@@ -1266,7 +1597,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       model.setDestination(place);
       return;
     }
-    _pendingRouteMapSelection = null;
+    setState(() => _pendingRouteMapSelection = null);
     await _openRoutePlanner(
       model,
       initialPlan: pendingSelection.withSelectedPlace(place),
@@ -1328,7 +1659,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
-    if (!model.navigationStarted ||
+    if (_automaticReroutingSuspended ||
+        !model.navigationStarted ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
       return;
@@ -1354,6 +1686,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshRouteAndResumeNavigation(
       MapScreenViewModel model) async {
+    // A manual recalculation resumes a temporary safety pause. It must not
+    // override a setting that the user deliberately switched off.
+    if (_automaticReroutingSuspended && model.automaticReroutingEnabled) {
+      _cancelAutomaticRerouting();
+    }
     final routeUpdated = await model.refreshRoute();
     if (!mounted || !routeUpdated) return;
     // A successful refresh resumes navigation exactly like the Start action:
@@ -1476,7 +1813,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     // The navigation header always contains a guidance row. If there is no
     // maneuver, it shows "Karte beachten" instead, with the same height.
     final desiredOffset = model.destination == null
-        ? 0.0
+        ? 160.0
         : model.navigationStarted
             ? 144.0
             : 128.0;
@@ -1644,6 +1981,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await controller.removeCircle(circle);
     }
     _routePlanCircles.clear();
+    for (final symbol in _routePlanSymbols) {
+      await controller.removeSymbol(symbol);
+    }
+    _routePlanSymbols.clear();
 
     if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
       final route = model.route.route!;
@@ -1718,18 +2059,27 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
     }
 
-    for (final waypoint in model.waypoints) {
-      _routePlanCircles.add(
-        await controller.addCircle(
-          CircleOptions(
-            geometry: LatLng(
-              waypoint.latLng.latitude,
-              waypoint.latLng.longitude,
-            ),
-            circleRadius: 6.5,
-            circleColor: '#FF9800',
-            circleStrokeColor: '#ffffff',
-            circleStrokeWidth: 2.5,
+    for (var index = 0; index < model.waypoints.length; index++) {
+      final waypoint = model.waypoints[index];
+      final geometry = LatLng(
+        waypoint.latLng.latitude,
+        waypoint.latLng.longitude,
+      );
+      final number = index + 1;
+      final imageName = 'route-waypoint-$number';
+      if (!_routeWaypointImages.contains(number)) {
+        await controller.addImage(
+          imageName,
+          await _createRouteWaypointImage(number),
+        );
+        _routeWaypointImages.add(number);
+      }
+      _routePlanSymbols.add(
+        await controller.addSymbol(
+          SymbolOptions(
+            geometry: geometry,
+            iconImage: imageName,
+            iconAnchor: 'center',
           ),
         ),
       );
@@ -1744,6 +2094,43 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         _storeScreenshotRouteVisualReady = hasRoute;
       });
     }
+  }
+
+  Future<Uint8List> _createRouteWaypointImage(int number) async {
+    const size = 48.0;
+    const center = ui.Offset(size / 2, size / 2);
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    canvas.drawCircle(
+      center,
+      22,
+      ui.Paint()..color = Colors.white,
+    );
+    canvas.drawCircle(
+      center,
+      19,
+      ui.Paint()..color = AppColors.munichWaysOrange,
+    );
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '$number',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(
+      canvas,
+      center - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
   }
 
   Future<void> _removeRouteGeoJsonLayers(
@@ -1804,8 +2191,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitRadlId);
       await controller.removeLayer(_kNetworkLayerHitGesamtId);
+      await controller.removeLayer(_kNetworkLayerDashedRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
       await controller.removeLayer(_kNetworkLayerCasingRadlId);
+      await controller.removeLayer(_kNetworkLayerDashedGesamtId);
       await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
       await controller.removeLayer(_kNetworkLayerCasingGesamtId);
       await controller.removeSource(_kNetworkSourceId);
@@ -1843,7 +2232,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       minzoom: _kGesamtnetzMinZoom,
       enableInteraction: false,
     );
-    // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
+    // Line style represents the Happy-Bike level, independent of network:
+    // green/yellow are solid; red/black are dashed.
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleGesamtId,
@@ -1853,12 +2243,47 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
+      ),
+      filter: [
+        'all',
+        [
+          Expressions.equal,
+          [Expressions.get, 'gesamtnetz'],
+          true
+        ],
+        [
+          Expressions.equal,
+          [Expressions.get, 'lineDashed'],
+          false
+        ],
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kGesamtnetzMinZoom,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerDashedGesamtId,
+      const LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
         lineDasharray: [1.25, 2],
       ),
       filter: [
-        Expressions.equal,
-        [Expressions.get, 'gesamtnetz'],
-        true
+        'all',
+        [
+          Expressions.equal,
+          [Expressions.get, 'gesamtnetz'],
+          true
+        ],
+        [
+          Expressions.equal,
+          [Expressions.get, 'lineDashed'],
+          true
+        ],
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       minzoom: _kGesamtnetzMinZoom,
@@ -1885,6 +2310,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     await controller.addLineLayer(
       _kNetworkSourceId,
+      _kNetworkLayerDashedRadlId,
+      const LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineDasharray: [1.25, 2],
+      ),
+      filter: [
+        'all',
+        [
+          Expressions.equal,
+          [Expressions.get, 'gesamtnetz'],
+          false
+        ],
+        [
+          Expressions.equal,
+          [Expressions.get, 'lineDashed'],
+          true
+        ],
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kRadlVorrangMinZoom,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
       _kNetworkLayerVisibleRadlId,
       const LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
@@ -1894,9 +2347,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineJoin: 'round',
       ),
       filter: [
-        Expressions.equal,
-        [Expressions.get, 'gesamtnetz'],
-        false
+        'all',
+        [
+          Expressions.equal,
+          [Expressions.get, 'gesamtnetz'],
+          false
+        ],
+        [
+          Expressions.equal,
+          [Expressions.get, 'lineDashed'],
+          false
+        ],
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       minzoom: _kRadlVorrangMinZoom,

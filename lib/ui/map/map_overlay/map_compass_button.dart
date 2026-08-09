@@ -26,6 +26,7 @@ class MapCompassOverlayButton extends StatefulWidget {
     required this.locationState,
     required this.onNorthUp,
     required this.queryMapBearingDegrees,
+    this.alwaysVisible = false,
   });
 
   final ValueNotifier<double> mapBearingDegrees;
@@ -33,6 +34,7 @@ class MapCompassOverlayButton extends StatefulWidget {
   final LocationState locationState;
   final Future<void> Function() onNorthUp;
   final Future<double?> Function() queryMapBearingDegrees;
+  final bool alwaysVisible;
 
   @override
   State<MapCompassOverlayButton> createState() =>
@@ -79,6 +81,10 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
           }
         });
       }
+      // Ending navigation can change native tracking without emitting a
+      // Flutter onCameraMove callback. Re-read the real bearing so a rotated
+      // map never remains without orientation feedback.
+      unawaited(_refreshVisibilityFromMap());
     }
   }
 
@@ -92,10 +98,13 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
   void _onBearingChanged() {
     if (!mounted) return;
     final bearing = widget.mapBearingDegrees.value;
+    final differsFromNorth = smallestBearingAngleToNorthDegrees(bearing) >
+        kMapCompassShowBearingThresholdDeg;
+    if (differsFromNorth && _pendingHideAfterNorthUp) {
+      _pendingHideAfterNorthUp = false;
+    }
     if (!_visible) {
-      if (!_pendingHideAfterNorthUp &&
-          smallestBearingAngleToNorthDegrees(bearing) >
-              kMapCompassShowBearingThresholdDeg) {
+      if (differsFromNorth) {
         setState(() => _visible = true);
       }
       return;
@@ -104,12 +113,30 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
   }
 
   void _onMapIdleTick() {
-    unawaited(_tryFinishHideAfterNorthUp());
+    unawaited(_refreshVisibilityFromMap());
   }
 
-  Future<void> _tryFinishHideAfterNorthUp() async {
-    if (!_pendingHideAfterNorthUp || !mounted) return;
+  Future<void> _refreshVisibilityFromMap() async {
+    if (!mounted) return;
     final bearing = await widget.queryMapBearingDegrees();
+    if (!mounted || bearing == null) return;
+    final differsFromNorth = smallestBearingAngleToNorthDegrees(bearing) >
+        kMapCompassShowBearingThresholdDeg;
+    if (differsFromNorth) {
+      if (!_visible || _pendingHideAfterNorthUp) {
+        setState(() {
+          _visible = true;
+          _pendingHideAfterNorthUp = false;
+        });
+      }
+      return;
+    }
+    await _tryFinishHideAfterNorthUp(knownBearing: bearing);
+  }
+
+  Future<void> _tryFinishHideAfterNorthUp({double? knownBearing}) async {
+    if (!_pendingHideAfterNorthUp || !mounted) return;
+    final bearing = knownBearing ?? await widget.queryMapBearingDegrees();
     if (!mounted || bearing == null) return;
     final delta = smallestBearingAngleToNorthDegrees(bearing);
     if (delta <= kMapCompassShowBearingThresholdDeg) {
@@ -132,12 +159,13 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
 
   @override
   Widget build(BuildContext context) {
+    final visible = widget.alwaysVisible || _visible;
     return SizedBox(
       width: _kSlotSize,
       height: _kSlotSize,
       child: IgnorePointer(
-        ignoring: !_visible,
-        child: _visible ? _buildVisibleCompass() : const SizedBox.shrink(),
+        ignoring: !visible,
+        child: visible ? _buildVisibleCompass() : const SizedBox.shrink(),
       ),
     );
   }

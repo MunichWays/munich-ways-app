@@ -15,6 +15,7 @@ class MapOverlayButton extends StatelessWidget {
     this.circular = true,
     this.size = 48,
     this.emphasizeActive = false,
+    this.outlined = false,
     this.tooltip,
   });
 
@@ -24,21 +25,28 @@ class MapOverlayButton extends StatelessWidget {
   final bool circular;
   final double size;
   final bool emphasizeActive;
+  final bool outlined;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final borderRadius = circular ? size / 2 : 14.0;
+    final borderSide = outlined
+        ? const BorderSide(color: Color(0xFF616161), width: 1.5)
+        : BorderSide.none;
     final shape = circular
-        ? const CircleBorder()
+        ? CircleBorder(side: borderSide)
         : RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
+            side: borderSide,
           );
 
     Widget core = Material(
-      color: isActive && emphasizeActive
-          ? AppColors.mapAccentColor
-          : AppColors.mapButtonBackground.withValues(alpha: 0.80),
+      color: outlined
+          ? Colors.transparent
+          : isActive && emphasizeActive
+              ? AppColors.mapAccentColor
+              : AppColors.mapButtonBackground.withValues(alpha: 0.80),
       shape: shape,
       clipBehavior: Clip.antiAlias,
       shadowColor: Colors.transparent,

@@ -37,6 +37,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   }
 
   static IconData _maneuverIcon(VoiceGuidanceDisplay maneuver) {
+    if (maneuver.type == 'notification') return Icons.sync;
     if (maneuver.type == 'map') return Icons.map_outlined;
     if (maneuver.type == 'arrive') return Icons.location_on;
     if (maneuver.type == 'roundabout' ||
@@ -70,7 +71,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
 
     final route = model.route;
     final guidanceDisplay = model.navigationStarted
-        ? (nextManeuver?.type == 'notification' ? null : nextManeuver) ??
+        ? nextManeuver ??
             VoiceGuidanceDisplay(
               text: context.l10n.followRouteOnMap,
               type: 'map',
@@ -138,27 +139,29 @@ class MapNavigationHeaderBar extends StatelessWidget {
       label: refreshLabel,
       onTap: refreshEnabled ? onRefreshRoute : null,
       excludeSemantics: true,
-      child: IconButton.filled(
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.mapRouteColor,
-          disabledBackgroundColor: Colors.white54,
-          disabledForegroundColor: AppColors.mapRouteColor,
-          minimumSize: const Size(44, 44),
-        ),
-        padding: const EdgeInsets.all(10),
-        tooltip: refreshLabel,
-        onPressed: refreshEnabled ? onRefreshRoute : null,
-        icon: refreshEnabled
-            ? const Icon(Icons.refresh, size: 26)
-            : const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: AppColors.mapRouteColor,
-                  strokeWidth: 2.5,
+      child: SizedBox.square(
+        dimension: 52,
+        child: IconButton.filled(
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.mapRouteColor,
+            disabledBackgroundColor: Colors.white54,
+            disabledForegroundColor: AppColors.mapRouteColor,
+          ),
+          padding: const EdgeInsets.all(10),
+          tooltip: refreshLabel,
+          onPressed: refreshEnabled ? onRefreshRoute : null,
+          icon: refreshEnabled
+              ? const Icon(Icons.refresh, size: 28)
+              : const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    color: AppColors.mapRouteColor,
+                    strokeWidth: 2.5,
+                  ),
                 ),
-              ),
+        ),
       ),
     );
     final editLabel =
@@ -169,11 +172,50 @@ class MapNavigationHeaderBar extends StatelessWidget {
       label: editLabel,
       onTap: onEditRoute,
       excludeSemantics: true,
-      child: IconButton(
-        color: Colors.white,
-        tooltip: editLabel,
-        onPressed: onEditRoute,
-        icon: const Icon(Icons.edit_location_alt),
+      child: SizedBox.square(
+        dimension: 52,
+        child: IconButton.outlined(
+          style: IconButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white70, width: 1.5),
+          ),
+          tooltip: editLabel,
+          onPressed: onEditRoute,
+          icon: const Icon(Icons.edit_location_alt, size: 27),
+        ),
+      ),
+    );
+    final showVoiceAction = route.state == MapRouteState.SHOWN &&
+        route.route != null &&
+        model.navigationStarted &&
+        model.voiceGuidanceAvailable;
+    final voiceLabel = model.voiceGuidanceEnabled
+        ? (context.l10n.isEnglish
+            ? 'Turn off voice guidance'
+            : 'Sprachansagen ausschalten')
+        : (context.l10n.isEnglish
+            ? 'Turn on voice guidance'
+            : 'Sprachansagen einschalten');
+    final voiceAction = Semantics(
+      container: true,
+      button: true,
+      label: voiceLabel,
+      onTap: onToggleVoiceGuidance,
+      excludeSemantics: true,
+      child: SizedBox.square(
+        dimension: 52,
+        child: IconButton.outlined(
+          style: IconButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white70, width: 1.5),
+          ),
+          tooltip: voiceLabel,
+          onPressed: onToggleVoiceGuidance,
+          icon: Icon(
+            model.voiceGuidanceEnabled ? Icons.volume_up : Icons.volume_off,
+            size: 27,
+          ),
+        ),
       ),
     );
     final closeLabel = context.l10n.tr('Route beenden');
@@ -186,7 +228,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       child: SizedBox.square(
         dimension: 56,
         child: IconButton(
-          color: Colors.white,
+          color: Colors.white70,
           tooltip: closeLabel,
           onPressed: onEndRoute,
           icon: const Icon(Icons.close),
@@ -245,30 +287,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 closeAction,
                 const Spacer(),
                 editAction,
-                if (route.state == MapRouteState.SHOWN &&
-                    route.route != null &&
-                    model.navigationStarted &&
-                    model.voiceGuidanceAvailable)
-                  IconButton(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: model.voiceGuidanceEnabled
-                        ? (context.l10n.isEnglish
-                            ? 'Turn off voice guidance'
-                            : 'Sprachansagen ausschalten')
-                        : (context.l10n.isEnglish
-                            ? 'Turn on voice guidance'
-                            : 'Sprachansagen einschalten'),
-                    onPressed: onToggleVoiceGuidance,
-                    icon: Icon(
-                      model.voiceGuidanceEnabled
-                          ? Icons.volume_up
-                          : Icons.volume_off,
-                    ),
-                  ),
-                const SizedBox(width: 4),
+                if (showVoiceAction) ...[
+                  const SizedBox(width: 10),
+                  voiceAction,
+                ],
+                const SizedBox(width: 10),
                 refreshAction,
               ],
             ),

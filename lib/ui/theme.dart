@@ -21,6 +21,7 @@ class AppColors {
 
   static const mapAccentColor = Color(0xFF2196F3);
   static const mapRouteColor = Color(0xFF0D47A1);
+  static const favoriteHighlight = Color(0xFFDCEEFF);
 
   static Color getPolylineColor(_color) {
     switch (_color) {

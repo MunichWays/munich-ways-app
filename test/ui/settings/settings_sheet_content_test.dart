@@ -68,44 +68,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('groups Settings directly left of Info', (tester) async {
-    final model = MapScreenViewModel(store: _MemorySettingsStore());
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Stack(
-            children: [
-              ListenableBuilder(
-                listenable: model,
-                builder: (context, _) => MapBottomActionButtons(
-                  model: model,
-                  searchCenterProvider: () => null,
-                  onPlanRoute: () async {},
-                  onSelectOnMap: () {},
-                  onPressLocation: () {},
-                  showSearch: false,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    model.setSidePanelEdge(MapSidePanelEdge.left);
-    await tester.pump();
-
-    final trackingX =
-        tester.getCenter(find.byIcon(Icons.location_searching)).dx;
-    final settingsX = tester.getCenter(find.byIcon(Icons.settings)).dx;
-    final infoX = tester.getCenter(find.byIcon(Icons.info_outline)).dx;
-    expect(trackingX, lessThan(settingsX));
-    expect(settingsX, lessThan(infoX));
-    expect(infoX - settingsX, lessThan(80));
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('shows a persistent network reload action after initial failure',
       (tester) async {
     var reloadPressed = false;
@@ -313,11 +275,15 @@ void main() {
     expect(model.bRouterProfile, BRouterProfile.fastBike);
 
     final routeRecommendationInfo = find.byTooltip('Info: Routenwunsch');
-    await tester.ensureVisible(routeRecommendationInfo);
+    await Scrollable.ensureVisible(
+      routeRecommendationInfo.evaluate().single,
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(routeRecommendationInfo);
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Automatisch nutzt RadlNavi'),
+      find.textContaining('Standard sucht möglichst stressarme Fahrradrouten'),
       findsOneWidget,
     );
     await tester.tap(find.text('Schließen'));

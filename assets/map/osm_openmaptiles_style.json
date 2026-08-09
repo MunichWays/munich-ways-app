@@ -3370,6 +3370,39 @@
       }
     },
     {
+      "id": "housenumber",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "housenumber",
+      "minzoom": 17,
+      "layout": {
+        "text-field": "{housenumber}",
+        "text-font": [
+          "Roboto Regular"
+        ],
+        "text-size": {
+          "stops": [
+            [
+              17,
+              10
+            ],
+            [
+              19,
+              12
+            ]
+          ]
+        },
+        "text-allow-overlap": false,
+        "text-ignore-placement": false
+      },
+      "paint": {
+        "text-color": "#3f3f3f",
+        "text-halo-color": "rgba(255,255,255,0.9)",
+        "text-halo-width": 1.25,
+        "text-halo-blur": 0.5
+      }
+    },
+    {
       "id": "boundary_3",
       "type": "line",
       "source": "openmaptiles",
@@ -3573,6 +3606,65 @@
       }
     },
     {
+      "id": "cycle_barrier_halo",
+      "type": "circle",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "subclass",
+          "cycle_barrier"
+        ]
+      ],
+      "paint": {
+        "circle-color": "#ffffff",
+        "circle-radius": 8,
+        "circle-stroke-color": "#6d4c41",
+        "circle-stroke-width": 1.5
+      }
+    },
+    {
+      "id": "cycle_barrier",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "subclass",
+          "cycle_barrier"
+        ]
+      ],
+      "layout": {
+        "text-allow-overlap": true,
+        "text-field": "≠",
+        "text-font": [
+          "Roboto Bold"
+        ],
+        "text-size": 14
+      },
+      "paint": {
+        "text-color": "#6d4c41",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 0.5
+      }
+    },
+    {
       "id": "poi_z16",
       "type": "symbol",
       "source": "openmaptiles",
@@ -3589,6 +3681,16 @@
           "!=",
           "class",
           "drinking_water"
+        ],
+        [
+          "!=",
+          "class",
+          "entrance"
+        ],
+        [
+          "!=",
+          "subclass",
+          "cycle_barrier"
         ],
         [
           ">=",
@@ -3652,6 +3754,16 @@
           "!=",
           "class",
           "drinking_water"
+        ],
+        [
+          "!=",
+          "class",
+          "entrance"
+        ],
+        [
+          "!=",
+          "subclass",
+          "cycle_barrier"
         ],
         [
           ">=",
@@ -3720,6 +3832,16 @@
           "!=",
           "class",
           "drinking_water"
+        ],
+        [
+          "!=",
+          "class",
+          "entrance"
+        ],
+        [
+          "!=",
+          "subclass",
+          "cycle_barrier"
         ],
         [
           ">=",

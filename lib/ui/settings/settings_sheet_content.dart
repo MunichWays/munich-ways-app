@@ -50,6 +50,16 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                     ),
                     const MenuGroupDivider(),
                     MenuGroupItem(
+                      label: strings.isEnglish
+                          ? 'Recalculate automatically'
+                          : 'Automatisch neu berechnen',
+                      trailingElement: Switch.adaptive(
+                        value: model.automaticReroutingEnabled,
+                        onChanged: model.setAutomaticReroutingEnabled,
+                      ),
+                    ),
+                    const MenuGroupDivider(),
+                    MenuGroupItem(
                       label: strings.showZoomButtons,
                       trailingElement: Switch.adaptive(
                         value: model.showZoomButtons,
