@@ -714,7 +714,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           MapBottomActionButtons(
                             model: model,
                             showSearch: _initialContentReady &&
-                                !model.navigationStarted,
+                                !model.navigationStarted &&
+                                model.destination == null,
                             onPlanRoute: () => _openRoutePlanner(model),
                             onSelectOnMap: () {
                               _nameNextMapSelection = true;
