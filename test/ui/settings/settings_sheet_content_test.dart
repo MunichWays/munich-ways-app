@@ -330,7 +330,6 @@ void main() {
     await Scrollable.ensureVisible(
       routeRecommendationInfo.evaluate().single,
       alignment: 0.5,
-      duration: const Duration(milliseconds: 100),
     );
     await tester.pumpAndSettle();
     await tester.tap(routeRecommendationInfo);
