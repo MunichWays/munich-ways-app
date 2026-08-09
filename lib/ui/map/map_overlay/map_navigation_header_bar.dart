@@ -37,6 +37,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   }
 
   static IconData _maneuverIcon(VoiceGuidanceDisplay maneuver) {
+    if (maneuver.type == 'notification') return Icons.sync;
     if (maneuver.type == 'map') return Icons.map_outlined;
     if (maneuver.type == 'arrive') return Icons.location_on;
     if (maneuver.type == 'roundabout' ||
@@ -70,8 +71,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
 
     final route = model.route;
     final guidanceDisplay = model.navigationStarted
-        ? (nextManeuver?.type == 'notification' ? null : nextManeuver) ??
-            VoiceGuidanceDisplay(
+        ? nextManeuver ?? VoiceGuidanceDisplay(
               text: context.l10n.followRouteOnMap,
               type: 'map',
             )

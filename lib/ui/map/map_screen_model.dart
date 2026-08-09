@@ -89,6 +89,19 @@ class MapScreenViewModel extends ChangeNotifier {
     );
   }
 
+  void setAutomaticReroutingEnabled(bool value) {
+    if (_automaticReroutingEnabled == value) return;
+    _automaticReroutingEnabled = value;
+    notifyListeners();
+    _settingsStore.saveAutomaticReroutingEnabled(value).catchError(
+      (Object e, StackTrace st) => log.e(
+        'Failed to save automatic rerouting setting',
+        error: e,
+        stackTrace: st,
+      ),
+    );
+  }
+
   void setRoutingMode(RoutingMode value) {
     if (_routingMode == value) return;
     _routingMode = value;
@@ -140,6 +153,7 @@ class MapScreenViewModel extends ChangeNotifier {
     if (data.showZoomButtons == _showZoomButtons &&
         edge == _sidePanelEdge &&
         data.voiceGuidanceEnabled == _voiceGuidanceEnabled &&
+        data.automaticReroutingEnabled == _automaticReroutingEnabled &&
         routingMode == _routingMode &&
         data.bRouterProfile == _bRouterProfile &&
         data.routeRecommendation == _routeRecommendation) {
@@ -148,6 +162,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _showZoomButtons = data.showZoomButtons;
     _sidePanelEdge = edge;
     _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
+    _automaticReroutingEnabled = data.automaticReroutingEnabled;
     _routingMode = routingMode;
     _bRouterProfile = data.bRouterProfile;
     _routeRecommendation = data.routeRecommendation;
@@ -191,6 +206,8 @@ class MapScreenViewModel extends ChangeNotifier {
   bool get navigationStarted => _navigationStarted;
   bool _voiceGuidanceEnabled = false;
   bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
+  bool _automaticReroutingEnabled = true;
+  bool get automaticReroutingEnabled => _automaticReroutingEnabled;
   bool get voiceGuidanceAvailable =>
       route.route?.supportsVoiceGuidance ?? false;
   RoutingMode _routingMode = RoutingMode.automatic;

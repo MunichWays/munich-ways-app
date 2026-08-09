@@ -46,6 +46,13 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
+  static const _offRouteAnnouncementDelay = Duration(seconds: 10);
+  static const _automaticRerouteDelay = Duration(seconds: 30);
+  static const _maximumConsecutiveReroutes = 3;
+  static const _onRouteDistanceToResetReroutes = 500.0;
+  static const _maximumOnRouteProgressStep = 200.0;
+  static const _navigationStartZoom = 18.0;
+  static const _offRouteZoom = _navigationStartZoom - 2;
   static const _notificationPermissionChannel =
       MethodChannel('com.munichways.app/notification_permission');
 
@@ -107,11 +114,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
   final FlutterTts _flutterTts = FlutterTts();
-  final VoiceGuidance _voiceGuidance = VoiceGuidance();
+  final VoiceGuidance _voiceGuidance = VoiceGuidance(
+    announceOffRouteWarning: false,
+  );
   VoiceGuidanceDisplay? _nextManeuver;
+  VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
+  Timer? _offRouteAnnouncementTimer;
+  Timer? _automaticRerouteTimer;
+  bool _offRouteEpisodeActive = false;
+  bool _automaticReroutingSuspended = false;
+  int _consecutiveAutomaticReroutes = 0;
+  double _onRouteDistanceSinceReroute = 0;
+  latlong2.LatLng? _lastOnRoutePosition;
   bool _notificationPermissionExplained = false;
   bool _mapAttributionExpanded = false;
 
@@ -179,6 +196,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     _locationSubscription?.cancel();
     _voiceSignalTimer?.cancel();
+    _cancelAutomaticRerouting(resetAttempts: false);
     unawaited(_flutterTts.stop());
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
@@ -246,12 +264,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
     _voiceSignalTimer?.cancel();
+    _cancelAutomaticRerouting();
     if (_nextManeuver != null) {
       setState(() => _nextManeuver = null);
     }
     unawaited(_flutterTts.stop());
     model.clearDestination();
     unawaited(_updateLocationStream(model));
+    // Native tracking changes can finish without onCameraMove. Explicitly
+    // publish the retained bearing so the compass remains visible when the
+    // route ends on a rotated map.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_syncCompassBearingFromMap());
+      _compassIdleTick.value++;
+    });
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -316,6 +343,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
+          _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
           }
@@ -1021,8 +1049,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
+    _updateAutomaticRerouting(model, rawPosition);
     final nextManeuver = model.navigationStarted
-        ? _voiceGuidance.display(
+        ? _reroutingDisplay ?? _voiceGuidance.display(
             rawPosition,
             english: context.l10n.isEnglish,
             speedMetersPerSecond: position.speed,
@@ -1050,21 +1079,193 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _updateAutomaticRerouting(
+    MapScreenViewModel model,
+    latlong2.LatLng position,
+  ) {
+    if (!model.navigationStarted || !_voiceGuidance.isOffRoute(position)) {
+      if (model.navigationStarted) {
+        _recordOnRouteProgress(position);
+      }
+      if (_offRouteEpisodeActive || _reroutingDisplay != null) {
+        _cancelAutomaticRerouting(resetAttempts: false);
+      }
+      return;
+    }
+    _lastOnRoutePosition = null;
+    if (_offRouteEpisodeActive) return;
+
+    _offRouteEpisodeActive = true;
+    _setReroutingDisplay(
+      context.l10n.isEnglish
+          ? 'Route left or no GPS signal'
+          : 'Route verlassen oder kein GPS-Signal',
+    );
+    unawaited(_zoomOutAfterMissingDirections());
+
+    // Three consecutive recalculations only pause automation for this
+    // navigation. While paused, keep the map status useful but do not annoy a
+    // rider without a phone mount with more off-route announcements.
+    if (_automaticReroutingSuspended && model.automaticReroutingEnabled) {
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Follow map'
+            : 'Karte beachten',
+      );
+      return;
+    }
+
+    _offRouteAnnouncementTimer = Timer(_offRouteAnnouncementDelay, () {
+      if (!_stillOffRoute(model)) return;
+      final automatic = model.automaticReroutingEnabled &&
+          !_automaticReroutingSuspended;
+      final isLastAutomaticAnnouncement = automatic &&
+          _consecutiveAutomaticReroutes ==
+              _maximumConsecutiveReroutes - 1;
+      final message = context.l10n.isEnglish
+          ? automatic
+              ? isLastAutomaticAnnouncement
+                  ? 'Last automatic recalculation shortly. No further '
+                      'directions while off the route.'
+                  : 'Route left or no GPS signal. '
+                      'Recalculating automatically shortly.'
+              : 'Route left or no GPS signal.'
+          : automatic
+              ? isLastAutomaticAnnouncement
+                  ? 'Letzte automatische Neuberechnung in Kürze. Keine '
+                      'weiteren Ansagen außerhalb der Route.'
+                  : 'Route verlassen oder kein GPS-Signal. Automatische '
+                      'Neuberechnung in Kürze.'
+              : 'Route verlassen oder kein GPS-Signal.';
+      _setReroutingDisplay(message);
+      if (model.voiceGuidanceEnabled && model.voiceGuidanceAvailable) {
+        unawaited(_speak(message, english: context.l10n.isEnglish));
+      }
+    });
+
+    if (model.automaticReroutingEnabled && !_automaticReroutingSuspended) {
+      _automaticRerouteTimer = Timer(_automaticRerouteDelay, () {
+        if (model.automaticReroutingEnabled && _stillOffRoute(model)) {
+          unawaited(_performAutomaticReroute(model));
+        }
+      });
+    }
+  }
+
+  bool _stillOffRoute(MapScreenViewModel model) {
+    final position = _latestPosition;
+    return mounted &&
+        model.navigationStarted &&
+        position != null &&
+        position.accuracy.isFinite &&
+        position.accuracy <= 50 &&
+        _voiceGuidance.isOffRoute(
+          latlong2.LatLng(position.latitude, position.longitude),
+        );
+  }
+
+  Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
+    if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
+      _automaticReroutingSuspended = true;
+      _voiceSignalTimer?.cancel();
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Automatic recalculation paused. Recalculate manually to resume.'
+            : 'Automatische Neuberechnung pausiert. Zum Fortsetzen manuell '
+                'neu berechnen.',
+      );
+      return;
+    }
+    _consecutiveAutomaticReroutes++;
+    _onRouteDistanceSinceReroute = 0;
+    _lastOnRoutePosition = null;
+    _setReroutingDisplay(
+      context.l10n.isEnglish
+          ? 'Recalculating route...'
+          : 'Route wird neu berechnet...',
+    );
+    final updated = await model.refreshRoute();
+    if (!mounted) return;
+    if (!updated) {
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Recalculation failed. Will retry later.'
+            : 'Neuberechnung fehlgeschlagen. Neuer Versuch später.',
+      );
+    }
+    if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
+      _automaticReroutingSuspended = true;
+      _voiceSignalTimer?.cancel();
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Automatic recalculation paused after 3 consecutive '
+                'recalculations. Recalculate manually to resume.'
+            : 'Automatische Neuberechnung nach 3 aufeinanderfolgenden '
+                'Neuberechnungen pausiert. Zum Fortsetzen manuell neu '
+                'berechnen.',
+      );
+    }
+    _offRouteEpisodeActive = false;
+  }
+
+  void _recordOnRouteProgress(latlong2.LatLng position) {
+    final previous = _lastOnRoutePosition;
+    _lastOnRoutePosition = position;
+    if (_consecutiveAutomaticReroutes == 0 || previous == null) return;
+
+    final step = Geolocator.distanceBetween(
+      previous.latitude,
+      previous.longitude,
+      position.latitude,
+      position.longitude,
+    );
+    // Ignore implausible GPS jumps; they must not make separate reroutes look
+    // independent without 500 metres of actual on-route riding.
+    if (!step.isFinite || step <= 0 || step > _maximumOnRouteProgressStep) {
+      return;
+    }
+    _onRouteDistanceSinceReroute += step;
+    if (_onRouteDistanceSinceReroute < _onRouteDistanceToResetReroutes) {
+      return;
+    }
+
+    _consecutiveAutomaticReroutes = 0;
+    _onRouteDistanceSinceReroute = 0;
+  }
+
+  void _setReroutingDisplay(String text) {
+    if (!mounted || _reroutingDisplay?.text == text) return;
+    setState(() {
+      _reroutingDisplay = VoiceGuidanceDisplay(
+        text: text,
+        type: 'notification',
+      );
+      _nextManeuver = _reroutingDisplay;
+    });
+  }
+
+  void _cancelAutomaticRerouting({bool resetAttempts = true}) {
+    _offRouteAnnouncementTimer?.cancel();
+    _automaticRerouteTimer?.cancel();
+    _offRouteAnnouncementTimer = null;
+    _automaticRerouteTimer = null;
+    _offRouteEpisodeActive = false;
+    if (resetAttempts) {
+      _automaticReroutingSuspended = false;
+      _consecutiveAutomaticReroutes = 0;
+      _onRouteDistanceSinceReroute = 0;
+      _lastOnRoutePosition = null;
+    }
+    _reroutingDisplay = null;
+  }
+
   Future<void> _zoomOutAfterMissingDirections() async {
     final controller = _mapController;
     if (!mounted || controller == null) return;
     try {
-      // `controller.cameraPosition` can remain at the value from before a
-      // programmatic camera animation. Reading the native position prevents
-      // subsequent warnings from repeatedly targeting the already active zoom.
-      final position = await controller.queryCameraPosition();
-      if (!mounted || controller != _mapController) return;
-      final currentZoom = _safeZoom(
-        position?.zoom ?? controller.cameraPosition?.zoom,
-      );
-      await controller.animateCamera(
-        CameraUpdate.zoomTo((currentZoom - 2).clamp(3.0, 22.0)),
-      );
+      // Always use the same overview. Subtracting from the current zoom here
+      // would zoom farther out after every repeated rerouting attempt.
+      await controller.animateCamera(CameraUpdate.zoomTo(_offRouteZoom));
     } catch (error, stackTrace) {
       log.d(
         'Zooming out after missing directions skipped while map is updating',
@@ -1119,7 +1320,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     // Camera animations performed after entering native tracking can trigger
     // onCameraTrackingDismissed. Set the navigation zoom first, then enable
     // follow-and-rotate so the final state remains native location tracking.
-    await _mapController?.animateCamera(CameraUpdate.zoomTo(18));
+    await _mapController?.animateCamera(
+      CameraUpdate.zoomTo(_navigationStartZoom),
+    );
     if (!mounted) return;
 
     final started = await model.startNavigation();
@@ -1344,7 +1547,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
-    if (!model.navigationStarted ||
+    if (_automaticReroutingSuspended ||
+        !model.navigationStarted ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
       return;
@@ -1370,6 +1574,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshRouteAndResumeNavigation(
       MapScreenViewModel model) async {
+    // A manual recalculation resumes a temporary safety pause. It must not
+    // override a setting that the user deliberately switched off.
+    if (_automaticReroutingSuspended && model.automaticReroutingEnabled) {
+      _cancelAutomaticRerouting();
+    }
     final routeUpdated = await model.refreshRoute();
     if (!mounted || !routeUpdated) return;
     // A successful refresh resumes navigation exactly like the Start action:

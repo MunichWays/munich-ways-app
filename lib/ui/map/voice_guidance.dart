@@ -19,6 +19,7 @@ class VoiceGuidance {
     this.maximumSpeechLookAheadMeters = 30,
     this.closeManeuverDistanceMeters = 35,
     this.offRouteUpdatesBeforeWarning = 10,
+    this.announceOffRouteWarning = true,
   });
 
   final double approachDistanceMeters;
@@ -31,6 +32,18 @@ class VoiceGuidance {
   final double maximumSpeechLookAheadMeters;
   final double closeManeuverDistanceMeters;
   final int offRouteUpdatesBeforeWarning;
+  final bool announceOffRouteWarning;
+
+  bool isOffRoute(LatLng position) {
+    final route = _route;
+    if (route == null) return false;
+    return _projectOntoRoute(
+          route.points,
+          position,
+          minimumDistanceAlongRoute: _routeProgress,
+        ).distanceFromRoute >
+        maximumRouteDistanceMeters;
+  }
 
   CycleRoute? _route;
   List<_GuidanceManeuver> _maneuvers = const [];
@@ -181,7 +194,8 @@ class VoiceGuidance {
     );
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
       _offRouteUpdates++;
-      if (!_offRouteWarningSpoken &&
+      if (announceOffRouteWarning &&
+          !_offRouteWarningSpoken &&
           _offRouteUpdates >= offRouteUpdatesBeforeWarning) {
         _offRouteWarningSpoken = true;
         return english

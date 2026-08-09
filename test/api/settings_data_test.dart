@@ -8,6 +8,17 @@ void main() {
     expect(SettingsData.fromJson(const {}).showZoomButtons, isTrue);
   });
 
+  test('enables automatic rerouting by default, including older settings', () {
+    expect(SettingsData.defaults.automaticReroutingEnabled, isTrue);
+    expect(SettingsData.fromJson(const {}).automaticReroutingEnabled, isTrue);
+    expect(
+      SettingsData.fromJson(
+        const {'automaticReroutingEnabled': false},
+      ).automaticReroutingEnabled,
+      isFalse,
+    );
+  });
+
   test('uses automatic RadlNavi and BRouter trekking by default', () {
     expect(SettingsData.defaults.routingMode, RoutingMode.automatic);
     expect(SettingsData.defaults.bRouterProfile, BRouterProfile.trekking);

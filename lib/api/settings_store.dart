@@ -76,6 +76,12 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveAutomaticReroutingEnabled(bool enabled) {
+    return _enqueueUpdate((current) => current.copyWith(
+          automaticReroutingEnabled: enabled,
+        ));
+  }
+
   Future<void> saveRoutingMode(RoutingMode routingMode) {
     return _enqueueUpdate((current) => current.copyWith(
           routingMode: routingMode,
@@ -115,6 +121,7 @@ class SettingsData {
     required this.sidePanelEdgeName,
     required this.languageCode,
     required this.voiceGuidanceEnabled,
+    required this.automaticReroutingEnabled,
     required this.routingMode,
     required this.bRouterProfile,
     required this.routeRecommendation,
@@ -128,6 +135,7 @@ class SettingsData {
   /// `null` follows the operating system, otherwise `de` or `en`.
   final String? languageCode;
   final bool voiceGuidanceEnabled;
+  final bool automaticReroutingEnabled;
   final RoutingMode routingMode;
   final BRouterProfile bRouterProfile;
   final RouteRecommendation? routeRecommendation;
@@ -137,6 +145,7 @@ class SettingsData {
     sidePanelEdgeName: 'right',
     languageCode: null,
     voiceGuidanceEnabled: false,
+    automaticReroutingEnabled: true,
     routingMode: RoutingMode.automatic,
     bRouterProfile: BRouterProfile.trekking,
     routeRecommendation: RouteRecommendation.standard,
@@ -147,6 +156,7 @@ class SettingsData {
         'sidePanelEdge': sidePanelEdgeName,
         if (languageCode != null) 'language': languageCode,
         'voiceGuidanceEnabled': voiceGuidanceEnabled,
+        'automaticReroutingEnabled': automaticReroutingEnabled,
         'routingMode': routingMode.name,
         'bRouterProfile': bRouterProfile.name,
         if (routeRecommendation != null)
@@ -159,6 +169,7 @@ class SettingsData {
     String? languageCode,
     bool clearLanguageCode = false,
     bool? voiceGuidanceEnabled,
+    bool? automaticReroutingEnabled,
     RoutingMode? routingMode,
     BRouterProfile? bRouterProfile,
     RouteRecommendation? routeRecommendation,
@@ -170,6 +181,8 @@ class SettingsData {
         languageCode:
             clearLanguageCode ? null : languageCode ?? this.languageCode,
         voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
+        automaticReroutingEnabled:
+            automaticReroutingEnabled ?? this.automaticReroutingEnabled,
         routingMode: routingMode ?? this.routingMode,
         bRouterProfile: bRouterProfile ?? this.bRouterProfile,
         routeRecommendation: clearRouteRecommendation
@@ -206,6 +219,8 @@ class SettingsData {
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
       voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,
+      automaticReroutingEnabled:
+          json['automaticReroutingEnabled'] as bool? ?? true,
       routingMode: routingMode,
       bRouterProfile: bRouterProfile,
       routeRecommendation: storedRecommendation ?? inferredRecommendation,
