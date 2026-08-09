@@ -1,39 +1,84 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:latlong2/latlong.dart';
 
-class MapSearchBar extends StatelessWidget {
+class MapSearchBar extends StatefulWidget {
   const MapSearchBar({
     super.key,
     required this.model,
     required this.searchCenterProvider,
     required this.onPlanRoute,
     required this.onSelectOnMap,
+    this.favoritesStore,
   });
 
   final MapScreenViewModel model;
   final LatLng? Function() searchCenterProvider;
   final Future<void> Function() onPlanRoute;
   final VoidCallback onSelectOnMap;
+  final RecentSearchesStore? favoritesStore;
+
+  @override
+  State<MapSearchBar> createState() => _MapSearchBarState();
+}
+
+class _MapSearchBarState extends State<MapSearchBar> {
+  List<Place> _favorites = const [];
+
+  RecentSearchesStore get _favoritesStore =>
+      widget.favoritesStore ?? favoritePlacesRepo;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final favorites = await _favoritesStore.load();
+      if (mounted) {
+        setState(() => _favorites = favorites.take(3).toList());
+      }
+    } catch (error, stackTrace) {
+      log.w(
+        'Loading favorite shortcuts failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 
   Future<void> _openSearch(BuildContext context) async {
     final result = await showPlaceSearchSheet(
       context,
-      searchCenter: searchCenterProvider(),
+      searchCenter: widget.searchCenterProvider(),
     );
     if (!context.mounted) {
       return;
     }
+    await _loadFavorites();
+    if (!context.mounted) return;
     if (result is Place) {
-      model.setDestination(result);
+      widget.model.setDestination(result);
+    } else if (result is SavedRoute) {
+      widget.model.setRoutePlan(
+        start: result.start,
+        stops: result.stops,
+        destination: result.destination,
+      );
     } else if (result == PlaceSearchSheetResult.planRoute) {
-      await onPlanRoute();
+      await widget.onPlanRoute();
     } else if (result == PlaceSearchSheetResult.selectOnMap) {
-      onSelectOnMap();
+      widget.onSelectOnMap();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -46,7 +91,7 @@ class MapSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final search = Material(
       color: Theme.of(context).colorScheme.surface,
       elevation: 5,
       shadowColor: Colors.black38,
@@ -73,6 +118,39 @@ class MapSearchBar extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+    if (_favorites.isEmpty) return search;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        search,
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            for (var i = 0; i < _favorites.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(child: _favoriteButton(context, _favorites[i])),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _favoriteButton(BuildContext context, Place favorite) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.favoriteHighlight,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
+      onPressed: () => widget.model.setDestination(favorite),
+      child: Text(
+        favorite.displayName ?? '',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

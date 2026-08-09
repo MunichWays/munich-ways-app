@@ -118,6 +118,7 @@ class AppLocalizations {
     'Keine Ergebnisse vorhanden.\\nBitte überprüfe den Suchbegriff.':
         'No results found.\\nPlease check your search term.',
     'Auf Karte auswählen': 'Select on map',
+    'Auf Karte wählen': 'Select on map',
     'Letzte Ziele': 'Recent destinations',
     '(Suchverlauf löschen)': '(Clear search history)',
     'Fehler beim Laden.': 'Error while loading.',

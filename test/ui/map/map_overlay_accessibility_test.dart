@@ -6,10 +6,43 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
 void main() {
+  testWidgets('left-side controls include the position button', (tester) async {
+    final model = _LeftMapScreenViewModel();
+    final bearing = ValueNotifier<double>(0);
+    final idle = ValueNotifier<int>(0);
+    addTearDown(bearing.dispose);
+    addTearDown(idle.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapSideActionButtons(
+                model: model,
+                mapController: null,
+                mapBearingDegrees: bearing,
+                compassIdleTick: idle,
+                onNorthUp: () async {},
+                queryMapBearingDegrees: () async => 0,
+                onPressLocation: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final position = find.byIcon(Icons.location_searching);
+    expect(position, findsOneWidget);
+    expect(tester.getCenter(position).dx, lessThan(100));
+  });
+
   testWidgets('zoom button has an explicit label and a large tap target',
       (tester) async {
     await tester.pumpWidget(
@@ -208,4 +241,11 @@ void main() {
 class _MemorySettingsStore extends SettingsStore {
   @override
   Future<SettingsData> load() async => SettingsData.defaults;
+}
+
+class _LeftMapScreenViewModel extends MapScreenViewModel {
+  _LeftMapScreenViewModel() : super(store: _MemorySettingsStore());
+
+  @override
+  MapSidePanelEdge get sidePanelEdge => MapSidePanelEdge.left;
 }

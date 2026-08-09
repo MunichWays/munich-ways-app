@@ -7,9 +7,11 @@ class MapAttribution extends StatefulWidget {
   const MapAttribution({
     super.key,
     required this.expanded,
+    this.inline = false,
   });
 
   final bool expanded;
+  final bool inline;
 
   @override
   State<MapAttribution> createState() => _MapAttributionState();
@@ -54,51 +56,50 @@ class _MapAttributionState extends State<MapAttribution> {
               color: Colors.black87,
             ) ??
         const TextStyle(color: Colors.black87);
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        width: double.infinity,
-        height: 22,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        color: Colors.white70,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: Text.rich(
-            TextSpan(
-              style: baseStyle,
-              children: <TextSpan>[
-                const TextSpan(text: '© '),
-                TextSpan(
-                  text: 'OpenMapTiles',
-                  style: const TextStyle(
-                    decoration: TextDecoration.underline,
-                  ),
-                  recognizer: _openMapTilesTap,
+    final content = Container(
+      width: double.infinity,
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      color: Colors.white.withValues(alpha: 0.42),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Text.rich(
+          TextSpan(
+            style: baseStyle,
+            children: <TextSpan>[
+              const TextSpan(text: '© '),
+              TextSpan(
+                text: 'OpenMapTiles',
+                style: const TextStyle(
+                  decoration: TextDecoration.underline,
                 ),
-                const TextSpan(text: ' · © '),
-                TextSpan(
-                  text: 'OpenStreetMap contributors',
-                  style: const TextStyle(
-                    decoration: TextDecoration.underline,
-                  ),
-                  recognizer: _openStreetMapTap,
+                recognizer: _openMapTilesTap,
+              ),
+              const TextSpan(text: ' · © '),
+              TextSpan(
+                text: 'OpenStreetMap contributors',
+                style: const TextStyle(
+                  decoration: TextDecoration.underline,
                 ),
-                const TextSpan(text: ' · '),
-                TextSpan(
-                  text: 'OpenFreeMap',
-                  style: const TextStyle(
-                    decoration: TextDecoration.underline,
-                  ),
-                  recognizer: _openFreeMapTap,
+                recognizer: _openStreetMapTap,
+              ),
+              const TextSpan(text: ' · '),
+              TextSpan(
+                text: 'OpenFreeMap',
+                style: const TextStyle(
+                  decoration: TextDecoration.underline,
                 ),
-              ],
-            ),
-            maxLines: 1,
-            softWrap: false,
+                recognizer: _openFreeMapTap,
+              ),
+            ],
           ),
+          maxLines: 1,
+          softWrap: false,
         ),
       ),
     );
+    if (widget.inline) return content;
+    return Align(alignment: Alignment.bottomCenter, child: content);
   }
 }

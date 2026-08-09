@@ -26,6 +26,7 @@ class MapCompassOverlayButton extends StatefulWidget {
     required this.locationState,
     required this.onNorthUp,
     required this.queryMapBearingDegrees,
+    this.alwaysVisible = false,
   });
 
   final ValueNotifier<double> mapBearingDegrees;
@@ -33,6 +34,7 @@ class MapCompassOverlayButton extends StatefulWidget {
   final LocationState locationState;
   final Future<void> Function() onNorthUp;
   final Future<double?> Function() queryMapBearingDegrees;
+  final bool alwaysVisible;
 
   @override
   State<MapCompassOverlayButton> createState() =>
@@ -157,12 +159,13 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
 
   @override
   Widget build(BuildContext context) {
+    final visible = widget.alwaysVisible || _visible;
     return SizedBox(
       width: _kSlotSize,
       height: _kSlotSize,
       child: IgnorePointer(
-        ignoring: !_visible,
-        child: _visible ? _buildVisibleCompass() : const SizedBox.shrink(),
+        ignoring: !visible,
+        child: visible ? _buildVisibleCompass() : const SizedBox.shrink(),
       ),
     );
   }

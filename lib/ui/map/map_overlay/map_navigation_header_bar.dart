@@ -71,7 +71,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
 
     final route = model.route;
     final guidanceDisplay = model.navigationStarted
-        ? nextManeuver ?? VoiceGuidanceDisplay(
+        ? nextManeuver ??
+            VoiceGuidanceDisplay(
               text: context.l10n.followRouteOnMap,
               type: 'map',
             )

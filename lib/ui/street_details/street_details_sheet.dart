@@ -304,6 +304,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const BottomSheetDragHandle(),
                 _Header(farbe: d.farbe, name: d.name),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 Expanded(

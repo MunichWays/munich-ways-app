@@ -5,6 +5,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
 
 /// Side map controls: zoom and compass.
 class MapSideActionButtons extends StatelessWidget {
@@ -16,6 +17,7 @@ class MapSideActionButtons extends StatelessWidget {
     required this.compassIdleTick,
     required this.onNorthUp,
     required this.queryMapBearingDegrees,
+    required this.onPressLocation,
     this.bottomActionRowPadding = kMapBottomActionRowCollapsedPadding,
     this.additionalBottomOffset = 0,
   });
@@ -26,6 +28,7 @@ class MapSideActionButtons extends StatelessWidget {
   final ValueNotifier<int> compassIdleTick;
   final Future<void> Function() onNorthUp;
   final Future<double?> Function() queryMapBearingDegrees;
+  final VoidCallback onPressLocation;
   final double bottomActionRowPadding;
   final double additionalBottomOffset;
 
@@ -36,7 +39,6 @@ class MapSideActionButtons extends StatelessWidget {
     final mq = MediaQuery.paddingOf(context);
     final bottomBarBottom = mq.bottom + bottomActionRowPadding;
     final sideColumnBottom = bottomBarBottom +
-        kMapOverlayControlSize +
         kMapGapSideColumnAboveBottomBar +
         additionalBottomOffset;
 
@@ -81,6 +83,24 @@ class MapSideActionButtons extends StatelessWidget {
             locationState: model.locationState,
             onNorthUp: onNorthUp,
             queryMapBearingDegrees: queryMapBearingDegrees,
+            alwaysVisible: true,
+          ),
+          const SizedBox(height: _buttonSpacing),
+          MapOverlayButton(
+            tooltip: context.l10n.tr('Standort'),
+            isActive: model.locationState == LocationState.FOLLOW ||
+                model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
+            emphasizeActive: true,
+            onPressed: onPressLocation,
+            child: switch (model.locationState) {
+              LocationState.NOT_AVAILABLE =>
+                const Icon(Icons.location_searching),
+              LocationState.DISPLAY ||
+              LocationState.FOLLOW =>
+                const Icon(Icons.my_location),
+              LocationState.FOLLOW_AND_ROTATE_MAP =>
+                const Icon(MunichwaysIcons.compass),
+            },
           ),
         ],
       ),

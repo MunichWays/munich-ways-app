@@ -68,58 +68,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('centers Settings and mirrors Info and location controls',
-      (tester) async {
-    final model = MapScreenViewModel(store: _MemorySettingsStore());
-    var attributionTogglePressed = false;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Stack(
-            children: [
-              ListenableBuilder(
-                listenable: model,
-                builder: (context, _) => MapBottomActionButtons(
-                  model: model,
-                  searchCenterProvider: () => null,
-                  onPlanRoute: () async {},
-                  onSelectOnMap: () {},
-                  onPressLocation: () {},
-                  onToggleAttribution: () {
-                    attributionTogglePressed = true;
-                  },
-                  showSearch: false,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    var trackingX = tester.getCenter(find.byIcon(Icons.location_searching)).dx;
-    var settingsX = tester.getCenter(find.byIcon(Icons.settings)).dx;
-    var infoX = tester.getCenter(find.byIcon(Icons.info_outline)).dx;
-    expect(infoX, lessThan(settingsX));
-    expect(settingsX, lessThan(trackingX));
-    expect(settingsX, closeTo(400, 0.1));
-    await tester.tap(find.byTooltip('Kartenquellen anzeigen'));
-    expect(attributionTogglePressed, isTrue);
-
-    model.setSidePanelEdge(MapSidePanelEdge.left);
-    await tester.pump();
-
-    trackingX = tester.getCenter(find.byIcon(Icons.location_searching)).dx;
-    settingsX = tester.getCenter(find.byIcon(Icons.settings)).dx;
-    infoX = tester.getCenter(find.byIcon(Icons.info_outline)).dx;
-    expect(trackingX, lessThan(settingsX));
-    expect(settingsX, lessThan(infoX));
-    expect(settingsX, closeTo(400, 0.1));
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('shows a persistent network reload action after initial failure',
       (tester) async {
     var reloadPressed = false;
@@ -335,7 +283,7 @@ void main() {
     await tester.tap(routeRecommendationInfo);
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Automatisch nutzt RadlNavi'),
+      find.textContaining('Standard sucht möglichst stressarme Fahrradrouten'),
       findsOneWidget,
     );
     await tester.tap(find.text('Schließen'));

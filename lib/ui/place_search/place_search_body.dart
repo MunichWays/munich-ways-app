@@ -1,42 +1,51 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+enum _SavedPlaceAction { toggleFavorite, delete, rename }
+
+enum _SavedRouteAction { toggleFavorite, rename, delete }
 
 /// Scrollable search results, errors, and recent destinations.
 class PlaceSearchBody extends StatefulWidget {
   const PlaceSearchBody({
     super.key,
     required this.model,
+    this.showSavedRoutes = true,
+    this.showFavorites = true,
+    this.showRecentSearches = true,
+    this.scrollController,
+    this.onSelected,
   });
 
   final PlaceSearchScreenViewModel model;
+  final bool showSavedRoutes;
+  final bool showFavorites;
+  final bool showRecentSearches;
+  final ScrollController? scrollController;
+  final ValueChanged<Object>? onSelected;
+
+  void _completeSelection(BuildContext context, Object selection) {
+    final callback = onSelected;
+    if (callback != null) {
+      callback(selection);
+    } else {
+      Navigator.pop(context, selection);
+    }
+  }
 
   @override
   State<PlaceSearchBody> createState() => _PlaceSearchBodyState();
 }
 
 class _PlaceSearchBodyState extends State<PlaceSearchBody> {
-  String? _selectedPlaceKey;
-
   PlaceSearchScreenViewModel get model => widget.model;
-
-  String _placeKey(Place place) =>
-      '${place.latLng.latitude}:${place.latLng.longitude}';
-
-  Place? _selectedPlace(PlaceSearchScreenViewModel model) {
-    if (_selectedPlaceKey == null) return null;
-    for (final place in [...model.favoritePlaces, ...model.recentSearches]) {
-      if (_placeKey(place) == _selectedPlaceKey) return place;
-    }
-    return null;
-  }
-
-  void _selectSavedPlace(Place place, bool selected) {
-    setState(() => _selectedPlaceKey = selected ? _placeKey(place) : null);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +61,6 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
 
     final children = <Widget>[];
     var showAttribution = false;
-    var showSavedPlaceToolbar = false;
 
     if (model.errorMsg != null) {
       children.add(
@@ -66,8 +74,6 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         ),
       );
       children.addAll(_savedPlaceWidgets(context, model));
-      showSavedPlaceToolbar =
-          model.favoritePlaces.isNotEmpty || model.recentSearches.isNotEmpty;
     } else if (model.places.isNotEmpty) {
       if (model.correctedQuery case final correctedQuery?) {
         children.add(
@@ -104,7 +110,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
             ),
             onTap: () {
               model.addToRecentSearches(place);
-              Navigator.pop(context, place);
+              widget._completeSelection(context, place);
             },
           ),
         );
@@ -127,12 +133,12 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         children.add(const Divider(height: 1));
       }
       children.addAll(_savedPlaceWidgets(context, model));
-      showSavedPlaceToolbar =
-          model.favoritePlaces.isNotEmpty || model.recentSearches.isNotEmpty;
     }
 
     final results = ListView(
+      controller: widget.scrollController,
       padding: const EdgeInsets.only(bottom: 16),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: children,
     );
     final content = showAttribution
@@ -143,15 +149,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
             ],
           )
         : results;
-    if (!showSavedPlaceToolbar) return content;
-
-    return Column(
-      children: [
-        _savedPlaceToolbar(context, model),
-        const Divider(height: 1),
-        Expanded(child: content),
-      ],
-    );
+    return content;
   }
 
   static const _attributionStyle = TextStyle(
@@ -202,35 +200,86 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     PlaceSearchScreenViewModel model,
   ) {
     return [
-      ..._favoriteWidgets(context, model),
-      ..._recentSearchWidgets(context, model),
+      if (widget.showFavorites) ..._favoriteWidgets(context, model),
+      if (widget.showRecentSearches) ..._recentSearchWidgets(context, model),
+      ..._savedRouteWidgets(context, model),
     ];
+  }
+
+  Widget _savedSection(
+    BuildContext context, {
+    required String keyName,
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required List<Widget> children,
+  }) {
+    return ExpansionTile(
+      key: PageStorageKey<String>(keyName),
+      initiallyExpanded: true,
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -3),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+      childrenPadding: EdgeInsets.zero,
+      shape: const Border(),
+      collapsedShape: const Border(),
+      leading: Icon(icon, color: iconColor),
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      children: children,
+    );
   }
 
   List<Widget> _favoriteWidgets(
     BuildContext context,
     PlaceSearchScreenViewModel model,
   ) {
-    if (model.favoritePlaces.isEmpty) return [];
+    if (model.favoriteItems.isEmpty) return [];
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-        child: Text(
-          context.l10n.isEnglish ? 'Favorites' : 'Favoriten',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+      _savedSection(
+        context,
+        keyName: 'favorites',
+        title: context.l10n.isEnglish ? 'Favorites' : 'Favoriten',
+        icon: Icons.star,
+        iconColor: Colors.amber,
+        children: model.favoriteItems.length == 1
+            ? [_favoriteItem(context, model, model.favoriteItems.single)]
+            : [
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: true,
+                  itemCount: model.favoriteItems.length,
+                  onReorder: model.reorderFavorite,
+                  itemBuilder: (context, index) => _favoriteItem(
+                    context,
+                    model,
+                    model.favoriteItems[index],
+                  ),
+                ),
+              ],
       ),
-      for (final favorite in model.favoritePlaces) ...[
-        const Divider(height: 1),
-        _savedPlaceTile(
-          context,
-          favorite,
-          selected: _placeKey(favorite) == _selectedPlaceKey,
-          onSelected: (selected) => _selectSavedPlace(favorite, selected),
-          onConfirm: () => _selectPlace(context, model, favorite),
-        ),
-      ],
     ];
+  }
+
+  Widget _favoriteItem(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Object favorite,
+  ) {
+    return KeyedSubtree(
+      key: ValueKey(favorite is Place
+          ? 'place-${favorite.latLng.latitude}-${favorite.latLng.longitude}'
+          : 'route-${(favorite as SavedRoute).name}'),
+      child: favorite is Place
+          ? _savedPlaceTile(
+              context,
+              favorite,
+              highlighted: true,
+              compact: true,
+              onConfirm: () => _selectPlace(context, model, favorite),
+            )
+          : _savedRouteTile(context, model, favorite as SavedRoute),
+    );
   }
 
   Future<void> _renameFavorite(
@@ -274,36 +323,269 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     BuildContext context,
     PlaceSearchScreenViewModel model,
   ) {
-    if (model.recentSearches.isEmpty) {
-      return [];
-    }
+    if (model.recentSearches.isEmpty) return [];
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-        child: Text(
-          context.l10n.tr('Letzte Ziele'),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      ),
-      for (final recentSearch in model.recentSearches) ...[
-        const Divider(height: 1),
-        _savedPlaceTile(
-          context,
-          recentSearch,
-          selected: _placeKey(recentSearch) == _selectedPlaceKey,
-          onSelected: (selected) => _selectSavedPlace(recentSearch, selected),
-          onConfirm: () => _selectPlace(context, model, recentSearch),
-        ),
-      ],
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton.icon(
-          onPressed: model.clearAllRecentSearches,
-          icon: const Icon(Icons.delete_outline),
-          label: Text(context.l10n.tr('(Suchverlauf löschen)')),
-        ),
+      _savedSection(
+        context,
+        keyName: 'recent-destinations',
+        title: context.l10n.tr('Letzte Ziele'),
+        icon: Icons.history,
+        iconColor: AppColors.munichWaysBlue,
+        children: [
+          for (final recentSearch in model.recentSearches)
+            _savedPlaceTile(
+              context,
+              recentSearch,
+              highlighted: false,
+              compact: true,
+              onConfirm: () => _selectPlace(context, model, recentSearch),
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: model.clearAllRecentSearches,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: Text(context.l10n.tr('(Suchverlauf löschen)')),
+            ),
+          ),
+        ],
       ),
     ];
+  }
+
+  List<Widget> _savedRouteWidgets(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+  ) {
+    if (!widget.showSavedRoutes || model.savedRoutes.isEmpty) return [];
+    return [
+      _savedSection(
+        context,
+        keyName: 'saved-routes',
+        title: context.l10n.isEnglish ? 'Routes' : 'Routen',
+        icon: Icons.route,
+        iconColor: AppColors.munichWaysOrange,
+        children: [
+          for (final route in model.savedRoutes)
+            _savedRouteTile(context, model, route),
+        ],
+      ),
+    ];
+  }
+
+  Widget _savedRouteTile(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    SavedRoute route,
+  ) {
+    return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -3),
+      tileColor:
+          route.isFavorite ? AppColors.favoriteHighlight : Colors.transparent,
+      contentPadding: const EdgeInsets.only(left: 4, right: 4),
+      title: LayoutBuilder(
+        builder: (context, constraints) {
+          final textStyle = Theme.of(context).textTheme.bodyLarge;
+          final textPainter = TextPainter(
+            text: TextSpan(text: route.name, style: textStyle),
+            maxLines: 1,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: constraints.maxWidth);
+          final nameIsTruncated = textPainter.didExceedMaxLines;
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  route.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: textStyle,
+                ),
+              ),
+              if (nameIsTruncated)
+                SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    tooltip: context.l10n.isEnglish
+                        ? 'Show full route name'
+                        : 'Vollständigen Routennamen anzeigen',
+                    iconSize: 16,
+                    padding: EdgeInsets.zero,
+                    style: IconButton.styleFrom(
+                      backgroundColor: route.isFavorite
+                          ? AppColors.favoriteHighlight
+                          : Colors.white,
+                      foregroundColor: AppColors.munichWaysBlue,
+                      fixedSize: const Size.square(24),
+                      shape: const CircleBorder(),
+                    ),
+                    onPressed: () => _showFullRouteName(context, route),
+                    icon: const Icon(Icons.more_horiz),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+      onTap: () => widget._completeSelection(context, route),
+      trailing: SizedBox.square(
+        dimension: 32,
+        child: PopupMenuButton<_SavedRouteAction>(
+          tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          icon: const Icon(Icons.more_vert),
+          onSelected: (action) =>
+              _scheduleSavedRouteAction(context, model, route, action),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: _SavedRouteAction.toggleFavorite,
+              child: Row(
+                children: [
+                  Icon(route.isFavorite ? Icons.star : Icons.star_border),
+                  const SizedBox(width: 12),
+                  Text(
+                    route.isFavorite
+                        ? (context.l10n.isEnglish
+                            ? 'Remove favorite'
+                            : 'Favorit entfernen')
+                        : (context.l10n.isEnglish
+                            ? 'Add favorite'
+                            : 'Als Favorit speichern'),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: _SavedRouteAction.rename,
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_outlined),
+                  const SizedBox(width: 12),
+                  Text(context.l10n.isEnglish ? 'Rename' : 'Umbenennen'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: _SavedRouteAction.delete,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _renameSavedRoute(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    SavedRoute route,
+  ) async {
+    var name = route.name;
+    final updatedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title:
+            Text(context.l10n.isEnglish ? 'Rename route' : 'Route umbenennen'),
+        content: TextFormField(
+          initialValue: name,
+          autofocus: true,
+          onChanged: (value) => name = value,
+          onFieldSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.tr('Abbrechen')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, name),
+            child: Text(context.l10n.isEnglish ? 'Save' : 'Speichern'),
+          ),
+        ],
+      ),
+    );
+    final trimmedName = updatedName?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) return;
+    await model.renameSavedRoute(route, trimmedName);
+  }
+
+  void _scheduleSavedRouteAction(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    SavedRoute route,
+    _SavedRouteAction action,
+  ) {
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      switch (action) {
+        case _SavedRouteAction.toggleFavorite:
+          unawaited(_toggleRouteFavorite(context, model, route));
+          break;
+        case _SavedRouteAction.rename:
+          unawaited(_renameSavedRoute(context, model, route));
+          break;
+        case _SavedRouteAction.delete:
+          unawaited(_confirmDeleteSavedRoute(context, model, route));
+          break;
+      }
+    });
+  }
+
+  Future<void> _toggleRouteFavorite(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    SavedRoute route,
+  ) async {
+    if (!route.isFavorite && model.favoriteCount >= 3) {
+      final replaced = await _chooseFavoriteToReplace(context, model);
+      if (replaced == null) return;
+      await model.replaceFavorite(replaced, route);
+      return;
+    }
+    await model.toggleRouteFavorite(route);
+  }
+
+  Future<void> _confirmDeleteSavedRoute(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    SavedRoute route,
+  ) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(
+              context.l10n.isEnglish ? 'Delete saved route?' : 'Route löschen?',
+            ),
+            content: Text(route.name),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(context.l10n.tr('Abbrechen')),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (confirmed) await model.deleteSavedRoute(route);
   }
 
   Future<void> _renameRecentSearch(
@@ -344,88 +626,231 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
   Widget _savedPlaceTile(
     BuildContext context,
     Place place, {
-    required bool selected,
-    required ValueChanged<bool> onSelected,
+    required bool highlighted,
+    required bool compact,
     required VoidCallback onConfirm,
   }) {
-    return InkWell(
-      onTap: onConfirm,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: [
-            Checkbox(
-              value: selected,
-              onChanged: (value) => onSelected(value ?? false),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                place.displayName!,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-            IconButton(
-              tooltip: context.l10n.isEnglish
-                  ? 'Use selected destination'
-                  : 'Auswahl übernehmen',
-              color: AppColors.mapGreen,
-              iconSize: 32,
-              onPressed: onConfirm,
-              icon: const Icon(Icons.check_circle),
-            ),
-          ],
+    final textStyle = Theme.of(context).textTheme.bodyLarge;
+    final actionWidth = compact ? 32.0 : 48.0;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: compact ? 0 : 1),
+      child: Material(
+        color: highlighted ? AppColors.favoriteHighlight : Colors.transparent,
+        child: InkWell(
+          onTap: onConfirm,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final baseTrailingWidth = actionWidth;
+              final initialTextWidth =
+                  constraints.maxWidth - 16 - baseTrailingWidth;
+              final initialTextPainter = TextPainter(
+                text: TextSpan(text: place.displayName!, style: textStyle),
+                maxLines: 1,
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout(
+                  maxWidth: initialTextWidth > 0 ? initialTextWidth : 0,
+                );
+              final addressIsTruncated = initialTextPainter.didExceedMaxLines;
+
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 4 : 8,
+                  vertical: compact ? 4 : 5,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        place.displayName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: textStyle,
+                      ),
+                    ),
+                    if (addressIsTruncated)
+                      _compactAction(
+                        compact: compact,
+                        child: IconButton(
+                          tooltip: context.l10n.isEnglish
+                              ? 'Show full address'
+                              : 'Vollständige Adresse anzeigen',
+                          iconSize: compact ? 16 : 18,
+                          padding: EdgeInsets.zero,
+                          style: IconButton.styleFrom(
+                            backgroundColor: highlighted
+                                ? AppColors.favoriteHighlight
+                                : Colors.white,
+                            foregroundColor: AppColors.munichWaysBlue,
+                            fixedSize: Size.square(compact ? 24 : 28),
+                            shape: const CircleBorder(),
+                          ),
+                          onPressed: () => _showFullAddress(context, place),
+                          icon: const Icon(Icons.more_horiz),
+                        ),
+                      ),
+                    _compactAction(
+                      compact: compact,
+                      child: PopupMenuButton<_SavedPlaceAction>(
+                        tooltip: context.l10n.isEnglish
+                            ? 'More options'
+                            : 'Mehr Optionen',
+                        iconSize: compact ? 20 : 24,
+                        padding:
+                            compact ? EdgeInsets.zero : const EdgeInsets.all(8),
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (action) => _scheduleSavedPlaceAction(
+                          context,
+                          model,
+                          place,
+                          action,
+                        ),
+                        itemBuilder: (context) => _savedPlaceMenuItems(
+                          context,
+                          isFavorite: model.isFavorite(place),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _savedPlaceToolbar(
+  Widget _compactAction({
+    required bool compact,
+    required Widget child,
+  }) {
+    if (!compact) return child;
+    return SizedBox.square(dimension: 32, child: child);
+  }
+
+  List<PopupMenuEntry<_SavedPlaceAction>> _savedPlaceMenuItems(
+    BuildContext context, {
+    required bool isFavorite,
+  }) {
+    final english = context.l10n.isEnglish;
+    return [
+      PopupMenuItem(
+        value: _SavedPlaceAction.toggleFavorite,
+        child: Row(
+          children: [
+            Icon(isFavorite ? Icons.star : Icons.star_border),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                isFavorite
+                    ? (english ? 'Remove favorite' : 'Favorit entfernen')
+                    : (english ? 'Add favorite' : 'Als Favorit speichern'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      PopupMenuItem(
+        value: _SavedPlaceAction.delete,
+        child: Row(
+          children: [
+            Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(width: 12),
+            Flexible(child: Text(english ? 'Delete' : 'Löschen')),
+          ],
+        ),
+      ),
+      PopupMenuItem(
+        value: _SavedPlaceAction.rename,
+        child: Row(
+          children: [
+            const Icon(Icons.edit_outlined),
+            const SizedBox(width: 12),
+            Flexible(child: Text(english ? 'Rename' : 'Umbenennen')),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _handleSavedPlaceAction(
     BuildContext context,
     PlaceSearchScreenViewModel model,
-  ) {
-    final selected = _selectedPlace(model);
-    final isFavorite = selected != null && model.isFavorite(selected);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: context.l10n.isEnglish
-                ? 'Delete permanently'
-                : 'Endgültig löschen',
-            color: Theme.of(context).colorScheme.error,
-            onPressed: selected == null
-                ? null
-                : () => _confirmDelete(context, model, selected),
-            icon: const Icon(Icons.delete_outline),
-          ),
-          const Spacer(),
-          IconButton(
-            tooltip: context.l10n.isEnglish ? 'Rename' : 'Umbenennen',
-            onPressed: selected == null
-                ? null
-                : () => isFavorite
-                    ? _renameFavorite(context, model, selected)
-                    : _renameRecentSearch(context, model, selected),
-            icon: const Icon(Icons.edit_outlined),
-          ),
-          IconButton(
-            tooltip: isFavorite
-                ? (context.l10n.isEnglish
-                    ? 'Remove favorite'
-                    : 'Favorit entfernen')
-                : (context.l10n.isEnglish
-                    ? 'Add favorite'
-                    : 'Als Favorit speichern'),
-            onPressed: selected == null
-                ? null
-                : () => _toggleSelectedFavorite(context, model, selected),
-            icon: Icon(isFavorite ? Icons.star : Icons.star_border),
+    Place place,
+    _SavedPlaceAction action,
+  ) async {
+    switch (action) {
+      case _SavedPlaceAction.delete:
+        await _confirmDelete(context, model, place);
+        break;
+      case _SavedPlaceAction.rename:
+        if (model.isFavorite(place)) {
+          await _renameFavorite(context, model, place);
+        } else {
+          await _renameRecentSearch(context, model, place);
+        }
+        break;
+      case _SavedPlaceAction.toggleFavorite:
+        await _toggleSelectedFavorite(context, model, place);
+        break;
+    }
+  }
+
+  Future<void> _showFullAddress(BuildContext context, Place place) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.l10n.isEnglish ? 'Full address' : 'Vollständige Adresse',
+        ),
+        content: SelectableText(place.displayName ?? ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.isEnglish ? 'Close' : 'Schließen'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showFullRouteName(BuildContext context, SavedRoute route) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.l10n.isEnglish
+              ? 'Full route name'
+              : 'Vollständiger Routenname',
+        ),
+        content: SelectableText(route.name),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.isEnglish ? 'Close' : 'Schließen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _scheduleSavedPlaceAction(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+    Place place,
+    _SavedPlaceAction action,
+  ) {
+    // PopupMenuButton reports the selection while its closing animation is
+    // still running. Favorite changes rebuild and reorder this list, so wait
+    // until the menu and its anchor are fully gone before mutating the model.
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      unawaited(_handleSavedPlaceAction(context, model, place, action));
+    });
   }
 
   Future<void> _toggleSelectedFavorite(
@@ -433,6 +858,11 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     PlaceSearchScreenViewModel model,
     Place place,
   ) async {
+    if (!model.isFavorite(place) && model.favoriteCount >= 3) {
+      final replaced = await _chooseFavoriteToReplace(context, model);
+      if (replaced != null) await model.replaceFavorite(replaced, place);
+      return;
+    }
     if (!model.isFavorite(place) && model.favoritePlaces.length >= 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -446,6 +876,52 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       return;
     }
     await model.toggleFavorite(place);
+  }
+
+  Future<Object?> _chooseFavoriteToReplace(
+    BuildContext context,
+    PlaceSearchScreenViewModel model,
+  ) {
+    String name(Object favorite) => switch (favorite) {
+          Place place => place.displayName ?? '',
+          SavedRoute route => route.name,
+          _ => '',
+        };
+    return showDialog<Object>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(
+          context.l10n.isEnglish
+              ? 'Replace a favorite?'
+              : 'Favoriten ersetzen?',
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              context.l10n.isEnglish
+                  ? 'A maximum of three favorites is possible.'
+                  : 'Es sind maximal drei Favoriten mÃ¶glich.',
+            ),
+          ),
+          for (final favorite in model.favoriteItems)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, favorite),
+              child: Row(
+                children: [
+                  Icon(favorite is SavedRoute ? Icons.route : Icons.place),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(name(favorite))),
+                ],
+              ),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.tr('Abbrechen')),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _confirmDelete(
@@ -478,7 +954,6 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         false;
     if (!confirmed) return;
     await model.deleteSavedPlace(place);
-    if (mounted) setState(() => _selectedPlaceKey = null);
   }
 
   void _selectPlace(
@@ -487,6 +962,6 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     Place place,
   ) {
     model.addToRecentSearches(place);
-    Navigator.pop(context, place);
+    widget._completeSelection(context, place);
   }
 }

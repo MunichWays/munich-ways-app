@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/saved_routes_store.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
+import 'package:munich_ways/ui/theme.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 
 enum RoutePlannerPointType { start, stop, destination }
+
+class _RoutePoint {
+  _RoutePoint(this.place) : key = UniqueKey();
+
+  final Key key;
+  Place? place;
+}
 
 class RoutePlannerMapSelection {
   const RoutePlannerMapSelection({
@@ -50,17 +62,32 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
   LatLng? searchCenter,
   RoutePlannerMapSelection? initialPlan,
 }) {
+  final sheetController = DraggableScrollableController();
   return showModalBottomSheet<RoutePlannerMapSelection>(
     context: context,
     isScrollControlled: true,
+    enableDrag: false,
     useSafeArea: true,
-    showDragHandle: true,
-    builder: (_) => _RoutePlannerSheet(
-      model: model,
-      searchCenter: searchCenter,
-      initialPlan: initialPlan,
+    builder: (_) => DraggableScrollableSheet(
+      controller: sheetController,
+      expand: false,
+      initialChildSize: 0.55,
+      minChildSize: 0.28,
+      maxChildSize: 1,
+      shouldCloseOnMinExtent: false,
+      snap: true,
+      snapSizes: const [0.28, 0.55, 1],
+      builder: (context, scrollController) => SizedBox.expand(
+        child: _RoutePlannerSheet(
+          model: model,
+          searchCenter: searchCenter,
+          initialPlan: initialPlan,
+          scrollController: scrollController,
+          sheetController: sheetController,
+        ),
+      ),
     ),
-  );
+  ).whenComplete(sheetController.dispose);
 }
 
 class _RoutePlannerSheet extends StatefulWidget {
@@ -68,20 +95,29 @@ class _RoutePlannerSheet extends StatefulWidget {
     required this.model,
     required this.searchCenter,
     required this.initialPlan,
+    required this.scrollController,
+    required this.sheetController,
   });
 
   final MapScreenViewModel model;
   final LatLng? searchCenter;
   final RoutePlannerMapSelection? initialPlan;
+  final ScrollController scrollController;
+  final DraggableScrollableController sheetController;
 
   @override
   State<_RoutePlannerSheet> createState() => _RoutePlannerSheetState();
 }
 
 class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
-  Place? _start;
-  Place? _destination;
-  late List<Place> _stops;
+  late List<_RoutePoint> _points;
+
+  Place? get _start => _points.first.place;
+  Place? get _destination => _points.last.place;
+  List<Place> get _stops => [
+        for (final point in _points.skip(1).take(_points.length - 2))
+          if (point.place case final place?) place,
+      ];
 
   bool get _english => context.l10n.isEnglish;
 
@@ -89,16 +125,28 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   void initState() {
     super.initState();
     final initialPlan = widget.initialPlan;
-    _start = initialPlan?.start ??
+    final start = initialPlan?.start ??
         (widget.model.navigationStarted ? null : widget.model.routeStart);
-    _destination = initialPlan?.destination ?? widget.model.destination;
-    _stops = List.of(initialPlan?.stops ?? widget.model.waypoints);
+    final destination = initialPlan?.destination ?? widget.model.destination;
+    final stops = initialPlan?.stops ?? widget.model.waypoints;
+    _points = [
+      _RoutePoint(start),
+      for (final stop in stops) _RoutePoint(stop),
+      _RoutePoint(destination),
+    ];
   }
 
-  Future<void> _selectPlace(
-    RoutePlannerPointType type, {
-    int? stopIndex,
-  }) async {
+  RoutePlannerPointType _typeForIndex(int index) {
+    if (index == 0) return RoutePlannerPointType.start;
+    if (index == _points.length - 1) {
+      return RoutePlannerPointType.destination;
+    }
+    return RoutePlannerPointType.stop;
+  }
+
+  Future<void> _selectPlace(int index) async {
+    final type = _typeForIndex(index);
+    final stopIndex = type == RoutePlannerPointType.stop ? index - 1 : null;
     final result = await showPlaceSearchSheet(
       context,
       searchCenter: widget.searchCenter,
@@ -106,6 +154,14 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     );
     if (!mounted) return;
     if (result == PlaceSearchSheetResult.selectOnMap) {
+      if (widget.sheetController.isAttached) {
+        await widget.sheetController.animateTo(
+          .28,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      if (!mounted) return;
       Navigator.pop(
         context,
         RoutePlannerMapSelection(
@@ -119,23 +175,30 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       return;
     }
     if (result is! Place) return;
+    setState(() => _points[index].place = result);
+  }
+
+  Future<void> _addStop() async {
+    final index = _points.length - 1;
+    setState(() => _points.insert(index, _RoutePoint(null)));
+    await _selectPlace(index);
+  }
+
+  void _deletePoint(int index) {
     setState(() {
-      switch (type) {
-        case RoutePlannerPointType.start:
-          _start = result;
-          break;
-        case RoutePlannerPointType.stop:
-          final index = stopIndex ?? _stops.length;
-          if (index < _stops.length) {
-            _stops[index] = result;
-          } else {
-            _stops.add(result);
-          }
-          break;
-        case RoutePlannerPointType.destination:
-          _destination = result;
-          break;
+      if (index == 0 || index == _points.length - 1) {
+        _points[index].place = null;
+      } else {
+        _points.removeAt(index);
       }
+    });
+  }
+
+  void _reorderPoint(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final point = _points.removeAt(oldIndex);
+      _points.insert(newIndex, point);
     });
   }
 
@@ -146,131 +209,306 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
         : name;
   }
 
+  String _pointValue(int index) {
+    final place = _points[index].place;
+    if (place != null) return _name(place);
+    if (index == 0) {
+      return _english ? 'Current position' : 'Aktueller Standort';
+    }
+    if (index == _points.length - 1) {
+      return _english ? 'Select destination' : 'Ziel auswählen';
+    }
+    return _english ? 'Select intermediate stop' : 'Zwischenziel auswählen';
+  }
+
+  Widget _pointLeading(int index) {
+    if (index == 0) {
+      return const Icon(
+        Icons.play_arrow,
+        color: AppColors.mapRouteColor,
+        size: 30,
+      );
+    }
+    if (index == _points.length - 1) {
+      return const Icon(
+        Icons.sports_score,
+        color: AppColors.mapRed,
+        size: 30,
+      );
+    }
+    return CircleAvatar(
+      radius: 14,
+      backgroundColor: AppColors.munichWaysOrange,
+      foregroundColor: Colors.white,
+      child: Text(
+        '$index',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Future<void> _showPlannerInfo() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_english ? 'Plan route' : 'Route planen'),
+        content: Text(
+          _english
+              ? 'Optionally select a different start or intermediate stop. '
+                  'The default is your current position to the selected destination.'
+              : 'Optional anderen Startpunkt oder Zwischenziel wählen. '
+                  'Standard ist: Aktueller Standort zum gewählten Ziel.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(_english ? 'Close' : 'Schließen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveRoute() async {
+    final destination = _destination;
+    if (destination == null) return;
+    var name = destination.displayName?.trim() ?? '';
+    final selectedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(_english ? 'Save route' : 'Route speichern'),
+          content: TextFormField(
+            initialValue: name,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: _english ? 'Route name' : 'Routenname',
+            ),
+            onChanged: (value) => setDialogState(() => name = value),
+            onFieldSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                Navigator.pop(dialogContext, value);
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(context.l10n.tr('Abbrechen')),
+            ),
+            FilledButton(
+              onPressed: name.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, name),
+              child: Text(_english ? 'Save' : 'Speichern'),
+            ),
+          ],
+        ),
+      ),
+    );
+    final trimmedName = selectedName?.trim();
+    if (!mounted || trimmedName == null || trimmedName.isEmpty) return;
+    try {
+      await savedRoutesStore.add(
+        SavedRoute(
+          name: trimmedName,
+          start: _start,
+          stops: _stops,
+          destination: destination,
+        ),
+      );
+    } catch (error, stackTrace) {
+      log.e('Saving route failed', error: error, stackTrace: stackTrace);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _english
+                ? 'Saving the route failed.'
+                : 'Route konnte nicht gespeichert werden.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_english ? 'Route saved.' : 'Route gespeichert.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.only(bottom: 24),
-      child: Padding(
+      child: SingleChildScrollView(
+        controller: widget.scrollController,
         padding: EdgeInsets.fromLTRB(
           20,
           0,
           20,
-          MediaQuery.viewInsetsOf(context).bottom,
+          MediaQuery.viewInsetsOf(context).bottom + 8,
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _english ? 'Plan route' : 'Route planen',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _english
-                    ? 'Optionally select a different start or intermediate stop. '
-                        'The default is your current position to the selected destination.'
-                    : 'Optional anderen Startpunkt oder Zwischenziel wählen. '
-                        'Standard ist: Aktueller Standort zum gewählten Ziel.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 18),
-              _PlaceRow(
-                icon: Icons.trip_origin,
-                title: _english ? 'Start' : 'Startpunkt',
-                value: _start == null
-                    ? (_english ? 'Current position' : 'Aktueller Standort')
-                    : _name(_start!),
-                onTap: () => _selectPlace(RoutePlannerPointType.start),
-                onClear:
-                    _start == null ? null : () => setState(() => _start = null),
-              ),
-              for (var index = 0; index < _stops.length; index++)
-                _PlaceRow(
-                  icon: Icons.circle_outlined,
-                  title: '${_english ? 'Stop' : 'Zwischenziel'} ${index + 1}',
-                  value: _name(_stops[index]),
-                  onTap: () => _selectPlace(
-                    RoutePlannerPointType.stop,
-                    stopIndex: index,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DraggableBottomSheetRegion(
+              controller: widget.sheetController,
+              onDismiss: () => Navigator.of(context).pop(),
+              child: const BottomSheetDragHandle(),
+            ),
+            DraggableBottomSheetRegion(
+              controller: widget.sheetController,
+              onDismiss: () => Navigator.of(context).pop(),
+              child: Row(
+                children: [
+                  Text(
+                    _english ? 'Plan route' : 'Route planen',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  onClear: () => setState(() => _stops.removeAt(index)),
-                ),
-              TextButton.icon(
-                onPressed: () => _selectPlace(
-                  RoutePlannerPointType.stop,
-                  stopIndex: _stops.length,
-                ),
-                icon: const Icon(Icons.add_location_alt_outlined),
-                label: Text(
-                  _english
-                      ? 'Add intermediate stop'
-                      : 'Zwischenziel hinzufügen',
-                ),
+                  IconButton(
+                    tooltip: 'Information',
+                    onPressed: _showPlannerInfo,
+                    icon: const Icon(Icons.info_outline),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: _english ? 'Save route' : 'Route speichern',
+                    onPressed: _destination == null ? null : _saveRoute,
+                    icon: const Icon(Icons.save_outlined),
+                  ),
+                ],
               ),
-              _PlaceRow(
-                icon: Icons.location_on,
-                title: _english ? 'Destination' : 'Ziel',
-                value: _destination == null
-                    ? (_english ? 'Select destination' : 'Ziel auswählen')
-                    : _name(_destination!),
-                onTap: () => _selectPlace(RoutePlannerPointType.destination),
-              ),
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: _destination == null
-                    ? null
-                    : () {
-                        widget.model.setRoutePlan(
-                          start: _start,
-                          stops: _stops,
-                          destination: _destination!,
-                        );
-                        Navigator.pop(context);
-                      },
-                icon: const Icon(Icons.route),
-                label: Text(_english ? 'Calculate route' : 'Route berechnen'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: _points.length,
+              onReorder: _reorderPoint,
+              itemBuilder: (context, index) {
+                final point = _points[index];
+                return ReorderableDelayedDragStartListener(
+                  key: point.key,
+                  index: index,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (index == _points.length - 1)
+                        TextButton.icon(
+                          onPressed: _addStop,
+                          icon: const Icon(Icons.add_location_alt_outlined),
+                          label: Text(
+                            _english
+                                ? 'Add intermediate stop'
+                                : 'Zwischenziel hinzufügen',
+                          ),
+                        ),
+                      _PlaceRow(
+                        leading: _pointLeading(index),
+                        value: _pointValue(index),
+                        onTap: () => _selectPlace(index),
+                        onEdit: () => _selectPlace(index),
+                        onDelete: point.place == null &&
+                                (index == 0 || index == _points.length - 1)
+                            ? null
+                            : () => _deletePoint(index),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _destination == null
+                  ? null
+                  : () {
+                      widget.model.setRoutePlan(
+                        start: _start,
+                        stops: _stops,
+                        destination: _destination!,
+                      );
+                      Navigator.pop(context);
+                    },
+              icon: const Icon(Icons.route),
+              label: Text(_english ? 'Calculate route' : 'Route berechnen'),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+enum _PlaceRowAction { edit, delete }
+
 class _PlaceRow extends StatelessWidget {
   const _PlaceRow({
-    required this.icon,
-    required this.title,
+    required this.leading,
     required this.value,
     required this.onTap,
-    this.onClear,
+    required this.onEdit,
+    this.onDelete,
   });
 
-  final IconData icon;
-  final String title;
+  final Widget leading;
   final String value;
   final VoidCallback onTap;
-  final VoidCallback? onClear;
+  final VoidCallback onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
+      leading: SizedBox.square(
+        dimension: 40,
+        child: Center(child: leading),
+      ),
+      title: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
       onTap: onTap,
-      trailing: onClear == null
-          ? const Icon(Icons.chevron_right)
-          : IconButton(
-              tooltip: context.l10n.isEnglish ? 'Remove' : 'Entfernen',
-              onPressed: onClear,
-              icon: const Icon(Icons.close),
+      trailing: PopupMenuButton<_PlaceRowAction>(
+        tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
+        onSelected: (action) {
+          switch (action) {
+            case _PlaceRowAction.edit:
+              onEdit();
+              break;
+            case _PlaceRowAction.delete:
+              onDelete?.call();
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: _PlaceRowAction.edit,
+            child: Row(
+              children: [
+                const Icon(Icons.edit_outlined),
+                const SizedBox(width: 12),
+                Text(context.l10n.isEnglish ? 'Change' : 'Ändern'),
+              ],
             ),
+          ),
+          if (onDelete != null)
+            PopupMenuItem(
+              value: _PlaceRowAction.delete,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
