@@ -22,7 +22,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
+    expect(find.text('Farben (MunichWays-Bewertung)'), findsOneWidget);
     expect(find.textContaining('Plan / Lücke'), findsNothing);
     expect(find.textContaining('RadlVorrang-Netz'), findsNothing);
     expect(find.textContaining('Weitere Strecken'), findsNothing);
