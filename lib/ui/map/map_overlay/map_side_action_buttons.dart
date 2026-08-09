@@ -16,6 +16,7 @@ class MapSideActionButtons extends StatelessWidget {
     required this.compassIdleTick,
     required this.onNorthUp,
     required this.queryMapBearingDegrees,
+    this.bottomActionRowPadding = kMapBottomActionRowCollapsedPadding,
     this.additionalBottomOffset = 0,
   });
 
@@ -25,6 +26,7 @@ class MapSideActionButtons extends StatelessWidget {
   final ValueNotifier<int> compassIdleTick;
   final Future<void> Function() onNorthUp;
   final Future<double?> Function() queryMapBearingDegrees;
+  final double bottomActionRowPadding;
   final double additionalBottomOffset;
 
   static const double _buttonSpacing = 10;
@@ -32,8 +34,7 @@ class MapSideActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.paddingOf(context);
-    final bottomBarBottom =
-        mq.bottom + kMapBottomActionRowPaddingAboveSafeBottom;
+    final bottomBarBottom = mq.bottom + bottomActionRowPadding;
     final sideColumnBottom = bottomBarBottom +
         kMapOverlayControlSize +
         kMapGapSideColumnAboveBottomBar +

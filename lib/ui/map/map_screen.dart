@@ -24,6 +24,7 @@ import 'package:munich_ways/screenshots/store_screenshot_map_ready_semantics.dar
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
@@ -112,6 +113,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
   bool _notificationPermissionExplained = false;
+  bool _mapAttributionExpanded = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
   /// visibility and [CompassButton] rotation. Updated in [MapLibreMap.onCameraMove].
@@ -418,6 +420,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               model.route.route != null &&
               model.route.route!.points.isNotEmpty &&
               _storeScreenshotRouteVisualReady;
+          final bottomActionRowPadding = _mapAttributionExpanded
+              ? kMapBottomActionRowExpandedPadding
+              : kMapBottomActionRowCollapsedPadding;
 
           return ScaffoldMessenger(
             key: scaffoldMessengerKey,
@@ -627,99 +632,110 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       height: MediaQuery.paddingOf(context).top,
                       child: const ColoredBox(color: Colors.white),
                     ),
-                  SafeArea(
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        if (model.destination != null &&
-                            _styleLoaded &&
-                            _mapController != null)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: MapDestinationOffScreenOverlay(
-                                mapLayerKey: _mapLibreViewKey,
-                                controller: _mapController,
-                                destination: model.destination!,
+                  Positioned.fill(
+                    child: SafeArea(
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          if (model.destination != null &&
+                              _styleLoaded &&
+                              _mapController != null)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: MapDestinationOffScreenOverlay(
+                                  mapLayerKey: _mapLibreViewKey,
+                                  controller: _mapController,
+                                  destination: model.destination!,
+                                  bottomActionRowPadding:
+                                      bottomActionRowPadding,
+                                ),
                               ),
                             ),
+                          MapAttribution(expanded: _mapAttributionExpanded),
+                          MapSideActionButtons(
+                            model: model,
+                            mapController: _mapController,
+                            mapBearingDegrees: _mapBearingDegrees,
+                            compassIdleTick: _compassIdleTick,
+                            bottomActionRowPadding: bottomActionRowPadding,
+                            additionalBottomOffset:
+                                _sideControlsAdditionalBottomOffset(
+                              context,
+                              model,
+                            ),
+                            onNorthUp: () async {
+                              model.onCompassNorthUpPressed();
+                              final c = _mapController;
+                              if (c != null) {
+                                await c
+                                    .animateCamera(CameraUpdate.bearingTo(0));
+                                await _syncCompassBearingFromMap();
+                              }
+                            },
+                            queryMapBearingDegrees: () async {
+                              final c = _mapController;
+                              if (c == null) return null;
+                              final pos = await c.queryCameraPosition();
+                              return pos?.bearing;
+                            },
                           ),
-                        const MapAttribution(),
-                        MapSideActionButtons(
-                          model: model,
-                          mapController: _mapController,
-                          mapBearingDegrees: _mapBearingDegrees,
-                          compassIdleTick: _compassIdleTick,
-                          additionalBottomOffset:
-                              _sideControlsAdditionalBottomOffset(
-                            context,
-                            model,
-                          ),
-                          onNorthUp: () async {
-                            model.onCompassNorthUpPressed();
-                            final c = _mapController;
-                            if (c != null) {
-                              await c.animateCamera(CameraUpdate.bearingTo(0));
-                              await _syncCompassBearingFromMap();
-                            }
-                          },
-                          queryMapBearingDegrees: () async {
-                            final c = _mapController;
-                            if (c == null) return null;
-                            final pos = await c.queryCameraPosition();
-                            return pos?.bearing;
-                          },
-                        ),
-                        MapBottomActionButtons(
-                          model: model,
-                          showSearch:
-                              _initialContentReady && !model.navigationStarted,
-                          onPlanRoute: () => _openRoutePlanner(model),
-                          onSelectOnMap: () {
-                            _nameNextMapSelection = true;
-                          },
-                          searchCenterProvider: () {
-                            final position = _latestPosition;
-                            return position == null
+                          MapBottomActionButtons(
+                            model: model,
+                            showSearch: _initialContentReady &&
+                                !model.navigationStarted,
+                            onPlanRoute: () => _openRoutePlanner(model),
+                            onSelectOnMap: () {
+                              _nameNextMapSelection = true;
+                            },
+                            searchCenterProvider: () {
+                              final position = _latestPosition;
+                              return position == null
+                                  ? null
+                                  : latlong2.LatLng(
+                                      position.latitude,
+                                      position.longitude,
+                                    );
+                            },
+                            onPressLocation: () async {
+                              await model.onPressLocationBtn();
+                              if (!mounted) return;
+                              await _applyNativeLocationTracking(model);
+                              await _updateLocationStream(model);
+                            },
+                            onReloadNetwork: () =>
+                                _reloadRadnetzAfterInitialFailure(model),
+                            attributionExpanded: _mapAttributionExpanded,
+                            onToggleAttribution: () => setState(() {
+                              _mapAttributionExpanded =
+                                  !_mapAttributionExpanded;
+                            }),
+                            navigationBar: model.destination == null
                                 ? null
-                                : latlong2.LatLng(
-                                    position.latitude,
-                                    position.longitude,
-                                  );
-                          },
-                          onPressLocation: () async {
-                            await model.onPressLocationBtn();
-                            if (!mounted) return;
-                            await _applyNativeLocationTracking(model);
-                            await _updateLocationStream(model);
-                          },
-                          onReloadNetwork: () =>
-                              _reloadRadnetzAfterInitialFailure(model),
-                          navigationBar: model.destination == null
-                              ? null
-                              : MapNavigationHeaderBar(
-                                  model: model,
-                                  onRefreshRoute: () =>
-                                      _refreshRouteAndResumeNavigation(model),
-                                  onEditRoute: () => _openRoutePlanner(model),
-                                  onStartNavigation: () =>
-                                      _startNavigation(model),
-                                  onToggleVoiceGuidance: () =>
-                                      _toggleVoiceGuidance(
-                                    model,
-                                    english: context.l10n.isEnglish,
+                                : MapNavigationHeaderBar(
+                                    model: model,
+                                    onRefreshRoute: () =>
+                                        _refreshRouteAndResumeNavigation(model),
+                                    onEditRoute: () => _openRoutePlanner(model),
+                                    onStartNavigation: () =>
+                                        _startNavigation(model),
+                                    onToggleVoiceGuidance: () =>
+                                        _toggleVoiceGuidance(
+                                      model,
+                                      english: context.l10n.isEnglish,
+                                    ),
+                                    onEndRoute: () => _endRoute(model),
+                                    nextManeuver: _nextManeuver,
                                   ),
-                                  onEndRoute: () => _endRoute(model),
-                                  nextManeuver: _nextManeuver,
-                                ),
-                        ),
-                        if (kStoreScreenshots) ...[
-                          StoreScreenshotMapReadySemantics(
-                            storeIdleReady: storeIdleReady,
-                            storeRouteReady: storeRouteReady,
                           ),
-                          StoreScreenshotControls(model: model),
+                          if (kStoreScreenshots) ...[
+                            StoreScreenshotMapReadySemantics(
+                              storeIdleReady: storeIdleReady,
+                              storeRouteReady: storeRouteReady,
+                            ),
+                            StoreScreenshotControls(model: model),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                   if (model.loading)

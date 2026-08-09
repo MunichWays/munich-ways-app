@@ -20,12 +20,14 @@ class MapDestinationOffScreenOverlay extends StatefulWidget {
     required this.mapLayerKey,
     required this.controller,
     required this.destination,
+    this.bottomActionRowPadding = kMapBottomActionRowCollapsedPadding,
     this.imageAssetPath = 'images/bearing_arrow.png',
   });
 
   final GlobalKey mapLayerKey;
   final MapLibreMapController? controller;
   final Place destination;
+  final double bottomActionRowPadding;
   final String imageAssetPath;
 
   @override
@@ -214,9 +216,8 @@ class _MapDestinationOffScreenOverlayState
     }
 
     final mq = MediaQuery.paddingOf(context);
-    final bottomChromePx = mq.bottom +
-        kMapBottomActionRowPaddingAboveSafeBottom +
-        kMapOverlayControlSize;
+    final bottomChromePx =
+        mq.bottom + widget.bottomActionRowPadding + kMapOverlayControlSize;
 
     return LayoutBuilder(
       builder: (context, constraints) {

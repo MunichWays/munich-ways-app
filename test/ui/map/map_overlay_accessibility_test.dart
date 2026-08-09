@@ -86,6 +86,51 @@ void main() {
     expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
   });
 
+  testWidgets('navigation actions use large evenly spaced tap targets',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: MapNavigationHeaderBar(
+              model: model,
+              onRefreshRoute: () async {},
+              onEditRoute: () {},
+              onStartNavigation: () async {},
+              onToggleVoiceGuidance: () {},
+              onEndRoute: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final edit = find.bySemanticsLabel('Route bearbeiten');
+    final voice = find.bySemanticsLabel('Sprachansagen einschalten');
+    final refresh = find.bySemanticsLabel('Route neu berechnen');
+    expect(tester.getSize(edit), const Size.square(52));
+    expect(tester.getSize(voice), const Size.square(52));
+    expect(tester.getSize(refresh), const Size.square(52));
+    expect(
+      tester.getCenter(voice).dx - tester.getCenter(edit).dx,
+      closeTo(62, 0.1),
+    );
+    expect(
+      tester.getCenter(refresh).dx - tester.getCenter(voice).dx,
+      closeTo(62, 0.1),
+    );
+  });
+
   testWidgets('route stats share a full row above the action buttons',
       (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore())

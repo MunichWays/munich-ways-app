@@ -5,8 +5,11 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 class MapAttribution extends StatefulWidget {
   const MapAttribution({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+    required this.expanded,
+  });
+
+  final bool expanded;
 
   @override
   State<MapAttribution> createState() => _MapAttributionState();
@@ -46,6 +49,7 @@ class _MapAttributionState extends State<MapAttribution> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.expanded) return const SizedBox.shrink();
     final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Colors.black87,
             ) ??
@@ -54,6 +58,7 @@ class _MapAttributionState extends State<MapAttribution> {
       alignment: Alignment.bottomCenter,
       child: Container(
         width: double.infinity,
+        height: 22,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         color: Colors.white70,
         child: FittedBox(
@@ -66,19 +71,25 @@ class _MapAttributionState extends State<MapAttribution> {
                 const TextSpan(text: '© '),
                 TextSpan(
                   text: 'OpenMapTiles',
-                  style: const TextStyle(decoration: TextDecoration.underline),
+                  style: const TextStyle(
+                    decoration: TextDecoration.underline,
+                  ),
                   recognizer: _openMapTilesTap,
                 ),
                 const TextSpan(text: ' · © '),
                 TextSpan(
                   text: 'OpenStreetMap contributors',
-                  style: const TextStyle(decoration: TextDecoration.underline),
+                  style: const TextStyle(
+                    decoration: TextDecoration.underline,
+                  ),
                   recognizer: _openStreetMapTap,
                 ),
                 const TextSpan(text: ' · '),
                 TextSpan(
                   text: 'OpenFreeMap',
-                  style: const TextStyle(decoration: TextDecoration.underline),
+                  style: const TextStyle(
+                    decoration: TextDecoration.underline,
+                  ),
                   recognizer: _openFreeMapTap,
                 ),
               ],

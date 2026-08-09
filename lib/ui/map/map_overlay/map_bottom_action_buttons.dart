@@ -21,6 +21,8 @@ class MapBottomActionButtons extends StatelessWidget {
     this.onReloadNetwork,
     this.showSearch = true,
     this.navigationBar,
+    this.attributionExpanded = false,
+    this.onToggleAttribution,
   });
 
   final MapScreenViewModel model;
@@ -31,19 +33,42 @@ class MapBottomActionButtons extends StatelessWidget {
   final Future<void> Function()? onReloadNetwork;
   final bool showSearch;
   final Widget? navigationBar;
+  final bool attributionExpanded;
+  final VoidCallback? onToggleAttribution;
 
   static const double _maxLandscapeContentWidth = 480;
 
   @override
   Widget build(BuildContext context) {
-    // Sit above the OSM attribution strip at the bottom of the map.
     final bottomInset = MediaQuery.paddingOf(context).bottom +
-        kMapBottomActionRowPaddingAboveSafeBottom;
+        (attributionExpanded
+            ? kMapBottomActionRowExpandedPadding
+            : kMapBottomActionRowCollapsedPadding);
     final controlsOnLeft = model.sidePanelEdge == MapSidePanelEdge.left;
     final infoButton = MapOverlayButton(
       tooltip: context.l10n.tr('Info'),
       onPressed: () => showMapInfoSheet(context),
       child: const Icon(Icons.info_outline),
+    );
+    final attributionButton = MapOverlayButton(
+      size: 36,
+      outlined: true,
+      tooltip: attributionExpanded
+          ? (context.l10n.isEnglish
+              ? 'Hide map attribution'
+              : 'Kartenquellen ausblenden')
+          : (context.l10n.isEnglish
+              ? 'Show map attribution'
+              : 'Kartenquellen anzeigen'),
+      onPressed: onToggleAttribution,
+      child: const Text(
+        '©',
+        style: TextStyle(
+          color: Color(0xFF616161),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
     final settingsButton = MapOverlayButton(
       tooltip: context.l10n.settings,
@@ -59,17 +84,15 @@ class MapBottomActionButtons extends StatelessWidget {
       onPressed: onPressLocation,
       child: _locationIcon(model.locationState),
     );
-    final settingsAndInfoButtons = Row(
+    final infoAndAttribution = Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        settingsButton,
-        const SizedBox(width: 8),
-        infoButton,
-      ],
+      children: controlsOnLeft
+          ? [attributionButton, const SizedBox(width: 8), infoButton]
+          : [infoButton, const SizedBox(width: 8), attributionButton],
     );
-    final actionButtons = controlsOnLeft
-        ? [trackingButton, settingsAndInfoButtons]
-        : [settingsAndInfoButtons, trackingButton];
+    final leadingControl = controlsOnLeft ? trackingButton : infoAndAttribution;
+    final trailingControl =
+        controlsOnLeft ? infoAndAttribution : trackingButton;
 
     return Positioned(
       left: 16,
@@ -113,9 +136,29 @@ class MapBottomActionButtons extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: actionButtons,
+          SizedBox(
+            width: double.infinity,
+            height: kMapOverlayControlSize,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: leadingControl,
+                  ),
+                ),
+                SizedBox.square(
+                  dimension: kMapOverlayControlSize,
+                  child: settingsButton,
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: trailingControl,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
