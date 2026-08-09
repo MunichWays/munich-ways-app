@@ -59,9 +59,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
+  static const _kNetworkLayerDashedGesamtId =
+      'munichways_radlnetz_lines_gesamt_dashed';
   static const _kNetworkLayerCasingGesamtId =
       'munichways_radlnetz_casing_gesamt';
   static const _kNetworkLayerVisibleRadlId = 'munichways_radlnetz_lines_radl';
+  static const _kNetworkLayerDashedRadlId =
+      'munichways_radlnetz_lines_radl_dashed';
   static const _kNetworkLayerCasingRadlId = 'munichways_radlnetz_casing_radl';
   static const _kNetworkLayerHitGesamtId = 'munichways_radlnetz_hit_gesamt';
   static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
@@ -2029,8 +2033,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitRadlId);
       await controller.removeLayer(_kNetworkLayerHitGesamtId);
+      await controller.removeLayer(_kNetworkLayerDashedRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
       await controller.removeLayer(_kNetworkLayerCasingRadlId);
+      await controller.removeLayer(_kNetworkLayerDashedGesamtId);
       await controller.removeLayer(_kNetworkLayerVisibleGesamtId);
       await controller.removeLayer(_kNetworkLayerCasingGesamtId);
       await controller.removeSource(_kNetworkSourceId);
@@ -2068,7 +2074,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       minzoom: _kGesamtnetzMinZoom,
       enableInteraction: false,
     );
-    // Gesamtnetz (secondary): dashed. Radlvorrang-Netz: solid, drawn on top.
+    // Line style represents the Happy-Bike level, independent of network:
+    // green/yellow are solid; red/black are dashed.
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleGesamtId,
@@ -2078,12 +2085,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
+      ),
+      filter: [
+        'all',
+        [Expressions.equal, [Expressions.get, 'gesamtnetz'], true],
+        [Expressions.equal, [Expressions.get, 'lineDashed'], false],
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kGesamtnetzMinZoom,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
+      _kNetworkLayerDashedGesamtId,
+      const LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
         lineDasharray: [1.25, 2],
       ),
       filter: [
-        Expressions.equal,
-        [Expressions.get, 'gesamtnetz'],
-        true
+        'all',
+        [Expressions.equal, [Expressions.get, 'gesamtnetz'], true],
+        [Expressions.equal, [Expressions.get, 'lineDashed'], true],
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       minzoom: _kGesamtnetzMinZoom,
@@ -2110,6 +2136,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     await controller.addLineLayer(
       _kNetworkSourceId,
+      _kNetworkLayerDashedRadlId,
+      const LineLayerProperties(
+        lineColor: [Expressions.get, 'lineColor'],
+        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineDasharray: [1.25, 2],
+      ),
+      filter: [
+        'all',
+        [Expressions.equal, [Expressions.get, 'gesamtnetz'], false],
+        [Expressions.equal, [Expressions.get, 'lineDashed'], true],
+      ],
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: _kRadlVorrangMinZoom,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _kNetworkSourceId,
       _kNetworkLayerVisibleRadlId,
       const LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
@@ -2119,9 +2165,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         lineJoin: 'round',
       ),
       filter: [
-        Expressions.equal,
-        [Expressions.get, 'gesamtnetz'],
-        false
+        'all',
+        [Expressions.equal, [Expressions.get, 'gesamtnetz'], false],
+        [Expressions.equal, [Expressions.get, 'lineDashed'], false],
       ],
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       minzoom: _kRadlVorrangMinZoom,
