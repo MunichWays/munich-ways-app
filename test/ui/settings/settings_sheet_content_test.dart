@@ -327,7 +327,12 @@ void main() {
     expect(model.bRouterProfile, BRouterProfile.fastBike);
 
     final routeRecommendationInfo = find.byTooltip('Info: Routenwunsch');
-    await tester.ensureVisible(routeRecommendationInfo);
+    await Scrollable.ensureVisible(
+      routeRecommendationInfo.evaluate().single,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(routeRecommendationInfo);
     await tester.pumpAndSettle();
     expect(
