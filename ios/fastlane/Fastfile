@@ -90,9 +90,10 @@ platform :ios do
     # default keychain. In CI, point it at ci-signing explicitly, or it won't find the
     # cert we just imported there and will (needlessly) generate a new one instead.
     cert_params = { development: false, force: false }
-    # create_keychain records the exact path it created in SharedValues::KEYCHAIN_PATH —
-    # use that instead of guessing the on-disk filename (it's "<name>-db", not "<name>").
-    cert_params[:keychain_path] = lane_context[SharedValues::KEYCHAIN_PATH] if ENV["CI"] == "true"
+    # create_keychain's own SharedValues::KEYCHAIN_PATH is unusable here: it's the
+    # unexpanded "~/Library/Keychains/ci-signing", but `cert` doesn't expand "~" itself
+    # and the real on-disk file (confirmed in CI logs) is "ci-signing-db", not "ci-signing".
+    cert_params[:keychain_path] = File.expand_path("~/Library/Keychains/ci-signing-db") if ENV["CI"] == "true"
     cert(cert_params)
     # 2) Create/download App Store provisioning profile
     sigh(
