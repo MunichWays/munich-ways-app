@@ -71,14 +71,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Wohin?'), findsOneWidget);
+    final destinationField = find.byKey(
+      const ValueKey('map-destination-search-field'),
+    );
+    expect(tester.getSize(destinationField).height, greaterThanOrEqualTo(48));
+    expect(
+      tester.widget<Material>(destinationField).color,
+      Colors.grey.shade200,
+    );
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);
-    expect(find.textContaining('OpenMapTiles'), findsOneWidget);
+    expect(find.textContaining('OpenMapTiles'), findsNothing);
     final draggable = tester.widget<DraggableScrollableSheet>(
       find.byType(DraggableScrollableSheet),
     );
     expect(find.byIcon(Icons.star_outline), findsOneWidget);
-    expect(draggable.controller!.size, closeTo(.20, .01));
+    expect(draggable.controller!.size, closeTo(.28, .01));
+    expect(find.text('Route planen'), findsOneWidget);
 
     await tester.drag(find.text('Wohin?'), const Offset(0, -300));
     await tester.pumpAndSettle();
@@ -96,6 +105,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);
+    final queryField = tester.widget<TextField>(find.byType(TextField));
+    expect(queryField.decoration?.labelText, isNull);
+    expect(queryField.decoration?.hintText, 'Wohin?');
+    expect(queryField.decoration?.prefixIcon, isNull);
+    expect(
+      find.byKey(const ValueKey('destination-query-clear')),
+      findsNothing,
+    );
+    await tester.enterText(find.byType(TextField), 'I');
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('destination-query-clear')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('destination-query-clear')));
+    await tester.pump();
+    expect(find.text('Wohin?'), findsOneWidget);
     expect(find.text('Route planen'), findsOneWidget);
     final selectOnMapButton = find.textContaining('Karte');
     expect(find.text('Auf Karte wählen'), findsOneWidget);
@@ -105,7 +131,7 @@ void main() {
     expect(selectOnMap, isTrue);
     expect(find.text('Wohin?'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(draggable.controller!.size, closeTo(.20, .01));
+    expect(draggable.controller!.size, closeTo(.28, .01));
 
     await tester.tap(find.text('Wohin?'));
     for (var frame = 0; frame < 10; frame++) {
@@ -122,7 +148,7 @@ void main() {
 
     expect(find.text('Wohin?'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(draggable.controller!.size, closeTo(.20, .01));
+    expect(draggable.controller!.size, closeTo(.28, .01));
     expect(tester.takeException(), isNull);
   });
 }

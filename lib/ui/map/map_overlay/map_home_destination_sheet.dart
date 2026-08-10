@@ -7,7 +7,6 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
-import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -48,12 +47,15 @@ class MapHomeDestinationSheet extends StatefulWidget {
 }
 
 class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
-  double get _compactSize {
-    if (_model.favoritesLoaded || _model.favoriteItems.isNotEmpty) return .20;
-    return widget.attributionExpanded ? .15 : .12;
-  }
+  /// Minimal map-first state: drag handle plus the destination row only.
+  double get _minimalSize => .12;
 
-  List<double> get _snapSizes => [_compactSize, .55, 1.0];
+  /// Stable compact height: reaches roughly to the location button and leaves
+  /// room for the two quick actions plus favorites without jumping after data
+  /// finishes loading.
+  double get _compactSize => .28;
+
+  List<double> get _snapSizes => [_minimalSize, _compactSize, .58, 1.0];
 
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -67,6 +69,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _hidingAttribution = false;
   bool _selectingFavorite = false;
   bool _showQuickChoices = false;
+  bool _showHomeExtras = true;
 
   @override
   void didUpdateWidget(covariant MapHomeDestinationSheet oldWidget) {
@@ -94,10 +97,10 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
           !_sheetController.isAttached ||
-          _sheetController.size > .21) {
+          _sheetController.size > _minimalSize + .01) {
         return;
       }
-      _sheetController.jumpTo(_compactSize);
+      _sheetController.jumpTo(_minimalSize);
     });
   }
 
@@ -108,13 +111,17 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       _hideAttribution();
     }
     final shouldSearch = _sheetController.size > .9;
+    final shouldShowHomeExtras =
+        !shouldSearch && _sheetController.size > _minimalSize + .06;
     final shouldShowQuickChoices =
         !shouldSearch && _sheetController.size > _compactSize + .08;
     if (_searching != shouldSearch ||
+        _showHomeExtras != shouldShowHomeExtras ||
         _showQuickChoices != shouldShowQuickChoices) {
       if (!shouldSearch) _focusNode.unfocus();
       setState(() {
         _searching = shouldSearch;
+        _showHomeExtras = shouldShowHomeExtras;
         _showQuickChoices = shouldShowQuickChoices;
         if (!shouldSearch) _selectingFavorite = false;
       });
@@ -304,6 +311,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       _hasQuery = false;
       _searching = false;
       _showQuickChoices = false;
+      _showHomeExtras = true;
       _selectingFavorite = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -340,6 +348,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       setState(() {
         _searching = false;
         _showQuickChoices = false;
+        _showHomeExtras = true;
       });
     }
     await WidgetsBinding.instance.endOfFrame;
@@ -363,8 +372,8 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       value: _model,
       child: DraggableScrollableSheet(
         controller: _sheetController,
-        initialChildSize: _snapSizes.first,
-        minChildSize: _snapSizes.first,
+        initialChildSize: _compactSize,
+        minChildSize: _minimalSize,
         maxChildSize: 1,
         snap: true,
         snapSizes: _snapSizes,
@@ -386,14 +395,12 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                     snapSizes: _snapSizes,
                     child: const BottomSheetDragHandle(),
                   ),
-                  if (widget.attributionExpanded)
-                    const MapAttribution(expanded: true, inline: true),
                   if (_searching)
                     _searchHeader(context)
                   else
                     _homeHeader(context),
-                  if ((_searching || _showQuickChoices) &&
-                      !_selectingFavorite) ...[
+                  if (!_selectingFavorite &&
+                      (_searching || _showHomeExtras)) ...[
                     _searchActions(context),
                     if (_showQuickChoices)
                       Consumer<PlaceSearchScreenViewModel>(
@@ -442,22 +449,28 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 3, 4, 3),
+              padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
               child: Material(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
+                key: const ValueKey('map-destination-search-field'),
+                color: Colors.grey.shade200,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: _startDestinationSearch,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
                     child: Row(
                       children: [
                         const Icon(Icons.search),
                         const SizedBox(width: 12),
                         Text(
                           context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -470,13 +483,6 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             tooltip: context.l10n.tr('Info'),
             onPressed: () => _runAction(widget.onShowInfo),
             icon: const Icon(Icons.info_outline),
-          ),
-          IconButton(
-            tooltip:
-                context.l10n.isEnglish ? 'Map attribution' : 'Kartenquellen',
-            onPressed: widget.onToggleAttribution,
-            icon:
-                const Text('©', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
           IconButton(
             tooltip: context.l10n.settings,
@@ -497,28 +503,50 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         child: Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _query,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  labelText: _selectingFavorite
-                      ? (context.l10n.isEnglish
-                          ? 'Choose favorite'
-                          : 'Favorit wählen')
-                      : context.l10n.tr('Ziel suchen'),
-                  border: InputBorder.none,
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _hasQuery
-                      ? IconButton(
-                          tooltip: context.l10n.tr('Eingabe löschen'),
-                          onPressed: _clearQuery,
-                          icon: const Icon(Icons.close),
-                        )
-                      : null,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                textInputAction: TextInputAction.search,
-                onChanged: _previewSearch,
-                onSubmitted: _model.startSearch,
+                child: TextField(
+                  controller: _query,
+                  focusNode: _focusNode,
+                  decoration: InputDecoration(
+                    hintText: _selectingFavorite
+                        ? (context.l10n.isEnglish
+                            ? 'Choose favorite'
+                            : 'Favorit wählen')
+                        : (context.l10n.isEnglish
+                            ? 'Destination?'
+                            : 'Wohin?'),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    suffixIcon: _hasQuery
+                        ? IconButton(
+                            key: const ValueKey('destination-query-clear'),
+                            tooltip: context.l10n.tr('Eingabe löschen'),
+                            onPressed: _clearQuery,
+                            icon: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade400,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const SizedBox.square(
+                                dimension: 22,
+                                child: Icon(Icons.close, size: 15),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  textInputAction: TextInputAction.search,
+                  maxLines: 1,
+                  onChanged: _previewSearch,
+                  onSubmitted: _model.startSearch,
+                ),
               ),
             ),
             IconButton(
@@ -533,45 +561,51 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   }
 
   Widget _searchActions(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton.icon(
-            onPressed: () => _runAction(widget.onPlanRoute),
-            style: TextButton.styleFrom(
-              visualDensity: const VisualDensity(vertical: -3),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            ),
-            icon: const Icon(Icons.route, size: 18),
-            label: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                context.l10n.isEnglish ? 'Plan route' : 'Route planen',
-                maxLines: 1,
-                style: const TextStyle(fontSize: 13),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 5, 10, 7),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton.icon(
+              onPressed: () => _runAction(widget.onPlanRoute),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.munichWaysBlue,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
+              icon: const Icon(Icons.route, size: 18),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.l10n.isEnglish ? 'Plan route' : 'Route planen',
+                  maxLines: 1,
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: TextButton.icon(
-            onPressed: _selectOnMap,
-            style: TextButton.styleFrom(
-              visualDensity: const VisualDensity(vertical: -3),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            ),
-            icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-            label: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                context.l10n.tr('Auf Karte wählen'),
-                maxLines: 1,
-                style: const TextStyle(fontSize: 13),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextButton.icon(
+              onPressed: _selectOnMap,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.munichWaysBlue,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
+              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.l10n.tr('Auf Karte wählen'),
+                  maxLines: 1,
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -583,7 +617,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       builder: (context, model, _) {
         return ListView(
           controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           children: [_favoriteButtons(context, model)],
         );
       },
@@ -606,6 +640,10 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                   backgroundColor: AppColors.favoriteHighlight,
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () =>
                     _runAction(() => widget.onSelected(favorites[index])),
@@ -624,6 +662,11 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     return SizedBox(
       width: double.infinity,
       child: FilledButton.tonalIcon(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
         onPressed: _startFavoriteSelection,
         icon: const Icon(Icons.star_outline),
         label: Text(

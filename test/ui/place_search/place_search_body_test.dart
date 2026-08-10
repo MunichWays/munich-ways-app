@@ -381,6 +381,43 @@ void main() {
     );
   });
 
+  testWidgets('hides saved routes including route favorites in place-only mode',
+      (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      favoritesRepo: FakeRecentSearchesStore([
+        Place(
+          'Zuhause',
+          const LatLng(48.1, 11.5),
+          favoriteOrder: 1,
+        ),
+      ]),
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      savedRoutesRepo: FakeSavedRoutesStore([
+        SavedRoute(
+          name: 'Isar-Runde',
+          start: null,
+          stops: const [],
+          destination: Place('Isar', const LatLng(48.3, 11.7)),
+          isFavorite: true,
+          favoriteOrder: 0,
+        ),
+      ]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, showSavedRoutes: false),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Zuhause'), findsOneWidget);
+    expect(find.text('Isar-Runde'), findsNothing);
+    expect(find.text('Routen'), findsNothing);
+  });
+
   testWidgets('orders and independently collapses all saved sections',
       (tester) async {
     final model = PlaceSearchScreenViewModel(

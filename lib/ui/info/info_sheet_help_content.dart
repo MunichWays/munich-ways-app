@@ -75,16 +75,16 @@ class InfoSheetHelpContent extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Text(context.l10n.isEnglish
-            ? 'You can also touch and hold a place on the map for about one second to start navigation there.'
-            : 'Du kannst auch auf einen Ort auf der Karte tippen und ca. eine Sekunde gedrückt halten, um die Navigation dorthin zu starten.'),
+            ? 'Touch and hold a place on the map and select “Start route here”. The route is calculated and navigation starts immediately.'
+            : 'Halte einen Ort auf der Karte gedrückt und wähle „Route hierhin starten“. Die Route wird berechnet und die Navigation startet direkt.'),
         const SizedBox(height: 24),
         Text(context.l10n.tr('Details zu Streckenabschnitten'),
             style: theme.textTheme.titleSmall
                 ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Text(context.l10n.isEnglish
-            ? 'Tap a colored line on the map to see its rating, measures and links.'
-            : 'Tippe auf eine farbige Linie auf der Karte. Es öffnet sich eine Übersicht mit Details zu diesem Straßenabschnitt (Bewertung, Maßnahmen, Links).'),
+            ? 'Touch and hold a colored line and select “Show details” to see its rating, measures and links.'
+            : 'Halte eine farbige Linie gedrückt und wähle „Details anzeigen“, um Bewertung, Maßnahmen und Links zu sehen.'),
       ],
     );
   }

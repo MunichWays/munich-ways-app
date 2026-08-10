@@ -741,6 +741,25 @@ class MapScreenViewModel extends ChangeNotifier {
     unawaited(_requestRoute());
   }
 
+  /// Sets a new destination and completes once its route calculation finishes.
+  /// Used by deliberate quick actions that should enter navigation immediately.
+  Future<bool> setDestinationAndCalculateRoute(Place place) {
+    if (locationState == LocationState.FOLLOW ||
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      locationState = LocationState.DISPLAY;
+    }
+    routeStart = null;
+    waypoints.clear();
+    _lastPassedWaypointIndex = -1;
+    _routePlanRevision++;
+    destination = place;
+    _navigationStarted = false;
+    notifyListeners();
+    _destinationStreamController.add(place);
+    WakelockPlus.enable();
+    return _requestRoute();
+  }
+
   /// Applies the optional route-planning stops in one update.
   ///
   /// A null [start] keeps the established default of using the current GPS
