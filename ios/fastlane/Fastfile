@@ -85,10 +85,13 @@ platform :ios do
     #    instead of prompting for an Apple ID login. Must run before cert/sigh.
     asc_key = app_store_connect_api_key_from_env
     # 1) Ensure distribution certificate exists in keychain
-    cert(
-      development: false,
-      force: false
-    )
+    # `cert`'s own keychain_path param defaults to login.keychain-db regardless of which
+    # keychain create_keychain/import_certificate above set up — it doesn't follow the OS
+    # default keychain. In CI, point it at ci-signing explicitly, or it won't find the
+    # cert we just imported there and will (needlessly) generate a new one instead.
+    cert_params = { development: false, force: false }
+    cert_params[:keychain_path] = "ci-signing" if ENV["CI"] == "true"
+    cert(cert_params)
     # 2) Create/download App Store provisioning profile
     sigh(
       app_identifier: "com.munichways.app",
