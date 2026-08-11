@@ -63,6 +63,8 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
   RoutePlannerMapSelection? initialPlan,
 }) {
   final sheetController = DraggableScrollableController();
+  final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
+  final initialChildSize = initialStopCount >= 2 ? 1.0 : 0.55;
   return showModalBottomSheet<RoutePlannerMapSelection>(
     context: context,
     isScrollControlled: true,
@@ -71,12 +73,12 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
     builder: (_) => DraggableScrollableSheet(
       controller: sheetController,
       expand: false,
-      initialChildSize: 0.55,
-      minChildSize: 0.28,
+      initialChildSize: initialChildSize,
+      minChildSize: 0.55,
       maxChildSize: 1,
       shouldCloseOnMinExtent: false,
       snap: true,
-      snapSizes: const [0.28, 0.55, 1],
+      snapSizes: const [0.55, 1],
       builder: (context, scrollController) => SizedBox.expand(
         child: _RoutePlannerSheet(
           model: model,
@@ -154,14 +156,6 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     );
     if (!mounted) return;
     if (result == PlaceSearchSheetResult.selectOnMap) {
-      if (widget.sheetController.isAttached) {
-        await widget.sheetController.animateTo(
-          .28,
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-        );
-      }
-      if (!mounted) return;
       Navigator.pop(
         context,
         RoutePlannerMapSelection(
@@ -181,6 +175,14 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   Future<void> _addStop() async {
     final index = _points.length - 1;
     setState(() => _points.insert(index, _RoutePoint(null)));
+    if (_points.length - 2 >= 2 && widget.sheetController.isAttached) {
+      await widget.sheetController.animateTo(
+        1,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+      );
+      if (!mounted) return;
+    }
     await _selectPlace(index);
   }
 
@@ -196,6 +198,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   void _reorderPoint(int oldIndex, int newIndex) {
     setState(() {
+      // Flutter 3.32 reports the insertion index before removing the item.
       if (newIndex > oldIndex) newIndex--;
       final point = _points.removeAt(oldIndex);
       _points.insert(newIndex, point);
@@ -223,10 +226,14 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   Widget _pointLeading(int index) {
     if (index == 0) {
-      return const Icon(
-        Icons.play_arrow,
-        color: AppColors.mapRouteColor,
-        size: 30,
+      return const CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white,
+        child: Icon(
+          Icons.navigation,
+          color: AppColors.mapAccentColor,
+          size: 27,
+        ),
       );
     }
     if (index == _points.length - 1) {
@@ -355,28 +362,53 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
           children: [
             DraggableBottomSheetRegion(
               controller: widget.sheetController,
+              snapSizes: const [0.55, 1],
               onDismiss: () => Navigator.of(context).pop(),
               child: const BottomSheetDragHandle(),
             ),
             DraggableBottomSheetRegion(
               controller: widget.sheetController,
+              snapSizes: const [0.55, 1],
               onDismiss: () => Navigator.of(context).pop(),
               child: Row(
                 children: [
-                  Text(
-                    _english ? 'Plan route' : 'Route planen',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Expanded(
+                    child: Text(
+                      _english ? 'Plan route' : 'Route planen',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
                   IconButton(
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 48,
+                    ),
+                    padding: const EdgeInsets.all(8),
                     tooltip: 'Information',
                     onPressed: _showPlannerInfo,
                     icon: const Icon(Icons.info_outline),
                   ),
-                  const Spacer(),
                   IconButton(
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 48,
+                    ),
+                    padding: const EdgeInsets.all(8),
                     tooltip: _english ? 'Save route' : 'Route speichern',
                     onPressed: _destination == null ? null : _saveRoute,
                     icon: const Icon(Icons.save_outlined),
+                  ),
+                  IconButton(
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 48,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    tooltip: _english ? 'Close' : 'Schließen',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
                   ),
                 ],
               ),
@@ -411,6 +443,9 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                         value: _pointValue(index),
                         onTap: () => _selectPlace(index),
                         onEdit: () => _selectPlace(index),
+                        onClear: index == 0 && point.place != null
+                            ? () => _deletePoint(index)
+                            : null,
                         onDelete: point.place == null &&
                                 (index == 0 || index == _points.length - 1)
                             ? null
@@ -451,6 +486,7 @@ class _PlaceRow extends StatelessWidget {
     required this.value,
     required this.onTap,
     required this.onEdit,
+    this.onClear,
     this.onDelete,
   });
 
@@ -458,6 +494,7 @@ class _PlaceRow extends StatelessWidget {
   final String value;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback? onClear;
   final VoidCallback? onDelete;
 
   @override
@@ -470,43 +507,56 @@ class _PlaceRow extends StatelessWidget {
       ),
       title: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
       onTap: onTap,
-      trailing: PopupMenuButton<_PlaceRowAction>(
-        tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
-        onSelected: (action) {
-          switch (action) {
-            case _PlaceRowAction.edit:
-              onEdit();
-              break;
-            case _PlaceRowAction.delete:
-              onDelete?.call();
-              break;
-          }
-        },
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: _PlaceRowAction.edit,
-            child: Row(
-              children: [
-                const Icon(Icons.edit_outlined),
-                const SizedBox(width: 12),
-                Text(context.l10n.isEnglish ? 'Change' : 'Ändern'),
-              ],
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (onClear != null)
+            IconButton(
+              tooltip: context.l10n.isEnglish
+                  ? 'Use current position'
+                  : 'Aktuellen Standort verwenden',
+              onPressed: onClear,
+              icon: const Icon(Icons.close),
             ),
-          ),
-          if (onDelete != null)
-            PopupMenuItem(
-              value: _PlaceRowAction.delete,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
-                ],
+          PopupMenuButton<_PlaceRowAction>(
+            tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
+            onSelected: (action) {
+              switch (action) {
+                case _PlaceRowAction.edit:
+                  onEdit();
+                  break;
+                case _PlaceRowAction.delete:
+                  onDelete?.call();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _PlaceRowAction.edit,
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined),
+                    const SizedBox(width: 12),
+                    Text(context.l10n.isEnglish ? 'Change' : 'Ändern'),
+                  ],
+                ),
               ),
-            ),
+              if (onDelete != null)
+                PopupMenuItem(
+                  value: _PlaceRowAction.delete,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );

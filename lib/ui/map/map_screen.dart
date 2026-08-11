@@ -30,6 +30,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_route_selection_panel.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
+import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
@@ -48,6 +49,8 @@ class MapScreen extends StatefulWidget {
   @override
   _MapScreenState createState() => _MapScreenState();
 }
+
+enum _RouteEndpointMove { start, destination }
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
@@ -111,11 +114,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final Map<String, StreetDetails> _streetDetailsByLineId = {};
   bool _networkGeoJsonReady = false;
   bool _routeGeoJsonReady = false;
-  bool _featureTapHandlerAttached = false;
-  Circle? _destinationCircle;
-  final List<Circle> _routePlanCircles = [];
   final List<Symbol> _routePlanSymbols = [];
+  latlong2.LatLng? _displayedRouteStartPoint;
   final Set<int> _routeWaypointImages = {};
+  final Set<String> _routePointImages = {};
   StreamSubscription<Position>? _locationSubscription;
   bool _locationStreamUsesForegroundService = false;
   int _locationStreamGeneration = 0;
@@ -125,6 +127,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   latlong2.LatLng? _lastLocationCameraPosition;
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
+  latlong2.LatLng? _gpsMotionAnchor;
+  double? _gpsMotionAnchorAccuracy;
+  DateTime? _lastGpsMovementAt;
+  bool _gpsStationary = true;
   final FlutterTts _flutterTts = FlutterTts();
   final VoiceGuidance _voiceGuidance = VoiceGuidance(
     announceOffRouteWarning: false,
@@ -132,6 +138,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   VoiceGuidanceDisplay? _nextManeuver;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
+  _RouteEndpointMove? _pendingRouteEndpointMove;
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
   Timer? _offRouteAnnouncementTimer;
@@ -150,8 +157,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   /// Bumped on [MapLibreMap.onCameraIdle] so [MapCompassControl] can finish hide.
   final ValueNotifier<int> _compassIdleTick = ValueNotifier<int>(0);
-
-  bool _lineTapHandlerAttached = false;
 
   /// When these match the last sync, the corresponding map layers are skipped.
   int? _lastSyncedNetworkFingerprint;
@@ -532,34 +537,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _renderModeFor(model.locationState),
                           onMapCreated: (controller) {
                             _mapController = controller;
-                            if (!_lineTapHandlerAttached) {
-                              _lineTapHandlerAttached = true;
-                              controller.onLineTapped.add((line) {
-                                final details = mapViewModel
-                                        .streetDetailsForFeatureId(line.id) ??
-                                    _streetDetailsForNetworkFeatureId(line.id);
-                                if (details != null) {
-                                  mapViewModel.onTap(details);
-                                }
-                              });
-                            }
-                            if (!_featureTapHandlerAttached) {
-                              _featureTapHandlerAttached = true;
-                              controller.onFeatureTapped.add(
-                                (point, latLng, id, layerId, annotation) {
-                                  if (layerId != _kNetworkLayerHitGesamtId &&
-                                      layerId != _kNetworkLayerHitRadlId) {
-                                    return;
-                                  }
-                                  final details = mapViewModel
-                                          .streetDetailsForFeatureId(id) ??
-                                      _streetDetailsForNetworkFeatureId(id);
-                                  if (details != null) {
-                                    mapViewModel.onTap(details);
-                                  }
-                                },
-                              );
-                            }
                           },
                           onStyleLoadedCallback: () {
                             if (!mounted) return;
@@ -578,10 +555,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _routeGeoJsonReady = false;
                               if (!mounted) return;
                               // Style rebuild clears native annotations; drop stale handles.
-                              _destinationCircle = null;
-                              _routePlanCircles.clear();
                               _routePlanSymbols.clear();
                               _routeWaypointImages.clear();
+                              _routePointImages.clear();
                               _streetDetailsByLineId.clear();
                               _lastSyncedNetworkFingerprint = null;
                               _lastRouteFingerprint = null;
@@ -615,8 +591,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           },
                           onMapLongClick: (screenPoint, latLng) {
                             unawaited(
-                              _handleMapPlaceSelection(
+                              _handleMapLongPress(
                                 model,
+                                screenPoint,
                                 latlong2.LatLng(
                                   latLng.latitude,
                                   latLng.longitude,
@@ -710,8 +687,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
-                          if (model.destination != null)
-                            MapAttribution(expanded: _mapAttributionExpanded),
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 22,
+                            child: IgnorePointer(
+                              ignoring: !_mapAttributionExpanded,
+                              child: MapAttribution(
+                                expanded: _mapAttributionExpanded,
+                                inline: true,
+                              ),
+                            ),
+                          ),
                           MapSideActionButtons(
                             model: model,
                             mapController: _mapController,
@@ -745,6 +733,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               await _applyNativeLocationTracking(model);
                               await _updateLocationStream(model);
                             },
+                          ),
+                          Positioned(
+                            top: _mapAttributionExpanded ? 26 : 6,
+                            right: 12,
+                            child: Material(
+                              color: Colors.transparent,
+                              elevation: 0,
+                              shape: const CircleBorder(),
+                              child: SizedBox.square(
+                                dimension: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 15,
+                                  tooltip: context.l10n.isEnglish
+                                      ? 'Map attribution'
+                                      : 'Kartenquellen',
+                                  onPressed: () => setState(() {
+                                    _mapAttributionExpanded =
+                                        !_mapAttributionExpanded;
+                                  }),
+                                  icon: const Text(
+                                    '©',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: AppColors.munichWaysBlue,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                           if (model.destination != null ||
                               model.initialRatingsLoadFailed)
@@ -1142,7 +1161,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
-    _updateAutomaticRerouting(model, rawPosition);
+    _updateAutomaticRerouting(model, rawPosition, position);
     final nextManeuver = model.navigationStarted
         ? _reroutingDisplay ??
             _voiceGuidance.display(
@@ -1175,11 +1194,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _updateAutomaticRerouting(
     MapScreenViewModel model,
-    latlong2.LatLng position,
+    latlong2.LatLng routePosition,
+    Position gpsPosition,
   ) {
-    if (!model.navigationStarted || !_voiceGuidance.isOffRoute(position)) {
+    _updateGpsMotionState(gpsPosition);
+    final isOffRoute = _voiceGuidance.isOffRoute(
+      routePosition,
+      horizontalAccuracyMeters: gpsPosition.accuracy,
+    );
+    if (!model.navigationStarted || _gpsStationary || !isOffRoute) {
       if (model.navigationStarted) {
-        _recordOnRouteProgress(position);
+        if (!isOffRoute) _recordOnRouteProgress(routePosition);
       }
       if (_offRouteEpisodeActive || _reroutingDisplay != null) {
         _cancelAutomaticRerouting(resetAttempts: false);
@@ -1243,6 +1268,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _updateGpsMotionState(Position position) {
+    final current = latlong2.LatLng(position.latitude, position.longitude);
+    final anchor = _gpsMotionAnchor;
+    if (anchor == null) {
+      _gpsMotionAnchor = current;
+      _gpsMotionAnchorAccuracy = position.accuracy;
+      _gpsStationary = true;
+      return;
+    }
+
+    final distance = const latlong2.Distance().as(
+      latlong2.LengthUnit.Meter,
+      anchor,
+      current,
+    );
+    final accuracy = max(_gpsMotionAnchorAccuracy ?? 0, position.accuracy);
+    final movementThreshold = (accuracy * 1.5).clamp(8.0, 25.0);
+    if (distance >= movementThreshold && distance <= 200) {
+      _gpsMotionAnchor = current;
+      _gpsMotionAnchorAccuracy = position.accuracy;
+      _lastGpsMovementAt = DateTime.now();
+    }
+    final lastMovement = _lastGpsMovementAt;
+    _gpsStationary = lastMovement == null ||
+        DateTime.now().difference(lastMovement) > const Duration(seconds: 8);
+  }
+
   bool _stillOffRoute(MapScreenViewModel model) {
     final position = _latestPosition;
     return mounted &&
@@ -1250,8 +1302,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         position != null &&
         position.accuracy.isFinite &&
         position.accuracy <= 50 &&
+        !_gpsStationary &&
         _voiceGuidance.isOffRoute(
           latlong2.LatLng(position.latitude, position.longitude),
+          horizontalAccuracyMeters: position.accuracy,
         );
   }
 
@@ -1543,26 +1597,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               },
             ),
             actions: [
-              SizedBox(
-                width: 152,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    context.l10n.isEnglish ? 'Skip' : 'Überspringen',
-                    maxLines: 1,
-                  ),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(
+                  context.l10n.isEnglish ? 'Skip' : 'Überspringen',
                 ),
               ),
-              SizedBox(
-                width: 152,
-                child: FilledButton(
-                  onPressed: canSave
-                      ? () => Navigator.pop(dialogContext, enteredName)
-                      : null,
-                  child: Text(
-                    context.l10n.isEnglish ? 'Save' : 'Speichern',
-                    maxLines: 1,
-                  ),
+              FilledButton(
+                onPressed: canSave
+                    ? () => Navigator.pop(dialogContext, enteredName)
+                    : null,
+                child: Text(
+                  context.l10n.isEnglish ? 'Save' : 'Speichern',
                 ),
               ),
             ],
@@ -1602,6 +1648,200 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       model,
       initialPlan: pendingSelection.withSelectedPlace(place),
     );
+  }
+
+  Future<void> _handleMapLongPress(
+    MapScreenViewModel model,
+    Point<double> screenPoint,
+    latlong2.LatLng position,
+  ) async {
+    final endpointMove = _pendingRouteEndpointMove;
+    if (endpointMove != null) {
+      setState(() => _pendingRouteEndpointMove = null);
+      final destination = model.destination;
+      if (destination == null) return;
+      final place = Place(null, position);
+      model.setRoutePlan(
+        start:
+            endpointMove == _RouteEndpointMove.start ? place : model.routeStart,
+        stops: List<Place>.of(model.waypoints),
+        destination: endpointMove == _RouteEndpointMove.destination
+            ? place
+            : destination,
+      );
+      return;
+    }
+
+    // Explicit map-selection flows already tell the user which point to pick.
+    if (_nameNextMapSelection || _pendingRouteMapSelection != null) {
+      await _handleMapPlaceSelection(model, position);
+      return;
+    }
+
+    final details = await _streetDetailsAt(screenPoint);
+    final endpoint = await _routeEndpointAt(model, screenPoint);
+    if (!mounted) return;
+    final action = await _showLongPressActions(
+      model,
+      screenPoint,
+      details,
+      endpoint,
+    );
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case MapLongPressAction.showDetails:
+        if (details != null) model.onTap(details);
+        return;
+      case MapLongPressAction.startRoute:
+        final routeReady = await model.setDestinationAndCalculateRoute(
+          Place(null, position),
+        );
+        if (!mounted || !routeReady) return;
+        await _startNavigation(model);
+        return;
+      case MapLongPressAction.addWaypoint:
+        model.setRoutePlan(
+          start: model.routeStart,
+          stops: [...model.waypoints, Place(null, position)],
+          destination: model.destination!,
+        );
+        return;
+      case MapLongPressAction.moveStart:
+        _beginEndpointMove(_RouteEndpointMove.start);
+        return;
+      case MapLongPressAction.moveDestination:
+        _beginEndpointMove(_RouteEndpointMove.destination);
+        return;
+    }
+  }
+
+  void _beginEndpointMove(_RouteEndpointMove endpoint) {
+    setState(() => _pendingRouteEndpointMove = endpoint);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          endpoint == _RouteEndpointMove.start
+              ? (context.l10n.isEnglish
+                  ? 'Touch and hold the new starting point.'
+                  : 'Neuen Startpunkt lange antippen.')
+              : (context.l10n.isEnglish
+                  ? 'Touch and hold the new destination.'
+                  : 'Neues Ziel lange antippen.'),
+        ),
+        action: SnackBarAction(
+          label: context.l10n.tr('Abbrechen'),
+          onPressed: () {
+            if (mounted) setState(() => _pendingRouteEndpointMove = null);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<MapLongPressAction?> _showLongPressActions(
+    MapScreenViewModel model,
+    Point<double> screenPoint,
+    StreetDetails? details,
+    _RouteEndpointMove? endpoint,
+  ) async {
+    if (!mounted) return null;
+    final mapBox = _mapLibreViewKey.currentContext?.findRenderObject();
+    final overlayState = Overlay.of(context, rootOverlay: true);
+    final overlay = overlayState.context.findRenderObject();
+    if (mapBox is! RenderBox || overlay is! RenderBox) return null;
+    // Android's native MapLibre callback reports physical pixels, while
+    // Flutter positions overlays in logical pixels. iOS reports UIKit points
+    // already, so only Android needs the density conversion.
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final logicalPoint =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+            ? Offset(screenPoint.x / pixelRatio, screenPoint.y / pixelRatio)
+            : Offset(screenPoint.x, screenPoint.y);
+    final boundedPoint = Offset(
+      logicalPoint.dx.clamp(0.0, mapBox.size.width),
+      logicalPoint.dy.clamp(0.0, mapBox.size.height),
+    );
+    final globalPoint = mapBox.localToGlobal(boundedPoint);
+    final overlayPoint = overlay.globalToLocal(globalPoint);
+    return showMapLongPressActionOverlay(
+      context,
+      anchor: overlayPoint,
+      overlaySize: overlay.size,
+      streetDetails: details,
+      canAddWaypoint: !model.navigationStarted &&
+          model.route.state != MapRouteState.NO_ROUTE &&
+          model.destination != null,
+      canMoveStart: endpoint == _RouteEndpointMove.start,
+      canMoveDestination: endpoint == _RouteEndpointMove.destination,
+    );
+  }
+
+  Future<_RouteEndpointMove?> _routeEndpointAt(
+    MapScreenViewModel model,
+    Point<double> pressedPoint,
+  ) async {
+    final controller = _mapController;
+    final route = model.route.route;
+    if (controller == null ||
+        model.navigationStarted ||
+        model.destination == null) {
+      return null;
+    }
+
+    try {
+      Future<bool> isNear(latlong2.LatLng location) async {
+        final point = await controller.toScreenLocation(
+          LatLng(location.latitude, location.longitude),
+        );
+        final dx = point.x - pressedPoint.x;
+        final dy = point.y - pressedPoint.y;
+        return sqrt(dx * dx + dy * dy) <= 82;
+      }
+
+      if (await isNear(model.destination!.latLng)) {
+        return _RouteEndpointMove.destination;
+      }
+      final start = model.routeStart?.latLng ??
+          (route != null && route.points.isNotEmpty
+              ? route.points.first
+              : _displayedRouteStartPoint);
+      if (start == null) return null;
+      return await isNear(start) ? _RouteEndpointMove.start : null;
+    } catch (error, stackTrace) {
+      log.d(
+        'Checking a long press against route endpoints failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<StreetDetails?> _streetDetailsAt(Point<double> screenPoint) async {
+    final controller = _mapController;
+    if (controller == null || !_networkGeoJsonReady) return null;
+    try {
+      final features = await controller.queryRenderedFeatures(
+        screenPoint,
+        const [_kNetworkLayerHitRadlId, _kNetworkLayerHitGesamtId],
+        null,
+      );
+      for (final feature in features) {
+        if (feature is! Map) continue;
+        final id = feature['id'];
+        final details = mapViewModel.streetDetailsForFeatureId(id) ??
+            _streetDetailsForNetworkFeatureId(id);
+        if (details != null) return details;
+      }
+    } catch (error, stackTrace) {
+      log.d(
+        'Querying a long-pressed network feature failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    return null;
   }
 
   Future<void> _requestNavigationNotificationPermission() async {
@@ -1973,14 +2213,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _syncRouteAndDestinationLayers(
       MapScreenViewModel model, MapLibreMapController controller) async {
-    if (_destinationCircle != null) {
-      await controller.removeCircle(_destinationCircle!);
-      _destinationCircle = null;
-    }
-    for (final circle in _routePlanCircles) {
-      await controller.removeCircle(circle);
-    }
-    _routePlanCircles.clear();
     for (final symbol in _routePlanSymbols) {
       await controller.removeSymbol(symbol);
     }
@@ -2029,31 +2261,55 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
 
     if (model.destination != null) {
-      _destinationCircle = await controller.addCircle(CircleOptions(
-        geometry: LatLng(
-          model.destination!.latLng.latitude,
-          model.destination!.latLng.longitude,
+      const imageName = 'route-destination-flag-v3';
+      if (!_routePointImages.contains(imageName)) {
+        await controller.addImage(
+          imageName,
+          await _createRouteDestinationFlagImage(),
+        );
+        _routePointImages.add(imageName);
+      }
+      _routePlanSymbols.add(
+        await controller.addSymbol(
+          SymbolOptions(
+            geometry: LatLng(
+              model.destination!.latLng.latitude,
+              model.destination!.latLng.longitude,
+            ),
+            iconImage: imageName,
+            iconSize: 1.45,
+            iconAnchor: 'bottom',
+          ),
         ),
-        circleRadius: 8,
-        circleColor: '#f44336',
-        circleStrokeColor: '#ffffff',
-        circleStrokeWidth: 2,
-      ));
+      );
     }
 
-    final customStart = model.routeStart;
-    if (customStart != null) {
-      _routePlanCircles.add(
-        await controller.addCircle(
-          CircleOptions(
+    final route = model.route.route;
+    if (model.destination == null ||
+        model.route.state == MapRouteState.NO_ROUTE) {
+      _displayedRouteStartPoint = null;
+    } else if (model.route.state == MapRouteState.SHOWN &&
+        route != null &&
+        route.points.isNotEmpty) {
+      _displayedRouteStartPoint = route.points.first;
+    }
+    final startPoint = model.routeStart?.latLng ?? _displayedRouteStartPoint;
+    if (startPoint != null) {
+      const imageName = 'route-start-v2';
+      if (!_routePointImages.contains(imageName)) {
+        await controller.addImage(imageName, await _createRouteStartImage());
+        _routePointImages.add(imageName);
+      }
+      _routePlanSymbols.add(
+        await controller.addSymbol(
+          SymbolOptions(
             geometry: LatLng(
-              customStart.latLng.latitude,
-              customStart.latLng.longitude,
+              startPoint.latitude,
+              startPoint.longitude,
             ),
-            circleRadius: 7,
-            circleColor: '#2E7D32',
-            circleStrokeColor: '#ffffff',
-            circleStrokeWidth: 2.5,
+            iconImage: imageName,
+            iconSize: 1.45,
+            iconAnchor: 'center',
           ),
         ),
       );
@@ -2117,6 +2373,97 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(
+      canvas,
+      center - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
+  Future<Uint8List> _createRouteDestinationFlagImage() async {
+    const width = 80.0;
+    const height = 92.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final whiteOutline = ui.Paint()
+      ..color = Colors.white
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = ui.StrokeCap.round
+      ..strokeJoin = ui.StrokeJoin.round;
+    final redStroke = ui.Paint()
+      ..color = AppColors.mapRed
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = ui.StrokeCap.round;
+    const poleTop = ui.Offset(16, 8);
+    const poleBottom = ui.Offset(16, 86);
+    canvas.drawLine(poleTop, poleBottom, whiteOutline);
+    canvas.drawLine(poleTop, poleBottom, redStroke);
+
+    final flag = ui.Path()
+      ..moveTo(16, 11)
+      ..lineTo(70, 16)
+      ..lineTo(56, 34)
+      ..lineTo(70, 52)
+      ..lineTo(16, 46)
+      ..close();
+    canvas.drawPath(flag, whiteOutline);
+    canvas.save();
+    canvas.clipPath(flag);
+    const cell = 14.0;
+    for (var row = 0; row < 4; row++) {
+      for (var column = 0; column < 5; column++) {
+        canvas.drawRect(
+          ui.Rect.fromLTWH(
+            14 + column * cell,
+            8 + row * cell,
+            cell,
+            cell,
+          ),
+          ui.Paint()
+            ..color = (row + column).isEven ? Colors.white : AppColors.mapRed,
+        );
+      }
+    }
+    canvas.restore();
+    canvas.drawPath(flag, redStroke);
+
+    final image = await recorder.endRecording().toImage(
+          width.toInt(),
+          height.toInt(),
+        );
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
+  Future<Uint8List> _createRouteStartImage() async {
+    const size = 64.0;
+    const center = ui.Offset(size / 2, size / 2);
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    canvas.drawCircle(center, 31, ui.Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      27,
+      ui.Paint()..color = AppColors.munichWaysBlue,
+    );
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'S',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 34,
           fontWeight: FontWeight.bold,
         ),
       ),

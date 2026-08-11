@@ -41,22 +41,25 @@ void main() {
       find.byType(DraggableScrollableSheet),
     );
     expect(draggable.initialChildSize, 0.55);
-    expect(draggable.minChildSize, 0.28);
+    expect(draggable.minChildSize, 0.55);
     expect(draggable.maxChildSize, 1);
-    expect(draggable.snapSizes, [0.28, 0.55, 1]);
+    expect(draggable.snapSizes, [0.55, 1]);
     expect(find.byType(BottomSheetDragHandle), findsOneWidget);
 
     expect(find.textContaining('Optional anderen Startpunkt'), findsNothing);
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.byIcon(Icons.save_outlined), findsOneWidget);
+    expect(find.byTooltip('Schließen'), findsOneWidget);
     final titleRight = tester.getTopRight(find.text('Route planen')).dx;
     final infoLeft = tester.getTopLeft(find.byIcon(Icons.info_outline)).dx;
     final saveLeft = tester.getTopLeft(find.byIcon(Icons.save_outlined)).dx;
+    final closeLeft = tester.getTopLeft(find.byIcon(Icons.close).first).dx;
     expect(infoLeft - titleRight, lessThan(20));
-    expect(saveLeft, greaterThan(infoLeft + 100));
+    expect(saveLeft, greaterThan(infoLeft + 30));
+    expect(closeLeft, greaterThan(saveLeft + 30));
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.play_arrow)).color,
-      AppColors.mapRouteColor,
+      tester.widget<Icon>(find.byIcon(Icons.navigation)).color,
+      AppColors.mapAccentColor,
     );
     expect(
       tester.widget<Icon>(find.byIcon(Icons.sports_score)).color,
@@ -105,7 +108,7 @@ void main() {
     expect(
       find.descendant(
         of: newStartRow,
-        matching: find.byIcon(Icons.play_arrow),
+        matching: find.byIcon(Icons.navigation),
       ),
       findsOneWidget,
     );
@@ -122,11 +125,11 @@ void main() {
     );
   });
 
-  testWidgets('resizes before scrolling a long route plan', (tester) async {
+  testWidgets('opens large from the second intermediate stop', (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())
       ..routeStart = Place('Start', const LatLng(48.1, 11.5))
       ..waypoints.addAll([
-        for (var index = 1; index <= 6; index++)
+        for (var index = 1; index <= 2; index++)
           Place('Zwischenziel $index', LatLng(48.1 + index / 100, 11.5)),
       ])
       ..destination = Place('Ziel', const LatLng(48.3, 11.7));
@@ -146,26 +149,61 @@ void main() {
     await tester.tap(find.text('Öffnen'));
     await tester.pumpAndSettle();
 
-    final scrollView = find.byType(SingleChildScrollView);
+    final draggable = tester.widget<DraggableScrollableSheet>(
+      find.byType(DraggableScrollableSheet),
+    );
     final handle = find.byType(BottomSheetDragHandle);
-    final middleTop = tester.getTopLeft(handle).dy;
-
-    final calculate = find.text('Route berechnen');
-    await tester.drag(scrollView, const Offset(0, -300));
-    await tester.pumpAndSettle();
-    final largeTop = tester.getTopLeft(handle).dy;
-    expect(largeTop, lessThan(middleTop - 100));
-
-    await tester.drag(scrollView, const Offset(0, -600));
-    await tester.pumpAndSettle();
-    expect(tester.getCenter(calculate).dy, lessThan(600));
-
-    await tester.drag(scrollView, const Offset(0, 800));
-    await tester.pumpAndSettle();
-    await tester.drag(scrollView, const Offset(0, 300));
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(handle).dy, greaterThan(largeTop + 100));
+    expect(draggable.initialChildSize, 1);
+    expect(tester.getTopLeft(handle).dy, lessThan(50));
+    expect(find.text('Route berechnen'), findsOneWidget);
+    expect(
+      tester.getBottomRight(find.text('Route berechnen')).dy,
+      lessThan(tester.view.physicalSize.height),
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('clears a custom start back to the current position',
+      (tester) async {
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..routeStart = Place('Anfang', const LatLng(48.1, 11.5))
+      ..destination = Place('Ziel', const LatLng(48.3, 11.7));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(context, model: model),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Anfang'), findsOneWidget);
+    expect(find.byTooltip('Aktuellen Standort verwenden'), findsOneWidget);
+    await tester.tap(find.byTooltip('Aktuellen Standort verwenden'));
+    await tester.pump();
+
+    expect(find.text('Aktueller Standort'), findsOneWidget);
+    expect(find.byTooltip('Aktuellen Standort verwenden'), findsNothing);
+    final startIcon = tester.widget<Icon>(find.byIcon(Icons.navigation));
+    expect(startIcon.color, AppColors.mapAccentColor);
+    expect(
+      tester
+          .widget<CircleAvatar>(
+            find.ancestor(
+              of: find.byIcon(Icons.navigation),
+              matching: find.byType(CircleAvatar),
+            ),
+          )
+          .backgroundColor,
+      Colors.white,
+    );
   });
 
   testWidgets('header resizes route planner in both directions',
@@ -203,10 +241,6 @@ void main() {
     expect(middleAgainTop, closeTo(middleTop, 2));
 
     await tester.drag(header, const Offset(0, 250));
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(sheet).dy, greaterThan(middleTop + 100));
-
-    await tester.drag(header, const Offset(0, 200));
     await tester.pumpAndSettle();
     expect(sheet, findsNothing);
     expect(tester.takeException(), isNull);

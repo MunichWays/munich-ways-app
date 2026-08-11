@@ -233,7 +233,10 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     BuildContext context,
     PlaceSearchScreenViewModel model,
   ) {
-    if (model.favoriteItems.isEmpty) return [];
+    final favorites = widget.showSavedRoutes
+        ? model.favoriteItems
+        : model.favoriteItems.whereType<Place>().toList();
+    if (favorites.isEmpty) return [];
     return [
       _savedSection(
         context,
@@ -241,22 +244,27 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         title: context.l10n.isEnglish ? 'Favorites' : 'Favoriten',
         icon: Icons.star,
         iconColor: Colors.amber,
-        children: model.favoriteItems.length == 1
-            ? [_favoriteItem(context, model, model.favoriteItems.single)]
-            : [
-                ReorderableListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  buildDefaultDragHandles: true,
-                  itemCount: model.favoriteItems.length,
-                  onReorder: model.reorderFavorite,
-                  itemBuilder: (context, index) => _favoriteItem(
-                    context,
-                    model,
-                    model.favoriteItems[index],
-                  ),
-                ),
-              ],
+        children: favorites.length == 1
+            ? [_favoriteItem(context, model, favorites.single)]
+            : !widget.showSavedRoutes
+                ? [
+                    for (final favorite in favorites)
+                      _favoriteItem(context, model, favorite),
+                  ]
+                : [
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: true,
+                      itemCount: favorites.length,
+                      onReorder: model.reorderFavorite,
+                      itemBuilder: (context, index) => _favoriteItem(
+                        context,
+                        model,
+                        favorites[index],
+                      ),
+                    ),
+                  ],
       ),
     ];
   }

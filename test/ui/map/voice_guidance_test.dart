@@ -389,7 +389,7 @@ void main() {
 
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel Marienplatz erreicht.',
+      'Sie haben das Zwischenziel 1 Marienplatz erreicht.',
     );
     expect(guidance.update(intermediate, english: false), isNull);
     expect(
@@ -398,7 +398,41 @@ void main() {
     );
   });
 
-  test('does not announce arrival outside the 20 metre destination radius', () {
+  test('announces the map number before a named intermediate destination', () {
+    const stop1 = LatLng(48.1405, 11.5700);
+    const stop2 = LatLng(48.1410, 11.5700);
+    const stop3 = LatLng(48.1415, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, stop1, stop2, stop3, end],
+          300,
+          60,
+          maneuvers: const [
+            RouteManeuver(location: stop1, type: 'arrive'),
+            RouteManeuver(location: stop2, type: 'arrive'),
+            RouteManeuver(location: stop3, type: 'arrive'),
+            RouteManeuver(location: end, type: 'arrive'),
+          ],
+        ),
+        intermediateDestinationNames: const [null, null, 'Marienplatz'],
+      );
+
+    expect(
+      guidance.update(stop1, english: false),
+      'Sie haben das Zwischenziel 1 erreicht.',
+    );
+    expect(
+      guidance.update(stop2, english: false),
+      'Sie haben das Zwischenziel 2 erreicht.',
+    );
+    expect(
+      guidance.update(stop3, english: false),
+      'Sie haben das Zwischenziel 3 Marienplatz erreicht.',
+    );
+  });
+
+  test('uses the 20 metre radius for final arrival', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(CycleRoute(
       const [start, end],
@@ -417,6 +451,69 @@ void main() {
     expect(
       guidance.update(end, english: false),
       'Sie haben das Ziel erreicht.',
+    );
+  });
+
+  test('final arrival takes precedence over an off-route classification', () {
+    final guidance = VoiceGuidance(maximumRouteDistanceMeters: 10)
+      ..setRoute(CycleRoute(
+        const [start, end],
+        170,
+        40,
+        maneuvers: const [RouteManeuver(location: end, type: 'arrive')],
+      ));
+
+    const nearAddressButOffRoute = LatLng(48.14142, 11.57015);
+    expect(
+      guidance.update(nearAddressButOffRoute, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+  });
+
+  test('keeps an intermediate stop and restores a missing final arrival', () {
+    const intermediate = LatLng(48.1410, 11.5700);
+    const cyclingEnd = LatLng(48.1414, 11.5700);
+    const destination = LatLng(48.1415, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, intermediate, cyclingEnd],
+          170,
+          40,
+          maneuvers: const [
+            RouteManeuver(location: intermediate, type: 'arrive'),
+          ],
+          destinationConnector: const [cyclingEnd, destination],
+        ),
+        intermediateDestinationNames: const ['Marienplatz'],
+      );
+
+    expect(
+      guidance.update(intermediate, english: false),
+      'Sie haben das Zwischenziel 1 Marienplatz erreicht.',
+    );
+    expect(
+      guidance.update(destination, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+  });
+
+  test('GPS accuracy increases the off-route tolerance up to 25 metres', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(routeWith(const RouteManeuver(
+        location: turn,
+        type: 'turn',
+        modifier: 'left',
+      )));
+    const roughlyFortyMetresOffRoute = LatLng(48.1405, 11.57054);
+
+    expect(guidance.isOffRoute(roughlyFortyMetresOffRoute), isTrue);
+    expect(
+      guidance.isOffRoute(
+        roughlyFortyMetresOffRoute,
+        horizontalAccuracyMeters: 20,
+      ),
+      isFalse,
     );
   });
 
@@ -447,7 +544,7 @@ void main() {
 
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel erreicht.',
+      'Sie haben das Zwischenziel 1 erreicht.',
     );
     expect(
       guidance.display(junction, english: false)?.text,
@@ -471,7 +568,7 @@ void main() {
     expect(guidance.update(start, english: false), isNull);
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel erreicht.',
+      'Sie haben das Zwischenziel 1 erreicht.',
     );
     expect(
       guidance.update(start, english: false),

@@ -24,6 +24,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position auf der Karte anzuzeigen.</string>
 	<key>NSLocationAlwaysUsageDescription</key>

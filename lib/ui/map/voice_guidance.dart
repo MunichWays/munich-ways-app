@@ -34,15 +34,21 @@ class VoiceGuidance {
   final int offRouteUpdatesBeforeWarning;
   final bool announceOffRouteWarning;
 
-  bool isOffRoute(LatLng position) {
+  bool isOffRoute(
+    LatLng position, {
+    double horizontalAccuracyMeters = 0,
+  }) {
     final route = _route;
     if (route == null) return false;
+    final accuracyAllowance = horizontalAccuracyMeters.isFinite
+        ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
+        : 0;
     return _projectOntoRoute(
           route.points,
           position,
           minimumDistanceAlongRoute: _routeProgress,
         ).distanceFromRoute >
-        maximumRouteDistanceMeters;
+        maximumRouteDistanceMeters + accuracyAllowance;
   }
 
   CycleRoute? _route;
@@ -55,6 +61,7 @@ class VoiceGuidance {
   bool _offRouteWarningSpoken = false;
   List<_GuidanceManeuver> _arrivals = const [];
   List<String?> _intermediateDestinationNames = const [];
+  int _intermediateArrivalCount = 0;
   double _routeProgress = 0;
   bool _overlappingRouteUnsupported = false;
   bool _overlappingRouteWarningSpoken = false;
@@ -73,6 +80,7 @@ class VoiceGuidance {
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
     _arrivals = const [];
+    _intermediateArrivalCount = 0;
     _routeProgress = 0;
     _overlappingRouteUnsupported = false;
     _overlappingRouteWarningSpoken = false;
@@ -108,9 +116,35 @@ class VoiceGuidance {
       guidanceRoute.points,
       sortedManeuvers,
     );
-    _arrivals = projectedManeuvers
+    final arrivals = projectedManeuvers
         .where((maneuver) => maneuver.maneuver.type == 'arrive')
-        .toList(growable: false);
+        .toList();
+    _intermediateArrivalCount = max(
+      _intermediateDestinationNames.length,
+      arrivals.length - 1,
+    );
+    final expectedArrivalCount = _intermediateArrivalCount + 1;
+    if (arrivals.length < expectedArrivalCount) {
+      // RadlNavi removes the final walking access from spoken maneuvers. In
+      // that case its final `arrive` maneuver is missing and the old logic
+      // mistook the last intermediate stop for the destination.
+      final destination = guidanceRoute.destinationConnector.isNotEmpty
+          ? guidanceRoute.destinationConnector.last
+          : guidanceRoute.points.last;
+      final projection = _projectOntoRoute(
+        guidanceRoute.points,
+        destination,
+        minimumDistanceAlongRoute:
+            arrivals.isEmpty ? 0 : arrivals.last.routeDistance,
+      );
+      arrivals.add(
+        _GuidanceManeuver(
+          RouteManeuver(location: destination, type: 'arrive'),
+          projection.distanceAlongRoute,
+        ),
+      );
+    }
+    _arrivals = arrivals.take(expectedArrivalCount).toList(growable: false);
   }
 
   void reset() => setRoute(null);
@@ -134,10 +168,6 @@ class VoiceGuidance {
       position,
       minimumDistanceAlongRoute: _routeProgress,
     );
-    if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
-      return null;
-    }
-
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null) {
       _routeProgress =
@@ -146,6 +176,9 @@ class VoiceGuidance {
         text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
       );
+    }
+    if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
+      return null;
     }
 
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
@@ -192,6 +225,12 @@ class VoiceGuidance {
       position,
       minimumDistanceAlongRoute: _routeProgress,
     );
+    final arrivalIndex = _arrivalIndexAt(position);
+    if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
+      _routeProgress =
+          max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      return _arrivalAnnouncement(arrivalIndex, english);
+    }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
       _offRouteUpdates++;
       if (announceOffRouteWarning &&
@@ -206,13 +245,6 @@ class VoiceGuidance {
     }
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
-
-    final arrivalIndex = _arrivalIndexAt(position);
-    if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
-      _routeProgress =
-          max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
-      return _arrivalAnnouncement(arrivalIndex, english);
-    }
 
     if (_index >= _maneuvers.length) return null;
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
@@ -268,7 +300,7 @@ class VoiceGuidance {
     return null;
   }
 
-  bool _isIntermediateArrival(int index) => index < _arrivals.length - 1;
+  bool _isIntermediateArrival(int index) => index < _intermediateArrivalCount;
 
   String? _intermediateName(int index) {
     if (index >= _intermediateDestinationNames.length) return null;
@@ -294,14 +326,15 @@ class VoiceGuidance {
           : 'Sie haben das Ziel erreicht.';
     }
     final name = _intermediateName(index);
+    final number = index + 1;
     if (english) {
       return name == null
-          ? 'You have reached the intermediate destination.'
-          : 'You have reached the intermediate destination $name.';
+          ? 'You have reached intermediate destination $number.'
+          : 'You have reached intermediate destination $number $name.';
     }
     return name == null
-        ? 'Sie haben das Zwischenziel erreicht.'
-        : 'Sie haben das Zwischenziel $name erreicht.';
+        ? 'Sie haben das Zwischenziel $number erreicht.'
+        : 'Sie haben das Zwischenziel $number $name erreicht.';
   }
 
   String _formatSpokenManeuver(
