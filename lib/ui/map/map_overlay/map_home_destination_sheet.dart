@@ -401,7 +401,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                     _homeHeader(context),
                   if (!_selectingFavorite &&
                       (_searching || _showHomeExtras)) ...[
-                    _searchActions(context),
+                    _searchActions(context, showSelectOnMap: _searching),
                     if (_showQuickChoices)
                       Consumer<PlaceSearchScreenViewModel>(
                         builder: (context, model, _) => Padding(
@@ -516,9 +516,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                         ? (context.l10n.isEnglish
                             ? 'Choose favorite'
                             : 'Favorit wählen')
-                        : (context.l10n.isEnglish
-                            ? 'Destination?'
-                            : 'Wohin?'),
+                        : (context.l10n.isEnglish ? 'Destination?' : 'Wohin?'),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -560,7 +558,10 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     );
   }
 
-  Widget _searchActions(BuildContext context) {
+  Widget _searchActions(
+    BuildContext context, {
+    required bool showSelectOnMap,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 7),
       child: Row(
@@ -584,26 +585,31 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextButton.icon(
-              onPressed: _selectOnMap,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.munichWaysBlue,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              ),
-              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  context.l10n.tr('Auf Karte wählen'),
-                  maxLines: 1,
-                  style: const TextStyle(fontSize: 13),
+          if (showSelectOnMap) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: _selectOnMap,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.munichWaysBlue,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                ),
+                icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    context.l10n.tr('Auf Karte wählen'),
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
               ),
             ),
-          ),
+          ] else ...[
+            const SizedBox(width: 8),
+            const Spacer(),
+          ],
         ],
       ),
     );

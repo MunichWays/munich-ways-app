@@ -88,6 +88,8 @@ void main() {
     expect(find.byIcon(Icons.star_outline), findsOneWidget);
     expect(draggable.controller!.size, closeTo(.28, .01));
     expect(find.text('Route planen'), findsOneWidget);
+    expect(find.text('Auf Karte wählen'), findsNothing);
+    final compactPlanRouteX = tester.getCenter(find.text('Route planen')).dx;
 
     await tester.drag(find.text('Wohin?'), const Offset(0, -300));
     await tester.pumpAndSettle();
@@ -98,8 +100,7 @@ void main() {
     expect(find.text('Letztes Ziel'), findsOneWidget);
     expect(find.text('Arbeitsroute'), findsOneWidget);
     expect(find.text('Route planen'), findsOneWidget);
-    final mapAction = tester.widget<Text>(find.textContaining('Auf Karte'));
-    expect(mapAction.maxLines, 1);
+    expect(find.text('Auf Karte wählen'), findsNothing);
 
     await tester.drag(find.text('Wohin?'), const Offset(0, -400));
     await tester.pumpAndSettle();
@@ -123,6 +124,10 @@ void main() {
     await tester.pump();
     expect(find.text('Wohin?'), findsOneWidget);
     expect(find.text('Route planen'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Route planen')).dx,
+      closeTo(compactPlanRouteX, 1),
+    );
     final selectOnMapButton = find.textContaining('Karte');
     expect(find.text('Auf Karte wählen'), findsOneWidget);
 
