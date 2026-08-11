@@ -104,7 +104,12 @@ platform :ios do
     # The Xcode project uses Automatic signing, which needs an Xcode-level Apple ID
     # session. We're authenticating via ASC API key instead, so force manual signing
     # at archive time using the certificate/profile cert+sigh just installed.
-    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    # CredentialsManager::AppfileConfig.try_fetch_value(:team_id) returns nil in CI despite
+    # Appfile having the same value there as locally. team_id isn't a secret (it's already
+    # plaintext in the committed Appfile) — read it from there directly rather than
+    # duplicating it as a separate literal that could drift out of sync.
+    team_id = File.read(File.join(__dir__, "Appfile"))[/^team_id\s+"([^"]+)"/, 1]
+    UI.user_error!("Could not read team_id from Appfile") if team_id.to_s.empty?
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
