@@ -688,18 +688,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 22,
-                              child: IgnorePointer(
-                                ignoring: !_mapAttributionExpanded,
-                                child: MapAttribution(
-                                  expanded: _mapAttributionExpanded,
-                                  inline: true,
-                                ),
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 22,
+                            child: IgnorePointer(
+                              ignoring: !_mapAttributionExpanded,
+                              child: MapAttribution(
+                                expanded: _mapAttributionExpanded,
+                                inline: true,
                               ),
                             ),
+                          ),
                           MapSideActionButtons(
                             model: model,
                             mapController: _mapController,
@@ -735,36 +735,36 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                              top: _mapAttributionExpanded ? 26 : 6,
-                              right: 12,
-                              child: Material(
-                                color: Colors.transparent,
-                                elevation: 0,
-                                shape: const CircleBorder(),
-                                child: SizedBox.square(
-                                  dimension: 36,
-                                  child: IconButton(
-                                    padding: EdgeInsets.zero,
-                                    iconSize: 15,
-                                    tooltip: context.l10n.isEnglish
-                                        ? 'Map attribution'
-                                        : 'Kartenquellen',
-                                    onPressed: () => setState(() {
-                                      _mapAttributionExpanded =
-                                          !_mapAttributionExpanded;
-                                    }),
-                                    icon: const Text(
-                                      '©',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        color: AppColors.munichWaysBlue,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                            top: _mapAttributionExpanded ? 26 : 6,
+                            right: 12,
+                            child: Material(
+                              color: Colors.transparent,
+                              elevation: 0,
+                              shape: const CircleBorder(),
+                              child: SizedBox.square(
+                                dimension: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 15,
+                                  tooltip: context.l10n.isEnglish
+                                      ? 'Map attribution'
+                                      : 'Kartenquellen',
+                                  onPressed: () => setState(() {
+                                    _mapAttributionExpanded =
+                                        !_mapAttributionExpanded;
+                                  }),
+                                  icon: const Text(
+                                    '©',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: AppColors.munichWaysBlue,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
+                          ),
                           if (model.destination != null ||
                               model.initialRatingsLoadFailed)
                             MapBottomActionButtons(
@@ -1662,9 +1662,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (destination == null) return;
       final place = Place(null, position);
       model.setRoutePlan(
-        start: endpointMove == _RouteEndpointMove.start
-            ? place
-            : model.routeStart,
+        start:
+            endpointMove == _RouteEndpointMove.start ? place : model.routeStart,
         stops: List<Place>.of(model.waypoints),
         destination: endpointMove == _RouteEndpointMove.destination
             ? place
@@ -2475,9 +2474,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             cell,
           ),
           ui.Paint()
-            ..color = (row + column).isEven
-                ? Colors.white
-                : AppColors.mapRed,
+            ..color = (row + column).isEven ? Colors.white : AppColors.mapRed,
         );
       }
     }

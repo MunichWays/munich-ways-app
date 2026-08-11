@@ -41,12 +41,13 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
           (canMoveDestination ? 1 : 0) +
           (streetDetails != null ? 1 : 0);
       final cardHeight = actionCount * 56.0 + (actionCount - 1);
-      final cardLeft =
-          (anchor.dx - cardWidth / 2).clamp(12.0, overlaySize.width - cardWidth - 12);
+      final cardLeft = (anchor.dx - cardWidth / 2)
+          .clamp(12.0, overlaySize.width - cardWidth - 12);
       final fitsBelow = anchor.dy + 18 + cardHeight <= overlaySize.height - 12;
       final cardTop = fitsBelow
           ? anchor.dy + 18
-          : (anchor.dy - 50 - cardHeight).clamp(12.0, overlaySize.height - cardHeight - 12);
+          : (anchor.dy - 50 - cardHeight)
+              .clamp(12.0, overlaySize.height - cardHeight - 12);
 
       Widget actionRow({
         required IconData icon,
@@ -159,9 +160,8 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.info_outline,
-                      label: l10n.isEnglish
-                          ? 'Show details'
-                          : 'Details anzeigen',
+                      label:
+                          l10n.isEnglish ? 'Show details' : 'Details anzeigen',
                       action: MapLongPressAction.showDetails,
                     ),
                   ],
