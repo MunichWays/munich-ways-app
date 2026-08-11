@@ -3,6 +3,51 @@ import 'dart:math';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
 
+/// Holds turn guidance until movement establishes the initial travel direction.
+class NavigationOrientationGate {
+  NavigationOrientationGate({
+    this.minimumMovementMeters = 8,
+    this.maximumAccuracyThresholdMeters = 15,
+  });
+
+  final double minimumMovementMeters;
+  final double maximumAccuracyThresholdMeters;
+
+  LatLng? _anchor;
+  bool _directionEstablished = false;
+
+  void reset([LatLng? anchor]) {
+    _anchor = anchor;
+    _directionEstablished = false;
+  }
+
+  bool isWaiting(
+    LatLng position, {
+    required double horizontalAccuracyMeters,
+    required double speedMetersPerSecond,
+  }) {
+    if (_directionEstablished) return false;
+    final anchor = _anchor;
+    if (anchor == null) {
+      _anchor = position;
+      return true;
+    }
+
+    final accuracy = horizontalAccuracyMeters.isFinite
+        ? horizontalAccuracyMeters.clamp(
+            minimumMovementMeters,
+            maximumAccuracyThresholdMeters,
+          )
+        : minimumMovementMeters;
+    final distance = const Distance().as(LengthUnit.Meter, anchor, position);
+    final moving = speedMetersPerSecond.isFinite && speedMetersPerSecond >= 1;
+    if ((moving && distance >= accuracy) || distance >= accuracy * 2) {
+      _directionEstablished = true;
+    }
+    return !_directionEstablished;
+  }
+}
+
 /// Turns OSRM maneuvers and GPS positions into one-shot spoken instructions.
 ///
 /// Distances are measured along the route, rather than directly to the
@@ -175,6 +220,7 @@ class VoiceGuidance {
       return VoiceGuidanceDisplay(
         text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
+        isFinalDestination: !_isIntermediateArrival(arrivalIndex),
       );
     }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
@@ -748,19 +794,22 @@ class VoiceGuidanceDisplay {
     required this.text,
     required this.type,
     this.modifier,
+    this.isFinalDestination = false,
   });
 
   final String text;
   final String type;
   final String? modifier;
+  final bool isFinalDestination;
 
   @override
   bool operator ==(Object other) =>
       other is VoiceGuidanceDisplay &&
       text == other.text &&
       type == other.type &&
-      modifier == other.modifier;
+      modifier == other.modifier &&
+      isFinalDestination == other.isFinalDestination;
 
   @override
-  int get hashCode => Object.hash(text, type, modifier);
+  int get hashCode => Object.hash(text, type, modifier, isFinalDestination);
 }

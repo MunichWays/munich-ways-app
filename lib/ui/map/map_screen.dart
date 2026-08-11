@@ -135,6 +135,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final VoiceGuidance _voiceGuidance = VoiceGuidance(
     announceOffRouteWarning: false,
   );
+  final NavigationOrientationGate _navigationOrientationGate =
+      NavigationOrientationGate();
   VoiceGuidanceDisplay? _nextManeuver;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
@@ -297,6 +299,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
+    _navigationOrientationGate.reset();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting();
     if (_nextManeuver != null) {
@@ -377,6 +380,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         });
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
+          _navigationOrientationGate.reset();
           _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
@@ -1156,24 +1160,40 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     _armVoiceSignalWarning(model);
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    if (!model.navigationStarted) {
+      _navigationOrientationGate.reset();
+    }
     _voiceGuidance.setRoute(
       model.navigationStarted ? model.route.route : null,
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
     _updateAutomaticRerouting(model, rawPosition, position);
+    final waitingForInitialDirection = model.navigationStarted &&
+        _navigationOrientationGate.isWaiting(
+          rawPosition,
+          horizontalAccuracyMeters: position.accuracy,
+          speedMetersPerSecond: position.speed,
+        );
     final nextManeuver = model.navigationStarted
-        ? _reroutingDisplay ??
-            _voiceGuidance.display(
-              rawPosition,
-              english: context.l10n.isEnglish,
-              speedMetersPerSecond: position.speed,
-            )
+        ? waitingForInitialDirection
+            ? VoiceGuidanceDisplay(
+                text: context.l10n.followRouteOnMap,
+                type: 'map',
+              )
+            : _reroutingDisplay ??
+                _voiceGuidance.display(
+                  rawPosition,
+                  english: context.l10n.isEnglish,
+                  speedMetersPerSecond: position.speed,
+                )
         : null;
     if (nextManeuver != _nextManeuver) {
       setState(() => _nextManeuver = nextManeuver);
     }
-    if (model.navigationStarted && model.voiceGuidanceEnabled) {
+    if (model.navigationStarted &&
+        model.voiceGuidanceEnabled &&
+        !waitingForInitialDirection) {
       final instruction = _voiceGuidance.update(
         rawPosition,
         english: context.l10n.isEnglish,
@@ -1472,6 +1492,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    final initialPosition = _latestPosition;
+    _navigationOrientationGate.reset(
+      initialPosition == null ||
+              !initialPosition.latitude.isFinite ||
+              !initialPosition.longitude.isFinite
+          ? null
+          : latlong2.LatLng(
+              initialPosition.latitude,
+              initialPosition.longitude,
+            ),
+    );
     _armVoiceSignalWarning(model);
     await _requestNavigationNotificationPermission();
     if (!mounted) return;

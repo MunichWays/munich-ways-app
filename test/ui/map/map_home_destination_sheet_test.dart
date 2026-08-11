@@ -6,6 +6,7 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_home_destination_sheet.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 class _EmptyFavoritesStore extends RecentSearchesStore {
   @override
@@ -77,7 +78,7 @@ void main() {
     expect(tester.getSize(destinationField).height, greaterThanOrEqualTo(48));
     expect(
       tester.widget<Material>(destinationField).color,
-      Colors.grey.shade200,
+      AppColors.uiPrimary,
     );
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);

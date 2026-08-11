@@ -9,6 +9,8 @@ import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/voice_guidance.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 void main() {
   testWidgets('left-side controls include the position button', (tester) async {
@@ -89,6 +91,59 @@ void main() {
     final button = find.bySemanticsLabel('Route beenden');
     expect(button, findsOneWidget);
     expect(tester.getSize(button), const Size.square(56));
+  });
+
+  testWidgets('destination arrival offers a hero finish action',
+      (tester) async {
+    var ended = false;
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            nextManeuver: const VoiceGuidanceDisplay(
+              text: 'Ziel erreicht',
+              type: 'arrive',
+              isFinalDestination: true,
+            ),
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () => ended = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.close), findsNothing);
+    expect(find.byIcon(Icons.sports_score), findsOneWidget);
+    final finishButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Beenden'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(
+      finishButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.munichWaysOrange,
+    );
+    expect(
+      finishButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      AppColors.heroForeground,
+    );
+
+    await tester.tap(find.text('Beenden'));
+    expect(ended, isTrue);
   });
 
   testWidgets('route edit and refresh buttons have explicit labels',
@@ -234,7 +289,7 @@ void main() {
     );
 
     expect(find.byIcon(Icons.map_outlined), findsOneWidget);
-    expect(find.text('Karte beachten'), findsOneWidget);
+    expect(find.text('Auf Karte achten'), findsOneWidget);
   });
 }
 

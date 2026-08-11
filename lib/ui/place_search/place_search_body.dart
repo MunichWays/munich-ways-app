@@ -425,7 +425,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                       backgroundColor: route.isFavorite
                           ? AppColors.favoriteHighlight
                           : Colors.white,
-                      foregroundColor: AppColors.munichWaysBlue,
+                      foregroundColor: AppColors.uiPrimary,
                       fixedSize: const Size.square(24),
                       shape: const CircleBorder(),
                     ),
@@ -689,7 +689,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                             backgroundColor: highlighted
                                 ? AppColors.favoriteHighlight
                                 : Colors.white,
-                            foregroundColor: AppColors.munichWaysBlue,
+                            foregroundColor: AppColors.uiPrimary,
                             fixedSize: Size.square(compact ? 24 : 28),
                             shape: const CircleBorder(),
                           ),

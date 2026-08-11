@@ -56,6 +56,19 @@ void main() {
     expect(find.text('Bahnhof'), findsOneWidget);
     expect(find.text('Nicht sichtbar'), findsNothing);
 
+    expect(
+      tester
+          .widget<Material>(
+            find.byKey(const ValueKey('map-destination-search-button')),
+          )
+          .color,
+      AppColors.uiPrimary,
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.search)).color,
+      Colors.white,
+    );
+
     final longLabel = tester.widget<Text>(
       find.text('Sehr lange Adresse Nummer eins'),
     );
@@ -66,7 +79,7 @@ void main() {
         (widget) =>
             widget is FilledButton &&
             widget.style?.backgroundColor?.resolve(<WidgetState>{}) ==
-                AppColors.favoriteHighlight,
+                AppColors.secondaryButtonBackground,
       ),
       findsNWidgets(3),
     );

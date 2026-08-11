@@ -452,7 +452,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
               padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
               child: Material(
                 key: const ValueKey('map-destination-search-field'),
-                color: Colors.grey.shade200,
+                color: AppColors.uiPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -463,14 +463,18 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                     padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
                     child: Row(
                       children: [
-                        const Icon(Icons.search),
+                        Icon(
+                          Icons.search,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w500),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                         ),
                       ],
                     ),
@@ -570,7 +574,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             child: TextButton.icon(
               onPressed: () => _runAction(widget.onPlanRoute),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.munichWaysBlue,
+                foregroundColor: AppColors.uiPrimary,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               ),
@@ -591,7 +595,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
               child: TextButton.icon(
                 onPressed: _selectOnMap,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.munichWaysBlue,
+                  foregroundColor: AppColors.uiPrimary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 ),
@@ -642,13 +646,13 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             if (index > 0) const SizedBox(width: 6),
             Expanded(
               child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.favoriteHighlight,
-                  foregroundColor: Theme.of(context).colorScheme.onSurface,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size.fromHeight(44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                style: AppButtonStyles.secondary(context).merge(
+                  FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
                 onPressed: () =>

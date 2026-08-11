@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:munich_ways/api/mapillary/mapillary_api_v4.dart' as api;
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MapillaryImage extends StatelessWidget {
@@ -65,7 +66,7 @@ class MapillaryImage extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
+              foregroundColor: AppColors.uiPrimary,
             ),
             child: Text(context.l10n.tr('Mapillary öffnen')),
           ),

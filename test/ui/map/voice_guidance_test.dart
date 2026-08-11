@@ -16,6 +16,56 @@ void main() {
         maneuvers: [maneuver],
       );
 
+  test('holds initial guidance until movement establishes direction', () {
+    final gate = NavigationOrientationGate()..reset(start);
+
+    expect(
+      gate.isWaiting(
+        start,
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14005, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+      ),
+      isFalse,
+    );
+  });
+
+  test('uses a distance fallback when GPS speed is unavailable', () {
+    final gate = NavigationOrientationGate()..reset(start);
+
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 8,
+        speedMetersPerSecond: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14016, 11.5700),
+        horizontalAccuracyMeters: 8,
+        speedMetersPerSecond: 0,
+      ),
+      isFalse,
+    );
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(

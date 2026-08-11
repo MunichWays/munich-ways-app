@@ -77,6 +77,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
               type: 'map',
             )
         : null;
+    final destinationReached = guidanceDisplay?.isFinalDestination ?? false;
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
@@ -284,7 +285,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                closeAction,
+                if (!destinationReached) closeAction,
                 const Spacer(),
                 editAction,
                 if (showVoiceAction) ...[
@@ -295,6 +296,29 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 refreshAction,
               ],
             ),
+            if (destinationReached) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: AppButtonStyles.hero(context).merge(
+                    FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(54),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      textStyle: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  onPressed: onEndRoute,
+                  icon: const Icon(Icons.sports_score, size: 24),
+                  label: Text(context.l10n.isEnglish ? 'Finish' : 'Beenden'),
+                ),
+              ),
+            ],
             if (route.state == MapRouteState.SHOWN &&
                 route.route != null &&
                 !model.navigationStarted &&
@@ -303,16 +327,16 @@ class MapNavigationHeaderBar extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.munichWaysYellow,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(54),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    textStyle: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  style: AppButtonStyles.hero(context).merge(
+                    FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(54),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      textStyle: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   onPressed: onStartNavigation,

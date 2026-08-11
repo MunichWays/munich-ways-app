@@ -583,7 +583,7 @@ void main() {
     );
     expect(
       detailsButton.style?.foregroundColor?.resolve(<WidgetState>{}),
-      AppColors.munichWaysBlue,
+      AppColors.uiPrimary,
     );
 
     await tester.tap(find.byTooltip('Vollständige Adresse anzeigen'));

@@ -85,7 +85,8 @@ class AppLocalizations {
       : 'BRouter wird nur zur Routenberechnung verwendet. Abbiegehinweise und '
           'Sprachansagen sind nicht verfügbar, da BRouter keine ausreichend '
           'zuverlässigen Abbiegedaten liefert.';
-  String get followRouteOnMap => isEnglish ? 'Follow map' : 'Karte beachten';
+  String get followRouteOnMap =>
+      isEnglish ? 'Watch the map' : 'Auf Karte achten';
   String get routePlanningInfo => isEnglish
       ? 'Standard finds low-stress cycling routes whenever possible. '
           'Outside Upper Bavaria, or if the routing service is unavailable, '

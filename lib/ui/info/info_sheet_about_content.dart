@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -152,7 +153,7 @@ class _LegalLink extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: Colors.black87,
+        foregroundColor: AppColors.uiPrimary,
         textStyle: Theme.of(context).textTheme.bodyMedium,
         padding: EdgeInsets.zero,
         alignment: Alignment.centerLeft,

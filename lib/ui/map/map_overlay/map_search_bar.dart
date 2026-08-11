@@ -92,7 +92,8 @@ class _MapSearchBarState extends State<MapSearchBar> {
   @override
   Widget build(BuildContext context) {
     final search = Material(
-      color: Theme.of(context).colorScheme.surface,
+      key: const ValueKey('map-destination-search-button'),
+      color: AppColors.uiPrimary,
       elevation: 5,
       shadowColor: Colors.black38,
       borderRadius: BorderRadius.circular(28),
@@ -106,12 +107,18 @@ class _MapSearchBarState extends State<MapSearchBar> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               children: [
-                const Icon(Icons.search),
+                Icon(
+                  Icons.search,
+                  color: Colors.white,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                    style: const TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
@@ -141,10 +148,10 @@ class _MapSearchBarState extends State<MapSearchBar> {
 
   Widget _favoriteButton(BuildContext context, Place favorite) {
     return FilledButton(
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.favoriteHighlight,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+      style: AppButtonStyles.secondary(context).merge(
+        FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+        ),
       ),
       onPressed: () => widget.model.setDestination(favorite),
       child: Text(
