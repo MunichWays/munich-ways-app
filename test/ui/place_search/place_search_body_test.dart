@@ -807,7 +807,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Lieblingsroute'), findsOneWidget);
+    expect(find.text('Lieblingsroute'), findsNWidgets(2));
 
     final highlightedMaterial = find.ancestor(
       of: find.text('Home'),
@@ -818,11 +818,10 @@ void main() {
     );
     expect(highlightedMaterial, findsOneWidget);
 
+    final favoriteRoute = find.byKey(const ValueKey('route-Lieblingsroute'));
+    expect(favoriteRoute, findsOneWidget);
     final highlightedRoute = tester.widget<ListTile>(
-      find.ancestor(
-        of: find.text('Lieblingsroute'),
-        matching: find.byType(ListTile),
-      ),
+      find.descendant(of: favoriteRoute, matching: find.byType(ListTile)),
     );
     expect(highlightedRoute.tileColor, AppColors.favoriteHighlight);
   });
