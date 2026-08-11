@@ -105,11 +105,12 @@ platform :ios do
     # session. We're authenticating via ASC API key instead, so force manual signing
     # at archive time using the certificate/profile cert+sigh just installed.
     # CredentialsManager::AppfileConfig.try_fetch_value(:team_id) returns nil in CI despite
-    # Appfile having the same value there as locally. team_id isn't a secret (it's already
-    # plaintext in the committed Appfile) — read it from there directly rather than
-    # duplicating it as a separate literal that could drift out of sync.
-    team_id = File.read(File.join(__dir__, "Appfile"))[/^team_id\s+"([^"]+)"/, 1]
-    UI.user_error!("Could not read team_id from Appfile") if team_id.to_s.empty?
+    # Appfile having the same value there as locally. Reading Appfile's content via __dir__
+    # isn't reliable either — fastlane evaluates the Fastfile in a context where relative
+    # paths like "./Appfile" don't resolve the way plain Ruby's __dir__ normally would (see
+    # https://docs.fastlane.tools/advanced/#directory-behavior). team_id isn't a secret
+    # (it's already plaintext in the committed Appfile) — hardcode it instead.
+    team_id = "J9FYFLM2K5"
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
