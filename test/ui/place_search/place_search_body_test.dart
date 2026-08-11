@@ -800,7 +800,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: PlaceSearchBody(model: model, showSavedRoutes: false),
+          body: PlaceSearchBody(model: model),
         ),
       ),
     );
