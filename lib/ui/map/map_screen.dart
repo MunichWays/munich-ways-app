@@ -2389,49 +2389,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
-  Future<void> _ensureRoutePointImage(
-    MapLibreMapController controller,
-    String imageName,
-    IconData icon,
-    Color color,
-  ) async {
-    if (_routePointImages.contains(imageName)) return;
-    await controller.addImage(
-      imageName,
-      await _createRoutePointImage(icon, color),
-    );
-    _routePointImages.add(imageName);
-  }
-
-  Future<Uint8List> _createRoutePointImage(IconData icon, Color color) async {
-    const size = 56.0;
-    const center = ui.Offset(size / 2, size / 2);
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    canvas.drawCircle(center, 27, ui.Paint()..color = Colors.white);
-    final iconPainter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          color: color,
-          fontSize: 38,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    iconPainter.paint(
-      canvas,
-      center - Offset(iconPainter.width / 2, iconPainter.height / 2),
-    );
-    final image =
-        await recorder.endRecording().toImage(size.toInt(), size.toInt());
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    return data!.buffer.asUint8List();
-  }
-
   Future<Uint8List> _createRouteDestinationFlagImage() async {
     const width = 80.0;
     const height = 92.0;
