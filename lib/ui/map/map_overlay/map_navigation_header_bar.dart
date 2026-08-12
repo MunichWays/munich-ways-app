@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -173,8 +174,14 @@ class MapNavigationHeaderBar extends StatelessWidget {
     }
 
     final refreshEnabled = route.state != MapRouteState.LOADING;
+    final navigationTrackingInterrupted = model.navigationStarted &&
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
     final refreshLabel = refreshEnabled
-        ? (context.l10n.isEnglish ? 'Recalculate route' : 'Route neu berechnen')
+        ? (navigationTrackingInterrupted
+            ? (context.l10n.isEnglish ? 'Resume' : 'Fortsetzen')
+            : (context.l10n.isEnglish
+                ? 'Recalculate route'
+                : 'Route neu berechnen'))
         : (context.l10n.isEnglish
             ? 'Calculating route'
             : 'Route wird berechnet');
@@ -185,30 +192,55 @@ class MapNavigationHeaderBar extends StatelessWidget {
       label: refreshLabel,
       onTap: refreshEnabled ? onRefreshRoute : null,
       excludeSemantics: true,
-      child: SizedBox.square(
-        dimension: 52,
-        child: IconButton.filled(
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.mapRouteColor,
-            disabledBackgroundColor: Colors.white54,
-            disabledForegroundColor: AppColors.mapRouteColor,
-          ),
-          padding: const EdgeInsets.all(10),
-          tooltip: refreshLabel,
-          onPressed: refreshEnabled ? onRefreshRoute : null,
-          icon: refreshEnabled
-              ? const Icon(Icons.refresh, size: 28)
-              : const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    color: AppColors.mapRouteColor,
-                    strokeWidth: 2.5,
-                  ),
+      child: navigationTrackingInterrupted
+          ? SizedBox.square(
+              dimension: 52,
+              child: IconButton.filled(
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.munichWaysOrange,
+                  foregroundColor: AppColors.heroForeground,
+                  disabledBackgroundColor:
+                      AppColors.munichWaysOrange.withValues(alpha: 0.55),
+                  disabledForegroundColor: AppColors.heroForeground,
                 ),
-        ),
-      ),
+                padding: const EdgeInsets.all(10),
+                tooltip: refreshLabel,
+                onPressed: refreshEnabled ? onRefreshRoute : null,
+                icon: refreshEnabled
+                    ? const Icon(Icons.refresh, size: 28)
+                    : const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          color: AppColors.heroForeground,
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+              ),
+            )
+          : SizedBox.square(
+              dimension: 52,
+              child: IconButton.filled(
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.mapRouteColor,
+                  disabledBackgroundColor: Colors.white54,
+                  disabledForegroundColor: AppColors.mapRouteColor,
+                ),
+                padding: const EdgeInsets.all(10),
+                tooltip: refreshLabel,
+                onPressed: refreshEnabled ? onRefreshRoute : null,
+                icon: refreshEnabled
+                    ? const Icon(Icons.refresh, size: 28)
+                    : const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: AppColors.mapRouteColor,
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+              ),
+            ),
     );
     final editLabel =
         context.l10n.isEnglish ? 'Edit route' : 'Route bearbeiten';
@@ -287,7 +319,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(
+          kMapHorizontalHolderClearance,
+          8,
+          kMapHorizontalHolderClearance,
+          8,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -297,12 +334,14 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
                 child: Row(
                   children: [
-                    Icon(
-                      _maneuverIcon(guidanceDisplay),
-                      size: 32,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
+                    if (guidanceDisplay.type != 'map') ...[
+                      Icon(
+                        _maneuverIcon(guidanceDisplay),
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: Text(
                         guidanceDisplay.text,

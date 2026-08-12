@@ -41,43 +41,50 @@ class MapBottomActionButtons extends StatelessWidget {
             ? kMapBottomActionRowExpandedPadding
             : kMapBottomActionRowCollapsedPadding);
     return Positioned(
-      left: 16,
-      right: 16,
+      left: 0,
+      right: 0,
       bottom: bottomInset,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (model.initialRatingsLoadFailed && onReloadNetwork != null) ...[
-            _WidthLimitedMapContent(
-              maxWidth: _maxLandscapeContentWidth,
-              child: FilledButton.icon(
-                onPressed: model.loading ? null : onReloadNetwork,
-                icon: model.loading
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh),
-                label: Text(context.l10n.reloadNetwork),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: kMapHorizontalHolderClearance,
+              ),
+              child: _WidthLimitedMapContent(
+                maxWidth: _maxLandscapeContentWidth,
+                child: FilledButton.icon(
+                  onPressed: model.loading ? null : onReloadNetwork,
+                  icon: model.loading
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: Text(context.l10n.reloadNetwork),
+                ),
               ),
             ),
             const SizedBox(height: 8),
           ],
           if (navigationBar case final bar?) ...[
-            _WidthLimitedMapContent(
-              maxWidth: _maxLandscapeContentWidth,
-              child: bar,
-            ),
+            SizedBox(width: double.infinity, child: bar),
             const SizedBox(height: 8),
           ],
           if (showSearch) ...[
-            _WidthLimitedMapContent(
-              maxWidth: _maxLandscapeContentWidth,
-              child: MapSearchBar(
-                model: model,
-                searchCenterProvider: searchCenterProvider,
-                onPlanRoute: onPlanRoute,
-                onSelectOnMap: onSelectOnMap,
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: kMapHorizontalHolderClearance,
+              ),
+              child: _WidthLimitedMapContent(
+                maxWidth: _maxLandscapeContentWidth,
+                child: MapSearchBar(
+                  model: model,
+                  searchCenterProvider: searchCenterProvider,
+                  onPlanRoute: onPlanRoute,
+                  onSelectOnMap: onSelectOnMap,
+                ),
               ),
             ),
             const SizedBox(height: 8),

@@ -70,11 +70,24 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _selectingFavorite = false;
   bool _showQuickChoices = false;
   bool _showHomeExtras = true;
+  double _preservedSheetSize = .28;
+  bool _restoringAfterParentUpdate = false;
 
   @override
   void didUpdateWidget(covariant MapHomeDestinationSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.attributionExpanded) _hidingAttribution = false;
+    _restoringAfterParentUpdate = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_sheetController.isAttached) {
+        _restoringAfterParentUpdate = false;
+        return;
+      }
+      if ((_sheetController.size - _preservedSheetSize).abs() > .005) {
+        _sheetController.jumpTo(_preservedSheetSize);
+      }
+      _restoringAfterParentUpdate = false;
+    });
   }
 
   @override
@@ -106,6 +119,9 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
 
   void _handleSheetSize() {
     if (!_sheetController.isAttached || _openingSearch) return;
+    if (!_restoringAfterParentUpdate) {
+      _preservedSheetSize = _sheetController.size;
+    }
     if (widget.attributionExpanded &&
         _sheetController.size > _compactSize + .02) {
       _hideAttribution();
@@ -135,6 +151,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
 
   void _handleFocus() {
     if (!_focusNode.hasFocus || !_sheetController.isAttached) return;
+    _preservedSheetSize = 1;
     _sheetController.animateTo(
       1,
       duration: const Duration(milliseconds: 140),
@@ -161,6 +178,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     if (!_sheetController.isAttached || _openingSearch) return;
     _hideAttribution();
     _openingSearch = true;
+    _preservedSheetSize = 1;
     await _sheetController.animateTo(
       1,
       duration: const Duration(milliseconds: 160),
@@ -228,6 +246,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     setState(() => _searching = false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_sheetController.isAttached) return;
+      _preservedSheetSize = _compactSize;
       unawaited(
         _sheetController.animateTo(
           _compactSize,
@@ -319,6 +338,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         _openingSearch = false;
         return;
       }
+      _preservedSheetSize = _compactSize;
       await _sheetController.animateTo(
         _compactSize,
         duration: const Duration(milliseconds: 160),
@@ -356,6 +376,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       _openingSearch = false;
       return;
     }
+    _preservedSheetSize = _compactSize;
     await _sheetController.animateTo(
       _compactSize,
       duration: const Duration(milliseconds: 160),

@@ -105,6 +105,23 @@ class VoiceGuidance {
         maximumRouteDistanceMeters + accuracyAllowance;
   }
 
+  /// Whether [position] is close to any part of the route. This deliberately
+  /// ignores the current guidance progress and is used only to recover after
+  /// an off-route episode, where the rider may rejoin slightly behind the
+  /// previous progress window.
+  bool isOnRouteAnywhere(
+    LatLng position, {
+    double horizontalAccuracyMeters = 0,
+  }) {
+    final route = _route;
+    if (route == null) return false;
+    final accuracyAllowance = horizontalAccuracyMeters.isFinite
+        ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
+        : 0;
+    return _projectOntoRoute(route.points, position).distanceFromRoute <=
+        maximumRouteDistanceMeters + accuracyAllowance;
+  }
+
   CycleRoute? _route;
   List<_GuidanceManeuver> _maneuvers = const [];
   int _index = 0;

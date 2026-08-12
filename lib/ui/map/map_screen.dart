@@ -98,6 +98,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
   static const _kRadlVorrangMinZoom = 8.0;
   static const _kGesamtnetzMinZoom = 13.0;
+  static const _kCurrentLocationSourceId = 'munichways_current_location';
+  static const _kCurrentLocationLayerId = 'munichways_current_location_dot';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
   /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
@@ -132,6 +134,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final Map<String, StreetDetails> _streetDetailsByLineId = {};
   bool _networkGeoJsonReady = false;
   bool _routeGeoJsonReady = false;
+  bool _currentLocationGeoJsonReady = false;
   final List<Symbol> _routePlanSymbols = [];
   latlong2.LatLng? _displayedRouteStartPoint;
   final Set<int> _routeWaypointImages = {};
@@ -167,6 +170,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Timer? _automaticRerouteTimer;
   bool _offRouteEpisodeActive = false;
   bool _automaticReroutingSuspended = false;
+  bool _offRouteCameraZoomedOut = false;
   int _consecutiveAutomaticReroutes = 0;
   double _onRouteDistanceSinceReroute = 0;
   latlong2.LatLng? _lastOnRoutePosition;
@@ -579,6 +583,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               }
                               _networkGeoJsonReady = false;
                               _routeGeoJsonReady = false;
+                              _currentLocationGeoJsonReady = false;
                               if (!mounted) return;
                               // Style rebuild clears native annotations; drop stale handles.
                               _routePlanSymbols.clear();
@@ -641,9 +646,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                  if (model.locationState == LocationState.FOLLOW ||
-                      model.locationState ==
-                          LocationState.FOLLOW_AND_ROTATE_MAP)
+                  if (model.locationState ==
+                          LocationState.FOLLOW_AND_ROTATE_MAP &&
+                      _movementHeadingAvailable)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: Center(
@@ -659,29 +664,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 ),
                               ],
                             ),
-                            child: SizedBox(
+                            child: const SizedBox(
                               width: 36,
                               height: 36,
-                              child: model.locationState ==
-                                          LocationState.FOLLOW_AND_ROTATE_MAP &&
-                                      _movementHeadingAvailable
-                                  ? const Icon(
-                                      Icons.navigation,
-                                      color: Color(0xff1976d2),
-                                      size: 25,
-                                    )
-                                  : const Center(
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: Color(0xff1976d2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: SizedBox(
-                                          width: 12,
-                                          height: 12,
-                                        ),
-                                      ),
-                                    ),
+                              child: Icon(
+                                Icons.navigation,
+                                color: Color(0xff1976d2),
+                                size: 25,
+                              ),
                             ),
                           ),
                         ),
@@ -762,7 +752,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                            top: _mapAttributionExpanded ? 26 : 6,
+                            top: _mapAttributionExpanded ? 36 : 28,
                             right: 12,
                             child: Material(
                               color: Colors.transparent,
@@ -1096,6 +1086,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       displayedPosition.longitude,
     );
     try {
+      await _showCurrentLocation(controller, mapPosition);
       final state = model.locationState;
       if (state != LocationState.FOLLOW &&
           state != LocationState.FOLLOW_AND_ROTATE_MAP) {
@@ -1159,6 +1150,41 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showCurrentLocation(
+    MapLibreMapController controller,
+    LatLng position,
+  ) async {
+    final geoJson = {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [position.longitude, position.latitude],
+          },
+          'properties': <String, dynamic>{},
+        },
+      ],
+    };
+    if (!_currentLocationGeoJsonReady) {
+      await controller.addGeoJsonSource(_kCurrentLocationSourceId, geoJson);
+      await controller.addCircleLayer(
+        _kCurrentLocationSourceId,
+        _kCurrentLocationLayerId,
+        const CircleLayerProperties(
+          circleRadius: 8,
+          circleColor: '#1976d2',
+          circleStrokeWidth: 4,
+          circleStrokeColor: '#ffffff',
+        ),
+      );
+      _currentLocationGeoJsonReady = true;
+      return;
+    }
+    await controller.setGeoJsonSource(_kCurrentLocationSourceId, geoJson);
+  }
+
   bool _hasReliableMovementHeading(Position position) =>
       hasReliableMovementHeading(
         accuracy: position.accuracy,
@@ -1208,6 +1234,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
+    _recoverGuidanceAfterReturningToRoute(model, rawPosition, position);
     final routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
             rawPosition,
@@ -1262,6 +1289,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         ));
       }
     }
+  }
+
+  void _recoverGuidanceAfterReturningToRoute(
+    MapScreenViewModel model,
+    latlong2.LatLng position,
+    Position gpsPosition,
+  ) {
+    if (!model.navigationStarted ||
+        (!_offRouteEpisodeActive && _reroutingDisplay == null) ||
+        !_voiceGuidance.isOnRouteAnywhere(
+          position,
+          horizontalAccuracyMeters: gpsPosition.accuracy,
+        )) {
+      return;
+    }
+
+    _voiceGuidance
+      ..reset()
+      ..setRoute(
+        model.route.route,
+        intermediateDestinationNames:
+            model.waypoints.map((place) => place.displayName).toList(),
+      );
+    _cancelAutomaticRerouting(resetAttempts: false);
+    unawaited(_restoreNavigationZoom(model));
   }
 
   void _updateAutomaticRerouting(
@@ -1427,6 +1479,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             : latlong2.LatLng(position.latitude, position.longitude),
       );
       _cancelAutomaticRerouting(resetAttempts: false);
+      await _restoreNavigationZoom(model);
       if (position != null) _refreshVoiceGuidance(model, position);
     }
     if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
@@ -1514,7 +1567,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       // Always use the same overview. Subtracting from the current zoom here
       // would zoom farther out after every repeated rerouting attempt.
-      await controller.animateCamera(CameraUpdate.zoomTo(_offRouteZoom));
+      _offRouteCameraZoomedOut = true;
+      await _scheduleCameraUpdate(CameraUpdate.zoomTo(_offRouteZoom));
     } catch (error, stackTrace) {
       log.d(
         'Zooming out after missing directions skipped while map is updating',
@@ -1522,6 +1576,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  Future<void> _restoreNavigationZoom(MapScreenViewModel model) async {
+    if (!_offRouteCameraZoomedOut ||
+        !model.navigationStarted ||
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
+      return;
+    }
+    await _scheduleCameraUpdate(CameraUpdate.zoomTo(_navigationStartZoom));
+    _offRouteCameraZoomedOut = false;
   }
 
   void _offerInitialRatingsReload(MapScreenViewModel model) {
@@ -1568,6 +1632,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _startNavigation(MapScreenViewModel model) async {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    _offRouteCameraZoomedOut = false;
     final initialPosition = _latestPosition;
     _navigationOrientationGate.reset(
       initialPosition == null ||

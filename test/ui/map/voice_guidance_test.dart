@@ -66,6 +66,24 @@ void main() {
     );
   });
 
+  test('recognizes route re-entry behind the previous guidance progress', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        routeWith(
+          const RouteManeuver(
+            location: turn,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ),
+      );
+
+    guidance.display(const LatLng(48.1413, 11.5700), english: false);
+
+    expect(guidance.isOffRoute(start), isTrue);
+    expect(guidance.isOnRouteAnywhere(start), isTrue);
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(
