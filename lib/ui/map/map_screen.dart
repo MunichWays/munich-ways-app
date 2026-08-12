@@ -71,7 +71,8 @@ bool hasReliableMovementHeading({
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
-  static const _offRouteAnnouncementDelay = Duration(seconds: 10);
+  static const _offRouteDisplayDelay = Duration(seconds: 2);
+  static const _offRouteAnnouncementDelay = Duration(seconds: 12);
   static const _automaticRerouteDelay = Duration(seconds: 30);
   static const _maximumConsecutiveReroutes = 3;
   static const _onRouteDistanceToResetReroutes = 100.0;
@@ -155,6 +156,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _movementHeadingAvailable = false;
   Timer? _movementHeadingFreshnessTimer;
   final FlutterTts _flutterTts = FlutterTts();
+  int _speechRequestGeneration = 0;
   final VoiceGuidance _voiceGuidance = VoiceGuidance(
     announceOffRouteWarning: false,
   );
@@ -166,6 +168,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   _RouteEndpointMove? _pendingRouteEndpointMove;
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
+  Timer? _offRouteDisplayTimer;
   Timer? _offRouteAnnouncementTimer;
   Timer? _automaticRerouteTimer;
   bool _offRouteEpisodeActive = false;
@@ -259,7 +262,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _movementHeadingFreshnessTimer?.cancel();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting(resetAttempts: false);
-    unawaited(_flutterTts.stop());
+    _stopVoiceGuidance();
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -292,9 +295,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _speak(String text, {required bool english}) async {
+    final generation = ++_speechRequestGeneration;
     try {
       await _flutterTts.setLanguage(english ? 'en-US' : 'de-DE');
+      if (generation != _speechRequestGeneration || !mounted) return;
       await _flutterTts.stop();
+      if (generation != _speechRequestGeneration || !mounted) return;
       await _flutterTts.speak(text, focus: true);
     } catch (error, stackTrace) {
       log.w(
@@ -303,6 +309,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _stopVoiceGuidance() {
+    // Invalidate announcements which are still awaiting TTS setup. A plain
+    // stop is insufficient: such a request could otherwise call speak after
+    // navigation has already ended.
+    _speechRequestGeneration++;
+    unawaited(_flutterTts.stop());
   }
 
   void _toggleVoiceGuidance(
@@ -319,7 +333,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _armVoiceSignalWarning(model);
     } else {
       _voiceSignalTimer?.cancel();
-      unawaited(_flutterTts.stop());
+      _stopVoiceGuidance();
     }
   }
 
@@ -331,7 +345,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (_nextManeuver != null) {
       setState(() => _nextManeuver = null);
     }
-    unawaited(_flutterTts.stop());
+    _stopVoiceGuidance();
     model.clearDestination();
     unawaited(_updateLocationStream(model));
     // Native tracking changes can finish without onCameraMove. Explicitly
@@ -411,7 +425,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
           }
-          unawaited(_flutterTts.stop());
+          _stopVoiceGuidance();
           final controller = _mapController;
           if (controller == null) return;
           if (!_isValidCoordinate(
@@ -1328,7 +1342,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       return;
     }
     _updateGpsMotionState(gpsPosition);
-    final isOffRoute = _voiceGuidance.isOffRoute(
+    final isOffRoute = _voiceGuidance.isOffRouteForRerouting(
       routePosition,
       horizontalAccuracyMeters: gpsPosition.accuracy,
     );
@@ -1346,12 +1360,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (_offRouteEpisodeActive) return;
 
     _offRouteEpisodeActive = true;
-    _setReroutingDisplay(
-      context.l10n.isEnglish
-          ? 'Route left or no GPS signal'
-          : 'Route verlassen oder kein GPS-Signal',
-    );
-    unawaited(_zoomOutAfterMissingDirections());
+    _offRouteDisplayTimer = Timer(_offRouteDisplayDelay, () {
+      if (!_stillOffRoute(model)) return;
+      _setReroutingDisplay(
+        context.l10n.isEnglish
+            ? 'Route left or no GPS signal'
+            : 'Route verlassen oder kein GPS-Signal',
+      );
+      unawaited(_zoomOutAfterMissingDirections());
+    });
 
     // Three consecutive recalculations only pause automation for this
     // navigation. While paused, keep the map status useful but do not annoy a
@@ -1434,7 +1451,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         position.accuracy.isFinite &&
         position.accuracy <= 50 &&
         !_gpsStationary &&
-        _voiceGuidance.isOffRoute(
+        _voiceGuidance.isOffRouteForRerouting(
           latlong2.LatLng(position.latitude, position.longitude),
           horizontalAccuracyMeters: position.accuracy,
         );
@@ -1546,8 +1563,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _cancelAutomaticRerouting({bool resetAttempts = true}) {
+    _offRouteDisplayTimer?.cancel();
     _offRouteAnnouncementTimer?.cancel();
     _automaticRerouteTimer?.cancel();
+    _offRouteDisplayTimer = null;
     _offRouteAnnouncementTimer = null;
     _automaticRerouteTimer = null;
     _offRouteEpisodeActive = false;

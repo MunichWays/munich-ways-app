@@ -105,6 +105,24 @@ class VoiceGuidance {
         maximumRouteDistanceMeters + accuracyAllowance;
   }
 
+  /// Whether the rider is spatially outside the complete route.
+  ///
+  /// Unlike [isOffRoute], this ignores monotonic guidance progress. It is the
+  /// appropriate signal for user-visible route-left and rerouting states: a
+  /// corrected GPS fix on an earlier route section must not cause an alert.
+  bool isOffRouteForRerouting(
+    LatLng position, {
+    double horizontalAccuracyMeters = 0,
+  }) =>
+      isOffRoute(
+        position,
+        horizontalAccuracyMeters: horizontalAccuracyMeters,
+      ) &&
+      !isOnRouteAnywhere(
+        position,
+        horizontalAccuracyMeters: horizontalAccuracyMeters,
+      );
+
   /// Whether [position] is close to any part of the route. This deliberately
   /// ignores the current guidance progress and is used only to recover after
   /// an off-route episode, where the rider may rejoin slightly behind the

@@ -319,12 +319,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          kMapHorizontalHolderClearance,
-          8,
-          kMapHorizontalHolderClearance,
-          8,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -365,28 +360,38 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ],
                 ),
               ),
-            Center(child: stats),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (!destinationReached) closeAction,
-                const Spacer(),
-                editAction,
-                if (showVoiceAction) ...[
+            SizedBox(width: double.infinity, child: Center(child: stats)),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: kMapHorizontalHolderClearance,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (!destinationReached) closeAction,
+                  const Spacer(),
+                  editAction,
+                  if (showVoiceAction) ...[
+                    const SizedBox(width: 10),
+                    voiceAction,
+                  ],
                   const SizedBox(width: 10),
-                  voiceAction,
+                  refreshAction,
                 ],
-                const SizedBox(width: 10),
-                refreshAction,
-              ],
+              ),
             ),
             if (destinationReached) ...[
               const SizedBox(height: 8),
-              _heroAction(
-                context,
-                label: context.l10n.isEnglish ? 'Finish' : 'Beenden',
-                icon: Icons.sports_score,
-                onPressed: onEndRoute,
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: kMapHorizontalHolderClearance,
+                ),
+                child: _heroAction(
+                  context,
+                  label: context.l10n.isEnglish ? 'Finish' : 'Beenden',
+                  icon: Icons.sports_score,
+                  onPressed: onEndRoute,
+                ),
               ),
             ],
             if (route.state == MapRouteState.SHOWN &&
@@ -394,11 +399,16 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 !model.navigationStarted &&
                 model.routeStart == null) ...[
               const SizedBox(height: 8),
-              _heroAction(
-                context,
-                label: context.l10n.tr('Starten'),
-                icon: Icons.navigation,
-                onPressed: onStartNavigation,
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: kMapHorizontalHolderClearance,
+                ),
+                child: _heroAction(
+                  context,
+                  label: context.l10n.tr('Starten'),
+                  icon: Icons.navigation,
+                  onPressed: onStartNavigation,
+                ),
               ),
             ],
           ],

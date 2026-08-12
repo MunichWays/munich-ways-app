@@ -78,7 +78,11 @@ void main() {
         ),
       );
 
-    guidance.display(const LatLng(48.1413, 11.5700), english: false);
+    // Stay clearly outside the 20 m destination radius while advancing more
+    // than the 120 m local guidance window.
+    guidance
+      ..display(turn, english: false)
+      ..display(const LatLng(48.14125, 11.5700), english: false);
 
     expect(guidance.isOffRoute(start), isTrue);
     expect(guidance.isOnRouteAnywhere(start), isTrue);
@@ -616,6 +620,36 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('off-route detection checks the whole route after progress advanced', () {
+    const routeStart = LatLng(48.1400, 11.5700);
+    const routeMiddle = LatLng(48.1410, 11.5700);
+    const routeEnd = LatLng(48.1420, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [routeStart, routeMiddle, routeEnd],
+        220,
+        50,
+        maneuvers: const [
+          RouteManeuver(
+            location: routeEnd,
+            type: 'turn',
+            modifier: 'left',
+          ),
+        ],
+      ));
+
+    // Establish progress near the end, then simulate a corrected GPS fix on
+    // an earlier portion of the same route. This must not create a false
+    // off-route episode merely because guidance progress is monotonic.
+    guidance
+      ..display(routeMiddle, english: false)
+      ..display(const LatLng(48.14175, 11.5700), english: false);
+
+    expect(guidance.isOffRoute(routeStart), isTrue);
+    expect(guidance.isOnRouteAnywhere(routeStart), isTrue);
+    expect(guidance.isOffRouteForRerouting(routeStart), isFalse);
   });
 
   test('does not jump to a later route section on another OSM level', () {
