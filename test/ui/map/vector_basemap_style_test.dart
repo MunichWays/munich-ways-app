@@ -44,4 +44,18 @@ void main() {
       expect(poiLayer['filter'].toString(), contains('cycle_barrier'));
     }
   });
+
+  test('does not show unfiltered drinking-water vector-tile POIs', () {
+    final style = jsonDecode(
+      File('assets/map/osm_openmaptiles_style.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final layers =
+        (style['layers'] as List<dynamic>).cast<Map<String, dynamic>>();
+
+    expect(
+      layers.where(
+          (layer) => layer['id'].toString().startsWith('poi_drinking_water')),
+      isEmpty,
+    );
+  });
 }

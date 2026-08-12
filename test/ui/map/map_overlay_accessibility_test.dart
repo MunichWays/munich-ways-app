@@ -9,6 +9,8 @@ import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/voice_guidance.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 void main() {
   testWidgets('left-side controls include the position button', (tester) async {
@@ -51,7 +53,8 @@ void main() {
           body: Center(
             child: MapOverlayButton(
               tooltip: 'Vergrößern',
-              size: 56,
+              size: 40,
+              tapTargetSize: 56,
               onPressed: () {},
               child: const Icon(Icons.add),
             ),
@@ -91,6 +94,63 @@ void main() {
     expect(tester.getSize(button), const Size.square(56));
   });
 
+  testWidgets('destination arrival offers a hero finish action',
+      (tester) async {
+    var ended = false;
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            nextManeuver: const VoiceGuidanceDisplay(
+              text: 'Ziel erreicht',
+              type: 'arrive',
+              isFinalDestination: true,
+            ),
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () => ended = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.close), findsNothing);
+    expect(find.byIcon(Icons.sports_score), findsOneWidget);
+    expect(
+      tester.getSize(find.bySemanticsLabel('Beenden')).width,
+      greaterThan(180),
+    );
+    final finishButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Beenden'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(
+      finishButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.munichWaysOrange,
+    );
+    expect(
+      finishButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      AppColors.heroForeground,
+    );
+
+    await tester.tap(find.bySemanticsLabel('Beenden'));
+    expect(ended, isTrue);
+  });
+
   testWidgets('route edit and refresh buttons have explicit labels',
       (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore())
@@ -117,6 +177,40 @@ void main() {
 
     expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
     expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
+  });
+
+  testWidgets('passive follow-map hint has no button-like map icon',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            nextManeuver: const VoiceGuidanceDisplay(
+              text: 'Karte beachten',
+              type: 'map',
+            ),
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Karte beachten'), findsOneWidget);
+    expect(find.byIcon(Icons.map_outlined), findsNothing);
   });
 
   testWidgets('navigation actions use large evenly spaced tap targets',
@@ -162,6 +256,56 @@ void main() {
       tester.getCenter(refresh).dx - tester.getCenter(voice).dx,
       closeTo(62, 0.1),
     );
+  });
+
+  testWidgets('interrupted navigation offers a prominent resume action',
+      (tester) async {
+    var resumed = false;
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    model.onUserStoppedFollowingLocation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: MapNavigationHeaderBar(
+              model: model,
+              onRefreshRoute: () async => resumed = true,
+              onEditRoute: () {},
+              onStartNavigation: () async {},
+              onToggleVoiceGuidance: () {},
+              onEndRoute: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final resume = find.bySemanticsLabel('Fortsetzen');
+    expect(resume, findsOneWidget);
+    expect(find.text('Fortsetzen'), findsNothing);
+    expect(tester.getSize(resume), const Size.square(52));
+    final button = tester.widget<IconButton>(
+      find.descendant(
+        of: resume,
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(
+      button.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.munichWaysOrange,
+    );
+
+    await tester.tap(resume);
+    expect(resumed, isTrue);
   });
 
   testWidgets('route stats share a full row above the action buttons',
@@ -233,8 +377,10 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.map_outlined), findsOneWidget);
-    expect(find.text('Karte beachten'), findsOneWidget);
+    // This is a passive status hint, not an action. Keep it text-only so it
+    // cannot be mistaken for one of the tappable map controls.
+    expect(find.byIcon(Icons.map_outlined), findsNothing);
+    expect(find.text('Auf Karte achten'), findsOneWidget);
   });
 }
 

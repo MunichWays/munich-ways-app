@@ -254,28 +254,6 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     );
   }
 
-  Future<void> _showPlannerInfo() {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(_english ? 'Plan route' : 'Route planen'),
-        content: Text(
-          _english
-              ? 'Optionally select a different start or intermediate stop. '
-                  'The default is your current position to the selected destination.'
-              : 'Optional anderen Startpunkt oder Zwischenziel wählen. '
-                  'Standard ist: Aktueller Standort zum gewählten Ziel.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(_english ? 'Close' : 'Schließen'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _saveRoute() async {
     final destination = _destination;
     if (destination == null) return;
@@ -375,27 +353,16 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   Expanded(
                     child: Text(
                       _english ? 'Plan route' : 'Route planen',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  IconButton(
+                  IconButton.filled(
                     constraints: const BoxConstraints.tightFor(
                       width: 40,
-                      height: 48,
+                      height: 40,
                     ),
-                    padding: const EdgeInsets.all(8),
-                    tooltip: 'Information',
-                    onPressed: _showPlannerInfo,
-                    icon: const Icon(Icons.info_outline),
-                  ),
-                  IconButton(
-                    constraints: const BoxConstraints.tightFor(
-                      width: 40,
-                      height: 48,
-                    ),
-                    padding: const EdgeInsets.all(8),
+                    style: AppButtonStyles.secondary(context),
                     tooltip: _english ? 'Save route' : 'Route speichern',
                     onPressed: _destination == null ? null : _saveRoute,
                     icon: const Icon(Icons.save_outlined),
@@ -441,6 +408,16 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                       _PlaceRow(
                         leading: _pointLeading(index),
                         value: _pointValue(index),
+                        backgroundColor: index == _points.length - 1
+                            ? point.place == null
+                                ? AppColors.uiPrimary
+                                : AppColors.secondaryButtonBackground
+                            : null,
+                        foregroundColor: index == _points.length - 1
+                            ? point.place == null
+                                ? Colors.white
+                                : AppColors.uiPrimary
+                            : null,
                         onTap: () => _selectPlace(index),
                         onEdit: () => _selectPlace(index),
                         onClear: index == 0 && point.place != null
@@ -458,6 +435,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
+              style: AppButtonStyles.primary(context),
               onPressed: _destination == null
                   ? null
                   : () {
@@ -486,6 +464,8 @@ class _PlaceRow extends StatelessWidget {
     required this.value,
     required this.onTap,
     required this.onEdit,
+    this.backgroundColor,
+    this.foregroundColor,
     this.onClear,
     this.onDelete,
   });
@@ -494,13 +474,23 @@ class _PlaceRow extends StatelessWidget {
   final String value;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
   final VoidCallback? onClear;
   final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: backgroundColor == null
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 8),
+      tileColor: backgroundColor,
+      textColor: foregroundColor,
+      iconColor: foregroundColor,
+      shape: backgroundColor == null
+          ? null
+          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       leading: SizedBox.square(
         dimension: 40,
         child: Center(child: leading),

@@ -155,14 +155,15 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
     }
   }
 
-  static const double _kSlotSize = 48;
+  static const double _kTapTargetSize = 56;
+  static const double _kVisualSize = 40;
 
   @override
   Widget build(BuildContext context) {
     final visible = widget.alwaysVisible || _visible;
     return SizedBox(
-      width: _kSlotSize,
-      height: _kSlotSize,
+      width: _kTapTargetSize,
+      height: _kTapTargetSize,
       child: IgnorePointer(
         ignoring: !visible,
         child: visible ? _buildVisibleCompass() : const SizedBox.shrink(),
@@ -174,45 +175,46 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
     final needleRadians = vector_math.radians(-widget.mapBearingDegrees.value);
     return Tooltip(
       message: 'Norden nach oben ausrichten',
-      child: Material(
-        color: Colors.black.withValues(alpha: 0.36),
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        shadowColor: Colors.transparent,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: () => unawaited(_onCompassPressed()),
-          child: SizedBox(
-            width: _kSlotSize,
-            height: _kSlotSize,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                IgnorePointer(
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white70, width: 1),
-                    ),
-                  ),
-                ),
-                Transform.rotate(
-                  angle: needleRadians,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => unawaited(_onCompassPressed()),
+        child: Center(
+          child: IgnorePointer(
+            child: SizedBox.square(
+              dimension: _kVisualSize,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.36),
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                shadowColor: Colors.transparent,
+                child: Stack(
                   alignment: Alignment.center,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6.0),
-                    child: ExcludeSemantics(
-                      child: Image.asset(
-                        'images/compass.png',
-                        fit: BoxFit.contain,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white70, width: 1),
                       ),
                     ),
-                  ),
+                    Transform.rotate(
+                      angle: needleRadians,
+                      alignment: Alignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.all(5),
+                        child: ExcludeSemantics(
+                          child: Image.asset(
+                            'images/compass.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

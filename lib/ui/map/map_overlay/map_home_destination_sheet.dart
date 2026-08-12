@@ -70,11 +70,24 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _selectingFavorite = false;
   bool _showQuickChoices = false;
   bool _showHomeExtras = true;
+  double _preservedSheetSize = .28;
+  bool _restoringAfterParentUpdate = false;
 
   @override
   void didUpdateWidget(covariant MapHomeDestinationSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.attributionExpanded) _hidingAttribution = false;
+    _restoringAfterParentUpdate = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_sheetController.isAttached) {
+        _restoringAfterParentUpdate = false;
+        return;
+      }
+      if ((_sheetController.size - _preservedSheetSize).abs() > .005) {
+        _sheetController.jumpTo(_preservedSheetSize);
+      }
+      _restoringAfterParentUpdate = false;
+    });
   }
 
   @override
@@ -106,6 +119,9 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
 
   void _handleSheetSize() {
     if (!_sheetController.isAttached || _openingSearch) return;
+    if (!_restoringAfterParentUpdate) {
+      _preservedSheetSize = _sheetController.size;
+    }
     if (widget.attributionExpanded &&
         _sheetController.size > _compactSize + .02) {
       _hideAttribution();
@@ -135,6 +151,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
 
   void _handleFocus() {
     if (!_focusNode.hasFocus || !_sheetController.isAttached) return;
+    _preservedSheetSize = 1;
     _sheetController.animateTo(
       1,
       duration: const Duration(milliseconds: 140),
@@ -161,6 +178,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     if (!_sheetController.isAttached || _openingSearch) return;
     _hideAttribution();
     _openingSearch = true;
+    _preservedSheetSize = 1;
     await _sheetController.animateTo(
       1,
       duration: const Duration(milliseconds: 160),
@@ -228,6 +246,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     setState(() => _searching = false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_sheetController.isAttached) return;
+      _preservedSheetSize = _compactSize;
       unawaited(
         _sheetController.animateTo(
           _compactSize,
@@ -319,6 +338,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         _openingSearch = false;
         return;
       }
+      _preservedSheetSize = _compactSize;
       await _sheetController.animateTo(
         _compactSize,
         duration: const Duration(milliseconds: 160),
@@ -356,6 +376,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       _openingSearch = false;
       return;
     }
+    _preservedSheetSize = _compactSize;
     await _sheetController.animateTo(
       _compactSize,
       duration: const Duration(milliseconds: 160),
@@ -452,7 +473,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
               padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
               child: Material(
                 key: const ValueKey('map-destination-search-field'),
-                color: Colors.grey.shade200,
+                color: AppColors.uiPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -463,14 +484,18 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                     padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
                     child: Row(
                       children: [
-                        const Icon(Icons.search),
+                        Icon(
+                          Icons.search,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w500),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                         ),
                       ],
                     ),
@@ -570,7 +595,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             child: TextButton.icon(
               onPressed: () => _runAction(widget.onPlanRoute),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.munichWaysBlue,
+                foregroundColor: AppColors.uiPrimary,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               ),
@@ -591,7 +616,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
               child: TextButton.icon(
                 onPressed: _selectOnMap,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.munichWaysBlue,
+                  foregroundColor: AppColors.uiPrimary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 ),
@@ -642,13 +667,13 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             if (index > 0) const SizedBox(width: 6),
             Expanded(
               child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.favoriteHighlight,
-                  foregroundColor: Theme.of(context).colorScheme.onSurface,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size.fromHeight(44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                style: AppButtonStyles.secondary(context).merge(
+                  FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
                 onPressed: () =>

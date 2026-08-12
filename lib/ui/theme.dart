@@ -9,6 +9,14 @@ class AppColors {
   static const munichWaysOrange = Color(0xFFFF6600);
   static const munichWaysGreen = Color(0xFF298A63);
 
+  // Fixed UI role colors.
+  static const heroForeground = Color(0xFF202124);
+  static const uiPrimary = Color(0xFF336699);
+  static const secondaryButtonBackground = Color(0xFFEAF2F8);
+  static const disabledBackground = Color(0xFFECEDEE);
+  static const disabledForeground = Color(0xFF5F6368);
+  static const danger = Color(0xFFC62828);
+
   static const mapBlack = Colors.black;
   static const mapGreen = Color(0xff27f5a5);
   static const mapYellow = Color(0xffffd000);
@@ -42,8 +50,52 @@ class AppColors {
   }
 }
 
+/// Shared visual hierarchy for app actions.
+///
+/// Orange is reserved for rare hero actions. Regular actions use the blue
+/// primary and secondary roles; quiet actions stay white or transparent.
+class AppButtonStyles {
+  static ButtonStyle hero(BuildContext _) => FilledButton.styleFrom(
+        backgroundColor: AppColors.munichWaysOrange,
+        foregroundColor: AppColors.heroForeground,
+        disabledBackgroundColor: AppColors.disabledBackground,
+        disabledForegroundColor: AppColors.disabledForeground,
+      );
+
+  static ButtonStyle primary(BuildContext _) => FilledButton.styleFrom(
+        backgroundColor: AppColors.uiPrimary,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: AppColors.disabledBackground,
+        disabledForegroundColor: AppColors.disabledForeground,
+      );
+
+  static ButtonStyle secondary(BuildContext _) => FilledButton.styleFrom(
+        backgroundColor: AppColors.secondaryButtonBackground,
+        foregroundColor: AppColors.uiPrimary,
+        disabledBackgroundColor: AppColors.disabledBackground,
+        disabledForegroundColor: AppColors.disabledForeground,
+      );
+
+  static ButtonStyle quiet(BuildContext _) => FilledButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.uiPrimary,
+        disabledBackgroundColor: AppColors.disabledBackground,
+        disabledForegroundColor: AppColors.disabledForeground,
+      );
+}
+
+final _appColorScheme = ColorScheme.fromSeed(
+  seedColor: AppColors.munichWaysBlue,
+).copyWith(
+  primary: AppColors.uiPrimary,
+  onPrimary: Colors.white,
+  secondary: AppColors.munichWaysBlue,
+  error: AppColors.danger,
+  onError: Colors.white,
+);
+
 var themeData = ThemeData(
   visualDensity: VisualDensity.adaptivePlatformDensity,
   useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(seedColor: AppColors.munichWaysBlue),
+  colorScheme: _appColorScheme,
 );

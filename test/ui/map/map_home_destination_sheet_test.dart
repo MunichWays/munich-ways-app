@@ -6,6 +6,7 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_home_destination_sheet.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 class _EmptyFavoritesStore extends RecentSearchesStore {
   @override
@@ -32,6 +33,53 @@ class _RoutesStore extends SavedRoutesStore {
 }
 
 void main() {
+  testWidgets('keeps minimal map mode across unrelated parent rebuilds',
+      (tester) async {
+    late StateSetter rebuildParent;
+    var searchCenter = const LatLng(48.1, 11.5);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              rebuildParent = setState;
+              return Stack(
+                children: [
+                  MapHomeDestinationSheet(
+                    searchCenter: searchCenter,
+                    onSelected: (_) {},
+                    onPlanRoute: () {},
+                    onSelectOnMap: () {},
+                    onShowInfo: () {},
+                    onToggleAttribution: () {},
+                    onShowSettings: () {},
+                    attributionExpanded: false,
+                    favoritesStore: _EmptyFavoritesStore(),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('Wohin?'), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    final sheet = tester.widget<DraggableScrollableSheet>(
+      find.byType(DraggableScrollableSheet),
+    );
+    expect(sheet.controller!.size, closeTo(.12, .01));
+
+    rebuildParent(() {
+      searchCenter = const LatLng(48.1001, 11.5001);
+    });
+    await tester.pumpAndSettle();
+
+    expect(sheet.controller!.size, closeTo(.12, .01));
+  });
+
   testWidgets('expands the home destination header into search',
       (tester) async {
     var selectOnMap = false;
@@ -77,7 +125,7 @@ void main() {
     expect(tester.getSize(destinationField).height, greaterThanOrEqualTo(48));
     expect(
       tester.widget<Material>(destinationField).color,
-      Colors.grey.shade200,
+      AppColors.uiPrimary,
     );
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);
@@ -145,6 +193,7 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsOneWidget);
+    expect(draggable.controller!.size, closeTo(1, .01));
     expect(tester.takeException(), isNull);
 
     expect(find.byTooltip('Schließen'), findsOneWidget);

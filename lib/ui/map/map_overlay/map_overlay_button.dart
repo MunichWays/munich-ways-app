@@ -14,6 +14,7 @@ class MapOverlayButton extends StatelessWidget {
     this.onPressed,
     this.circular = true,
     this.size = 48,
+    this.tapTargetSize,
     this.emphasizeActive = false,
     this.outlined = false,
     this.tooltip,
@@ -24,12 +25,14 @@ class MapOverlayButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool circular;
   final double size;
+  final double? tapTargetSize;
   final bool emphasizeActive;
   final bool outlined;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTapTargetSize = tapTargetSize ?? size;
     final borderRadius = circular ? size / 2 : 14.0;
     final borderSide = outlined
         ? const BorderSide(color: Color(0xFF616161), width: 1.5)
@@ -41,7 +44,7 @@ class MapOverlayButton extends StatelessWidget {
             side: borderSide,
           );
 
-    Widget core = Material(
+    final visual = Material(
       color: outlined
           ? Colors.transparent
           : isActive && emphasizeActive
@@ -68,6 +71,15 @@ class MapOverlayButton extends StatelessWidget {
             child: Center(child: child),
           ),
         ),
+      ),
+    );
+
+    Widget core = SizedBox.square(
+      dimension: effectiveTapTargetSize,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: Center(child: visual),
       ),
     );
 

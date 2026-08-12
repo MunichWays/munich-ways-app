@@ -15,7 +15,7 @@ class _SettingsStore extends SettingsStore {
 }
 
 void main() {
-  testWidgets('uses compact info, menus, and recalculates roles after reorder',
+  testWidgets('uses compact menus and recalculates roles after reorder',
       (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())
       ..routeStart = Place('Anfang', const LatLng(48.1, 11.5))
@@ -46,16 +46,35 @@ void main() {
     expect(draggable.snapSizes, [0.55, 1]);
     expect(find.byType(BottomSheetDragHandle), findsOneWidget);
 
-    expect(find.textContaining('Optional anderen Startpunkt'), findsNothing);
-    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsNothing);
     expect(find.byIcon(Icons.save_outlined), findsOneWidget);
+    final saveButton = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.save_outlined),
+    );
+    expect(
+      saveButton.style?.backgroundColor?.resolve({}),
+      AppColors.secondaryButtonBackground,
+    );
+    expect(
+      saveButton.style?.foregroundColor?.resolve({}),
+      AppColors.uiPrimary,
+    );
+    expect(
+      saveButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
+      AppColors.disabledBackground,
+    );
+    expect(
+      saveButton.style?.foregroundColor?.resolve({WidgetState.disabled}),
+      AppColors.disabledForeground,
+    );
     expect(find.byTooltip('Schließen'), findsOneWidget);
+    final title = tester.widget<Text>(find.text('Route planen'));
+    expect(title.maxLines, 2);
+    expect(title.overflow, isNull);
     final titleRight = tester.getTopRight(find.text('Route planen')).dx;
-    final infoLeft = tester.getTopLeft(find.byIcon(Icons.info_outline)).dx;
     final saveLeft = tester.getTopLeft(find.byIcon(Icons.save_outlined)).dx;
     final closeLeft = tester.getTopLeft(find.byIcon(Icons.close).first).dx;
-    expect(infoLeft - titleRight, lessThan(20));
-    expect(saveLeft, greaterThan(infoLeft + 30));
+    expect(saveLeft - titleRight, lessThan(20));
     expect(closeLeft, greaterThan(saveLeft + 30));
     expect(
       tester.widget<Icon>(find.byIcon(Icons.navigation)).color,
@@ -66,12 +85,22 @@ void main() {
       AppColors.mapRed,
     );
     expect(find.text('1'), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.info_outline));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Optional anderen Startpunkt'), findsOneWidget);
-    await tester.tap(find.text('Schließen'));
-    await tester.pumpAndSettle();
+    final destinationRow = tester.widget<ListTile>(
+      find.ancestor(of: find.text('Ende'), matching: find.byType(ListTile)),
+    );
+    expect(destinationRow.tileColor, AppColors.secondaryButtonBackground);
+    expect(destinationRow.textColor, AppColors.uiPrimary);
+    final calculateButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Route berechnen'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(
+      calculateButton.style?.backgroundColor?.resolve({}),
+      AppColors.uiPrimary,
+    );
+    expect(calculateButton.style?.foregroundColor?.resolve({}), Colors.white);
 
     await tester.tap(find.byIcon(Icons.save_outlined));
     await tester.pumpAndSettle();
@@ -122,6 +151,51 @@ void main() {
         matching: find.byIcon(Icons.sports_score),
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('highlights destination selection until a destination exists',
+      (tester) async {
+    final model = MapScreenViewModel(store: _SettingsStore());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(context, model: model),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    final destinationRow = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text('Ziel auswählen'),
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(destinationRow.tileColor, AppColors.uiPrimary);
+    expect(destinationRow.textColor, Colors.white);
+
+    final calculateButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Route berechnen'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(calculateButton.onPressed, isNull);
+    expect(
+      calculateButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
+      AppColors.disabledBackground,
+    );
+    expect(
+      calculateButton.style?.foregroundColor?.resolve({WidgetState.disabled}),
+      AppColors.disabledForeground,
     );
   });
 

@@ -16,6 +16,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/settings/settings_sheet_content.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -59,6 +60,29 @@ void main() {
     final stats = find.text('4,2 km');
     final start = find.text('Starten');
     final refresh = find.byIcon(Icons.refresh);
+    final startButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: start,
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(
+      startButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.munichWaysOrange,
+    );
+    expect(
+      startButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      AppColors.heroForeground,
+    );
+    expect(
+        tester.getSize(find.ancestor(
+          of: start,
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        )),
+        const Size(180, 48));
+    final startTargetSize = tester.getSize(find.bySemanticsLabel('Starten'));
+    expect(startTargetSize.width, greaterThan(180));
+    expect(startTargetSize.height, 56);
     expect(
         tester.getTopLeft(start).dy, greaterThan(tester.getTopLeft(stats).dy));
     expect(

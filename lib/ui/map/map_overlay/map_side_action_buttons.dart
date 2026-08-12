@@ -46,7 +46,8 @@ class MapSideActionButtons extends StatelessWidget {
       if (model.showZoomButtons) ...[
         MapOverlayButton(
           tooltip: context.l10n.tr('Vergrößern'),
-          size: 56,
+          size: 40,
+          tapTargetSize: 56,
           onPressed: () {
             final c = mapController;
             if (c == null) return;
@@ -57,7 +58,8 @@ class MapSideActionButtons extends StatelessWidget {
         const SizedBox(height: _buttonSpacing),
         MapOverlayButton(
           tooltip: context.l10n.tr('Verkleinern'),
-          size: 56,
+          size: 40,
+          tapTargetSize: 56,
           onPressed: () {
             final c = mapController;
             if (c == null) return;
@@ -70,8 +72,12 @@ class MapSideActionButtons extends StatelessWidget {
     ];
 
     return Positioned(
-      left: model.sidePanelEdge == MapSidePanelEdge.left ? 12 : null,
-      right: model.sidePanelEdge == MapSidePanelEdge.right ? 12 : null,
+      left: model.sidePanelEdge == MapSidePanelEdge.left
+          ? kMapHorizontalHolderClearance
+          : null,
+      right: model.sidePanelEdge == MapSidePanelEdge.right
+          ? kMapHorizontalHolderClearance
+          : null,
       bottom: sideColumnBottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -88,6 +94,8 @@ class MapSideActionButtons extends StatelessWidget {
           const SizedBox(height: _buttonSpacing),
           MapOverlayButton(
             tooltip: context.l10n.tr('Standort'),
+            size: 40,
+            tapTargetSize: 56,
             isActive: model.locationState == LocationState.FOLLOW ||
                 model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
             emphasizeActive: true,

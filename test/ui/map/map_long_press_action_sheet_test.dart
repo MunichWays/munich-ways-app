@@ -19,11 +19,20 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Route hierhin starten'), findsOneWidget);
+    expect(find.text('Route hierhin'), findsOneWidget);
     expect(find.text('Details anzeigen'), findsNothing);
     expect(find.byIcon(Icons.location_pin), findsOneWidget);
+    final actionCard = find.byKey(
+      const ValueKey('map-long-press-action-card'),
+    );
+    final positioned =
+        tester.element(actionCard).findAncestorWidgetOfExactType<Positioned>();
+    expect(positioned?.width, inInclusiveRange(180, 320));
+    final label = tester.widget<Text>(find.text('Route hierhin'));
+    expect(label.maxLines, 1);
+    expect(label.overflow, TextOverflow.ellipsis);
 
-    await tester.tap(find.text('Route hierhin starten'));
+    await tester.tap(find.text('Route hierhin'));
     await tester.pumpAndSettle();
     expect(selected, MapLongPressAction.startRoute);
   });
@@ -41,7 +50,7 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Route hierhin starten'), findsOneWidget);
+    expect(find.text('Route hierhin'), findsOneWidget);
     expect(find.text('Details anzeigen'), findsOneWidget);
     expect(find.byIcon(Icons.location_pin), findsOneWidget);
 

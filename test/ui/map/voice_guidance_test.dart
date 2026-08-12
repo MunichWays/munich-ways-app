@@ -16,6 +16,78 @@ void main() {
         maneuvers: [maneuver],
       );
 
+  test('holds initial guidance until movement establishes direction', () {
+    final gate = NavigationOrientationGate()..reset(start);
+
+    expect(
+      gate.isWaiting(
+        start,
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14005, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+      ),
+      isFalse,
+    );
+  });
+
+  test('uses a distance fallback when GPS speed is unavailable', () {
+    final gate = NavigationOrientationGate()..reset(start);
+
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 8,
+        speedMetersPerSecond: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      gate.isWaiting(
+        const LatLng(48.14016, 11.5700),
+        horizontalAccuracyMeters: 8,
+        speedMetersPerSecond: 0,
+      ),
+      isFalse,
+    );
+  });
+
+  test('recognizes route re-entry behind the previous guidance progress', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        routeWith(
+          const RouteManeuver(
+            location: turn,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ),
+      );
+
+    // Stay clearly outside the 20 m destination radius while advancing more
+    // than the 120 m local guidance window.
+    guidance
+      ..display(turn, english: false)
+      ..display(const LatLng(48.14125, 11.5700), english: false);
+
+    expect(guidance.isOffRoute(start), isTrue);
+    expect(guidance.isOnRouteAnywhere(start), isTrue);
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(
@@ -371,6 +443,39 @@ void main() {
     expect(guidance.update(end, english: false), isNull);
   });
 
+  test('keeps final arrival latched and disables off-route handling', () {
+    final guidance = VoiceGuidance();
+    guidance.setRoute(CycleRoute(
+      const [start, beforeTurn, turn, end],
+      170,
+      40,
+      maneuvers: const [
+        RouteManeuver(location: end, type: 'arrive'),
+      ],
+    ));
+
+    final arrival = guidance.display(end, english: false);
+    expect(arrival?.text, 'Ziel erreicht');
+    expect(arrival?.isFinalDestination, isTrue);
+    expect(guidance.finalDestinationReached, isTrue);
+    expect(
+      guidance.update(end, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+
+    const afterDestination = LatLng(48.1430, 11.5700);
+    expect(guidance.isOffRoute(afterDestination), isFalse);
+    expect(
+      guidance.display(afterDestination, english: false),
+      const VoiceGuidanceDisplay(
+        text: 'Ziel erreicht',
+        type: 'arrive',
+        isFinalDestination: true,
+      ),
+    );
+    expect(guidance.update(afterDestination, english: false), isNull);
+  });
+
   test('announces a named intermediate destination separately', () {
     const intermediate = LatLng(48.1410, 11.5690);
     final guidance = VoiceGuidance();
@@ -515,6 +620,74 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('off-route detection checks the whole route after progress advanced',
+      () {
+    const routeStart = LatLng(48.1400, 11.5700);
+    const routeMiddle = LatLng(48.1410, 11.5700);
+    const routeEnd = LatLng(48.1420, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [routeStart, routeMiddle, routeEnd],
+        220,
+        50,
+        maneuvers: const [
+          RouteManeuver(
+            location: routeEnd,
+            type: 'turn',
+            modifier: 'left',
+          ),
+        ],
+      ));
+
+    // Establish progress near the end, then simulate a corrected GPS fix on
+    // an earlier portion of the same route. This must not create a false
+    // off-route episode merely because guidance progress is monotonic.
+    guidance
+      ..display(routeMiddle, english: false)
+      ..display(const LatLng(48.14175, 11.5700), english: false);
+
+    expect(guidance.isOffRoute(routeStart), isTrue);
+    expect(guidance.isOnRouteAnywhere(routeStart), isTrue);
+    expect(guidance.isOffRouteForRerouting(routeStart), isFalse);
+  });
+
+  test('does not jump to a later route section on another OSM level', () {
+    const lowerRampStart = LatLng(48.14000, 11.57000);
+    const lowerRampMiddle = LatLng(48.14000, 11.57075);
+    const rampEnd = LatLng(48.14000, 11.57150);
+    const bridgeEntry = LatLng(48.14004, 11.57000);
+    const bridge = LatLng(48.14004, 11.56950);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          lowerRampStart,
+          lowerRampMiddle,
+          rampEnd,
+          bridgeEntry,
+          bridge,
+        ],
+        300,
+        90,
+        maneuvers: const [
+          RouteManeuver(
+            location: bridgeEntry,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ],
+      ));
+
+    // The later bridge section is only about four metres away in 2D, but
+    // more than 200 metres ahead along the ramp.
+    expect(
+      guidance.display(lowerRampStart, english: false)?.text,
+      isNot('Jetzt rechts'),
+    );
+    expect(guidance.update(lowerRampStart, english: false), isNull);
+    expect(guidance.isOffRoute(lowerRampMiddle), isFalse);
+    expect(guidance.update(lowerRampMiddle, english: false), isNull);
   });
 
   test('keeps maneuvers in route order on an overlapping return section', () {
