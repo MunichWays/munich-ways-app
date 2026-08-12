@@ -622,7 +622,8 @@ void main() {
     );
   });
 
-  test('off-route detection checks the whole route after progress advanced', () {
+  test('off-route detection checks the whole route after progress advanced',
+      () {
     const routeStart = LatLng(48.1400, 11.5700);
     const routeMiddle = LatLng(48.1410, 11.5700);
     const routeEnd = LatLng(48.1420, 11.5700);
