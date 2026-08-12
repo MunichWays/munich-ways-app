@@ -55,6 +55,51 @@ class MapNavigationHeaderBar extends StatelessWidget {
     };
   }
 
+  Widget _heroAction(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    final theme = Theme.of(context);
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: Center(
+            child: IgnorePointer(
+              child: FilledButton.icon(
+                style: AppButtonStyles.hero(context).merge(
+                  FilledButton.styleFrom(
+                    minimumSize: const Size(180, 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    textStyle: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                onPressed: onPressed,
+                icon: Icon(icon, size: 24),
+                label: Text(label),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dest = model.destination;
@@ -298,25 +343,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
             ),
             if (destinationReached) ...[
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: AppButtonStyles.hero(context).merge(
-                    FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      textStyle: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  onPressed: onEndRoute,
-                  icon: const Icon(Icons.sports_score, size: 24),
-                  label: Text(context.l10n.isEnglish ? 'Finish' : 'Beenden'),
-                ),
+              _heroAction(
+                context,
+                label: context.l10n.isEnglish ? 'Finish' : 'Beenden',
+                icon: Icons.sports_score,
+                onPressed: onEndRoute,
               ),
             ],
             if (route.state == MapRouteState.SHOWN &&
@@ -324,25 +355,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 !model.navigationStarted &&
                 model.routeStart == null) ...[
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: AppButtonStyles.hero(context).merge(
-                    FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      textStyle: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  onPressed: onStartNavigation,
-                  icon: const Icon(Icons.navigation, size: 24),
-                  label: Text(context.l10n.tr('Starten')),
-                ),
+              _heroAction(
+                context,
+                label: context.l10n.tr('Starten'),
+                icon: Icons.navigation,
+                onPressed: onStartNavigation,
               ),
             ],
           ],

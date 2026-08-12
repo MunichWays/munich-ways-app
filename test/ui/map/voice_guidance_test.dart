@@ -421,6 +421,39 @@ void main() {
     expect(guidance.update(end, english: false), isNull);
   });
 
+  test('keeps final arrival latched and disables off-route handling', () {
+    final guidance = VoiceGuidance();
+    guidance.setRoute(CycleRoute(
+      const [start, beforeTurn, turn, end],
+      170,
+      40,
+      maneuvers: const [
+        RouteManeuver(location: end, type: 'arrive'),
+      ],
+    ));
+
+    final arrival = guidance.display(end, english: false);
+    expect(arrival?.text, 'Ziel erreicht');
+    expect(arrival?.isFinalDestination, isTrue);
+    expect(guidance.finalDestinationReached, isTrue);
+    expect(
+      guidance.update(end, english: false),
+      'Sie haben das Ziel erreicht.',
+    );
+
+    const afterDestination = LatLng(48.1430, 11.5700);
+    expect(guidance.isOffRoute(afterDestination), isFalse);
+    expect(
+      guidance.display(afterDestination, english: false),
+      const VoiceGuidanceDisplay(
+        text: 'Ziel erreicht',
+        type: 'arrive',
+        isFinalDestination: true,
+      ),
+    );
+    expect(guidance.update(afterDestination, english: false), isNull);
+  });
+
   test('announces a named intermediate destination separately', () {
     const intermediate = LatLng(48.1410, 11.5690);
     final guidance = VoiceGuidance();
@@ -565,6 +598,43 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('does not jump to a later route section on another OSM level', () {
+    const lowerRampStart = LatLng(48.14000, 11.57000);
+    const lowerRampMiddle = LatLng(48.14000, 11.57075);
+    const rampEnd = LatLng(48.14000, 11.57150);
+    const bridgeEntry = LatLng(48.14004, 11.57000);
+    const bridge = LatLng(48.14004, 11.56950);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          lowerRampStart,
+          lowerRampMiddle,
+          rampEnd,
+          bridgeEntry,
+          bridge,
+        ],
+        300,
+        90,
+        maneuvers: const [
+          RouteManeuver(
+            location: bridgeEntry,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ],
+      ));
+
+    // The later bridge section is only about four metres away in 2D, but
+    // more than 200 metres ahead along the ramp.
+    expect(
+      guidance.display(lowerRampStart, english: false)?.text,
+      isNot('Jetzt rechts'),
+    );
+    expect(guidance.update(lowerRampStart, english: false), isNull);
+    expect(guidance.isOffRoute(lowerRampMiddle), isFalse);
+    expect(guidance.update(lowerRampMiddle, english: false), isNull);
   });
 
   test('keeps maneuvers in route order on an overlapping return section', () {

@@ -75,6 +75,15 @@ void main() {
       AppColors.heroForeground,
     );
     expect(
+        tester.getSize(find.ancestor(
+          of: start,
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        )),
+        const Size(180, 48));
+    final startTargetSize = tester.getSize(find.bySemanticsLabel('Starten'));
+    expect(startTargetSize.width, greaterThan(180));
+    expect(startTargetSize.height, 56);
+    expect(
         tester.getTopLeft(start).dy, greaterThan(tester.getTopLeft(stats).dy));
     expect(
       tester.getCenter(refresh).dx,

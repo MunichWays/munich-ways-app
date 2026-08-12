@@ -5,9 +5,40 @@ import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
 void main() {
+  test('uses a direction arrow only for reliable movement heading', () {
+    expect(
+      hasReliableMovementHeading(
+        accuracy: 5,
+        heading: 90,
+        headingAccuracy: 5,
+        speed: 2,
+      ),
+      isTrue,
+    );
+    expect(
+      hasReliableMovementHeading(
+        accuracy: 5,
+        heading: 90,
+        headingAccuracy: 5,
+        speed: 0,
+      ),
+      isFalse,
+    );
+    expect(
+      hasReliableMovementHeading(
+        accuracy: 80,
+        heading: 90,
+        headingAccuracy: 5,
+        speed: 2,
+      ),
+      isFalse,
+    );
+  });
+
   test('finishes initial loading when ratings stream stalls offline', () async {
     final model = MapScreenViewModel(
       store: _MemorySettingsStore(),

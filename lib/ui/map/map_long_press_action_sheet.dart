@@ -34,7 +34,37 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
   entry = OverlayEntry(
     builder: (overlayContext) {
       final l10n = overlayContext.l10n;
-      final cardWidth = (overlaySize.width - 24).clamp(0.0, 272.0);
+      final startRouteLabel =
+          l10n.isEnglish ? 'Start route here' : 'Route hierhin';
+      final addWaypointLabel =
+          l10n.isEnglish ? 'Add intermediate stop' : 'Zwischenziel setzen';
+      final moveStartLabel =
+          l10n.isEnglish ? 'Move starting point' : 'Startpunkt verschieben';
+      final moveDestinationLabel =
+          l10n.isEnglish ? 'Move destination' : 'Ziel verschieben';
+      final showDetailsLabel =
+          l10n.isEnglish ? 'Show details' : 'Details anzeigen';
+      final visibleLabels = [
+        startRouteLabel,
+        if (canAddWaypoint) addWaypointLabel,
+        if (canMoveStart) moveStartLabel,
+        if (canMoveDestination) moveDestinationLabel,
+        if (streetDetails != null) showDetailsLabel,
+      ];
+      final textStyle = Theme.of(overlayContext).textTheme.bodyLarge;
+      var widestLabel = 0.0;
+      for (final label in visibleLabels) {
+        final painter = TextPainter(
+          text: TextSpan(text: label, style: textStyle),
+          maxLines: 1,
+          textDirection: Directionality.of(overlayContext),
+          textScaler: MediaQuery.textScalerOf(overlayContext),
+        )..layout();
+        if (painter.width > widestLabel) widestLabel = painter.width;
+      }
+      final maximumWidth = (overlaySize.width - 24).clamp(0.0, 320.0);
+      final minimumWidth = maximumWidth.clamp(0.0, 180.0);
+      final cardWidth = (widestLabel + 72).clamp(minimumWidth, maximumWidth);
       final actionCount = 1 +
           (canAddWaypoint ? 1 : 0) +
           (canMoveStart ? 1 : 0) +
@@ -67,7 +97,9 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                   Expanded(
                     child: Text(
                       label,
-                      style: Theme.of(overlayContext).textTheme.bodyLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textStyle,
                     ),
                   ),
                 ],
@@ -105,6 +137,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
             top: cardTop,
             width: cardWidth,
             child: Material(
+              key: const ValueKey('map-long-press-action-card'),
               elevation: 10,
               color: Theme.of(overlayContext).colorScheme.surface,
               shadowColor: Colors.black45,
@@ -121,18 +154,14 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                 children: [
                   actionRow(
                     icon: Icons.navigation_outlined,
-                    label: l10n.isEnglish
-                        ? 'Start route here'
-                        : 'Route hierhin starten',
+                    label: startRouteLabel,
                     action: MapLongPressAction.startRoute,
                   ),
                   if (canAddWaypoint) ...[
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.add_location_alt_outlined,
-                      label: l10n.isEnglish
-                          ? 'Add intermediate stop'
-                          : 'Zwischenziel setzen',
+                      label: addWaypointLabel,
                       action: MapLongPressAction.addWaypoint,
                     ),
                   ],
@@ -140,9 +169,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.trip_origin,
-                      label: l10n.isEnglish
-                          ? 'Move starting point'
-                          : 'Startpunkt verschieben',
+                      label: moveStartLabel,
                       action: MapLongPressAction.moveStart,
                     ),
                   ],
@@ -150,9 +177,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.outlined_flag,
-                      label: l10n.isEnglish
-                          ? 'Move destination'
-                          : 'Ziel verschieben',
+                      label: moveDestinationLabel,
                       action: MapLongPressAction.moveDestination,
                     ),
                   ],
@@ -160,8 +185,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.info_outline,
-                      label:
-                          l10n.isEnglish ? 'Show details' : 'Details anzeigen',
+                      label: showDetailsLabel,
                       action: MapLongPressAction.showDetails,
                     ),
                   ],

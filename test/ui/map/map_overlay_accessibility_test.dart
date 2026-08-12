@@ -127,6 +127,10 @@ void main() {
 
     expect(find.byIcon(Icons.close), findsNothing);
     expect(find.byIcon(Icons.sports_score), findsOneWidget);
+    expect(
+      tester.getSize(find.bySemanticsLabel('Beenden')).width,
+      greaterThan(180),
+    );
     final finishButton = tester.widget<FilledButton>(
       find.ancestor(
         of: find.text('Beenden'),
@@ -142,7 +146,7 @@ void main() {
       AppColors.heroForeground,
     );
 
-    await tester.tap(find.text('Beenden'));
+    await tester.tap(find.bySemanticsLabel('Beenden'));
     expect(ended, isTrue);
   });
 

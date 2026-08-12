@@ -53,6 +53,12 @@ class NavigationOrientationGate {
 /// Distances are measured along the route, rather than directly to the
 /// junction, so nearby parallel roads do not trigger an instruction early.
 class VoiceGuidance {
+  // GPS positions have no OSM layer/level information. On ramps, bridges and
+  // spirals a later route section can therefore be only a few metres away in
+  // 2D. Keep matching local to the established progress so navigation does
+  // not jump from the lower section to the section above it.
+  static const double _maximumProgressJumpMeters = 120;
+
   VoiceGuidance({
     this.approachDistanceMeters = 60,
     this.nowDistanceMeters = 15,
@@ -83,6 +89,7 @@ class VoiceGuidance {
     LatLng position, {
     double horizontalAccuracyMeters = 0,
   }) {
+    if (_finalDestinationReached) return false;
     final route = _route;
     if (route == null) return false;
     final accuracyAllowance = horizontalAccuracyMeters.isFinite
@@ -92,6 +99,8 @@ class VoiceGuidance {
           route.points,
           position,
           minimumDistanceAlongRoute: _routeProgress,
+          maximumDistanceAlongRoute:
+              _routeProgress + _maximumProgressJumpMeters,
         ).distanceFromRoute >
         maximumRouteDistanceMeters + accuracyAllowance;
   }
@@ -110,6 +119,9 @@ class VoiceGuidance {
   double _routeProgress = 0;
   bool _overlappingRouteUnsupported = false;
   bool _overlappingRouteWarningSpoken = false;
+  bool _finalDestinationReached = false;
+
+  bool get finalDestinationReached => _finalDestinationReached;
 
   void setRoute(
     CycleRoute? route, {
@@ -129,6 +141,7 @@ class VoiceGuidance {
     _routeProgress = 0;
     _overlappingRouteUnsupported = false;
     _overlappingRouteWarningSpoken = false;
+    _finalDestinationReached = false;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
     if (guidanceRoute == null || guidanceRoute.points.length < 2) {
@@ -201,6 +214,13 @@ class VoiceGuidance {
   }) {
     final route = _route;
     if (route == null) return null;
+    if (_finalDestinationReached) {
+      return VoiceGuidanceDisplay(
+        text: english ? 'Destination reached' : 'Ziel erreicht',
+        type: 'arrive',
+        isFinalDestination: true,
+      );
+    }
     if (_overlappingRouteUnsupported) {
       return VoiceGuidanceDisplay(
         text: english ? 'Follow map' : 'Karte beachten',
@@ -212,15 +232,18 @@ class VoiceGuidance {
       route.points,
       position,
       minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
     );
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null) {
+      final isFinalDestination = !_isIntermediateArrival(arrivalIndex);
+      if (isFinalDestination) _finalDestinationReached = true;
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
       return VoiceGuidanceDisplay(
         text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
-        isFinalDestination: !_isIntermediateArrival(arrivalIndex),
+        isFinalDestination: isFinalDestination,
       );
     }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
@@ -256,6 +279,13 @@ class VoiceGuidance {
   }) {
     final route = _route;
     if (route == null) return null;
+    if (_finalDestinationReached) {
+      final finalIndex = _arrivals.length - 1;
+      if (finalIndex >= 0 && _spokenArrivals.add(finalIndex)) {
+        return _arrivalAnnouncement(finalIndex, english);
+      }
+      return null;
+    }
     if (_overlappingRouteUnsupported) {
       if (_overlappingRouteWarningSpoken) return null;
       _overlappingRouteWarningSpoken = true;
@@ -270,9 +300,13 @@ class VoiceGuidance {
       route.points,
       position,
       minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
     );
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
+      if (!_isIntermediateArrival(arrivalIndex)) {
+        _finalDestinationReached = true;
+      }
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
       return _arrivalAnnouncement(arrivalIndex, english);
@@ -735,6 +769,7 @@ class VoiceGuidance {
     List<LatLng> route,
     LatLng point, {
     double minimumDistanceAlongRoute = 0,
+    double maximumDistanceAlongRoute = double.infinity,
   }) {
     var cumulative = 0.0;
     var bestDistanceSquared = double.infinity;
@@ -762,6 +797,7 @@ class VoiceGuidance {
       final segmentLength = sqrt(lengthSquared);
       final distanceAlong = cumulative + segmentLength * t;
       if (distanceAlong + 1 >= minimumDistanceAlongRoute &&
+          distanceAlong - 1 <= maximumDistanceAlongRoute &&
           distanceSquared < bestDistanceSquared) {
         bestDistanceSquared = distanceSquared;
         bestAlong = distanceAlong;
