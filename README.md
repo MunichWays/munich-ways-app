@@ -33,9 +33,26 @@ To ensure that the formatter is run locally before a commit set the hooksPath pr
 
 ### iOS
 
-#### Fastlane (TestFlight)
+#### Github Actions
 
-iOS release automation (TestFlight builds, App Store metadata via `deliver`, optional submit for review) uses Fastlane. **Setup, lanes, credentials, and troubleshooting are documented in [ios/fastlane/README.md](ios/fastlane/README.md).**
+* In Browser open iOS Testflight Action: https://github.com/MunichWays/munich-ways-app/actions/workflows/ios-testflight.yml
+* Select "run workflow"
+* New build is uploaded to Testflight
+
+##### Certificate renewal
+Apple Distribution certificates expire after **1 year**. When that happens, `cert` will generate
++ a new one automatically for *local* runs (a dev machine's keychain accepts that), but CI will keep failing until someone
++ re-exports the (now current) certificate as a fresh `.p12` and updates `IOS_DIST_CERT_P12_BASE64`/`IOS_DIST_CERT_P12_PAS
+     +SWORD` — the same steps as the initial setup above.
+
+#### Fastlane locally
+
+##### In short
+* From the ios/ directory: `bundle exec fastlane beta`
+* Don't forget: bump the build number in pubspec.yaml first (version: 3.1.x+YY), otherwise App Store Connect will reject the build as a duplicate. 
+
+##### More Details
+See detailed fastlane docs for setup, lanes, credentials, and troubleshooting: [ios/fastlane/README.md](ios/fastlane/README.md).**
 
 #### Manual build/archive (alternative)
 
