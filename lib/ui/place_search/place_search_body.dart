@@ -440,14 +440,15 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       onTap: () => widget._completeSelection(context, route),
       trailing: SizedBox.square(
         dimension: 32,
-        child: PopupMenuButton<_SavedRouteAction>(
-          tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
-          iconSize: 20,
-          padding: EdgeInsets.zero,
-          icon: const Icon(Icons.more_vert),
-          onSelected: (action) =>
-              _scheduleSavedRouteAction(context, model, route, action),
-          itemBuilder: (context) => [
+        child: Tooltip(
+          message: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
+          ignorePointer: false,
+          child: PopupMenuButton<_SavedRouteAction>(
+            tooltip: '',
+            padding: EdgeInsets.zero,
+            onSelected: (action) =>
+                _scheduleSavedRouteAction(context, model, route, action),
+            itemBuilder: (context) => [
             PopupMenuItem(
               value: _SavedRouteAction.toggleFavorite,
               child: Row(
@@ -489,7 +490,9 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                 ],
               ),
             ),
-          ],
+            ],
+            child: const Icon(Icons.more_vert, size: 20),
+          ),
         ),
       ),
     );
@@ -699,23 +702,30 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                       ),
                     _compactAction(
                       compact: compact,
-                      child: PopupMenuButton<_SavedPlaceAction>(
-                        tooltip: context.l10n.isEnglish
+                      child: Tooltip(
+                        message: context.l10n.isEnglish
                             ? 'More options'
                             : 'Mehr Optionen',
-                        iconSize: compact ? 20 : 24,
-                        padding:
-                            compact ? EdgeInsets.zero : const EdgeInsets.all(8),
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (action) => _scheduleSavedPlaceAction(
-                          context,
-                          model,
-                          place,
-                          action,
-                        ),
-                        itemBuilder: (context) => _savedPlaceMenuItems(
-                          context,
-                          isFavorite: model.isFavorite(place),
+                        ignorePointer: false,
+                        child: PopupMenuButton<_SavedPlaceAction>(
+                          tooltip: '',
+                          padding: compact
+                              ? EdgeInsets.zero
+                              : const EdgeInsets.all(8),
+                          onSelected: (action) => _scheduleSavedPlaceAction(
+                            context,
+                            model,
+                            place,
+                            action,
+                          ),
+                          itemBuilder: (context) => _savedPlaceMenuItems(
+                            context,
+                            isFavorite: model.isFavorite(place),
+                          ),
+                          child: Icon(
+                            Icons.more_vert,
+                            size: compact ? 20 : 24,
+                          ),
                         ),
                       ),
                     ),
