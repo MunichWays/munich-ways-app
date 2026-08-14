@@ -386,6 +386,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     PlaceSearchScreenViewModel model,
     SavedRoute route,
   ) {
+    final menuKey = GlobalKey<PopupMenuButtonState<_SavedRouteAction>>();
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(vertical: -3),
@@ -438,17 +439,16 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         },
       ),
       onTap: () => widget._completeSelection(context, route),
+      onLongPress: () => menuKey.currentState?.showButtonMenu(),
       trailing: SizedBox.square(
         dimension: 32,
-        child: Tooltip(
-          message: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
-          ignorePointer: false,
-          child: PopupMenuButton<_SavedRouteAction>(
-            tooltip: '',
-            padding: EdgeInsets.zero,
-            onSelected: (action) =>
-                _scheduleSavedRouteAction(context, model, route, action),
-            itemBuilder: (context) => [
+        child: PopupMenuButton<_SavedRouteAction>(
+          key: menuKey,
+          tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
+          padding: EdgeInsets.zero,
+          onSelected: (action) =>
+              _scheduleSavedRouteAction(context, model, route, action),
+          itemBuilder: (context) => [
             PopupMenuItem(
               value: _SavedRouteAction.toggleFavorite,
               child: Row(
@@ -490,7 +490,10 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                 ],
               ),
             ),
-            ],
+          ],
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () => menuKey.currentState?.showButtonMenu(),
             child: const Icon(Icons.more_vert, size: 20),
           ),
         ),
@@ -643,12 +646,14 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
   }) {
     final textStyle = Theme.of(context).textTheme.bodyLarge;
     final actionWidth = compact ? 32.0 : 48.0;
+    final menuKey = GlobalKey<PopupMenuButtonState<_SavedPlaceAction>>();
     return Padding(
       padding: EdgeInsets.symmetric(vertical: compact ? 0 : 1),
       child: Material(
         color: highlighted ? AppColors.favoriteHighlight : Colors.transparent,
         child: InkWell(
           onTap: onConfirm,
+          onLongPress: () => menuKey.currentState?.showButtonMenu(),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final baseTrailingWidth = actionWidth;
@@ -702,26 +707,27 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                       ),
                     _compactAction(
                       compact: compact,
-                      child: Tooltip(
-                        message: context.l10n.isEnglish
+                      child: PopupMenuButton<_SavedPlaceAction>(
+                        key: menuKey,
+                        tooltip: context.l10n.isEnglish
                             ? 'More options'
                             : 'Mehr Optionen',
-                        ignorePointer: false,
-                        child: PopupMenuButton<_SavedPlaceAction>(
-                          tooltip: '',
-                          padding: compact
-                              ? EdgeInsets.zero
-                              : const EdgeInsets.all(8),
-                          onSelected: (action) => _scheduleSavedPlaceAction(
-                            context,
-                            model,
-                            place,
-                            action,
-                          ),
-                          itemBuilder: (context) => _savedPlaceMenuItems(
-                            context,
-                            isFavorite: model.isFavorite(place),
-                          ),
+                        padding:
+                            compact ? EdgeInsets.zero : const EdgeInsets.all(8),
+                        onSelected: (action) => _scheduleSavedPlaceAction(
+                          context,
+                          model,
+                          place,
+                          action,
+                        ),
+                        itemBuilder: (context) => _savedPlaceMenuItems(
+                          context,
+                          isFavorite: model.isFavorite(place),
+                        ),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onLongPress: () =>
+                              menuKey.currentState?.showButtonMenu(),
                           child: Icon(
                             Icons.more_vert,
                             size: compact ? 20 : 24,

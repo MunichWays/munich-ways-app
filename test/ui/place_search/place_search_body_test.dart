@@ -323,7 +323,7 @@ void main() {
     expect(find.text('Umbenennen'), findsOneWidget);
   });
 
-  testWidgets('tapping a long-press tooltip does not select its destination',
+  testWidgets('long-pressing the more button opens its options',
       (tester) async {
     final home = Place('Home', const LatLng(48.2, 11.6));
     final model = PlaceSearchScreenViewModel(
@@ -341,14 +341,37 @@ void main() {
     await tester.pump();
 
     await tester.longPress(find.byTooltip('Mehr Optionen'));
-    await tester.pump();
-    expect(find.text('Mehr Optionen'), findsOneWidget);
-
-    await tester.tap(find.text('Mehr Optionen'));
     await tester.pumpAndSettle();
 
     expect(selected, isEmpty);
-    expect(find.text('Umbenennen'), findsNothing);
+    expect(find.text('Umbenennen'), findsOneWidget);
+    expect(find.text('Löschen'), findsOneWidget);
+    expect(find.text('Als Favorit speichern'), findsOneWidget);
+  });
+
+  testWidgets('long-pressing a saved row opens its options', (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([home]),
+    );
+    final selected = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, onSelected: selected.add),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.longPress(find.text('Home'));
+    await tester.pumpAndSettle();
+
+    expect(selected, isEmpty);
+    expect(find.text('Umbenennen'), findsOneWidget);
+    expect(find.text('Löschen'), findsOneWidget);
+    expect(find.text('Als Favorit speichern'), findsOneWidget);
   });
 
   testWidgets('opening saved-place options preserves the list position',
