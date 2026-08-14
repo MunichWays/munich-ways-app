@@ -1325,7 +1325,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.route.route,
         intermediateDestinationNames:
             model.waypoints.map((place) => place.displayName).toList(),
-      );
+      )
+      ..resumeAt(position);
     _cancelAutomaticRerouting(resetAttempts: false);
     unawaited(_restoreNavigationZoom(model));
   }

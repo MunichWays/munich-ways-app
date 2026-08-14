@@ -88,6 +88,40 @@ void main() {
     expect(guidance.isOnRouteAnywhere(start), isTrue);
   });
 
+  test('resumes turn guidance when rejoining far from the route start', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    const laterTurn = LatLng(48.1435, 11.5700);
+    const routeEnd = LatLng(48.1440, 11.5700);
+    final route = CycleRoute(
+      const [start, reentry, laterTurn, routeEnd],
+      450,
+      100,
+      maneuvers: const [
+        RouteManeuver(
+          location: laterTurn,
+          type: 'turn',
+          modifier: 'left',
+        ),
+      ],
+    );
+    final guidance = VoiceGuidance()..setRoute(route);
+
+    // This position is outside the 120 m progress window of a fresh session.
+    expect(guidance.display(reentry, english: false), isNull);
+
+    guidance
+      ..reset()
+      ..setRoute(route)
+      ..resumeAt(reentry);
+
+    expect(
+      guidance.display(reentry, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having((display) => display.type, 'type', 'turn')
+          .having((display) => display.modifier, 'modifier', 'left'),
+    );
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(

@@ -242,6 +242,26 @@ class VoiceGuidance {
 
   void reset() => setRoute(null);
 
+  /// Restarts maneuver guidance at the rider's current place on the route.
+  ///
+  /// This is used after an off-route episode. A freshly reset guidance session
+  /// normally only searches a short distance ahead of the route start, which
+  /// cannot locate a rider who rejoins farther along a long route.
+  void resumeAt(LatLng position) {
+    final route = _route;
+    if (route == null) return;
+    final projection = _projectOntoRoute(route.points, position);
+    if (projection.distanceFromRoute > maximumRouteDistanceMeters) return;
+
+    _routeProgress = projection.distanceAlongRoute;
+    _index = 0;
+    _approachSpoken = false;
+    _nowSpoken = false;
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
+    _advancePastManeuvers(_routeProgress);
+  }
+
   VoiceGuidanceDisplay? display(
     LatLng position, {
     required bool english,
