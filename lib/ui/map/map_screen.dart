@@ -18,6 +18,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
+import 'package:munich_ways/ui/map/dark_map_style.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/screenshots/store_screenshot_controls.dart';
@@ -40,6 +41,7 @@ import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
+import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -201,6 +203,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
   late bool _mountMapView;
   String? _mapStyleString;
+  bool? _darkMapStyle;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -214,7 +217,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_configureTextToSpeech());
-    unawaited(_loadMapStyle());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
     // UIKit/Metal window phase and abort on cold start; a short defer avoids that. Android is fine.
     if (Platform.isIOS) {
@@ -229,7 +231,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _loadMapStyle() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (_darkMapStyle == dark) return;
+    _darkMapStyle = dark;
+    unawaited(_loadMapStyle(dark));
+  }
+
+  Future<void> _loadMapStyle(bool dark) async {
     String style;
     try {
       style = await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
@@ -240,6 +251,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
       style = kOpenFreeMapLibertyStyleAsset;
+    }
+    if (dark && style != kOpenFreeMapLibertyStyleAsset) {
+      style = createDarkMapStyle(style);
     }
     if (mounted) setState(() => _mapStyleString = style);
   }
@@ -370,6 +384,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final statusBarBackground = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF0B1218)
+        : Colors.white;
     return ChangeNotifierProvider<MapScreenViewModel>(
       create: (BuildContext _) {
         final model = MapScreenViewModel();
@@ -697,7 +714,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       left: 0,
                       right: 0,
                       height: MediaQuery.paddingOf(context).top,
-                      child: const ColoredBox(color: Colors.white),
+                      child: ColoredBox(color: statusBarBackground),
                     ),
                   Positioned.fill(
                     child: SafeArea(
@@ -1033,6 +1050,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       (position) {
         _latestPosition = position;
         _pendingPosition = position;
+        context
+            .read<AppThemeController>()
+            .updateLocation(position.latitude, position.longitude);
         unawaited(_drainLocationUpdates(model));
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -2166,6 +2186,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted || cachedPosition == null) return;
     _latestPosition = cachedPosition;
     _pendingPosition = cachedPosition;
+    context.read<AppThemeController>().updateLocation(
+          cachedPosition.latitude,
+          cachedPosition.longitude,
+        );
     unawaited(_drainLocationUpdates(model));
   }
 
@@ -2712,6 +2736,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureRouteGeoJsonLayer(
       MapLibreMapController controller) async {
     if (_routeGeoJsonReady) return;
+    final routeColor = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.mapRouteColorDark
+        : AppColors.mapRouteColor;
     await controller.addGeoJsonSource(_kRouteSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
@@ -2724,7 +2751,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteSourceId,
       _kRouteLayerId,
       LineLayerProperties(
-        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineColor: _hexColor(routeColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2736,7 +2763,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteConnectorSourceId,
       _kRouteConnectorLayerId,
       LineLayerProperties(
-        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineColor: _hexColor(routeColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2769,6 +2796,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureNetworkGeoJsonLayers(
       MapLibreMapController controller) async {
     if (_networkGeoJsonReady) return;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final networkWidth = dark
+        ? MapOverlayLineStyle.darkNetworkLineWidthByZoom
+        : MapOverlayLineStyle.radlLineWidthByZoom;
+    final networkCasingWidth = dark
+        ? MapOverlayLineStyle.darkNetworkCasingLineWidthByZoom
+        : MapOverlayLineStyle.networkCasingLineWidthByZoom;
+    final networkCasingColor = dark ? '#17232b' : '#ffffff';
     // Route must exist before Radl-Netz layers: all use the same basemap label
     // anchor so insertion order is route → gesamt → radl → hit (ratings on top).
     await _ensureRouteGeoJsonLayer(controller);
@@ -2779,9 +2814,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerCasingGesamtId,
-      const LineLayerProperties(
-        lineColor: '#ffffff',
-        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+      LineLayerProperties(
+        lineColor: networkCasingColor,
+        lineWidth: networkCasingWidth,
         lineOpacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2800,9 +2835,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleGesamtId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2827,9 +2862,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerDashedGesamtId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2855,9 +2890,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerCasingRadlId,
-      const LineLayerProperties(
-        lineColor: '#ffffff',
-        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+      LineLayerProperties(
+        lineColor: networkCasingColor,
+        lineWidth: networkCasingWidth,
         lineOpacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2874,9 +2909,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerDashedRadlId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2902,9 +2937,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleRadlId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2975,7 +3010,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     final result = buildNetworkGeoJson(
       visiblePolylines,
-      (farbe) => _hexColor(AppColors.getPolylineColor(farbe)),
+      (farbe) => _hexColor(AppColors.getPolylineColor(
+        farbe,
+        dark: Theme.of(context).brightness == Brightness.dark,
+      )),
     );
 
     _streetDetailsByLineId

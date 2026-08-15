@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:munich_ways/ui/theme.dart';
 
 /// Rounded grey panel containing [MenuGroupItem]s separated by [MenuGroupDivider].
 class MenuGroup extends StatelessWidget {
@@ -10,16 +9,14 @@ class MenuGroup extends StatelessWidget {
 
   final List<Widget> children;
 
-  static const Color _kBackground = Color(0xFFF2F2F2);
   static const double _kRadius = 24;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: _kBackground,
-        borderRadius: BorderRadius.all(Radius.circular(_kRadius)),
-      ),
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: const BorderRadius.all(Radius.circular(_kRadius)),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,7 +77,7 @@ class MenuGroupItem extends StatelessWidget {
     final rowChildren = <Widget>[
       if (icon != null) ...[
         ExcludeSemantics(
-          child: Icon(icon, color: AppColors.mapBlack),
+          child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
         ),
         const SizedBox(width: 16),
       ],

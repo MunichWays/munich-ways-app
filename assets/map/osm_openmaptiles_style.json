@@ -3685,6 +3685,11 @@
         [
           "!=",
           "class",
+          "parking"
+        ],
+        [
+          "!=",
+          "class",
           "entrance"
         ],
         [
@@ -3754,6 +3759,11 @@
           "!=",
           "class",
           "drinking_water"
+        ],
+        [
+          "!=",
+          "class",
+          "parking"
         ],
         [
           "!=",
@@ -3832,6 +3842,11 @@
           "!=",
           "class",
           "drinking_water"
+        ],
+        [
+          "!=",
+          "class",
+          "parking"
         ],
         [
           "!=",

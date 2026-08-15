@@ -18,7 +18,7 @@ class InfoSheetLegendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final captionStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: Colors.black87,
+      color: theme.colorScheme.onSurface,
       height: 1.3,
     );
     return Row(

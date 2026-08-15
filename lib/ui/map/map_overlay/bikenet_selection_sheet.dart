@@ -17,22 +17,24 @@ class BikenetSelectionSheet extends StatefulWidget {
 }
 
 class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
-  static const _lineColors = <Color>[
-    AppColors.mapGreen,
-    AppColors.mapYellow,
-    AppColors.mapRed,
-    AppColors.mapBlack,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lineColors = <Color>[
+      AppColors.mapGreen,
+      AppColors.mapYellow,
+      AppColors.mapRed,
+      AppColors.getPolylineColor(
+        'schwarz',
+        dark: theme.brightness == Brightness.dark,
+      ),
+    ];
     final rowTitleStyle = theme.textTheme.titleMedium?.copyWith(
       fontWeight: FontWeight.w600,
-      color: Colors.black87,
+      color: theme.colorScheme.onSurface,
     );
     final rowSubtitleStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: Colors.black87,
+      color: theme.colorScheme.onSurface,
     );
 
     return BottomSheetFrame(
@@ -49,7 +51,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             subtitle: context.l10n.isEnglish
                 ? 'Line style shows the Happy-Bike level'
                 : 'Linienart zeigt das Happy-Bike-Level',
-            lineColors: _lineColors,
+            lineColors: lineColors,
             onTap: () {
               widget.model.toggleRadvorrangnetzVisible();
               setState(() {});
@@ -63,7 +65,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             subtitle: context.l10n.isEnglish
                 ? 'Line style shows the Happy-Bike level'
                 : 'Linienart zeigt das Happy-Bike-Level',
-            lineColors: _lineColors,
+            lineColors: lineColors,
             onTap: () {
               widget.model.toggleGesamtnetzVisible();
               setState(() {});

@@ -39,6 +39,7 @@ class InfoSheetAboutContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sourceTitle = context.l10n.isEnglish
         ? 'Sources & routing services'
         : 'Quellen & Routendienste';
@@ -133,7 +134,9 @@ class InfoSheetAboutContent extends StatelessWidget {
           versionLabel,
           textAlign: TextAlign.left,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.black87,
+                color: isDark
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
               ),
         ),

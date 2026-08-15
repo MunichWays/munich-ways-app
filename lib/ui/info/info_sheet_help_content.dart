@@ -58,7 +58,10 @@ class InfoSheetHelpContent extends StatelessWidget {
                   : 'Radweg ist sehr schmal, nicht komfortabel',
             ),
             InfoSheetLegendRow(
-              color: AppColors.mapBlack,
+              color: AppColors.getPolylineColor(
+                'schwarz',
+                dark: theme.brightness == Brightness.dark,
+              ),
               dashed: true,
               label: context.l10n.isEnglish
                   ? 'Very stressful – dashed line'

@@ -70,6 +70,12 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveThemeMode(String themeModeName) {
+    return _enqueueUpdate((current) => current.copyWith(
+          themeModeName: themeModeName,
+        ));
+  }
+
   Future<void> saveVoiceGuidanceEnabled(bool enabled) {
     return _enqueueUpdate((current) => current.copyWith(
           voiceGuidanceEnabled: enabled,
@@ -125,6 +131,7 @@ class SettingsData {
     required this.routingMode,
     required this.bRouterProfile,
     required this.routeRecommendation,
+    this.themeModeName = 'automatic',
   });
 
   final bool showZoomButtons;
@@ -139,6 +146,7 @@ class SettingsData {
   final RoutingMode routingMode;
   final BRouterProfile bRouterProfile;
   final RouteRecommendation? routeRecommendation;
+  final String themeModeName;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: true,
@@ -149,6 +157,7 @@ class SettingsData {
     routingMode: RoutingMode.automatic,
     bRouterProfile: BRouterProfile.trekking,
     routeRecommendation: RouteRecommendation.standard,
+    themeModeName: 'automatic',
   );
 
   Map<String, dynamic> toJson() => {
@@ -161,6 +170,7 @@ class SettingsData {
         'bRouterProfile': bRouterProfile.name,
         if (routeRecommendation != null)
           'routeRecommendation': routeRecommendation!.name,
+        'themeMode': themeModeName,
       };
 
   SettingsData copyWith({
@@ -174,6 +184,7 @@ class SettingsData {
     BRouterProfile? bRouterProfile,
     RouteRecommendation? routeRecommendation,
     bool clearRouteRecommendation = false,
+    String? themeModeName,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -188,6 +199,7 @@ class SettingsData {
         routeRecommendation: clearRouteRecommendation
             ? null
             : routeRecommendation ?? this.routeRecommendation,
+        themeModeName: themeModeName ?? this.themeModeName,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -224,6 +236,11 @@ class SettingsData {
       routingMode: routingMode,
       bRouterProfile: bRouterProfile,
       routeRecommendation: storedRecommendation ?? inferredRecommendation,
+      themeModeName: switch (json['themeMode']) {
+        'light' => 'light',
+        'dark' => 'dark',
+        _ => 'automatic',
+      },
     );
   }
 }

@@ -374,6 +374,173 @@ void main() {
     expect(find.text('Als Favorit speichern'), findsOneWidget);
   });
 
+  testWidgets('tapping favorite options opens the menu without selecting it',
+      (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([home]),
+    );
+    final selected = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, onSelected: selected.add),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Mehr Optionen'));
+    await tester.pumpAndSettle();
+
+    expect(selected, isEmpty);
+    expect(find.text('Favorit entfernen'), findsOneWidget);
+    expect(find.text('Umbenennen'), findsOneWidget);
+
+    await tester.tap(find.text('Umbenennen'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.text('Favorit umbenennen'), findsOneWidget);
+  });
+
+  testWidgets('favorite menu actions work with multiple favorites',
+      (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final work = Place('Work', const LatLng(48.1, 11.5));
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([home, work]),
+    );
+    final selected = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, onSelected: selected.add),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final homeRow = find.byKey(const ValueKey('place-48.2-11.6'));
+    final homeMenu = find.descendant(
+      of: homeRow,
+      matching: find.byTooltip('Mehr Optionen'),
+    );
+    expect(homeMenu, findsOneWidget);
+
+    await tester.tap(homeMenu);
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.text('Favorit entfernen'), findsOneWidget);
+
+    await tester.tap(find.text('Favorit entfernen'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(model.isFavorite(home), isFalse);
+    expect(model.isFavorite(work), isTrue);
+    expect(selected, isEmpty);
+  });
+
+  testWidgets('both favorite option buttons accept taps and long presses',
+      (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final work = Place('Work', const LatLng(48.1, 11.5));
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([home, work]),
+    );
+    final selected = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, onSelected: selected.add),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final menus = find.byTooltip('Mehr Optionen');
+    expect(menus, findsNWidgets(2));
+    expect(find.byIcon(Icons.drag_handle), findsNothing);
+
+    for (var index = 0; index < 2; index++) {
+      await tester.tap(menus.at(index));
+      await tester.pumpAndSettle();
+      expect(find.text('Favorit entfernen'), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      await tester.longPress(menus.at(index));
+      await tester.pumpAndSettle();
+      expect(find.text('Favorit entfernen'), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+    }
+
+    expect(selected, isEmpty);
+  });
+
+  testWidgets('two favorites can be collapsed and expanded again',
+      (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([
+        Place('Home', const LatLng(48.2, 11.6)),
+        Place('Work', const LatLng(48.1, 11.5)),
+      ]),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Favoriten'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Favoriten'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Work'), findsOneWidget);
+  });
+
+  testWidgets('first favorite menu works after a startup-style model rebuild',
+      (tester) async {
+    final home = Place('Home', const LatLng(48.2, 11.6));
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([home]),
+    );
+    final selected = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaceSearchBody(model: model, onSelected: selected.add),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    model.notifyListeners();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Mehr Optionen'));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.text('Favorit entfernen'), findsOneWidget);
+    await tester.tap(find.text('Favorit entfernen'));
+    await tester.pumpAndSettle();
+    expect(model.isFavorite(home), isFalse);
+  });
+
   testWidgets('opening saved-place options preserves the list position',
       (tester) async {
     final model = PlaceSearchScreenViewModel(
@@ -875,6 +1042,42 @@ void main() {
       find.descendant(of: favoriteRoute, matching: find.byType(ListTile)),
     );
     expect(highlightedRoute.tileColor, AppColors.favoriteHighlight);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: darkThemeData,
+        darkTheme: darkThemeData,
+        themeMode: ThemeMode.dark,
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const darkHighlight = AppColors.favoriteHighlightDark;
+    final darkHomeContext = tester.element(find.text('Home'));
+    expect(Theme.of(darkHomeContext).brightness, Brightness.dark);
+    final darkHomeInkWell = find
+        .ancestor(
+          of: find.text('Home'),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    final darkHighlightedMaterial = tester.widget<Material>(
+      find
+          .ancestor(
+            of: darkHomeInkWell,
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(darkHighlightedMaterial.color, darkHighlight);
+    final darkHighlightedRoute = tester.widget<ListTile>(
+      find.descendant(
+        of: find.byKey(const ValueKey('route-Lieblingsroute')),
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(darkHighlightedRoute.tileColor, darkHighlight);
   });
 
   testWidgets('starts favorites expanded and lays them out compactly',

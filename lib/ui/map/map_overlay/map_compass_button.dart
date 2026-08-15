@@ -166,13 +166,14 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
       height: _kTapTargetSize,
       child: IgnorePointer(
         ignoring: !visible,
-        child: visible ? _buildVisibleCompass() : const SizedBox.shrink(),
+        child: visible ? _buildVisibleCompass(context) : const SizedBox.shrink(),
       ),
     );
   }
 
-  Widget _buildVisibleCompass() {
+  Widget _buildVisibleCompass(BuildContext context) {
     final needleRadians = vector_math.radians(-widget.mapBearingDegrees.value);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: 'Norden nach oben ausrichten',
       child: GestureDetector(
@@ -183,7 +184,9 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
             child: SizedBox.square(
               dimension: _kVisualSize,
               child: Material(
-                color: Colors.black.withValues(alpha: 0.36),
+                color: dark
+                    ? const Color(0xFF747C82).withValues(alpha: 0.82)
+                    : Colors.black.withValues(alpha: 0.36),
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 shadowColor: Colors.transparent,

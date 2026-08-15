@@ -247,14 +247,14 @@ void main() {
     final refresh = find.bySemanticsLabel('Route neu berechnen');
     expect(tester.getSize(edit), const Size.square(52));
     expect(tester.getSize(voice), const Size.square(52));
-    expect(tester.getSize(refresh), const Size.square(52));
+    expect(tester.getSize(refresh), const Size(68, 52));
     expect(
       tester.getCenter(voice).dx - tester.getCenter(edit).dx,
       closeTo(62, 0.1),
     );
     expect(
       tester.getCenter(refresh).dx - tester.getCenter(voice).dx,
-      closeTo(62, 0.1),
+      closeTo(76, 0.1),
     );
   });
 
@@ -291,8 +291,8 @@ void main() {
 
     final resume = find.bySemanticsLabel('Fortsetzen');
     expect(resume, findsOneWidget);
-    expect(find.text('Fortsetzen'), findsNothing);
-    expect(tester.getSize(resume), const Size.square(52));
+    expect(find.text('Fortsetzen'), findsOneWidget);
+    expect(tester.getSize(resume), const Size(68, 52));
     final button = tester.widget<IconButton>(
       find.descendant(
         of: resume,

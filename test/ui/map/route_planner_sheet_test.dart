@@ -199,6 +199,87 @@ void main() {
     );
   });
 
+  testWidgets('uses dark surfaces for route planner states in dark mode',
+      (tester) async {
+    final model = MapScreenViewModel(store: _SettingsStore());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: darkThemeData,
+        darkTheme: darkThemeData,
+        themeMode: ThemeMode.dark,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(context, model: model),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    final startBackground = tester
+        .widget<CircleAvatar>(
+          find.ancestor(
+            of: find.byIcon(Icons.navigation),
+            matching: find.byType(CircleAvatar),
+          ),
+        )
+        .backgroundColor;
+    expect(
+      startBackground,
+      darkThemeData.colorScheme.surfaceContainerHighest,
+    );
+    final calculateButton = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Route berechnen'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      ),
+    );
+    expect(
+      calculateButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
+      darkThemeData.colorScheme.surfaceContainerHighest,
+    );
+    final disabledForeground =
+        darkThemeData.colorScheme.onSurface.withValues(alpha: 0.38);
+    expect(
+      calculateButton.style?.foregroundColor?.resolve({WidgetState.disabled}),
+      disabledForeground,
+    );
+    final saveButton = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.save_outlined),
+    );
+    expect(
+      saveButton.style?.backgroundColor?.resolve({WidgetState.disabled}),
+      darkThemeData.colorScheme.surfaceContainerHighest,
+    );
+    expect(
+      saveButton.style?.foregroundColor?.resolve({WidgetState.disabled}),
+      disabledForeground,
+    );
+
+    await tester.tap(find.byTooltip('Schließen'));
+    await tester.pumpAndSettle();
+    model.destination = Place('Ziel', const LatLng(48.3, 11.7));
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    final destinationRow = tester.widget<ListTile>(
+      find.ancestor(of: find.text('Ziel'), matching: find.byType(ListTile)),
+    );
+    expect(
+      destinationRow.tileColor,
+      darkThemeData.colorScheme.secondaryContainer,
+    );
+    expect(
+      destinationRow.textColor,
+      darkThemeData.colorScheme.onSecondaryContainer,
+    );
+  });
+
   testWidgets('opens large from the second intermediate stop', (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())
       ..routeStart = Place('Start', const LatLng(48.1, 11.5))

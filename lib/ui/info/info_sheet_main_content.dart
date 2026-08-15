@@ -119,7 +119,10 @@ class _CompactColorLegend extends StatelessWidget {
         context.l10n.isEnglish ? 'Stressful' : 'Stressig',
       ),
       (
-        AppColors.mapBlack,
+        AppColors.getPolylineColor(
+          'schwarz',
+          dark: Theme.of(context).brightness == Brightness.dark,
+        ),
         context.l10n.isEnglish ? 'Very stressful' : 'Sehr stressig',
       ),
     ];

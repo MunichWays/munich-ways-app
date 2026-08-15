@@ -29,12 +29,19 @@ class AppColors {
 
   static const mapAccentColor = Color(0xFF2196F3);
   static const mapRouteColor = Color(0xFF0D47A1);
+  static const mapRouteColorDark = Color(0xFF00B7FF);
   static const favoriteHighlight = Color(0xFFDCEEFF);
+  static const favoriteHighlightDark = Color(0xFF243B4A);
 
-  static Color getPolylineColor(_color) {
+  static Color favoriteHighlightFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? favoriteHighlightDark
+          : favoriteHighlight;
+
+  static Color getPolylineColor(_color, {bool dark = false}) {
     switch (_color) {
       case "schwarz":
-        return mapBlack;
+        return dark ? const Color(0xFFC7CDD1) : mapBlack;
       case "grün":
         return mapGreen;
       case "gelb":
@@ -62,23 +69,37 @@ class AppButtonStyles {
         disabledForegroundColor: AppColors.disabledForeground,
       );
 
-  static ButtonStyle primary(BuildContext _) => FilledButton.styleFrom(
+  static ButtonStyle primary(BuildContext context) => FilledButton.styleFrom(
         backgroundColor: AppColors.uiPrimary,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: AppColors.disabledBackground,
-        disabledForegroundColor: AppColors.disabledForeground,
+        disabledBackgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : AppColors.disabledBackground,
+        disabledForegroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
+            : AppColors.disabledForeground,
       );
 
-  static ButtonStyle secondary(BuildContext _) => FilledButton.styleFrom(
-        backgroundColor: AppColors.secondaryButtonBackground,
-        foregroundColor: AppColors.uiPrimary,
-        disabledBackgroundColor: AppColors.disabledBackground,
-        disabledForegroundColor: AppColors.disabledForeground,
+  static ButtonStyle secondary(BuildContext context) => FilledButton.styleFrom(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : AppColors.secondaryButtonBackground,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onSecondaryContainer
+            : AppColors.uiPrimary,
+        disabledBackgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : AppColors.disabledBackground,
+        disabledForegroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
+            : AppColors.disabledForeground,
       );
 
-  static ButtonStyle quiet(BuildContext _) => FilledButton.styleFrom(
+  static ButtonStyle quiet(BuildContext context) => FilledButton.styleFrom(
         backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.uiPrimary,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : AppColors.uiPrimary,
         disabledBackgroundColor: AppColors.disabledBackground,
         disabledForegroundColor: AppColors.disabledForeground,
       );
@@ -98,4 +119,26 @@ var themeData = ThemeData(
   visualDensity: VisualDensity.adaptivePlatformDensity,
   useMaterial3: true,
   colorScheme: _appColorScheme,
+);
+
+final _darkColorScheme = ColorScheme.fromSeed(
+  seedColor: AppColors.munichWaysBlue,
+  brightness: Brightness.dark,
+).copyWith(
+  primary: const Color(0xFF8CC8FF),
+  secondary: const Color(0xFF9CCBFA),
+  error: const Color(0xFFFFB4AB),
+);
+
+var darkThemeData = ThemeData(
+  visualDensity: VisualDensity.adaptivePlatformDensity,
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  colorScheme: _darkColorScheme,
+  scaffoldBackgroundColor: const Color(0xFF101418),
+  canvasColor: const Color(0xFF151A1F),
+  bottomSheetTheme: const BottomSheetThemeData(
+    backgroundColor: Color(0xFF151A1F),
+    surfaceTintColor: Colors.transparent,
+  ),
 );

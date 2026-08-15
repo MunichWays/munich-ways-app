@@ -27,7 +27,7 @@ class ListItem extends StatelessWidget {
           Material(
             child: InkWell(
               child: Ink(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   child: Row(

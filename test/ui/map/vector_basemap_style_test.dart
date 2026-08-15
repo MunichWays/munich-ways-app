@@ -58,4 +58,20 @@ void main() {
       isEmpty,
     );
   });
+
+  test('omits car-parking POIs from every general POI layer', () {
+    final style = jsonDecode(
+      File('assets/map/osm_openmaptiles_style.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final layers =
+        (style['layers'] as List<dynamic>).cast<Map<String, dynamic>>();
+
+    for (final id in ['poi_z14', 'poi_z15', 'poi_z16']) {
+      final poiLayer = layers.singleWhere((layer) => layer['id'] == id);
+      expect(
+        poiLayer['filter'],
+        contains(equals(<dynamic>['!=', 'class', 'parking'])),
+      );
+    }
+  });
 }

@@ -226,10 +226,13 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   Widget _pointLeading(int index) {
     if (index == 0) {
-      return const CircleAvatar(
+      final theme = Theme.of(context);
+      final dark = theme.brightness == Brightness.dark;
+      return CircleAvatar(
         radius: 18,
-        backgroundColor: Colors.white,
-        child: Icon(
+        backgroundColor:
+            dark ? theme.colorScheme.surfaceContainerHighest : Colors.white,
+        child: const Icon(
           Icons.navigation,
           color: AppColors.mapAccentColor,
           size: 27,
@@ -411,12 +414,22 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                         backgroundColor: index == _points.length - 1
                             ? point.place == null
                                 ? AppColors.uiPrimary
-                                : AppColors.secondaryButtonBackground
+                                : Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .secondaryContainer
+                                    : AppColors.secondaryButtonBackground
                             : null,
                         foregroundColor: index == _points.length - 1
                             ? point.place == null
                                 ? Colors.white
-                                : AppColors.uiPrimary
+                                : Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer
+                                    : AppColors.uiPrimary
                             : null,
                         onTap: () => _selectPlace(index),
                         onEdit: () => _selectPlace(index),
