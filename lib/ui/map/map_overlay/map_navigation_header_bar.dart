@@ -116,12 +116,19 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
+    final navigationTrackingInterrupted = model.navigationStarted &&
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
     final guidanceDisplay = model.navigationStarted
-        ? nextManeuver ??
-            VoiceGuidanceDisplay(
-              text: context.l10n.followRouteOnMap,
-              type: 'map',
-            )
+        ? navigationTrackingInterrupted
+            ? VoiceGuidanceDisplay(
+                text: context.l10n.isEnglish ? 'Resume' : 'Fortsetzen',
+                type: 'map',
+              )
+            : nextManeuver ??
+                VoiceGuidanceDisplay(
+                  text: context.l10n.followRouteOnMap,
+                  type: 'map',
+                )
         : null;
     final destinationReached = guidanceDisplay?.isFinalDestination ?? false;
     final Widget stats;
@@ -191,8 +198,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
     }
 
     final refreshEnabled = route.state != MapRouteState.LOADING;
-    final navigationTrackingInterrupted = model.navigationStarted &&
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
     final refreshLabel = refreshEnabled
         ? (navigationTrackingInterrupted
             ? (context.l10n.isEnglish ? 'Resume' : 'Fortsetzen')
@@ -344,40 +349,43 @@ class MapNavigationHeaderBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (guidanceDisplay != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-                child: Row(
-                  children: [
-                    if (guidanceDisplay.type != 'map') ...[
-                      Icon(
-                        _maneuverIcon(guidanceDisplay),
-                        size: 32,
-                        color: Colors.white,
+              ExcludeSemantics(
+                excluding: navigationTrackingInterrupted,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+                  child: Row(
+                    children: [
+                      if (guidanceDisplay.type != 'map') ...[
+                        Icon(
+                          _maneuverIcon(guidanceDisplay),
+                          size: 32,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: Text(
+                          guidanceDisplay.text,
+                          textAlign: TextAlign.center,
+                          maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: (guidanceDisplay.type == 'map'
+                                      ? theme.textTheme.titleMedium
+                                      : theme.textTheme.titleLarge)
+                                  ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                height: 1.15,
+                              ) ??
+                              const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                    Expanded(
-                      child: Text(
-                        guidanceDisplay.text,
-                        textAlign: TextAlign.center,
-                        maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: (guidanceDisplay.type == 'map'
-                                    ? theme.textTheme.titleMedium
-                                    : theme.textTheme.titleLarge)
-                                ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              height: 1.15,
-                            ) ??
-                            const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             SizedBox(width: double.infinity, child: Center(child: stats)),
@@ -411,17 +419,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   onPressed: onStartNavigation,
                 ),
               ),
-            ],
-            if (navigationTrackingInterrupted) ...[
-              const SizedBox(height: 8),
-              ExcludeSemantics(
-                child: Text(
-                  context.l10n.isEnglish ? 'Resume' : 'Fortsetzen',
-                  textAlign: TextAlign.center,
-                  style: emphasisStyle,
-                ),
-              ),
-              const SizedBox(height: 4),
             ],
             Padding(
               padding: const EdgeInsets.symmetric(

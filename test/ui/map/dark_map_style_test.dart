@@ -5,6 +5,55 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/ui/map/dark_map_style.dart';
 
 void main() {
+  test('cycling style emphasizes only paved paths and tracks', () {
+    final source =
+        File('assets/map/osm_openmaptiles_style.json').readAsStringSync();
+    final style =
+        jsonDecode(createCyclingMapStyle(source)) as Map<String, dynamic>;
+    final layers = (style['layers'] as List).cast<Map<String, dynamic>>();
+
+    final roadShield =
+        layers.firstWhere((layer) => layer['id'] == 'road_shield');
+    expect(roadShield['layout']['visibility'], 'none');
+
+    final path = layers.firstWhere(
+      (layer) => layer['id'] == 'road_path_pedestrian_paved_cycle',
+    );
+    expect(path['paint']['line-color'], '#4f98a5');
+    expect(
+      path['filter'],
+      contains(equals(const ['==', 'surface', 'paved'])),
+    );
+    expect(path['filter'].toString(), contains('cycleway'));
+    expect(path['filter'].toString(), contains('bicycle'));
+    expect(path['filter'].toString(), contains('yes'));
+    expect(path['paint']['line-width']['stops'].last[1], 13.5);
+
+    final track = layers.firstWhere(
+      (layer) => layer['id'] == 'road_service_track_paved_track',
+    );
+    expect(
+      track['filter'],
+      contains(equals(const ['==', 'surface', 'paved'])),
+    );
+    expect(
+      track['filter'],
+      contains(equals(const ['==', 'class', 'track'])),
+    );
+    expect(track['minzoom'], 12);
+    expect(track['paint']['line-width']['stops'].first, [12, 0.8]);
+    expect(track['paint']['line-width']['stops'][1], [14, 2]);
+
+    final motorway =
+        layers.firstWhere((layer) => layer['id'] == 'road_motorway');
+    expect(motorway['paint'], isNot(contains('line-opacity')));
+    expect(motorway['paint']['line-width']['stops'].last[1], 18);
+
+    final rail = layers.firstWhere((layer) => layer['id'] == 'road_major_rail');
+    expect(rail['paint'], isNot(contains('line-opacity')));
+    expect(rail['paint']['line-width']['stops'].last[1], 2);
+  });
+
   test('night style keeps layers and darkens the basemap', () {
     final source =
         File('assets/map/osm_openmaptiles_style.json').readAsStringSync();
@@ -12,7 +61,9 @@ void main() {
     final dark = jsonDecode(createDarkMapStyle(source)) as Map<String, dynamic>;
 
     expect(
-        (dark['layers'] as List).length, (original['layers'] as List).length);
+      (dark['layers'] as List).length,
+      greaterThan((original['layers'] as List).length),
+    );
     final background = (dark['layers'] as List)
         .cast<Map<String, dynamic>>()
         .firstWhere((layer) => layer['type'] == 'background');

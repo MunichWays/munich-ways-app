@@ -70,6 +70,30 @@ bool hasReliableMovementHeading({
     speed >= 1 &&
     (heading != 0 || headingAccuracy > 0);
 
+@visibleForTesting
+String offRouteSpokenMessage({
+  required bool english,
+  required bool automaticRerouting,
+  required bool firstAnnouncement,
+  bool lastAutomaticAnnouncement = false,
+}) {
+  if (lastAutomaticAnnouncement) {
+    return english
+        ? 'Last automatic recalculation shortly. No further directions '
+            'while off the route.'
+        : 'Letzte automatische Neuberechnung in Kürze. Keine weiteren '
+            'Ansagen außerhalb der Route.';
+  }
+  if (english) {
+    return firstAnnouncement && automaticRerouting
+        ? 'Route left. Recalculation follows.'
+        : 'Route left.';
+  }
+  return firstAnnouncement && automaticRerouting
+      ? 'Route verlassen. Neuberechnung folgt.'
+      : 'Route verlassen.';
+}
+
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
@@ -100,7 +124,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerHitGesamtId = 'munichways_radlnetz_hit_gesamt';
   static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
   static const _kRadlVorrangMinZoom = 8.0;
-  static const _kGesamtnetzMinZoom = 13.0;
+  // Keep all ratings available in regional overviews without competing with
+  // the priority cycling network at the widest zoom levels.
+  static const _kGesamtnetzMinZoom = 10.0;
   static const _kCurrentLocationSourceId = 'munichways_current_location';
   static const _kCurrentLocationLayerId = 'munichways_current_location_dot';
 
@@ -177,6 +203,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _automaticReroutingSuspended = false;
   bool _offRouteCameraZoomedOut = false;
   int _consecutiveAutomaticReroutes = 0;
+  int _offRouteAnnouncementCount = 0;
   double _onRouteDistanceSinceReroute = 0;
   latlong2.LatLng? _lastOnRoutePosition;
   DateTime? _onRouteSinceReroute;
@@ -252,8 +279,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
       style = kOpenFreeMapLibertyStyleAsset;
     }
-    if (dark && style != kOpenFreeMapLibertyStyleAsset) {
-      style = createDarkMapStyle(style);
+    if (style != kOpenFreeMapLibertyStyleAsset) {
+      style = dark ? createDarkMapStyle(style) : createCyclingMapStyle(style);
     }
     if (mounted) setState(() => _mapStyleString = style);
   }
@@ -1424,7 +1451,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               : 'Route verlassen oder kein GPS-Signal.';
       _setReroutingDisplay(message);
       if (model.voiceGuidanceEnabled && model.voiceGuidanceAvailable) {
-        unawaited(_speak(message, english: context.l10n.isEnglish));
+        final english = context.l10n.isEnglish;
+        final spokenMessage = offRouteSpokenMessage(
+          english: english,
+          automaticRerouting: automatic,
+          firstAnnouncement: _offRouteAnnouncementCount == 0,
+          lastAutomaticAnnouncement: isLastAutomaticAnnouncement,
+        );
+        _offRouteAnnouncementCount++;
+        unawaited(_speak(spokenMessage, english: english));
       }
     });
 
@@ -1594,6 +1629,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (resetAttempts) {
       _automaticReroutingSuspended = false;
       _consecutiveAutomaticReroutes = 0;
+      _offRouteAnnouncementCount = 0;
       _onRouteDistanceSinceReroute = 0;
       _lastOnRoutePosition = null;
       _onRouteSinceReroute = null;
@@ -2575,6 +2611,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           SymbolOptions(
             geometry: geometry,
             iconImage: imageName,
+            iconSize: 1.4,
             iconAnchor: 'center',
           ),
         ),
@@ -2612,7 +2649,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         text: '$number',
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 22,
+          fontSize: 25,
           fontWeight: FontWeight.bold,
         ),
       ),

@@ -783,7 +783,7 @@ void main() {
     );
   });
 
-  test('disables directions for a route overlapping around a stop', () {
+  test('only suppresses directions on an overlapping route section', () {
     const intermediate = LatLng(48.1400, 11.5720);
     final guidance = VoiceGuidance();
     guidance.setRoute(
@@ -795,16 +795,19 @@ void main() {
       intermediateDestinationNames: const ['Zwischenziel'],
     );
 
+    expect(guidance.display(start, english: false)?.type, isNot('map'));
+    expect(guidance.update(start, english: false), isNot(contains('Karte')));
+
     expect(
-      guidance.display(start, english: false)?.text,
-      'Karte beachten',
+      guidance.display(beforeTurn, english: false)?.text,
+      'Auf Karte achten',
     );
     expect(
-      guidance.update(start, english: false),
-      'Hin- und Rückweg überlappen. Keine Abbiegehinweise. '
-      'Bitte der Route auf der Karte folgen.',
+      guidance.update(beforeTurn, english: false),
+      'Hin- und Rückweg sind hier gleich. Auf Karte achten.',
     );
-    expect(guidance.update(start, english: false), isNull);
-    expect(guidance.update(intermediate, english: false), isNull);
+    expect(guidance.update(beforeTurn, english: false), isNull);
+
+    expect(guidance.display(end, english: false)?.type, isNot('map'));
   });
 }
