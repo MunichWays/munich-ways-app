@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/cirruslabs/flutter:3.32.8
+      image: ghcr.io/cirruslabs/flutter:3.44.7
 
     steps:
       - uses: actions/checkout@v5
