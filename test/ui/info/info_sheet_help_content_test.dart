@@ -31,8 +31,10 @@ void main() {
     expect(find.textContaining('durchgezogene Linie'), findsNWidgets(3));
     expect(find.textContaining('gestrichelte Linie'), findsNWidgets(3));
     expect(find.text('Unbewertete Wege (OSM)'), findsOneWidget);
-    expect(find.textContaining('Ebener Fahrradweg'), findsOneWidget);
+    expect(find.textContaining('Befestigter Fahrradweg'), findsOneWidget);
     expect(find.textContaining('Wohn- oder Nebenstraße'), findsOneWidget);
     expect(find.textContaining('ohne MunichWays-Bewertung'), findsNWidgets(2));
+    expect(find.textContaining('Halte eine bewertete Linie'), findsOneWidget);
+    expect(find.textContaining('Halte eine farbige Linie'), findsNothing);
   });
 }

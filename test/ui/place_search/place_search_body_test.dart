@@ -444,6 +444,46 @@ void main() {
     expect(selected, isEmpty);
   });
 
+  testWidgets('removes a route from the favorites section menu',
+      (tester) async {
+    final route = SavedRoute(
+      name: 'Lieblingsroute',
+      start: Place('Start', const LatLng(48.1, 11.5)),
+      stops: const [],
+      destination: Place('Ziel', const LatLng(48.2, 11.6)),
+      isFavorite: true,
+      favoriteOrder: 0,
+    );
+    final routesStore = FakeSavedRoutesStore([route]);
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      favoritesRepo: FakeRecentSearchesStore([]),
+      savedRoutesRepo: routesStore,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final favoriteRoute = find.byKey(const ValueKey('route-Lieblingsroute'));
+    final favoriteMenu = find.descendant(
+      of: favoriteRoute,
+      matching: find.byTooltip('Mehr Optionen'),
+    );
+    expect(favoriteMenu, findsOneWidget);
+
+    await tester.tap(favoriteMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Favorit entfernen'));
+    await tester.pumpAndSettle();
+
+    expect(model.savedRoutes.single.isFavorite, isFalse);
+    expect(routesStore.storedRoutes!.single.isFavorite, isFalse);
+  });
+
   testWidgets('both favorite option buttons accept taps and long presses',
       (tester) async {
     final home = Place('Home', const LatLng(48.2, 11.6));

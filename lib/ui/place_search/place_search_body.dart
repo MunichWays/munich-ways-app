@@ -439,39 +439,54 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
           key: menuKey,
           tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
           padding: EdgeInsets.zero,
-          onSelected: (action) =>
-              _scheduleSavedRouteAction(context, model, route, action),
           itemBuilder: (context) => [
             PopupMenuItem(
               value: _SavedRouteAction.toggleFavorite,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.toggleFavorite),
+              ),
               child: Row(
                 children: [
                   Icon(route.isFavorite ? Icons.star : Icons.star_border),
                   const SizedBox(width: 12),
-                  Text(
-                    route.isFavorite
-                        ? (context.l10n.isEnglish
-                            ? 'Remove favorite'
-                            : 'Favorit entfernen')
-                        : (context.l10n.isEnglish
-                            ? 'Add favorite'
-                            : 'Als Favorit speichern'),
+                  Flexible(
+                    child: Text(
+                      route.isFavorite
+                          ? (context.l10n.isEnglish
+                              ? 'Remove favorite'
+                              : 'Favorit entfernen')
+                          : (context.l10n.isEnglish
+                              ? 'Add favorite'
+                              : 'Als Favorit speichern'),
+                    ),
                   ),
                 ],
               ),
             ),
             PopupMenuItem(
               value: _SavedRouteAction.rename,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.rename),
+              ),
               child: Row(
                 children: [
                   const Icon(Icons.edit_outlined),
                   const SizedBox(width: 12),
-                  Text(context.l10n.isEnglish ? 'Rename' : 'Umbenennen'),
+                  Flexible(
+                    child:
+                        Text(context.l10n.isEnglish ? 'Rename' : 'Umbenennen'),
+                  ),
                 ],
               ),
             ),
             PopupMenuItem(
               value: _SavedRouteAction.delete,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.delete),
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -479,7 +494,9 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                     color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(width: 12),
-                  Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                  Flexible(
+                    child: Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                  ),
                 ],
               ),
             ),
@@ -528,26 +545,20 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     await model.renameSavedRoute(route, trimmedName);
   }
 
-  void _scheduleSavedRouteAction(
+  Future<void> _handleSavedRouteAction(
     BuildContext context,
     PlaceSearchScreenViewModel model,
     SavedRoute route,
     _SavedRouteAction action,
-  ) {
-    Future<void>.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      switch (action) {
-        case _SavedRouteAction.toggleFavorite:
-          unawaited(_toggleRouteFavorite(context, model, route));
-          break;
-        case _SavedRouteAction.rename:
-          unawaited(_renameSavedRoute(context, model, route));
-          break;
-        case _SavedRouteAction.delete:
-          unawaited(_confirmDeleteSavedRoute(context, model, route));
-          break;
-      }
-    });
+  ) async {
+    switch (action) {
+      case _SavedRouteAction.toggleFavorite:
+        await _toggleRouteFavorite(context, model, route);
+      case _SavedRouteAction.rename:
+        await _renameSavedRoute(context, model, route);
+      case _SavedRouteAction.delete:
+        await _confirmDeleteSavedRoute(context, model, route);
+    }
   }
 
   Future<void> _toggleRouteFavorite(

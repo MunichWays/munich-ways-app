@@ -89,8 +89,8 @@ class InfoSheetHelpContent extends StatelessWidget {
               color: AppColors.pavedWayFor(context),
               dashed: true,
               label: context.l10n.isEnglish
-                  ? 'Smooth cycling way – dashed blue-green line'
-                  : 'Ebener Fahrradweg – blaugrün gestrichelte Linie',
+                  ? 'Paved cycling way – dashed blue-green line'
+                  : 'Befestigter Fahrradweg – blaugrün gestrichelte Linie',
               description: context.l10n.isEnglish
                   ? 'Paved way suitable for bicycles, without a MunichWays rating'
                   : 'Befestigter, fürs Fahrrad geeigneter Weg ohne MunichWays-Bewertung',
@@ -129,8 +129,8 @@ class InfoSheetHelpContent extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Text(context.l10n.isEnglish
-            ? 'Touch and hold a colored line and select “Show details” to see its rating, measures and links.'
-            : 'Halte eine farbige Linie gedrückt und wähle „Details anzeigen“, um Bewertung, Maßnahmen und Links zu sehen.'),
+            ? 'Touch and hold a rated line and select “Show details” to see its rating, measures and links.'
+            : 'Halte eine bewertete Linie gedrückt und wähle „Details anzeigen“, um Bewertung, Maßnahmen und Links zu sehen.'),
       ],
     );
   }
