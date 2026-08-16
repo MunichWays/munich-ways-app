@@ -28,7 +28,11 @@ void main() {
     expect(find.textContaining('Plan / Lücke'), findsNothing);
     expect(find.textContaining('RadlVorrang-Netz'), findsNothing);
     expect(find.textContaining('Weitere Strecken'), findsNothing);
-    expect(find.textContaining('durchgezogene Linie'), findsNWidgets(2));
-    expect(find.textContaining('gestrichelte Linie'), findsNWidgets(2));
+    expect(find.textContaining('durchgezogene Linie'), findsNWidgets(3));
+    expect(find.textContaining('gestrichelte Linie'), findsNWidgets(3));
+    expect(find.text('Unbewertete Wege (OSM)'), findsOneWidget);
+    expect(find.textContaining('Ebener Fahrradweg'), findsOneWidget);
+    expect(find.textContaining('Wohn- oder Nebenstraße'), findsOneWidget);
+    expect(find.textContaining('ohne MunichWays-Bewertung'), findsNWidgets(2));
   });
 }

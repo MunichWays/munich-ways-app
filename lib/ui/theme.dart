@@ -22,6 +22,10 @@ class AppColors {
   static const mapYellow = Color(0xffffd000);
   static const mapRed = Color(0xfff44336);
   static const mapGrey = Color(0xff9c9d9f);
+  static const pavedWay = Color(0xFF4F98A5);
+  static const pavedWayDark = Color(0xFF5FABB5);
+  static const minorStreet = Color(0xFFB8D3C7);
+  static const minorStreetDark = Color(0xFF46675C);
 
   static const mapButtonBackground = Color(0xFF4D4D4D);
   static const mapButtonForeground = Colors.white;
@@ -32,6 +36,14 @@ class AppColors {
   static const mapRouteColorDark = Color(0xFF00B7FF);
   static const favoriteHighlight = Color(0xFFDCEEFF);
   static const favoriteHighlightDark = Color(0xFF243B4A);
+
+  static Color pavedWayFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? pavedWayDark : pavedWay;
+
+  static Color minorStreetFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? minorStreetDark
+          : minorStreet;
 
   static Color favoriteHighlightFor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark

@@ -15,7 +15,9 @@ String createCyclingMapStyle(String source) {
       layer['layout'] = layout;
     }
     cyclingLayers.add(layer);
-    if (id.contains('path_pedestrian')) {
+    if (id == 'road_minor' || id == 'tunnel_minor' || id == 'bridge_street') {
+      cyclingLayers.add(_minorStreetLayer(layer));
+    } else if (id.contains('path_pedestrian')) {
       cyclingLayers.add(
         _pavedHighlightLayer(
           layer,
@@ -26,10 +28,11 @@ String createCyclingMapStyle(String source) {
             [
               'all',
               ['in', 'subclass', 'footway', 'path', 'pedestrian'],
-              ['==', 'bicycle', 'yes'],
+              ['in', 'bicycle', 'yes', 'designated'],
             ],
           ],
-          widthFactor: 1.35,
+          widthFactor: 1.2,
+          maxWidth: 6,
         ),
       );
     } else if (id.endsWith('service_track')) {
@@ -37,7 +40,8 @@ String createCyclingMapStyle(String source) {
         layer,
         idSuffix: 'paved_track',
         extraFilter: const ['==', 'class', 'track'],
-        widthFactor: 1.25,
+        widthFactor: 1.2,
+        maxWidth: 6,
       );
       // The original service/track curve has width 0 up to zoom 15.5.
       // Asphalt tracks are useful regional cycling links and should become
@@ -47,9 +51,9 @@ String createCyclingMapStyle(String source) {
         'base': 1.2,
         'stops': const [
           [12, 0.8],
-          [14, 2],
-          [16, 3.5],
-          [20, 10],
+          [14, 1.5],
+          [16, 2.5],
+          [20, 6],
         ],
       };
       cyclingLayers.add(pavedTrack);
@@ -59,11 +63,20 @@ String createCyclingMapStyle(String source) {
   return jsonEncode(style);
 }
 
+Map<String, dynamic> _minorStreetLayer(Map<String, dynamic> source) {
+  final layer = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
+  layer['id'] = '${source['id']}_minor_street';
+  final paint = layer['paint'] as Map<String, dynamic>;
+  paint['line-color'] = '#b8d3c7';
+  return layer;
+}
+
 Map<String, dynamic> _pavedHighlightLayer(
   Map<String, dynamic> source, {
   required String idSuffix,
   required List<dynamic> extraFilter,
   required double widthFactor,
+  required double maxWidth,
 }) {
   final layer = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
   layer['id'] = '${source['id']}_$idSuffix';
@@ -76,7 +89,16 @@ Map<String, dynamic> _pavedHighlightLayer(
   final paint = layer['paint'] as Map<String, dynamic>;
   paint['line-color'] = '#4f98a5';
   paint['line-opacity'] = 1;
-  paint['line-width'] = _scaleWidth(paint['line-width'], widthFactor);
+  paint['line-dasharray'] = const [0.6, 1.4];
+  paint['line-width'] = _scaleWidth(
+    paint['line-width'],
+    widthFactor,
+    maxWidth: maxWidth,
+  );
+  final layout =
+      (layer['layout'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+  layout['line-cap'] = 'round';
+  layer['layout'] = layout;
   return layer;
 }
 
@@ -123,8 +145,8 @@ String createDarkMapStyle(String source) {
   return jsonEncode(style);
 }
 
-dynamic _scaleWidth(dynamic value, double factor) {
-  if (value is num) return value * factor;
+dynamic _scaleWidth(dynamic value, double factor, {required double maxWidth}) {
+  if (value is num) return (value * factor).clamp(0, maxWidth);
   if (value is! Map<String, dynamic>) return value;
   final result = Map<String, dynamic>.of(value);
   final stops = result['stops'];
@@ -132,7 +154,7 @@ dynamic _scaleWidth(dynamic value, double factor) {
     result['stops'] = [
       for (final rawStop in stops)
         if (rawStop is List && rawStop.length >= 2 && rawStop[1] is num)
-          [rawStop[0], (rawStop[1] as num) * factor]
+          [rawStop[0], ((rawStop[1] as num) * factor).clamp(0, maxWidth)]
         else
           rawStop,
     ];
@@ -162,6 +184,7 @@ String _nightLineColorFor(String? id) {
   if (name.contains('paved_cycle') || name.contains('paved_track')) {
     return '#5fabb5';
   }
+  if (name.contains('minor_street')) return '#46675c';
   if (name.contains('path_pedestrian')) return '#40515b';
   if (name.contains('rail')) return '#53636c';
   if (name.contains('motorway') || name.contains('trunk')) return '#735a3a';
