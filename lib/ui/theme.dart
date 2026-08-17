@@ -32,8 +32,8 @@ class AppColors {
   static const mapButtonForegroundActive = Color(0xFF65B8FF);
 
   static const mapAccentColor = Color(0xFF2196F3);
-  static const mapRouteColor = Color(0xFF0D47A1);
-  static const mapRouteColorDark = Color(0xFF00B7FF);
+  static const mapRouteColor = Color(0xFF0057D9);
+  static const mapRouteColorDark = Color(0xFF1677FF);
   static const favoriteHighlight = Color(0xFFDCEEFF);
   static const favoriteHighlightDark = Color(0xFF243B4A);
 

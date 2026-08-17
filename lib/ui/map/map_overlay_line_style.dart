@@ -16,7 +16,9 @@ abstract final class MapOverlayLineStyle {
     14,
     10.0,
     17,
-    9.5,
+    10.5,
+    20,
+    12.0,
   ];
 
   static const List<Object?> radlLineWidthByZoom = [

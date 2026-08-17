@@ -59,6 +59,8 @@ class VoiceGuidance {
   // 2D. Keep matching local to the established progress so navigation does
   // not jump from the lower section to the section above it.
   static const double _maximumProgressJumpMeters = 120;
+  static const double _projectionContinuityToleranceMeters = 6;
+  static const double _ambiguousRouteSeparationMeters = 30;
 
   VoiceGuidance({
     this.approachDistanceMeters = 60,
@@ -284,7 +286,15 @@ class VoiceGuidance {
       position,
       minimumDistanceAlongRoute: _routeProgress,
       maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
     );
+    if (projection.isAmbiguous &&
+        !_isOverlappingProgress(projection.distanceAlongRoute)) {
+      return VoiceGuidanceDisplay(
+        text: english ? 'Watch the map' : 'Auf Karte achten',
+        type: 'map',
+      );
+    }
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null) {
       final isFinalDestination = !_isIntermediateArrival(arrivalIndex);
@@ -349,7 +359,12 @@ class VoiceGuidance {
       position,
       minimumDistanceAlongRoute: _routeProgress,
       maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
     );
+    if (projection.isAmbiguous &&
+        !_isOverlappingProgress(projection.distanceAlongRoute)) {
+      return null;
+    }
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
       if (!_isIntermediateArrival(arrivalIndex)) {
@@ -756,7 +771,9 @@ class VoiceGuidance {
     }
 
     final action = _action(maneuver, english);
-    if (now) return english ? '$action now.' : 'Jetzt $action.';
+    if (now) {
+      return english ? '${_sentenceCase(action)} here.' : 'Hier $action.';
+    }
     return english
         ? 'In $distanceMeters meters, $action.'
         : 'In $distanceMeters Metern $action.';
@@ -767,10 +784,11 @@ class VoiceGuidance {
     required bool english,
     required double remainingMeters,
   }) {
-    final action = _shortAction(maneuver, english);
     if (remainingMeters <= 15) {
-      return english ? '$action now' : 'Jetzt $action';
+      final action = _action(maneuver, english);
+      return english ? '${_sentenceCase(action)} here' : 'Hier $action';
     }
+    final action = _shortAction(maneuver, english);
     final distance = _roundedDistance(remainingMeters);
     return english ? 'In $distance m $action' : 'In $distance m $action';
   }
@@ -834,15 +852,18 @@ class VoiceGuidance {
         _ => '$value.',
       };
 
+  static String _sentenceCase(String value) =>
+      '${value[0].toUpperCase()}${value.substring(1)}';
+
   static _RouteProjection _projectOntoRoute(
     List<LatLng> route,
     LatLng point, {
     double minimumDistanceAlongRoute = 0,
     double maximumDistanceAlongRoute = double.infinity,
+    double preferEarlierWithinMeters = 0,
   }) {
     var cumulative = 0.0;
-    var bestDistanceSquared = double.infinity;
-    var bestAlong = 0.0;
+    final candidates = <_RouteProjection>[];
     final latitudeRadians = point.latitude * pi / 180;
     final metersPerLon = 111320.0 * cos(latitudeRadians);
     const metersPerLat = 111320.0;
@@ -866,14 +887,43 @@ class VoiceGuidance {
       final segmentLength = sqrt(lengthSquared);
       final distanceAlong = cumulative + segmentLength * t;
       if (distanceAlong + 1 >= minimumDistanceAlongRoute &&
-          distanceAlong - 1 <= maximumDistanceAlongRoute &&
-          distanceSquared < bestDistanceSquared) {
-        bestDistanceSquared = distanceSquared;
-        bestAlong = distanceAlong;
+          distanceAlong - 1 <= maximumDistanceAlongRoute) {
+        candidates.add(
+          _RouteProjection(distanceAlong, sqrt(distanceSquared)),
+        );
       }
       cumulative += segmentLength;
     }
-    return _RouteProjection(bestAlong, sqrt(bestDistanceSquared));
+    if (candidates.isEmpty) {
+      return const _RouteProjection(0, double.infinity);
+    }
+    final closestDistance =
+        candidates.map((candidate) => candidate.distanceFromRoute).reduce(min);
+    final plausible = candidates
+        .where(
+          (candidate) =>
+              candidate.distanceFromRoute <=
+              closestDistance + preferEarlierWithinMeters,
+        )
+        .toList();
+    final selected = plausible.reduce(
+      (earlier, candidate) =>
+          candidate.distanceAlongRoute < earlier.distanceAlongRoute
+              ? candidate
+              : earlier,
+    );
+    final isAmbiguous = preferEarlierWithinMeters > 0 &&
+        plausible.any(
+          (candidate) =>
+              (candidate.distanceAlongRoute - selected.distanceAlongRoute)
+                  .abs() >=
+              _ambiguousRouteSeparationMeters,
+        );
+    return _RouteProjection(
+      selected.distanceAlongRoute,
+      selected.distanceFromRoute,
+      isAmbiguous: isAmbiguous,
+    );
   }
 }
 
@@ -887,11 +937,13 @@ class _GuidanceManeuver {
 class _RouteProjection {
   const _RouteProjection(
     this.distanceAlongRoute,
-    this.distanceFromRoute,
-  );
+    this.distanceFromRoute, {
+    this.isAmbiguous = false,
+  });
 
   final double distanceAlongRoute;
   final double distanceFromRoute;
+  final bool isAmbiguous;
 }
 
 class _RouteInterval {
