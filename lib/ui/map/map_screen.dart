@@ -38,6 +38,7 @@ import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
+import 'package:munich_ways/ui/map/route_overlap.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
@@ -138,6 +139,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRouteLayerId = 'munichways_route_line';
   static const _kRouteConnectorSourceId = 'munichways_route_connector';
   static const _kRouteConnectorLayerId = 'munichways_route_connector_line';
+  static const _kRouteOverlapSourceId = 'munichways_route_overlap';
+  static const _kRouteOverlapLayerId = 'munichways_route_overlap_arrows';
+  static const _kRouteOverlapImageId = 'route-overlap-arrow-pair-v2';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
@@ -2509,6 +2513,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           },
         ],
       });
+      await controller.setGeoJsonSource(
+        _kRouteOverlapSourceId,
+        buildRouteOverlapGeoJson(route.points),
+      );
       await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
         'type': 'FeatureCollection',
         'features': route.destinationConnector.length < 2
@@ -2534,6 +2542,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         'type': 'FeatureCollection',
         'features': <dynamic>[],
       });
+      await controller.setGeoJsonSource(
+        _kRouteOverlapSourceId,
+        buildRouteOverlapGeoJson(const []),
+      );
     }
 
     if (model.destination != null) {
@@ -2757,6 +2769,53 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createRouteOverlapArrowPairImage() async {
+    const width = 84.0;
+    const height = 28.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final outline = ui.Paint()
+      ..color = const Color(0xD9000000)
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = ui.StrokeCap.round
+      ..strokeJoin = ui.StrokeJoin.round;
+    final white = ui.Paint()
+      ..color = Colors.white
+      ..style = ui.PaintingStyle.fill;
+
+    final forward = ui.Path()
+      ..moveTo(4, 11)
+      ..lineTo(25, 11)
+      ..lineTo(25, 5)
+      ..lineTo(38, 14)
+      ..lineTo(25, 23)
+      ..lineTo(25, 17)
+      ..lineTo(4, 17)
+      ..close();
+    final backward = ui.Path()
+      ..moveTo(80, 11)
+      ..lineTo(59, 11)
+      ..lineTo(59, 5)
+      ..lineTo(46, 14)
+      ..lineTo(59, 23)
+      ..lineTo(59, 17)
+      ..lineTo(80, 17)
+      ..close();
+    for (final path in [forward, backward]) {
+      canvas.drawPath(path, white);
+      canvas.drawPath(path, outline);
+    }
+
+    final image = await recorder.endRecording().toImage(
+          width.toInt(),
+          height.toInt(),
+        );
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
   Future<void> _removeRouteGeoJsonLayers(
       MapLibreMapController controller) async {
     if (!_routeGeoJsonReady) return;
@@ -2765,6 +2824,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await controller.removeLayer(_kRouteConnectorLayerId);
       await controller.removeSource(_kRouteSourceId);
       await controller.removeSource(_kRouteConnectorSourceId);
+      await controller.removeSource(_kRouteOverlapSourceId);
     } catch (_) {
       // Style may have already dropped layers.
     }
@@ -2781,6 +2841,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'features': <dynamic>[],
     });
     await controller.addGeoJsonSource(_kRouteConnectorSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
+    await controller.addGeoJsonSource(_kRouteOverlapSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
@@ -2818,6 +2882,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitRadlId);
       await controller.removeLayer(_kNetworkLayerHitGesamtId);
+      await controller.removeLayer(_kRouteOverlapLayerId);
       await controller.removeLayer(_kNetworkLayerDashedRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
       await controller.removeLayer(_kNetworkLayerCasingRadlId);
@@ -3033,6 +3098,30 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       minzoom: _kRadlVorrangMinZoom,
       enableInteraction: true,
+    );
+    if (!_routePointImages.contains(_kRouteOverlapImageId)) {
+      await controller.addImage(
+        _kRouteOverlapImageId,
+        await _createRouteOverlapArrowPairImage(),
+      );
+      _routePointImages.add(_kRouteOverlapImageId);
+    }
+    await controller.addSymbolLayer(
+      _kRouteOverlapSourceId,
+      _kRouteOverlapLayerId,
+      const SymbolLayerProperties(
+        symbolPlacement: 'line',
+        symbolSpacing: 180,
+        iconImage: _kRouteOverlapImageId,
+        iconSize: 0.85,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconRotationAlignment: 'map',
+        iconPitchAlignment: 'map',
+      ),
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: 12,
+      enableInteraction: false,
     );
     _networkGeoJsonReady = true;
   }

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
+import 'package:munich_ways/ui/map/route_overlap.dart';
 
 /// Holds turn guidance until movement establishes the initial travel direction.
 class NavigationOrientationGate {
@@ -539,7 +540,8 @@ class VoiceGuidance {
       _overlappingRouteIntervals.any((interval) => interval.contains(progress));
 
   static List<_RouteInterval> _repeatedRouteIntervals(List<LatLng> points) {
-    final segments = <String, List<_RouteInterval>>{};
+    final repeatedKeys = repeatedRouteSegmentKeys(points);
+    final intervals = <_RouteInterval>[];
     var distanceAlongRoute = 0.0;
     for (var index = 0; index < points.length - 1; index++) {
       final segmentLength = const Distance().as(
@@ -547,11 +549,9 @@ class VoiceGuidance {
         points[index],
         points[index + 1],
       );
-      final start = _routePointKey(points[index]);
-      final end = _routePointKey(points[index + 1]);
-      if (start != end) {
-        final key = start.compareTo(end) < 0 ? '$start|$end' : '$end|$start';
-        (segments[key] ??= []).add(
+      final key = routeSegmentKey(points[index], points[index + 1]);
+      if (key != null && repeatedKeys.contains(key)) {
+        intervals.add(
           _RouteInterval(
             distanceAlongRoute,
             distanceAlongRoute + segmentLength,
@@ -560,15 +560,8 @@ class VoiceGuidance {
       }
       distanceAlongRoute += segmentLength;
     }
-    return [
-      for (final occurrences in segments.values)
-        if (occurrences.length > 1) ...occurrences,
-    ];
+    return intervals;
   }
-
-  static String _routePointKey(LatLng point) =>
-      '${(point.latitude * 100000).round()}:'
-      '${(point.longitude * 100000).round()}';
 
   /// Removes short left/right chicanes where the route continues in nearly
   /// the same direction. Routing services can otherwise describe a slightly
