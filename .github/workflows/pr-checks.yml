@@ -10,11 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container:
-      image: ghcr.io/cirruslabs/flutter:3.44.7
-
     steps:
       - uses: actions/checkout@v5
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
       - name: Install dependencies
         run: flutter pub get
       - name: Run tests
