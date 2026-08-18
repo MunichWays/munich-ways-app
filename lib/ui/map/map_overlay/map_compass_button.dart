@@ -166,7 +166,8 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
       height: _kTapTargetSize,
       child: IgnorePointer(
         ignoring: !visible,
-        child: visible ? _buildVisibleCompass(context) : const SizedBox.shrink(),
+        child:
+            visible ? _buildVisibleCompass(context) : const SizedBox.shrink(),
       ),
     );
   }
