@@ -111,16 +111,36 @@ platform :ios do
     # https://docs.fastlane.tools/advanced/#directory-behavior). team_id isn't a secret
     # (it's already plaintext in the committed Appfile) — hardcode it instead.
     team_id = "J9FYFLM2K5"
+    profile_uuid = lane_context[SharedValues::SIGH_UUID]
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+
+    # Scope manual signing to the application target. Passing these values as
+    # global xcodebuild arguments also applies the app profile to Flutter's
+    # Swift Package plugin targets, which are libraries and cannot be signed.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["Runner"],
+      build_configurations: ["Release"],
+      team_id: team_id,
+      bundle_identifier: "com.munichways.app",
+      code_sign_identity: "Apple Distribution",
+      sdk: "iphoneos*",
+      profile_name: profile_name,
+      profile_uuid: profile_uuid
+    )
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
       export_method: "app-store",
-      xcargs: [
-        "CODE_SIGN_STYLE=Manual",
-        "CODE_SIGN_IDENTITY=\"Apple Distribution\"",
-        "PROVISIONING_PROFILE_SPECIFIER=#{lane_context[SharedValues::SIGH_UUID]}",
-        "DEVELOPMENT_TEAM=#{team_id}"
-      ].join(" ")
+      export_team_id: team_id,
+      skip_profile_detection: true,
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.munichways.app" => profile_name
+        }
+      }
     )
     # 4) Upload to TestFlight
     upload_options = { skip_waiting_for_build_processing: true }

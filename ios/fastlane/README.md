@@ -169,6 +169,7 @@ Do **not** commit secrets into `Appfile` or the tracked `Fastfile`.
 - **Signing / export errors:** See [Codesigning concepts](https://docs.fastlane.tools/codesigning/getting-started/) and gym [export options](https://docs.fastlane.tools/actions/gym/#export-options).
 - **`sigh`:** `adhoc` and `development` must not both be passed as explicit options (even `false`); use defaults for App Store profiles.
 - **`build_app` `export_method`:** This project uses `app-store` (not `app-store-connect` — that value is not valid for `export_method` in the pinned Fastlane/gym version).
+- **Swift Package signing:** Manual signing is applied only to the `Runner` target. Do not pass the app provisioning profile through global `xcargs`, because Flutter plugin package targets do not support provisioning profiles.
 
 ## Further reading
 
