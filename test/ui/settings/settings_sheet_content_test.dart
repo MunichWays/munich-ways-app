@@ -16,6 +16,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/settings/settings_sheet_content.dart';
+import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -138,11 +139,17 @@ void main() {
       ),
     );
     final localeController = AppLocaleController(store: store);
+    final themeController = AppThemeController(store: store);
+    addTearDown(themeController.dispose);
     await localeController.load();
+    await themeController.load();
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: localeController,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: localeController),
+          ChangeNotifierProvider.value(value: themeController),
+        ],
         child: MaterialApp(
           locale: const Locale('de'),
           localizationsDelegates: const [
@@ -165,39 +172,34 @@ void main() {
     );
     await tester.pump();
 
-    final shortest = find.text('Kürzeste Strecke').first;
+    final routeWish = find.text('Routenwunsch');
     final zoom = find.text('Zoom-Buttons');
-    final mapButtons = find.text('Karten-Buttons');
+    final appearance = find.text('Darstellung');
+    final mapControls = find.text('Karten-Buttons');
     final more = find.text('Weitere Einstellungen');
-    expect(shortest, findsOneWidget);
+    expect(routeWish, findsOneWidget);
+    expect(find.text('Kürzeste Strecke'), findsNothing);
     expect(zoom, findsOneWidget);
-    expect(mapButtons, findsOneWidget);
+    expect(appearance, findsOneWidget);
+    expect(mapControls, findsNothing);
     expect(more, findsOneWidget);
     expect(
-        tester.getTopLeft(shortest).dy, lessThan(tester.getTopLeft(zoom).dy));
+      tester.getTopLeft(routeWish).dy,
+      lessThan(tester.getTopLeft(zoom).dy),
+    );
     expect(
       tester.getTopLeft(zoom).dy,
-      lessThan(tester.getTopLeft(mapButtons).dy),
+      lessThan(tester.getTopLeft(appearance).dy),
     );
     expect(
-      tester.getTopLeft(mapButtons).dy,
+      tester.getTopLeft(appearance).dy,
       lessThan(tester.getTopLeft(more).dy),
     );
-
-    await tester.tap(find.byType(Switch).first);
-    await tester.pumpAndSettle();
-    expect(model.shortestRouteEnabled, isTrue);
-    expect(store.data.routingMode, RoutingMode.bRouterEverywhere);
-    expect(store.data.bRouterProfile, BRouterProfile.shortest);
-    await tester.tap(find.byType(Switch).first);
-    await tester.pumpAndSettle();
-    expect(model.shortestRouteEnabled, isFalse);
-    expect(store.data.routingMode, RoutingMode.automatic);
-    expect(store.data.bRouterProfile, BRouterProfile.trekking);
 
     expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
+    expect(mapControls, findsOneWidget);
     expect(find.text('Routenwunsch'), findsOneWidget);
     expect(find.text('Routenberechnung'), findsNothing);
     final language = find.text('Sprache');
@@ -207,7 +209,7 @@ void main() {
     expect(bikeNetwork, findsOneWidget);
     expect(reloadNetwork, findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Routenwunsch')).dy,
+      tester.getTopLeft(mapControls).dy,
       lessThan(tester.getTopLeft(language).dy),
     );
     expect(
@@ -223,7 +225,7 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.text('Routenwunsch'));
+    await tester.tap(routeWish);
     await tester.pumpAndSettle();
     Finder recommendation(String label) => find.descendant(
           of: find.byType(RadioListTile<RouteRecommendation>),

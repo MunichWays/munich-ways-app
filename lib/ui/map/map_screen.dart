@@ -18,6 +18,7 @@ import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
+import 'package:munich_ways/ui/map/dark_map_style.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/screenshots/store_screenshot_controls.dart';
@@ -37,9 +38,11 @@ import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
+import 'package:munich_ways/ui/map/route_overlap.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
+import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -67,6 +70,30 @@ bool hasReliableMovementHeading({
     speed.isFinite &&
     speed >= 1 &&
     (heading != 0 || headingAccuracy > 0);
+
+@visibleForTesting
+String offRouteSpokenMessage({
+  required bool english,
+  required bool automaticRerouting,
+  required bool firstAnnouncement,
+  bool lastAutomaticAnnouncement = false,
+}) {
+  if (lastAutomaticAnnouncement) {
+    return english
+        ? 'Last automatic recalculation shortly. No further directions '
+            'while off the route.'
+        : 'Letzte automatische Neuberechnung in Kürze. Keine weiteren '
+            'Ansagen außerhalb der Route.';
+  }
+  if (english) {
+    return firstAnnouncement && automaticRerouting
+        ? 'Route left. Recalculation follows.'
+        : 'Route left.';
+  }
+  return firstAnnouncement && automaticRerouting
+      ? 'Route verlassen. Neuberechnung folgt.'
+      : 'Route verlassen.';
+}
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
@@ -98,7 +125,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kNetworkLayerHitGesamtId = 'munichways_radlnetz_hit_gesamt';
   static const _kNetworkLayerHitRadlId = 'munichways_radlnetz_hit_radl';
   static const _kRadlVorrangMinZoom = 8.0;
-  static const _kGesamtnetzMinZoom = 13.0;
+  // Keep all ratings available in regional overviews without competing with
+  // the priority cycling network at the widest zoom levels.
+  static const _kGesamtnetzMinZoom = 10.0;
   static const _kCurrentLocationSourceId = 'munichways_current_location';
   static const _kCurrentLocationLayerId = 'munichways_current_location_dot';
 
@@ -110,6 +139,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRouteLayerId = 'munichways_route_line';
   static const _kRouteConnectorSourceId = 'munichways_route_connector';
   static const _kRouteConnectorLayerId = 'munichways_route_connector_line';
+  static const _kRouteOverlapSourceId = 'munichways_route_overlap';
+  static const _kRouteOverlapLayerId = 'munichways_route_overlap_arrows';
+  static const _kRouteOverlapImageId = 'route-overlap-arrow-pair-v4';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
@@ -175,6 +207,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _automaticReroutingSuspended = false;
   bool _offRouteCameraZoomedOut = false;
   int _consecutiveAutomaticReroutes = 0;
+  int _offRouteAnnouncementCount = 0;
   double _onRouteDistanceSinceReroute = 0;
   latlong2.LatLng? _lastOnRoutePosition;
   DateTime? _onRouteSinceReroute;
@@ -201,6 +234,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Whether to embed [MapLibreMap]; false briefly on iOS only (see [initState]).
   late bool _mountMapView;
   String? _mapStyleString;
+  bool? _darkMapStyle;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -214,7 +248,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_configureTextToSpeech());
-    unawaited(_loadMapStyle());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
     // UIKit/Metal window phase and abort on cold start; a short defer avoids that. Android is fine.
     if (Platform.isIOS) {
@@ -229,7 +262,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _loadMapStyle() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (_darkMapStyle == dark) return;
+    _darkMapStyle = dark;
+    unawaited(_loadMapStyle(dark));
+  }
+
+  Future<void> _loadMapStyle(bool dark) async {
     String style;
     try {
       style = await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
@@ -240,6 +282,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
       style = kOpenFreeMapLibertyStyleAsset;
+    }
+    if (style != kOpenFreeMapLibertyStyleAsset) {
+      style = dark ? createDarkMapStyle(style) : createCyclingMapStyle(style);
     }
     if (mounted) setState(() => _mapStyleString = style);
   }
@@ -370,6 +415,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final statusBarBackground = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF0B1218)
+        : Colors.white;
     return ChangeNotifierProvider<MapScreenViewModel>(
       create: (BuildContext _) {
         final model = MapScreenViewModel();
@@ -697,7 +745,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       left: 0,
                       right: 0,
                       height: MediaQuery.paddingOf(context).top,
-                      child: const ColoredBox(color: Colors.white),
+                      child: ColoredBox(color: statusBarBackground),
                     ),
                   Positioned.fill(
                     child: SafeArea(
@@ -1033,6 +1081,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       (position) {
         _latestPosition = position;
         _pendingPosition = position;
+        context
+            .read<AppThemeController>()
+            .updateLocation(position.latitude, position.longitude);
         unawaited(_drainLocationUpdates(model));
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -1326,6 +1377,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         intermediateDestinationNames:
             model.waypoints.map((place) => place.displayName).toList(),
       );
+    final resumed = _voiceGuidance.resumeAt(
+      position,
+      horizontalAccuracyMeters: gpsPosition.accuracy,
+    );
+    if (!resumed) return;
     _cancelAutomaticRerouting(resetAttempts: false);
     unawaited(_restoreNavigationZoom(model));
   }
@@ -1403,7 +1459,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               : 'Route verlassen oder kein GPS-Signal.';
       _setReroutingDisplay(message);
       if (model.voiceGuidanceEnabled && model.voiceGuidanceAvailable) {
-        unawaited(_speak(message, english: context.l10n.isEnglish));
+        final english = context.l10n.isEnglish;
+        final spokenMessage = offRouteSpokenMessage(
+          english: english,
+          automaticRerouting: automatic,
+          firstAnnouncement: _offRouteAnnouncementCount == 0,
+          lastAutomaticAnnouncement: isLastAutomaticAnnouncement,
+        );
+        _offRouteAnnouncementCount++;
+        unawaited(_speak(spokenMessage, english: english));
       }
     });
 
@@ -1573,6 +1637,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (resetAttempts) {
       _automaticReroutingSuspended = false;
       _consecutiveAutomaticReroutes = 0;
+      _offRouteAnnouncementCount = 0;
       _onRouteDistanceSinceReroute = 0;
       _lastOnRoutePosition = null;
       _onRouteSinceReroute = null;
@@ -2165,6 +2230,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted || cachedPosition == null) return;
     _latestPosition = cachedPosition;
     _pendingPosition = cachedPosition;
+    context.read<AppThemeController>().updateLocation(
+          cachedPosition.latitude,
+          cachedPosition.longitude,
+        );
     unawaited(_drainLocationUpdates(model));
   }
 
@@ -2448,6 +2517,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           },
         ],
       });
+      await controller.setGeoJsonSource(
+        _kRouteOverlapSourceId,
+        buildRouteOverlapGeoJson(route.points),
+      );
       await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
         'type': 'FeatureCollection',
         'features': route.destinationConnector.length < 2
@@ -2473,6 +2546,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         'type': 'FeatureCollection',
         'features': <dynamic>[],
       });
+      await controller.setGeoJsonSource(
+        _kRouteOverlapSourceId,
+        buildRouteOverlapGeoJson(const []),
+      );
     }
 
     if (model.destination != null) {
@@ -2550,6 +2627,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           SymbolOptions(
             geometry: geometry,
             iconImage: imageName,
+            iconSize: 1.4,
             iconAnchor: 'center',
           ),
         ),
@@ -2587,7 +2665,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         text: '$number',
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 22,
+          fontSize: 25,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -2695,6 +2773,53 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createRouteOverlapArrowPairImage() async {
+    const width = 96.0;
+    const height = 38.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        const Rect.fromLTWH(2, 2, width - 4, height - 4),
+        const Radius.circular(10),
+      ),
+      ui.Paint()..color = const Color(0xE6222630),
+    );
+    final white = ui.Paint()
+      ..color = Colors.white
+      ..style = ui.PaintingStyle.fill;
+
+    final forward = ui.Path()
+      ..moveTo(9, 15)
+      ..lineTo(31, 15)
+      ..lineTo(31, 9)
+      ..lineTo(43, 19)
+      ..lineTo(31, 29)
+      ..lineTo(31, 23)
+      ..lineTo(9, 23)
+      ..close();
+    final backward = ui.Path()
+      ..moveTo(87, 15)
+      ..lineTo(65, 15)
+      ..lineTo(65, 9)
+      ..lineTo(53, 19)
+      ..lineTo(65, 29)
+      ..lineTo(65, 23)
+      ..lineTo(87, 23)
+      ..close();
+    for (final path in [forward, backward]) {
+      canvas.drawPath(path, white);
+    }
+
+    final image = await recorder.endRecording().toImage(
+          width.toInt(),
+          height.toInt(),
+        );
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
   Future<void> _removeRouteGeoJsonLayers(
       MapLibreMapController controller) async {
     if (!_routeGeoJsonReady) return;
@@ -2703,6 +2828,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await controller.removeLayer(_kRouteConnectorLayerId);
       await controller.removeSource(_kRouteSourceId);
       await controller.removeSource(_kRouteConnectorSourceId);
+      await controller.removeSource(_kRouteOverlapSourceId);
     } catch (_) {
       // Style may have already dropped layers.
     }
@@ -2711,6 +2837,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureRouteGeoJsonLayer(
       MapLibreMapController controller) async {
     if (_routeGeoJsonReady) return;
+    final routeColor = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.mapRouteColorDark
+        : AppColors.mapRouteColor;
     await controller.addGeoJsonSource(_kRouteSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
@@ -2719,11 +2848,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
     });
+    await controller.addGeoJsonSource(_kRouteOverlapSourceId, {
+      'type': 'FeatureCollection',
+      'features': <dynamic>[],
+    });
     await controller.addLineLayer(
       _kRouteSourceId,
       _kRouteLayerId,
       LineLayerProperties(
-        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineColor: _hexColor(routeColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2735,7 +2868,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteConnectorSourceId,
       _kRouteConnectorLayerId,
       LineLayerProperties(
-        lineColor: _hexColor(AppColors.mapRouteColor),
+        lineColor: _hexColor(routeColor),
         lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2753,6 +2886,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await controller.removeLayer(_kNetworkLayerHitRadlId);
       await controller.removeLayer(_kNetworkLayerHitGesamtId);
+      await controller.removeLayer(_kRouteOverlapLayerId);
       await controller.removeLayer(_kNetworkLayerDashedRadlId);
       await controller.removeLayer(_kNetworkLayerVisibleRadlId);
       await controller.removeLayer(_kNetworkLayerCasingRadlId);
@@ -2768,6 +2902,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _ensureNetworkGeoJsonLayers(
       MapLibreMapController controller) async {
     if (_networkGeoJsonReady) return;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final networkWidth = dark
+        ? MapOverlayLineStyle.darkNetworkLineWidthByZoom
+        : MapOverlayLineStyle.radlLineWidthByZoom;
+    final networkCasingWidth = dark
+        ? MapOverlayLineStyle.darkNetworkCasingLineWidthByZoom
+        : MapOverlayLineStyle.networkCasingLineWidthByZoom;
+    final networkCasingColor = dark ? '#17232b' : '#ffffff';
     // Route must exist before Radl-Netz layers: all use the same basemap label
     // anchor so insertion order is route → gesamt → radl → hit (ratings on top).
     await _ensureRouteGeoJsonLayer(controller);
@@ -2778,9 +2920,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerCasingGesamtId,
-      const LineLayerProperties(
-        lineColor: '#ffffff',
-        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+      LineLayerProperties(
+        lineColor: networkCasingColor,
+        lineWidth: networkCasingWidth,
         lineOpacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2799,9 +2941,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleGesamtId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2826,9 +2968,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerDashedGesamtId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.gesamtNetzLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.gesamtNetzLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2854,9 +2996,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerCasingRadlId,
-      const LineLayerProperties(
-        lineColor: '#ffffff',
-        lineWidth: MapOverlayLineStyle.networkCasingLineWidthByZoom,
+      LineLayerProperties(
+        lineColor: networkCasingColor,
+        lineWidth: networkCasingWidth,
         lineOpacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2873,9 +3015,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerDashedRadlId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2901,9 +3043,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await controller.addLineLayer(
       _kNetworkSourceId,
       _kNetworkLayerVisibleRadlId,
-      const LineLayerProperties(
+      LineLayerProperties(
         lineColor: [Expressions.get, 'lineColor'],
-        lineWidth: MapOverlayLineStyle.radlLineWidthByZoom,
+        lineWidth: networkWidth,
         lineOpacity: MapOverlayLineStyle.radlLineOpacityByZoom,
         lineCap: 'round',
         lineJoin: 'round',
@@ -2961,6 +3103,30 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       minzoom: _kRadlVorrangMinZoom,
       enableInteraction: true,
     );
+    if (!_routePointImages.contains(_kRouteOverlapImageId)) {
+      await controller.addImage(
+        _kRouteOverlapImageId,
+        await _createRouteOverlapArrowPairImage(),
+      );
+      _routePointImages.add(_kRouteOverlapImageId);
+    }
+    await controller.addSymbolLayer(
+      _kRouteOverlapSourceId,
+      _kRouteOverlapLayerId,
+      const SymbolLayerProperties(
+        symbolPlacement: 'line',
+        symbolSpacing: 180,
+        iconImage: _kRouteOverlapImageId,
+        iconSize: 1.0,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconRotationAlignment: 'map',
+        iconPitchAlignment: 'map',
+      ),
+      belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+      minzoom: 12,
+      enableInteraction: false,
+    );
     _networkGeoJsonReady = true;
   }
 
@@ -2974,7 +3140,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     final result = buildNetworkGeoJson(
       visiblePolylines,
-      (farbe) => _hexColor(AppColors.getPolylineColor(farbe)),
+      (farbe) => _hexColor(AppColors.getPolylineColor(
+        farbe,
+        dark: Theme.of(context).brightness == Brightness.dark,
+      )),
     );
 
     _streetDetailsByLineId

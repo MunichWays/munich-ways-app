@@ -156,7 +156,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
           child: Material(
             color: Colors.transparent,
             child: Container(
-              decoration: bottomSheetDecoration(),
+              decoration: bottomSheetDecoration(context),
               child: Column(
                 mainAxisSize: MainAxisSize.max,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

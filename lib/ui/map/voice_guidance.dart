@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
+import 'package:munich_ways/ui/map/route_overlap.dart';
 
 /// Holds turn guidance until movement establishes the initial travel direction.
 class NavigationOrientationGate {
@@ -58,6 +59,8 @@ class VoiceGuidance {
   // 2D. Keep matching local to the established progress so navigation does
   // not jump from the lower section to the section above it.
   static const double _maximumProgressJumpMeters = 120;
+  static const double _projectionContinuityToleranceMeters = 6;
+  static const double _ambiguousRouteSeparationMeters = 30;
 
   VoiceGuidance({
     this.approachDistanceMeters = 60,
@@ -152,9 +155,10 @@ class VoiceGuidance {
   List<String?> _intermediateDestinationNames = const [];
   int _intermediateArrivalCount = 0;
   double _routeProgress = 0;
-  bool _overlappingRouteUnsupported = false;
+  List<_RouteInterval> _overlappingRouteIntervals = const [];
   bool _overlappingRouteWarningSpoken = false;
   bool _finalDestinationReached = false;
+  bool _routeRecoveryPending = false;
 
   bool get finalDestinationReached => _finalDestinationReached;
 
@@ -174,17 +178,20 @@ class VoiceGuidance {
     _arrivals = const [];
     _intermediateArrivalCount = 0;
     _routeProgress = 0;
-    _overlappingRouteUnsupported = false;
+    _overlappingRouteIntervals = const [];
     _overlappingRouteWarningSpoken = false;
     _finalDestinationReached = false;
+    _routeRecoveryPending = false;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
     if (guidanceRoute == null || guidanceRoute.points.length < 2) {
       _maneuvers = const [];
       return;
     }
-    _overlappingRouteUnsupported = intermediateDestinationNames.isNotEmpty &&
-        _hasRepeatedRouteSegment(guidanceRoute.points);
+    if (intermediateDestinationNames.isNotEmpty) {
+      _overlappingRouteIntervals =
+          _repeatedRouteIntervals(guidanceRoute.points);
+    }
     final projectedManeuvers = <_GuidanceManeuver>[];
     var previousManeuverDistance = 0.0;
     for (final maneuver in guidanceRoute.maneuvers) {
@@ -242,6 +249,37 @@ class VoiceGuidance {
 
   void reset() => setRoute(null);
 
+  /// Restarts maneuver guidance at the rider's current place on the route.
+  ///
+  /// This is used after an off-route episode. A freshly reset guidance session
+  /// normally only searches a short distance ahead of the route start, which
+  /// cannot locate a rider who rejoins farther along a long route.
+  bool resumeAt(
+    LatLng position, {
+    double horizontalAccuracyMeters = 0,
+  }) {
+    final route = _route;
+    if (route == null) return false;
+    final projection = _projectOntoRoute(route.points, position);
+    final accuracyAllowance = horizontalAccuracyMeters.isFinite
+        ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
+        : 0;
+    if (projection.distanceFromRoute >
+        maximumRouteDistanceMeters + accuracyAllowance) {
+      return false;
+    }
+
+    _routeProgress = projection.distanceAlongRoute;
+    _index = 0;
+    _approachSpoken = false;
+    _nowSpoken = false;
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
+    _routeRecoveryPending = false;
+    _advancePastManeuvers(_routeProgress);
+    return true;
+  }
+
   VoiceGuidanceDisplay? display(
     LatLng position, {
     required bool english,
@@ -256,25 +294,21 @@ class VoiceGuidance {
         isFinalDestination: true,
       );
     }
-    if (_overlappingRouteUnsupported) {
+    final projection = _projectionAtCurrentProgress(position);
+    if (projection.isAmbiguous &&
+        !_isOverlappingProgress(projection.distanceAlongRoute)) {
       return VoiceGuidanceDisplay(
-        text: english ? 'Follow map' : 'Karte beachten',
+        text: english ? 'Watch the map' : 'Auf Karte achten',
         type: 'map',
       );
     }
-
-    final projection = _projectOntoRoute(
-      route.points,
-      position,
-      minimumDistanceAlongRoute: _routeProgress,
-      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
-    );
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null) {
       final isFinalDestination = !_isIntermediateArrival(arrivalIndex);
       if (isFinalDestination) _finalDestinationReached = true;
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeRecoveryPending = false;
       return VoiceGuidanceDisplay(
         text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
@@ -286,6 +320,13 @@ class VoiceGuidance {
     }
 
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+    if (_isOverlappingProgress(projection.distanceAlongRoute)) {
+      _advancePastManeuvers(_routeProgress);
+      return VoiceGuidanceDisplay(
+        text: english ? 'Watch the map' : 'Auf Karte achten',
+        type: 'map',
+      );
+    }
     final travelled = _predictedDistanceAlongRoute(
       projection.distanceAlongRoute,
       speedMetersPerSecond,
@@ -321,22 +362,11 @@ class VoiceGuidance {
       }
       return null;
     }
-    if (_overlappingRouteUnsupported) {
-      if (_overlappingRouteWarningSpoken) return null;
-      _overlappingRouteWarningSpoken = true;
-      return english
-          ? 'Outbound and return routes overlap. No turn directions. '
-              'Please follow the route on the map.'
-          : 'Hin- und Rückweg überlappen. Keine Abbiegehinweise. '
-              'Bitte der Route auf der Karte folgen.';
+    final projection = _projectionAtCurrentProgress(position);
+    if (projection.isAmbiguous &&
+        !_isOverlappingProgress(projection.distanceAlongRoute)) {
+      return null;
     }
-
-    final projection = _projectOntoRoute(
-      route.points,
-      position,
-      minimumDistanceAlongRoute: _routeProgress,
-      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
-    );
     final arrivalIndex = _arrivalIndexAt(position);
     if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
       if (!_isIntermediateArrival(arrivalIndex)) {
@@ -344,6 +374,7 @@ class VoiceGuidance {
       }
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeRecoveryPending = false;
       return _arrivalAnnouncement(arrivalIndex, english);
     }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
@@ -361,8 +392,18 @@ class VoiceGuidance {
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
 
-    if (_index >= _maneuvers.length) return null;
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+    if (_isOverlappingProgress(projection.distanceAlongRoute)) {
+      _advancePastManeuvers(_routeProgress);
+      if (_overlappingRouteWarningSpoken) return null;
+      _overlappingRouteWarningSpoken = true;
+      return english
+          ? 'Outbound and return routes are the same here. Watch the map.'
+          : 'Hin- und Rückweg sind hier gleich. Auf Karte achten.';
+    }
+    _overlappingRouteWarningSpoken = false;
+
+    if (_index >= _maneuvers.length) return null;
     final travelled = _predictedDistanceAlongRoute(
       projection.distanceAlongRoute,
       speedMetersPerSecond,
@@ -394,6 +435,49 @@ class VoiceGuidance {
       );
     }
     return null;
+  }
+
+  _RouteProjection _projectionAtCurrentProgress(LatLng position) {
+    final route = _route;
+    if (route == null) {
+      return const _RouteProjection(0, double.infinity);
+    }
+    var projection = _projectOntoRoute(
+      route.points,
+      position,
+      minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+    );
+    if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
+      _routeRecoveryPending = true;
+      return projection;
+    }
+    if (!_routeRecoveryPending) return projection;
+
+    // A short route departure can end before the rerouting timers have fired.
+    // Re-anchor guidance here as part of every regular position update, so a
+    // stale progress window cannot leave "Watch the map" active indefinitely.
+    final recovered = _projectOntoRoute(route.points, position);
+    if (recovered.distanceFromRoute > maximumRouteDistanceMeters) {
+      return projection;
+    }
+    _routeRecoveryPending = false;
+    _routeProgress = recovered.distanceAlongRoute;
+    _index = 0;
+    _approachSpoken = false;
+    _nowSpoken = false;
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
+    _advancePastManeuvers(_routeProgress);
+    projection = _projectOntoRoute(
+      route.points,
+      position,
+      minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+    );
+    return projection;
   }
 
   int? _arrivalIndexAt(LatLng position) {
@@ -513,21 +597,32 @@ class VoiceGuidance {
       !(maneuver.type == 'new name' &&
           (maneuver.modifier == null || maneuver.modifier == 'straight'));
 
-  static bool _hasRepeatedRouteSegment(List<LatLng> points) {
-    final segments = <String>{};
-    for (var index = 0; index < points.length - 1; index++) {
-      final start = _routePointKey(points[index]);
-      final end = _routePointKey(points[index + 1]);
-      if (start == end) continue;
-      final key = start.compareTo(end) < 0 ? '$start|$end' : '$end|$start';
-      if (!segments.add(key)) return true;
-    }
-    return false;
-  }
+  bool _isOverlappingProgress(double progress) =>
+      _overlappingRouteIntervals.any((interval) => interval.contains(progress));
 
-  static String _routePointKey(LatLng point) =>
-      '${(point.latitude * 100000).round()}:'
-      '${(point.longitude * 100000).round()}';
+  static List<_RouteInterval> _repeatedRouteIntervals(List<LatLng> points) {
+    final repeatedKeys = repeatedRouteSegmentKeys(points);
+    final intervals = <_RouteInterval>[];
+    var distanceAlongRoute = 0.0;
+    for (var index = 0; index < points.length - 1; index++) {
+      final segmentLength = const Distance().as(
+        LengthUnit.Meter,
+        points[index],
+        points[index + 1],
+      );
+      final key = routeSegmentKey(points[index], points[index + 1]);
+      if (key != null && repeatedKeys.contains(key)) {
+        intervals.add(
+          _RouteInterval(
+            distanceAlongRoute,
+            distanceAlongRoute + segmentLength,
+          ),
+        );
+      }
+      distanceAlongRoute += segmentLength;
+    }
+    return intervals;
+  }
 
   /// Removes short left/right chicanes where the route continues in nearly
   /// the same direction. Routing services can otherwise describe a slightly
@@ -722,7 +817,9 @@ class VoiceGuidance {
     }
 
     final action = _action(maneuver, english);
-    if (now) return english ? '$action now.' : 'Jetzt $action.';
+    if (now) {
+      return english ? '${_sentenceCase(action)} here.' : 'Hier $action.';
+    }
     return english
         ? 'In $distanceMeters meters, $action.'
         : 'In $distanceMeters Metern $action.';
@@ -733,10 +830,11 @@ class VoiceGuidance {
     required bool english,
     required double remainingMeters,
   }) {
-    final action = _shortAction(maneuver, english);
     if (remainingMeters <= 15) {
-      return english ? '$action now' : 'Jetzt $action';
+      final action = _action(maneuver, english);
+      return english ? '${_sentenceCase(action)} here' : 'Hier $action';
     }
+    final action = _shortAction(maneuver, english);
     final distance = _roundedDistance(remainingMeters);
     return english ? 'In $distance m $action' : 'In $distance m $action';
   }
@@ -800,15 +898,18 @@ class VoiceGuidance {
         _ => '$value.',
       };
 
+  static String _sentenceCase(String value) =>
+      '${value[0].toUpperCase()}${value.substring(1)}';
+
   static _RouteProjection _projectOntoRoute(
     List<LatLng> route,
     LatLng point, {
     double minimumDistanceAlongRoute = 0,
     double maximumDistanceAlongRoute = double.infinity,
+    double preferEarlierWithinMeters = 0,
   }) {
     var cumulative = 0.0;
-    var bestDistanceSquared = double.infinity;
-    var bestAlong = 0.0;
+    final candidates = <_RouteProjection>[];
     final latitudeRadians = point.latitude * pi / 180;
     final metersPerLon = 111320.0 * cos(latitudeRadians);
     const metersPerLat = 111320.0;
@@ -832,14 +933,43 @@ class VoiceGuidance {
       final segmentLength = sqrt(lengthSquared);
       final distanceAlong = cumulative + segmentLength * t;
       if (distanceAlong + 1 >= minimumDistanceAlongRoute &&
-          distanceAlong - 1 <= maximumDistanceAlongRoute &&
-          distanceSquared < bestDistanceSquared) {
-        bestDistanceSquared = distanceSquared;
-        bestAlong = distanceAlong;
+          distanceAlong - 1 <= maximumDistanceAlongRoute) {
+        candidates.add(
+          _RouteProjection(distanceAlong, sqrt(distanceSquared)),
+        );
       }
       cumulative += segmentLength;
     }
-    return _RouteProjection(bestAlong, sqrt(bestDistanceSquared));
+    if (candidates.isEmpty) {
+      return const _RouteProjection(0, double.infinity);
+    }
+    final closestDistance =
+        candidates.map((candidate) => candidate.distanceFromRoute).reduce(min);
+    final plausible = candidates
+        .where(
+          (candidate) =>
+              candidate.distanceFromRoute <=
+              closestDistance + preferEarlierWithinMeters,
+        )
+        .toList();
+    final selected = plausible.reduce(
+      (earlier, candidate) =>
+          candidate.distanceAlongRoute < earlier.distanceAlongRoute
+              ? candidate
+              : earlier,
+    );
+    final isAmbiguous = preferEarlierWithinMeters > 0 &&
+        plausible.any(
+          (candidate) =>
+              (candidate.distanceAlongRoute - selected.distanceAlongRoute)
+                  .abs() >=
+              _ambiguousRouteSeparationMeters,
+        );
+    return _RouteProjection(
+      selected.distanceAlongRoute,
+      selected.distanceFromRoute,
+      isAmbiguous: isAmbiguous,
+    );
   }
 }
 
@@ -853,11 +983,22 @@ class _GuidanceManeuver {
 class _RouteProjection {
   const _RouteProjection(
     this.distanceAlongRoute,
-    this.distanceFromRoute,
-  );
+    this.distanceFromRoute, {
+    this.isAmbiguous = false,
+  });
 
   final double distanceAlongRoute;
   final double distanceFromRoute;
+  final bool isAmbiguous;
+}
+
+class _RouteInterval {
+  const _RouteInterval(this.start, this.end);
+
+  final double start;
+  final double end;
+
+  bool contains(double value) => value >= start - 1 && value <= end + 1;
 }
 
 class VoiceGuidanceDisplay {

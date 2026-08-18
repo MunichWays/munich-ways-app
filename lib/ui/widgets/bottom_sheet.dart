@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 
 /// Shared styling for modal bottom sheet cards (rounded white panel).
-BoxDecoration bottomSheetDecoration() {
+BoxDecoration bottomSheetDecoration(BuildContext context) {
   return BoxDecoration(
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.surface,
     borderRadius: const BorderRadius.vertical(
       top: Radius.circular(15),
     ),
@@ -284,7 +284,7 @@ class _BottomSheetFrameState extends State<BottomSheetFrame> {
             return ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxSheet),
               child: Container(
-                decoration: bottomSheetDecoration(),
+                decoration: bottomSheetDecoration(context),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,

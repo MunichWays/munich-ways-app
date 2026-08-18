@@ -244,27 +244,10 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         title: context.l10n.isEnglish ? 'Favorites' : 'Favoriten',
         icon: Icons.star,
         iconColor: Colors.amber,
-        children: favorites.length == 1
-            ? [_favoriteItem(context, model, favorites.single)]
-            : !widget.showSavedRoutes
-                ? [
-                    for (final favorite in favorites)
-                      _favoriteItem(context, model, favorite),
-                  ]
-                : [
-                    ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      buildDefaultDragHandles: true,
-                      itemCount: favorites.length,
-                      onReorder: model.reorderFavorite,
-                      itemBuilder: (context, index) => _favoriteItem(
-                        context,
-                        model,
-                        favorites[index],
-                      ),
-                    ),
-                  ],
+        children: [
+          for (final favorite in favorites)
+            _favoriteItem(context, model, favorite),
+        ],
       ),
     ];
   }
@@ -274,19 +257,20 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     PlaceSearchScreenViewModel model,
     Object favorite,
   ) {
+    final item = favorite is Place
+        ? _savedPlaceTile(
+            context,
+            favorite,
+            highlighted: true,
+            compact: true,
+            onConfirm: () => _selectPlace(context, model, favorite),
+          )
+        : _savedRouteTile(context, model, favorite as SavedRoute);
     return KeyedSubtree(
       key: ValueKey(favorite is Place
           ? 'place-${favorite.latLng.latitude}-${favorite.latLng.longitude}'
           : 'route-${(favorite as SavedRoute).name}'),
-      child: favorite is Place
-          ? _savedPlaceTile(
-              context,
-              favorite,
-              highlighted: true,
-              compact: true,
-              onConfirm: () => _selectPlace(context, model, favorite),
-            )
-          : _savedRouteTile(context, model, favorite as SavedRoute),
+      child: item,
     );
   }
 
@@ -386,11 +370,13 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     PlaceSearchScreenViewModel model,
     SavedRoute route,
   ) {
+    final menuKey = GlobalKey<PopupMenuButtonState<_SavedRouteAction>>();
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(vertical: -3),
-      tileColor:
-          route.isFavorite ? AppColors.favoriteHighlight : Colors.transparent,
+      tileColor: route.isFavorite
+          ? AppColors.favoriteHighlightFor(context)
+          : Colors.transparent,
       contentPadding: const EdgeInsets.only(left: 4, right: 4),
       title: LayoutBuilder(
         builder: (context, constraints) {
@@ -422,10 +408,18 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                     iconSize: 16,
                     padding: EdgeInsets.zero,
                     style: IconButton.styleFrom(
-                      backgroundColor: route.isFavorite
-                          ? AppColors.favoriteHighlight
-                          : Colors.white,
-                      foregroundColor: AppColors.uiPrimary,
+                      backgroundColor:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                              : route.isFavorite
+                                  ? AppColors.favoriteHighlight
+                                  : Colors.white,
+                      foregroundColor:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.primary
+                              : AppColors.uiPrimary,
                       fixedSize: const Size.square(24),
                       shape: const CircleBorder(),
                     ),
@@ -438,46 +432,61 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         },
       ),
       onTap: () => widget._completeSelection(context, route),
+      onLongPress: () => menuKey.currentState?.showButtonMenu(),
       trailing: SizedBox.square(
         dimension: 32,
         child: PopupMenuButton<_SavedRouteAction>(
+          key: menuKey,
           tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
-          iconSize: 20,
           padding: EdgeInsets.zero,
-          icon: const Icon(Icons.more_vert),
-          onSelected: (action) =>
-              _scheduleSavedRouteAction(context, model, route, action),
           itemBuilder: (context) => [
             PopupMenuItem(
               value: _SavedRouteAction.toggleFavorite,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.toggleFavorite),
+              ),
               child: Row(
                 children: [
                   Icon(route.isFavorite ? Icons.star : Icons.star_border),
                   const SizedBox(width: 12),
-                  Text(
-                    route.isFavorite
-                        ? (context.l10n.isEnglish
-                            ? 'Remove favorite'
-                            : 'Favorit entfernen')
-                        : (context.l10n.isEnglish
-                            ? 'Add favorite'
-                            : 'Als Favorit speichern'),
+                  Flexible(
+                    child: Text(
+                      route.isFavorite
+                          ? (context.l10n.isEnglish
+                              ? 'Remove favorite'
+                              : 'Favorit entfernen')
+                          : (context.l10n.isEnglish
+                              ? 'Add favorite'
+                              : 'Als Favorit speichern'),
+                    ),
                   ),
                 ],
               ),
             ),
             PopupMenuItem(
               value: _SavedRouteAction.rename,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.rename),
+              ),
               child: Row(
                 children: [
                   const Icon(Icons.edit_outlined),
                   const SizedBox(width: 12),
-                  Text(context.l10n.isEnglish ? 'Rename' : 'Umbenennen'),
+                  Flexible(
+                    child:
+                        Text(context.l10n.isEnglish ? 'Rename' : 'Umbenennen'),
+                  ),
                 ],
               ),
             ),
             PopupMenuItem(
               value: _SavedRouteAction.delete,
+              onTap: () => unawaited(
+                _handleSavedRouteAction(
+                    context, model, route, _SavedRouteAction.delete),
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -485,11 +494,18 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                     color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(width: 12),
-                  Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                  Flexible(
+                    child: Text(context.l10n.isEnglish ? 'Delete' : 'Löschen'),
+                  ),
                 ],
               ),
             ),
           ],
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () => menuKey.currentState?.showButtonMenu(),
+            child: const Icon(Icons.more_vert, size: 20),
+          ),
         ),
       ),
     );
@@ -529,26 +545,20 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     await model.renameSavedRoute(route, trimmedName);
   }
 
-  void _scheduleSavedRouteAction(
+  Future<void> _handleSavedRouteAction(
     BuildContext context,
     PlaceSearchScreenViewModel model,
     SavedRoute route,
     _SavedRouteAction action,
-  ) {
-    Future<void>.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      switch (action) {
-        case _SavedRouteAction.toggleFavorite:
-          unawaited(_toggleRouteFavorite(context, model, route));
-          break;
-        case _SavedRouteAction.rename:
-          unawaited(_renameSavedRoute(context, model, route));
-          break;
-        case _SavedRouteAction.delete:
-          unawaited(_confirmDeleteSavedRoute(context, model, route));
-          break;
-      }
-    });
+  ) async {
+    switch (action) {
+      case _SavedRouteAction.toggleFavorite:
+        await _toggleRouteFavorite(context, model, route);
+      case _SavedRouteAction.rename:
+        await _renameSavedRoute(context, model, route);
+      case _SavedRouteAction.delete:
+        await _confirmDeleteSavedRoute(context, model, route);
+    }
   }
 
   Future<void> _toggleRouteFavorite(
@@ -640,90 +650,122 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
   }) {
     final textStyle = Theme.of(context).textTheme.bodyLarge;
     final actionWidth = compact ? 32.0 : 48.0;
+    final menuKey = GlobalKey<PopupMenuButtonState<_SavedPlaceAction>>();
     return Padding(
       padding: EdgeInsets.symmetric(vertical: compact ? 0 : 1),
       child: Material(
-        color: highlighted ? AppColors.favoriteHighlight : Colors.transparent,
-        child: InkWell(
-          onTap: onConfirm,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final baseTrailingWidth = actionWidth;
-              final initialTextWidth =
-                  constraints.maxWidth - 16 - baseTrailingWidth;
-              final initialTextPainter = TextPainter(
-                text: TextSpan(text: place.displayName!, style: textStyle),
-                maxLines: 1,
-                textDirection: Directionality.of(context),
-                textScaler: MediaQuery.textScalerOf(context),
-              )..layout(
-                  maxWidth: initialTextWidth > 0 ? initialTextWidth : 0,
-                );
-              final addressIsTruncated = initialTextPainter.didExceedMaxLines;
+        color: highlighted
+            ? AppColors.favoriteHighlightFor(context)
+            : Colors.transparent,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final baseTrailingWidth = actionWidth;
+            final initialTextWidth =
+                constraints.maxWidth - 16 - baseTrailingWidth;
+            final initialTextPainter = TextPainter(
+              text: TextSpan(text: place.displayName!, style: textStyle),
+              maxLines: 1,
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+            )..layout(
+                maxWidth: initialTextWidth > 0 ? initialTextWidth : 0,
+              );
+            final addressIsTruncated = initialTextPainter.didExceedMaxLines;
 
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 4 : 8,
-                  vertical: compact ? 4 : 5,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        place.displayName!,
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: textStyle,
-                      ),
-                    ),
-                    if (addressIsTruncated)
-                      _compactAction(
-                        compact: compact,
-                        child: IconButton(
-                          tooltip: context.l10n.isEnglish
-                              ? 'Show full address'
-                              : 'Vollständige Adresse anzeigen',
-                          iconSize: compact ? 16 : 18,
-                          padding: EdgeInsets.zero,
-                          style: IconButton.styleFrom(
-                            backgroundColor: highlighted
-                                ? AppColors.favoriteHighlight
-                                : Colors.white,
-                            foregroundColor: AppColors.uiPrimary,
-                            fixedSize: Size.square(compact ? 24 : 28),
-                            shape: const CircleBorder(),
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 4 : 8,
+                vertical: compact ? 4 : 5,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: onConfirm,
+                      onLongPress: () => menuKey.currentState?.showButtonMenu(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: compact ? 32 : 48,
+                        ),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            place.displayName!,
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            style: textStyle,
                           ),
-                          onPressed: () => _showFullAddress(context, place),
-                          icon: const Icon(Icons.more_horiz),
                         ),
                       ),
+                    ),
+                  ),
+                  if (addressIsTruncated)
                     _compactAction(
                       compact: compact,
-                      child: PopupMenuButton<_SavedPlaceAction>(
+                      child: IconButton(
                         tooltip: context.l10n.isEnglish
-                            ? 'More options'
-                            : 'Mehr Optionen',
-                        iconSize: compact ? 20 : 24,
-                        padding:
-                            compact ? EdgeInsets.zero : const EdgeInsets.all(8),
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (action) => _scheduleSavedPlaceAction(
-                          context,
+                            ? 'Show full address'
+                            : 'Vollständige Adresse anzeigen',
+                        iconSize: compact ? 16 : 18,
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                  : highlighted
+                                      ? AppColors.favoriteHighlight
+                                      : Colors.white,
+                          foregroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context).colorScheme.primary
+                                  : AppColors.uiPrimary,
+                          fixedSize: Size.square(compact ? 24 : 28),
+                          shape: const CircleBorder(),
+                        ),
+                        onPressed: () => _showFullAddress(context, place),
+                        icon: const Icon(Icons.more_horiz),
+                      ),
+                    ),
+                  _compactAction(
+                    compact: compact,
+                    child: PopupMenuButton<_SavedPlaceAction>(
+                      key: menuKey,
+                      tooltip: context.l10n.isEnglish
+                          ? 'More options'
+                          : 'Mehr Optionen',
+                      padding:
+                          compact ? EdgeInsets.zero : const EdgeInsets.all(8),
+                      itemBuilder: (context) => _savedPlaceMenuItems(
+                        context,
+                        isFavorite: model.isFavorite(place),
+                        onAction: (action) => _scheduleSavedPlaceAction(
                           model,
                           place,
                           action,
                         ),
-                        itemBuilder: (context) => _savedPlaceMenuItems(
-                          context,
-                          isFavorite: model.isFavorite(place),
+                      ),
+                      child: SizedBox.expand(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => menuKey.currentState?.showButtonMenu(),
+                          onLongPress: () =>
+                              menuKey.currentState?.showButtonMenu(),
+                          child: Center(
+                            child: Icon(
+                              Icons.more_vert,
+                              size: compact ? 20 : 24,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -740,11 +782,13 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
   List<PopupMenuEntry<_SavedPlaceAction>> _savedPlaceMenuItems(
     BuildContext context, {
     required bool isFavorite,
+    required ValueChanged<_SavedPlaceAction> onAction,
   }) {
     final english = context.l10n.isEnglish;
     return [
       PopupMenuItem(
         value: _SavedPlaceAction.toggleFavorite,
+        onTap: () => onAction(_SavedPlaceAction.toggleFavorite),
         child: Row(
           children: [
             Icon(isFavorite ? Icons.star : Icons.star_border),
@@ -761,6 +805,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       ),
       PopupMenuItem(
         value: _SavedPlaceAction.delete,
+        onTap: () => onAction(_SavedPlaceAction.delete),
         child: Row(
           children: [
             Icon(
@@ -774,6 +819,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       ),
       PopupMenuItem(
         value: _SavedPlaceAction.rename,
+        onTap: () => onAction(_SavedPlaceAction.rename),
         child: Row(
           children: [
             const Icon(Icons.edit_outlined),
@@ -847,18 +893,12 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
   }
 
   void _scheduleSavedPlaceAction(
-    BuildContext context,
     PlaceSearchScreenViewModel model,
     Place place,
     _SavedPlaceAction action,
   ) {
-    // PopupMenuButton reports the selection while its closing animation is
-    // still running. Favorite changes rebuild and reorder this list, so wait
-    // until the menu and its anchor are fully gone before mutating the model.
-    Future<void>.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      unawaited(_handleSavedPlaceAction(context, model, place, action));
-    });
+    if (!mounted) return;
+    unawaited(_handleSavedPlaceAction(context, model, place, action));
   }
 
   Future<void> _toggleSelectedFavorite(
@@ -909,7 +949,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
             child: Text(
               context.l10n.isEnglish
                   ? 'A maximum of three favorites is possible.'
-                  : 'Es sind maximal drei Favoriten mÃ¶glich.',
+                  : 'Es sind maximal drei Favoriten möglich.',
             ),
           ),
           for (final favorite in model.favoriteItems)

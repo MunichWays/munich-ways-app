@@ -8,11 +8,49 @@ import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
+import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 void main() {
+  test('shortens repeated off-route voice announcements', () {
+    expect(
+      offRouteSpokenMessage(
+        english: false,
+        automaticRerouting: true,
+        firstAnnouncement: true,
+      ),
+      'Route verlassen. Neuberechnung folgt.',
+    );
+    expect(
+      offRouteSpokenMessage(
+        english: false,
+        automaticRerouting: true,
+        firstAnnouncement: false,
+      ),
+      'Route verlassen.',
+    );
+    expect(
+      offRouteSpokenMessage(
+        english: false,
+        automaticRerouting: false,
+        firstAnnouncement: true,
+      ),
+      'Route verlassen.',
+    );
+    expect(
+      offRouteSpokenMessage(
+        english: false,
+        automaticRerouting: true,
+        firstAnnouncement: false,
+        lastAutomaticAnnouncement: true,
+      ),
+      'Letzte automatische Neuberechnung in Kürze. Keine weiteren Ansagen '
+      'außerhalb der Route.',
+    );
+  });
+
   testWidgets('left-side controls include the position button', (tester) async {
     final model = _LeftMapScreenViewModel();
     final bearing = ValueNotifier<double>(0);
@@ -247,14 +285,14 @@ void main() {
     final refresh = find.bySemanticsLabel('Route neu berechnen');
     expect(tester.getSize(edit), const Size.square(52));
     expect(tester.getSize(voice), const Size.square(52));
-    expect(tester.getSize(refresh), const Size.square(52));
+    expect(tester.getSize(refresh), const Size(68, 52));
     expect(
       tester.getCenter(voice).dx - tester.getCenter(edit).dx,
       closeTo(62, 0.1),
     );
     expect(
       tester.getCenter(refresh).dx - tester.getCenter(voice).dx,
-      closeTo(62, 0.1),
+      closeTo(76, 0.1),
     );
   });
 
@@ -278,6 +316,11 @@ void main() {
             width: 360,
             child: MapNavigationHeaderBar(
               model: model,
+              nextManeuver: const VoiceGuidanceDisplay(
+                text: 'In 100 m rechts abbiegen',
+                type: 'turn',
+                modifier: 'right',
+              ),
               onRefreshRoute: () async => resumed = true,
               onEditRoute: () {},
               onStartNavigation: () async {},
@@ -291,8 +334,9 @@ void main() {
 
     final resume = find.bySemanticsLabel('Fortsetzen');
     expect(resume, findsOneWidget);
-    expect(find.text('Fortsetzen'), findsNothing);
-    expect(tester.getSize(resume), const Size.square(52));
+    expect(find.text('Fortsetzen'), findsOneWidget);
+    expect(find.text('In 100 m rechts abbiegen'), findsNothing);
+    expect(tester.getSize(resume), const Size(68, 52));
     final button = tester.widget<IconButton>(
       find.descendant(
         of: resume,

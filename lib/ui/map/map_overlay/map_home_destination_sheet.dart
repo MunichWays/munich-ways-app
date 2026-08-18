@@ -520,6 +520,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   }
 
   Widget _searchHeader(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return DraggableBottomSheetRegion(
       controller: _sheetController,
       snapSizes: _snapSizes,
@@ -529,19 +530,23 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
           children: [
             Expanded(
               child: DecoratedBox(
+                key: const ValueKey('destination-query-field-background'),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: colors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: TextField(
                   controller: _query,
                   focusNode: _focusNode,
+                  cursorColor: colors.primary,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: InputDecoration(
                     hintText: _selectingFavorite
                         ? (context.l10n.isEnglish
                             ? 'Choose favorite'
                             : 'Favorit wählen')
                         : (context.l10n.isEnglish ? 'Destination?' : 'Wohin?'),
+                    hintStyle: TextStyle(color: colors.onSurfaceVariant),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -554,7 +559,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                             onPressed: _clearQuery,
                             icon: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade400,
+                                color: colors.surfaceContainerHigh,
                                 shape: BoxShape.circle,
                               ),
                               child: const SizedBox.square(

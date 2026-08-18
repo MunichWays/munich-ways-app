@@ -300,7 +300,7 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: bottomSheetMaxHeight(context)),
           child: Container(
-            decoration: bottomSheetDecoration(),
+            decoration: bottomSheetDecoration(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -465,7 +465,10 @@ class _Header extends StatelessWidget {
               width: 12,
               height: 12,
               decoration: ShapeDecoration(
-                color: AppColors.getPolylineColor(farbe),
+                color: AppColors.getPolylineColor(
+                  farbe,
+                  dark: Theme.of(context).brightness == Brightness.dark,
+                ),
                 shape: const CircleBorder(),
               ),
             ),

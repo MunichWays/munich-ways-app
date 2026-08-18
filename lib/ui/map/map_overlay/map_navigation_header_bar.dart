@@ -116,12 +116,19 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
+    final navigationTrackingInterrupted = model.navigationStarted &&
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
     final guidanceDisplay = model.navigationStarted
-        ? nextManeuver ??
-            VoiceGuidanceDisplay(
-              text: context.l10n.followRouteOnMap,
-              type: 'map',
-            )
+        ? navigationTrackingInterrupted
+            ? VoiceGuidanceDisplay(
+                text: context.l10n.isEnglish ? 'Resume' : 'Fortsetzen',
+                type: 'map',
+              )
+            : nextManeuver ??
+                VoiceGuidanceDisplay(
+                  text: context.l10n.followRouteOnMap,
+                  type: 'map',
+                )
         : null;
     final destinationReached = guidanceDisplay?.isFinalDestination ?? false;
     final Widget stats;
@@ -142,23 +149,40 @@ class MapNavigationHeaderBar extends StatelessWidget {
           break;
         }
         stats = Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                _formatKm(r.distance),
-                softWrap: false,
-                style: emphasisStyle,
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.route, color: Colors.white70, size: 19),
+                    const SizedBox(width: 7),
+                    Text(
+                      _formatKm(r.distance),
+                      softWrap: false,
+                      style: emphasisStyle,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 4),
-              Text('·', style: baseStyle),
-              const SizedBox(width: 4),
-              Text(
-                _formatMin(r.duration),
-                softWrap: false,
-                style: emphasisStyle,
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.schedule,
+                      color: Colors.white70,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      _formatMin(r.duration),
+                      softWrap: false,
+                      style: emphasisStyle,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -174,8 +198,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
     }
 
     final refreshEnabled = route.state != MapRouteState.LOADING;
-    final navigationTrackingInterrupted = model.navigationStarted &&
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
     final refreshLabel = refreshEnabled
         ? (navigationTrackingInterrupted
             ? (context.l10n.isEnglish ? 'Resume' : 'Fortsetzen')
@@ -193,8 +215,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
       onTap: refreshEnabled ? onRefreshRoute : null,
       excludeSemantics: true,
       child: navigationTrackingInterrupted
-          ? SizedBox.square(
-              dimension: 52,
+          ? SizedBox(
+              width: 68,
+              height: 52,
               child: IconButton.filled(
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.munichWaysOrange,
@@ -217,8 +240,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
                       ),
               ),
             )
-          : SizedBox.square(
-              dimension: 52,
+          : SizedBox(
+              width: 68,
+              height: 52,
               child: IconButton.filled(
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -325,61 +349,46 @@ class MapNavigationHeaderBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (guidanceDisplay != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-                child: Row(
-                  children: [
-                    if (guidanceDisplay.type != 'map') ...[
-                      Icon(
-                        _maneuverIcon(guidanceDisplay),
-                        size: 32,
-                        color: Colors.white,
+              ExcludeSemantics(
+                excluding: navigationTrackingInterrupted,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+                  child: Row(
+                    children: [
+                      if (guidanceDisplay.type != 'map') ...[
+                        Icon(
+                          _maneuverIcon(guidanceDisplay),
+                          size: 32,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: Text(
+                          guidanceDisplay.text,
+                          textAlign: TextAlign.center,
+                          maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: (guidanceDisplay.type == 'map'
+                                      ? theme.textTheme.titleMedium
+                                      : theme.textTheme.titleLarge)
+                                  ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                height: 1.15,
+                              ) ??
+                              const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                    Expanded(
-                      child: Text(
-                        guidanceDisplay.text,
-                        maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: (guidanceDisplay.type == 'map'
-                                    ? theme.textTheme.titleMedium
-                                    : theme.textTheme.titleLarge)
-                                ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              height: 1.15,
-                            ) ??
-                            const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             SizedBox(width: double.infinity, child: Center(child: stats)),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: kMapHorizontalHolderClearance,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (!destinationReached) closeAction,
-                  const Spacer(),
-                  editAction,
-                  if (showVoiceAction) ...[
-                    const SizedBox(width: 10),
-                    voiceAction,
-                  ],
-                  const SizedBox(width: 10),
-                  refreshAction,
-                ],
-              ),
-            ),
             if (destinationReached) ...[
               const SizedBox(height: 8),
               Padding(
@@ -411,6 +420,25 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 ),
               ),
             ],
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: kMapHorizontalHolderClearance,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (!destinationReached) closeAction,
+                  const Spacer(),
+                  editAction,
+                  if (showVoiceAction) ...[
+                    const SizedBox(width: 10),
+                    voiceAction,
+                  ],
+                  const SizedBox(width: 16),
+                  refreshAction,
+                ],
+              ),
+            ),
           ],
         ),
       ),

@@ -88,6 +88,95 @@ void main() {
     expect(guidance.isOnRouteAnywhere(start), isTrue);
   });
 
+  test('resumes turn guidance when rejoining far from the route start', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    const laterTurn = LatLng(48.1435, 11.5700);
+    const routeEnd = LatLng(48.1440, 11.5700);
+    final route = CycleRoute(
+      const [start, reentry, laterTurn, routeEnd],
+      450,
+      100,
+      maneuvers: const [
+        RouteManeuver(
+          location: laterTurn,
+          type: 'turn',
+          modifier: 'left',
+        ),
+      ],
+    );
+    final guidance = VoiceGuidance()..setRoute(route);
+
+    // This position is outside the 120 m progress window of a fresh session.
+    expect(guidance.display(reentry, english: false), isNull);
+
+    guidance
+      ..reset()
+      ..setRoute(route)
+      ..resumeAt(reentry);
+
+    expect(
+      guidance.display(reentry, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having((display) => display.type, 'type', 'turn')
+          .having((display) => display.modifier, 'modifier', 'left'),
+    );
+  });
+
+  test('uses GPS accuracy when resuming after an off-route episode', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, reentry, end],
+          400,
+          100,
+          maneuvers: const [],
+        ),
+      );
+    const impreciseFixNearRoute = LatLng(48.1430, 11.5704);
+
+    expect(guidance.resumeAt(impreciseFixNearRoute), isFalse);
+    expect(
+      guidance.resumeAt(
+        impreciseFixNearRoute,
+        horizontalAccuracyMeters: 15,
+      ),
+      isTrue,
+    );
+  });
+
+  test('automatically restores guidance after a brief route departure', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    const laterTurn = LatLng(48.1435, 11.5700);
+    const routeEnd = LatLng(48.1440, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, reentry, laterTurn, routeEnd],
+          450,
+          100,
+          maneuvers: const [
+            RouteManeuver(
+              location: laterTurn,
+              type: 'turn',
+              modifier: 'left',
+            ),
+          ],
+        ),
+      );
+
+    guidance
+      ..resumeAt(reentry)
+      ..display(const LatLng(48.1430, 11.5710), english: false);
+
+    expect(
+      guidance.display(reentry, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having((display) => display.text, 'text', contains('links'))
+          .having((display) => display.type, 'type', 'turn'),
+    );
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(
@@ -123,7 +212,7 @@ void main() {
     expect(guidance.update(beforeTurn, english: false), isNull);
     expect(
       guidance.update(const LatLng(48.1409, 11.5700), english: false),
-      'Jetzt rechts abbiegen.',
+      'Hier rechts abbiegen.',
     );
     expect(
       guidance.update(const LatLng(48.14095, 11.5700), english: false),
@@ -147,7 +236,7 @@ void main() {
       const LatLng(48.1409, 11.5700),
       english: false,
     );
-    expect(now?.text, 'Jetzt rechts');
+    expect(now?.text, 'Hier rechts abbiegen');
   });
 
   test('announces a right-angle corner omitted by the routing service', () {
@@ -189,7 +278,7 @@ void main() {
     );
     expect(
       guidance.update(const LatLng(48.1409, 11.5700), english: false),
-      'Jetzt rechts abbiegen.',
+      'Hier rechts abbiegen.',
     );
     expect(
       guidance.update(const LatLng(48.1410, 11.5701), english: false),
@@ -217,7 +306,7 @@ void main() {
       english: false,
       speedMetersPerSecond: 20 / 3.6,
     );
-    expect(now?.text, 'Jetzt rechts');
+    expect(now?.text, 'Hier rechts abbiegen');
   });
 
   test('keeps guidance nearly unchanged at walking speed', () {
@@ -276,6 +365,18 @@ void main() {
   });
 
   test('formats roundabout and arrival instructions', () {
+    expect(
+      VoiceGuidance.formatManeuver(
+        const RouteManeuver(
+          location: turn,
+          type: 'turn',
+          modifier: 'right',
+        ),
+        english: true,
+        now: true,
+      ),
+      'Turn right here.',
+    );
     expect(
       VoiceGuidance.formatManeuver(
         const RouteManeuver(
@@ -683,11 +784,48 @@ void main() {
     // more than 200 metres ahead along the ramp.
     expect(
       guidance.display(lowerRampStart, english: false)?.text,
-      isNot('Jetzt rechts'),
+      isNot('Hier rechts abbiegen'),
     );
     expect(guidance.update(lowerRampStart, english: false), isNull);
     expect(guidance.isOffRoute(lowerRampMiddle), isFalse);
     expect(guidance.update(lowerRampMiddle, english: false), isNull);
+  });
+
+  test('shows map guidance when two nearby route levels are ambiguous', () {
+    const upperRampStart = LatLng(48.13970, 11.57080);
+    const upperRampAtRoad = LatLng(48.14000, 11.57100);
+    const outerRamp = LatLng(48.14030, 11.57120);
+    const lowerRoadAtRamp = LatLng(48.14004, 11.57100);
+    const lowerRoadAfterTurn = LatLng(48.14004, 11.57050);
+    const gpsNearLowerRoad = LatLng(48.140035, 11.57100);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          upperRampStart,
+          upperRampAtRoad,
+          outerRamp,
+          lowerRoadAtRamp,
+          lowerRoadAfterTurn,
+        ],
+        300,
+        90,
+        maneuvers: const [
+          RouteManeuver(
+            location: lowerRoadAtRamp,
+            type: 'turn',
+            modifier: 'left',
+          ),
+        ],
+      ));
+
+    // The GPS fix is about half a metre from the later lower road, but only
+    // about four metres from the current upper ramp. Both are plausible in
+    // 2D, so route continuity must win over the marginally closer section.
+    expect(
+      guidance.display(gpsNearLowerRoad, english: false)?.text,
+      'Auf Karte achten',
+    );
+    expect(guidance.update(gpsNearLowerRoad, english: false), isNull);
   });
 
   test('keeps maneuvers in route order on an overlapping return section', () {
@@ -721,7 +859,7 @@ void main() {
     );
     expect(
       guidance.display(junction, english: false)?.text,
-      'Jetzt links',
+      'Hier links abbiegen',
     );
   });
 
@@ -749,7 +887,7 @@ void main() {
     );
   });
 
-  test('disables directions for a route overlapping around a stop', () {
+  test('only suppresses directions on an overlapping route section', () {
     const intermediate = LatLng(48.1400, 11.5720);
     final guidance = VoiceGuidance();
     guidance.setRoute(
@@ -761,16 +899,19 @@ void main() {
       intermediateDestinationNames: const ['Zwischenziel'],
     );
 
+    expect(guidance.display(start, english: false)?.type, isNot('map'));
+    expect(guidance.update(start, english: false), isNot(contains('Karte')));
+
     expect(
-      guidance.display(start, english: false)?.text,
-      'Karte beachten',
+      guidance.display(beforeTurn, english: false)?.text,
+      'Auf Karte achten',
     );
     expect(
-      guidance.update(start, english: false),
-      'Hin- und Rückweg überlappen. Keine Abbiegehinweise. '
-      'Bitte der Route auf der Karte folgen.',
+      guidance.update(beforeTurn, english: false),
+      'Hin- und Rückweg sind hier gleich. Auf Karte achten.',
     );
-    expect(guidance.update(start, english: false), isNull);
-    expect(guidance.update(intermediate, english: false), isNull);
+    expect(guidance.update(beforeTurn, english: false), isNull);
+
+    expect(guidance.display(end, english: false)?.type, isNot('map'));
   });
 }

@@ -198,8 +198,6 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   void _reorderPoint(int oldIndex, int newIndex) {
     setState(() {
-      // Flutter 3.32 reports the insertion index before removing the item.
-      if (newIndex > oldIndex) newIndex--;
       final point = _points.removeAt(oldIndex);
       _points.insert(newIndex, point);
     });
@@ -226,10 +224,13 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   Widget _pointLeading(int index) {
     if (index == 0) {
-      return const CircleAvatar(
+      final theme = Theme.of(context);
+      final dark = theme.brightness == Brightness.dark;
+      return CircleAvatar(
         radius: 18,
-        backgroundColor: Colors.white,
-        child: Icon(
+        backgroundColor:
+            dark ? theme.colorScheme.surfaceContainerHighest : Colors.white,
+        child: const Icon(
           Icons.navigation,
           color: AppColors.mapAccentColor,
           size: 27,
@@ -386,7 +387,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _points.length,
-              onReorder: _reorderPoint,
+              onReorderItem: _reorderPoint,
               itemBuilder: (context, index) {
                 final point = _points[index];
                 return ReorderableDelayedDragStartListener(
@@ -411,12 +412,22 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                         backgroundColor: index == _points.length - 1
                             ? point.place == null
                                 ? AppColors.uiPrimary
-                                : AppColors.secondaryButtonBackground
+                                : Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .secondaryContainer
+                                    : AppColors.secondaryButtonBackground
                             : null,
                         foregroundColor: index == _points.length - 1
                             ? point.place == null
                                 ? Colors.white
-                                : AppColors.uiPrimary
+                                : Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer
+                                    : AppColors.uiPrimary
                             : null,
                         onTap: () => _selectPlace(index),
                         onEdit: () => _selectPlace(index),

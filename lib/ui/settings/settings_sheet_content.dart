@@ -3,6 +3,7 @@ import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
+import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:provider/provider.dart';
@@ -41,12 +42,9 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
               children: [
                 MenuGroup(
                   children: [
-                    MenuGroupItem(
-                      label: strings.bRouterShortest,
-                      trailingElement: Switch.adaptive(
-                        value: model.shortestRouteEnabled,
-                        onChanged: model.setShortestRouteEnabled,
-                      ),
+                    _RouteRecommendationSettings(
+                      model: model,
+                      strings: strings,
                     ),
                     const MenuGroupDivider(),
                     MenuGroupItem(
@@ -67,29 +65,7 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                       ),
                     ),
                     const MenuGroupDivider(),
-                    MenuGroupItem(
-                      label: strings.positionMapButtons,
-                      trailingElement: DropdownButtonHideUnderline(
-                        child: DropdownButton<MapSidePanelEdge>(
-                          value: model.sidePanelEdge,
-                          alignment: AlignmentDirectional.centerEnd,
-                          isDense: true,
-                          items: [
-                            DropdownMenuItem(
-                              value: MapSidePanelEdge.left,
-                              child: Text(strings.left),
-                            ),
-                            DropdownMenuItem(
-                              value: MapSidePanelEdge.right,
-                              child: Text(strings.right),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v != null) model.setSidePanelEdge(v);
-                          },
-                        ),
-                      ),
-                    ),
+                    _AppearanceMenuItem(strings: strings),
                   ],
                 ),
                 MenuGroup(
@@ -103,9 +79,28 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         title: Text(strings.moreSettings),
                         children: [
                           const MenuGroupDivider(),
-                          _RouteRecommendationSettings(
-                            model: model,
-                            strings: strings,
+                          MenuGroupItem(
+                            label: strings.positionMapButtons,
+                            trailingElement: DropdownButtonHideUnderline(
+                              child: DropdownButton<MapSidePanelEdge>(
+                                value: model.sidePanelEdge,
+                                alignment: AlignmentDirectional.centerEnd,
+                                isDense: true,
+                                items: [
+                                  DropdownMenuItem(
+                                    value: MapSidePanelEdge.left,
+                                    child: Text(strings.left),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: MapSidePanelEdge.right,
+                                    child: Text(strings.right),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) model.setSidePanelEdge(v);
+                                },
+                              ),
+                            ),
                           ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
@@ -180,6 +175,75 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
               ],
             ));
       },
+    );
+  }
+}
+
+class _AppearanceMenuItem extends StatelessWidget {
+  const _AppearanceMenuItem({required this.strings});
+
+  final AppLocalizations strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuGroupItem(
+      label: strings.isEnglish ? 'Appearance' : 'Darstellung',
+      trailingElement: DropdownButtonHideUnderline(
+        child: Consumer<AppThemeController>(
+          builder: (context, appTheme, _) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: strings.isEnglish
+                    ? 'About automatic mode'
+                    : 'Info zur Automatik',
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(strings.isEnglish
+                        ? 'Automatic appearance'
+                        : 'Automatische Darstellung'),
+                    content: Text(strings.isEnglish
+                        ? 'Auto uses sunrise and sunset at your current location. Until a location is available, it follows the system setting.'
+                        : 'Auto verwendet Sonnenauf- und -untergang am aktuellen Standort. Bis ein Standort verfügbar ist, folgt die Darstellung der Systemeinstellung.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(strings.close),
+                      ),
+                    ],
+                  ),
+                ),
+                icon: const Icon(Icons.info_outline),
+              ),
+              const SizedBox(width: 8),
+              DropdownButton<AppThemePreference>(
+                value: appTheme.preference,
+                alignment: AlignmentDirectional.centerEnd,
+                isDense: true,
+                items: [
+                  DropdownMenuItem(
+                    value: AppThemePreference.light,
+                    child: Text(strings.isEnglish ? 'Light' : 'Hell'),
+                  ),
+                  DropdownMenuItem(
+                    value: AppThemePreference.dark,
+                    child: Text(strings.isEnglish ? 'Dark' : 'Dunkel'),
+                  ),
+                  const DropdownMenuItem(
+                    value: AppThemePreference.automatic,
+                    child: Text('Auto'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) appTheme.setPreference(value);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

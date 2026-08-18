@@ -56,6 +56,13 @@ class _InfoSheetState extends State<InfoSheet> {
             : 'Über & Quellenangaben',
       );
     }
+    final logo = Image.asset(
+      'images/logo_long.png',
+      height: 36,
+      fit: BoxFit.contain,
+      semanticLabel: 'MunichWays - Info',
+    );
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -64,12 +71,38 @@ class _InfoSheetState extends State<InfoSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                'images/logo_long.png',
-                height: 36,
-                fit: BoxFit.contain,
-                semanticLabel: 'MunichWays - Info',
-              ),
+              if (Theme.of(context).brightness == Brightness.dark)
+                ColorFiltered(
+                  // Turn the black lettering light while preserving the
+                  // original #6699CC MunichWays blue in the logo mark.
+                  colorFilter: const ColorFilter.matrix(
+                    <double>[
+                      -1.5,
+                      0,
+                      0,
+                      0,
+                      255,
+                      -1,
+                      0,
+                      0,
+                      0,
+                      255,
+                      -.5,
+                      0,
+                      0,
+                      0,
+                      255,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                    ],
+                  ),
+                  child: logo,
+                )
+              else
+                logo,
             ],
           ),
         ),

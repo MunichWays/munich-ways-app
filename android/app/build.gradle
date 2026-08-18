@@ -48,12 +48,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     defaultConfig {
@@ -68,6 +68,11 @@ android {
     }
 
     def releaseKeystoreFile = file(keystoreProperties['storeFile'] ?: 'release.keystore')
+    def hasReleaseSigningCredentials = keystoreProperties['storeFile'] &&
+        releaseKeystoreFile.exists() &&
+        keystoreProperties['alias'] &&
+        keystoreProperties['aliasPassword'] &&
+        keystoreProperties['storePassword']
 
     signingConfigs {
         release {
@@ -80,7 +85,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig releaseKeystoreFile.exists()
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                'proguard-rules.pro'
+            signingConfig hasReleaseSigningCredentials
                 ? signingConfigs.release
                 : signingConfigs.debug
         }

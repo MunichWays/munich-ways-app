@@ -9,11 +9,13 @@ jobs:
   assembleRelease:
     runs-on: ubuntu-22.04
 
-    container:
-      image: ghcr.io/cirruslabs/flutter:3.32.8
-
     steps:
       - uses: actions/checkout@v5
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
       - name: Restore Release Keystore from secrets
         run: |
           echo "${{ secrets.ANDROID_RELEASE_KEYSTORE }}" > release.keystore.asc

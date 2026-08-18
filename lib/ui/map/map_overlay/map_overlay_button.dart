@@ -32,6 +32,10 @@ class MapOverlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveBackground = dark
+        ? const Color(0xFF747C82).withValues(alpha: 0.82)
+        : AppColors.mapButtonBackground.withValues(alpha: 0.80);
     final effectiveTapTargetSize = tapTargetSize ?? size;
     final borderRadius = circular ? size / 2 : 14.0;
     final borderSide = outlined
@@ -49,7 +53,7 @@ class MapOverlayButton extends StatelessWidget {
           ? Colors.transparent
           : isActive && emphasizeActive
               ? AppColors.mapAccentColor
-              : AppColors.mapButtonBackground.withValues(alpha: 0.80),
+              : inactiveBackground,
       shape: shape,
       clipBehavior: Clip.antiAlias,
       shadowColor: Colors.transparent,
