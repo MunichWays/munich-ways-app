@@ -122,6 +122,61 @@ void main() {
     );
   });
 
+  test('uses GPS accuracy when resuming after an off-route episode', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, reentry, end],
+          400,
+          100,
+          maneuvers: const [],
+        ),
+      );
+    const impreciseFixNearRoute = LatLng(48.1430, 11.5704);
+
+    expect(guidance.resumeAt(impreciseFixNearRoute), isFalse);
+    expect(
+      guidance.resumeAt(
+        impreciseFixNearRoute,
+        horizontalAccuracyMeters: 15,
+      ),
+      isTrue,
+    );
+  });
+
+  test('automatically restores guidance after a brief route departure', () {
+    const reentry = LatLng(48.1430, 11.5700);
+    const laterTurn = LatLng(48.1435, 11.5700);
+    const routeEnd = LatLng(48.1440, 11.5700);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          const [start, reentry, laterTurn, routeEnd],
+          450,
+          100,
+          maneuvers: const [
+            RouteManeuver(
+              location: laterTurn,
+              type: 'turn',
+              modifier: 'left',
+            ),
+          ],
+        ),
+      );
+
+    guidance
+      ..resumeAt(reentry)
+      ..display(const LatLng(48.1430, 11.5710), english: false);
+
+    expect(
+      guidance.display(reentry, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having((display) => display.text, 'text', contains('links'))
+          .having((display) => display.type, 'type', 'turn'),
+    );
+  });
+
   test('does not derive directions for routes without guidance support', () {
     final guidance = VoiceGuidance()
       ..setRoute(

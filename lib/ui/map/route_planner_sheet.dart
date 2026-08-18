@@ -198,8 +198,6 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   void _reorderPoint(int oldIndex, int newIndex) {
     setState(() {
-      // Flutter 3.32 reports the insertion index before removing the item.
-      if (newIndex > oldIndex) newIndex--;
       final point = _points.removeAt(oldIndex);
       _points.insert(newIndex, point);
     });
@@ -389,7 +387,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _points.length,
-              onReorder: _reorderPoint,
+              onReorderItem: _reorderPoint,
               itemBuilder: (context, index) {
                 final point = _points[index];
                 return ReorderableDelayedDragStartListener(

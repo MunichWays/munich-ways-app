@@ -141,7 +141,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRouteConnectorLayerId = 'munichways_route_connector_line';
   static const _kRouteOverlapSourceId = 'munichways_route_overlap';
   static const _kRouteOverlapLayerId = 'munichways_route_overlap_arrows';
-  static const _kRouteOverlapImageId = 'route-overlap-arrow-pair-v2';
+  static const _kRouteOverlapImageId = 'route-overlap-arrow-pair-v4';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey();
@@ -1376,8 +1376,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.route.route,
         intermediateDestinationNames:
             model.waypoints.map((place) => place.displayName).toList(),
-      )
-      ..resumeAt(position);
+      );
+    final resumed = _voiceGuidance.resumeAt(
+      position,
+      horizontalAccuracyMeters: gpsPosition.accuracy,
+    );
+    if (!resumed) return;
     _cancelAutomaticRerouting(resetAttempts: false);
     unawaited(_restoreNavigationZoom(model));
   }
@@ -2770,41 +2774,41 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<Uint8List> _createRouteOverlapArrowPairImage() async {
-    const width = 84.0;
-    const height = 28.0;
+    const width = 96.0;
+    const height = 38.0;
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
-    final outline = ui.Paint()
-      ..color = const Color(0xD9000000)
-      ..style = ui.PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = ui.StrokeCap.round
-      ..strokeJoin = ui.StrokeJoin.round;
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        const Rect.fromLTWH(2, 2, width - 4, height - 4),
+        const Radius.circular(10),
+      ),
+      ui.Paint()..color = const Color(0xE6222630),
+    );
     final white = ui.Paint()
       ..color = Colors.white
       ..style = ui.PaintingStyle.fill;
 
     final forward = ui.Path()
-      ..moveTo(4, 11)
-      ..lineTo(25, 11)
-      ..lineTo(25, 5)
-      ..lineTo(38, 14)
-      ..lineTo(25, 23)
-      ..lineTo(25, 17)
-      ..lineTo(4, 17)
+      ..moveTo(9, 15)
+      ..lineTo(31, 15)
+      ..lineTo(31, 9)
+      ..lineTo(43, 19)
+      ..lineTo(31, 29)
+      ..lineTo(31, 23)
+      ..lineTo(9, 23)
       ..close();
     final backward = ui.Path()
-      ..moveTo(80, 11)
-      ..lineTo(59, 11)
-      ..lineTo(59, 5)
-      ..lineTo(46, 14)
-      ..lineTo(59, 23)
-      ..lineTo(59, 17)
-      ..lineTo(80, 17)
+      ..moveTo(87, 15)
+      ..lineTo(65, 15)
+      ..lineTo(65, 9)
+      ..lineTo(53, 19)
+      ..lineTo(65, 29)
+      ..lineTo(65, 23)
+      ..lineTo(87, 23)
       ..close();
     for (final path in [forward, backward]) {
       canvas.drawPath(path, white);
-      canvas.drawPath(path, outline);
     }
 
     final image = await recorder.endRecording().toImage(
@@ -3113,7 +3117,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         symbolPlacement: 'line',
         symbolSpacing: 180,
         iconImage: _kRouteOverlapImageId,
-        iconSize: 0.85,
+        iconSize: 1.0,
         iconAllowOverlap: true,
         iconIgnorePlacement: true,
         iconRotationAlignment: 'map',

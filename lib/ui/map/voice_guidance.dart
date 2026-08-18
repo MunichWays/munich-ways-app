@@ -158,6 +158,7 @@ class VoiceGuidance {
   List<_RouteInterval> _overlappingRouteIntervals = const [];
   bool _overlappingRouteWarningSpoken = false;
   bool _finalDestinationReached = false;
+  bool _routeRecoveryPending = false;
 
   bool get finalDestinationReached => _finalDestinationReached;
 
@@ -180,6 +181,7 @@ class VoiceGuidance {
     _overlappingRouteIntervals = const [];
     _overlappingRouteWarningSpoken = false;
     _finalDestinationReached = false;
+    _routeRecoveryPending = false;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
     if (guidanceRoute == null || guidanceRoute.points.length < 2) {
@@ -252,11 +254,20 @@ class VoiceGuidance {
   /// This is used after an off-route episode. A freshly reset guidance session
   /// normally only searches a short distance ahead of the route start, which
   /// cannot locate a rider who rejoins farther along a long route.
-  void resumeAt(LatLng position) {
+  bool resumeAt(
+    LatLng position, {
+    double horizontalAccuracyMeters = 0,
+  }) {
     final route = _route;
-    if (route == null) return;
+    if (route == null) return false;
     final projection = _projectOntoRoute(route.points, position);
-    if (projection.distanceFromRoute > maximumRouteDistanceMeters) return;
+    final accuracyAllowance = horizontalAccuracyMeters.isFinite
+        ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
+        : 0;
+    if (projection.distanceFromRoute >
+        maximumRouteDistanceMeters + accuracyAllowance) {
+      return false;
+    }
 
     _routeProgress = projection.distanceAlongRoute;
     _index = 0;
@@ -264,7 +275,9 @@ class VoiceGuidance {
     _nowSpoken = false;
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
+    _routeRecoveryPending = false;
     _advancePastManeuvers(_routeProgress);
+    return true;
   }
 
   VoiceGuidanceDisplay? display(
@@ -281,13 +294,7 @@ class VoiceGuidance {
         isFinalDestination: true,
       );
     }
-    final projection = _projectOntoRoute(
-      route.points,
-      position,
-      minimumDistanceAlongRoute: _routeProgress,
-      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
-      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
-    );
+    final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous &&
         !_isOverlappingProgress(projection.distanceAlongRoute)) {
       return VoiceGuidanceDisplay(
@@ -301,6 +308,7 @@ class VoiceGuidance {
       if (isFinalDestination) _finalDestinationReached = true;
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeRecoveryPending = false;
       return VoiceGuidanceDisplay(
         text: _arrivalDisplay(arrivalIndex, english),
         type: 'arrive',
@@ -354,13 +362,7 @@ class VoiceGuidance {
       }
       return null;
     }
-    final projection = _projectOntoRoute(
-      route.points,
-      position,
-      minimumDistanceAlongRoute: _routeProgress,
-      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
-      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
-    );
+    final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous &&
         !_isOverlappingProgress(projection.distanceAlongRoute)) {
       return null;
@@ -372,6 +374,7 @@ class VoiceGuidance {
       }
       _routeProgress =
           max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeRecoveryPending = false;
       return _arrivalAnnouncement(arrivalIndex, english);
     }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
@@ -432,6 +435,49 @@ class VoiceGuidance {
       );
     }
     return null;
+  }
+
+  _RouteProjection _projectionAtCurrentProgress(LatLng position) {
+    final route = _route;
+    if (route == null) {
+      return const _RouteProjection(0, double.infinity);
+    }
+    var projection = _projectOntoRoute(
+      route.points,
+      position,
+      minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+    );
+    if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
+      _routeRecoveryPending = true;
+      return projection;
+    }
+    if (!_routeRecoveryPending) return projection;
+
+    // A short route departure can end before the rerouting timers have fired.
+    // Re-anchor guidance here as part of every regular position update, so a
+    // stale progress window cannot leave "Watch the map" active indefinitely.
+    final recovered = _projectOntoRoute(route.points, position);
+    if (recovered.distanceFromRoute > maximumRouteDistanceMeters) {
+      return projection;
+    }
+    _routeRecoveryPending = false;
+    _routeProgress = recovered.distanceAlongRoute;
+    _index = 0;
+    _approachSpoken = false;
+    _nowSpoken = false;
+    _offRouteUpdates = 0;
+    _offRouteWarningSpoken = false;
+    _advancePastManeuvers(_routeProgress);
+    projection = _projectOntoRoute(
+      route.points,
+      position,
+      minimumDistanceAlongRoute: _routeProgress,
+      maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+      preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+    );
+    return projection;
   }
 
   int? _arrivalIndexAt(LatLng position) {
