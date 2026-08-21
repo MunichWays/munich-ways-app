@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
 
+enum PoiType { drinkingWater, publicToilet, bicycleRepairStation }
+
 class PoiDetails {
   const PoiDetails({
     required this.title,
@@ -32,7 +34,7 @@ class PoiDetails {
           )
         : null;
     return PoiDetails(
-      title: name == null || name.isEmpty ? 'Trinkwasserbrunnen' : name,
+      title: name == null || name.isEmpty ? '' : name,
       tags: tags,
       location: location,
     );
@@ -41,6 +43,12 @@ class PoiDetails {
   final String title;
   final Map<String, String> tags;
   final LatLng? location;
+
+  PoiType get type => switch (tags['amenity']) {
+        'toilets' => PoiType.publicToilet,
+        'bicycle_repair_station' => PoiType.bicycleRepairStation,
+        _ => PoiType.drinkingWater,
+      };
 
   String? get osmUrl {
     final explicitUrl = tags['osm_url'];

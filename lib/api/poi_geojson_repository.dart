@@ -10,6 +10,10 @@ class PoiGeoJsonRepository {
 
   static const drinkingWaterUrl =
       'https://www.munichways.de/App/poi/drinking_water.geojson';
+  static const publicToiletsUrl =
+      'https://www.munichways.de/App/poi/public_toilets.geojson';
+  static const bicycleRepairStationsUrl =
+      'https://www.munichways.de/App/poi/bicycle_repair_stations.geojson';
 
   static final CacheManager _poiCacheManager = CacheManager(
     Config(
@@ -22,14 +26,13 @@ class PoiGeoJsonRepository {
   final BaseCacheManager _cacheManager;
 
   /// Removes the cached POIs so the next update stream downloads fresh data.
-  Future<void> removeDrinkingWaterCache() =>
-      _cacheManager.removeFile(drinkingWaterUrl);
+  Future<void> removeCache(String url) => _cacheManager.removeFile(url);
 
   /// Emits cached POIs immediately, then a refreshed file when the weekly
   /// cache entry is stale. Download and parsing never participate in app start.
-  Stream<Map<String, dynamic>> drinkingWaterUpdates() async* {
+  Stream<Map<String, dynamic>> updates(String url, String description) async* {
     await for (final response in _cacheManager.getFileStream(
-      drinkingWaterUrl,
+      url,
       withProgress: false,
     )) {
       if (response is! FileInfo) continue;
@@ -40,13 +43,22 @@ class PoiGeoJsonRepository {
         // Keep listening: a stale malformed file may still be followed by a
         // valid network response. Optional POIs must never affect the map.
         log.w(
-          'Loading drinking-water POIs failed',
+          'Loading $description POIs failed',
           error: error,
           stackTrace: stackTrace,
         );
       }
     }
   }
+
+  Stream<Map<String, dynamic>> drinkingWaterUpdates() =>
+      updates(drinkingWaterUrl, 'drinking-water');
+
+  Stream<Map<String, dynamic>> publicToiletsUpdates() =>
+      updates(publicToiletsUrl, 'public-toilet');
+
+  Stream<Map<String, dynamic>> bicycleRepairStationsUpdates() =>
+      updates(bicycleRepairStationsUrl, 'bicycle-repair-station');
 }
 
 @visibleForTesting

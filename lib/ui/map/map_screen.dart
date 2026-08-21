@@ -137,6 +137,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kDrinkingWaterSourceId = 'munichways_drinking_water';
   static const _kDrinkingWaterLayerId = 'munichways_drinking_water_symbols';
   static const _kDrinkingWaterImageId = 'munichways_drinking_water_icon';
+  static const _kPublicToiletsSourceId = 'munichways_public_toilets';
+  static const _kPublicToiletsLayerId = 'munichways_public_toilets_symbols';
+  static const _kPublicToiletsImageId = 'munichways_public_toilets_icon';
+  static const _kRepairStationsSourceId = 'munichways_repair_stations';
+  static const _kRepairStationsLayerId = 'munichways_repair_stations_symbols';
+  static const _kRepairStationsImageId = 'munichways_repair_stations_icon';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
   /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
@@ -179,10 +185,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _drinkingWaterLoadStarted = false;
   bool _drinkingWaterSyncRunning = false;
   bool _drinkingWaterSyncQueued = false;
+  Future<void> _poiStyleOperationTail = Future<void>.value();
   Map<String, dynamic>? _drinkingWaterGeoJson;
   Completer<Map<String, dynamic>> _firstDrinkingWaterData = Completer();
   final PoiGeoJsonRepository _poiGeoJsonRepository = PoiGeoJsonRepository();
   StreamSubscription<Map<String, dynamic>>? _drinkingWaterSubscription;
+  bool _publicToiletsGeoJsonReady = false;
+  bool _publicToiletsLoadStarted = false;
+  bool _publicToiletsSyncRunning = false;
+  bool _publicToiletsSyncQueued = false;
+  Map<String, dynamic>? _publicToiletsGeoJson;
+  Completer<Map<String, dynamic>> _firstPublicToiletsData = Completer();
+  StreamSubscription<Map<String, dynamic>>? _publicToiletsSubscription;
+  bool _repairStationsGeoJsonReady = false;
+  bool _repairStationsLoadStarted = false;
+  bool _repairStationsSyncRunning = false;
+  bool _repairStationsSyncQueued = false;
+  Map<String, dynamic>? _repairStationsGeoJson;
+  Completer<Map<String, dynamic>> _firstRepairStationsData = Completer();
+  StreamSubscription<Map<String, dynamic>>? _repairStationsSubscription;
   final List<Symbol> _routePlanSymbols = [];
   latlong2.LatLng? _displayedRouteStartPoint;
   final Set<int> _routeWaypointImages = {};
@@ -324,6 +345,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     _locationSubscription?.cancel();
     _drinkingWaterSubscription?.cancel();
+    _publicToiletsSubscription?.cancel();
+    _repairStationsSubscription?.cancel();
     _movementHeadingFreshnessTimer?.cancel();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting(resetAttempts: false);
@@ -672,6 +695,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _routeGeoJsonReady = false;
                               _currentLocationGeoJsonReady = false;
                               _drinkingWaterGeoJsonReady = false;
+                              _publicToiletsGeoJsonReady = false;
+                              _repairStationsGeoJsonReady = false;
                               if (!mounted) return;
                               // Style rebuild clears native annotations; drop stale handles.
                               _routePlanSymbols.clear();
@@ -695,7 +720,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               });
                               _scheduleOverlaySync(model);
                               _scheduleDrinkingWaterSync();
+                              _schedulePublicToiletsSync();
+                              _scheduleRepairStationsSync();
                               _startDrinkingWaterLoad();
+                              _startPublicToiletsLoad();
+                              _startRepairStationsLoad();
                               if (!kStoreScreenshots &&
                                   !_locationPrimeStarted) {
                                 _locationPrimeStarted = true;
@@ -1754,6 +1783,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<bool> _reloadMapData(MapScreenViewModel model) async {
     final radnetzReload = model.reloadRadnetz();
     await _reloadDrinkingWaterPois();
+    await _reloadPublicToilets();
+    await _reloadRepairStations();
     return radnetzReload;
   }
 
@@ -2178,11 +2209,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<PoiDetails?> _poiDetailsAt(Point<double> screenPoint) async {
     final controller = _mapController;
-    if (controller == null || !_drinkingWaterGeoJsonReady) return null;
+    if (controller == null ||
+        (!_drinkingWaterGeoJsonReady &&
+            !_publicToiletsGeoJsonReady &&
+            !_repairStationsGeoJsonReady)) {
+      return null;
+    }
     try {
+      final layers = <String>[
+        if (_drinkingWaterGeoJsonReady) _kDrinkingWaterLayerId,
+        if (_publicToiletsGeoJsonReady) _kPublicToiletsLayerId,
+        if (_repairStationsGeoJsonReady) _kRepairStationsLayerId,
+      ];
       final features = await controller.queryRenderedFeatures(
         screenPoint,
-        const [_kDrinkingWaterLayerId],
+        layers,
         null,
       );
       for (final feature in features) {
@@ -2192,7 +2233,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       }
     } catch (error, stackTrace) {
       log.d(
-        'Querying a long-pressed drinking-water POI failed',
+        'Querying a long-pressed POI failed',
         error: error,
         stackTrace: stackTrace,
       );
@@ -2229,7 +2270,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     latlong2.LatLng position,
   ) async {
     final routeReady = await model.setDestinationAndCalculateRoute(
-      Place(details.title, position),
+      Place(
+        details.title.isEmpty
+            ? switch (details.type) {
+                PoiType.drinkingWater => context.l10n.isEnglish
+                    ? 'Drinking water fountain'
+                    : 'Trinkwasserbrunnen',
+                PoiType.publicToilet => context.l10n.isEnglish
+                    ? 'Public toilet'
+                    : 'Öffentliche Toilette',
+                PoiType.bicycleRepairStation => context.l10n.isEnglish
+                    ? 'Bicycle repair station'
+                    : 'Fahrrad-Servicestation',
+              }
+            : details.title,
+        position,
+      ),
     );
     if (!mounted || !routeReady) return;
     await _startNavigation(model);
@@ -2819,6 +2875,36 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createPoiIconImage(IconData icon) async {
+    const size = 72.0;
+    const center = ui.Offset(size / 2, size / 2);
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    canvas.drawCircle(center, 34, ui.Paint()..color = Colors.white);
+    canvas.drawCircle(center, 30, ui.Paint()..color = AppColors.mapRouteColor);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 39,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
+    );
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
   Future<Uint8List> _createRouteDestinationFlagImage() async {
     const width = 80.0;
     const height = 92.0;
@@ -3336,7 +3422,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _drinkingWaterLoadStarted = false;
     _firstDrinkingWaterData = Completer<Map<String, dynamic>>();
     try {
-      await _poiGeoJsonRepository.removeDrinkingWaterCache();
+      await _poiGeoJsonRepository.removeCache(
+        PoiGeoJsonRepository.drinkingWaterUrl,
+      );
     } catch (error, stackTrace) {
       log.w(
         'Clearing drinking-water POI cache failed',
@@ -3347,17 +3435,116 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (mounted) _startDrinkingWaterLoad();
   }
 
+  void _startPublicToiletsLoad() {
+    if (_publicToiletsLoadStarted) return;
+    _publicToiletsLoadStarted = true;
+    _publicToiletsSubscription =
+        _poiGeoJsonRepository.publicToiletsUpdates().listen(
+              (geoJson) {
+                _publicToiletsGeoJson = geoJson;
+                if (!_firstPublicToiletsData.isCompleted) {
+                  _firstPublicToiletsData.complete(geoJson);
+                }
+                _schedulePublicToiletsSync();
+              },
+              onError: (Object error, StackTrace stackTrace) => log.w(
+                'Public-toilet POI update failed',
+                error: error,
+                stackTrace: stackTrace,
+              ),
+              onDone: () {
+                _publicToiletsSubscription = null;
+                if (_publicToiletsGeoJson == null)
+                  _publicToiletsLoadStarted = false;
+              },
+            );
+  }
+
+  void _startRepairStationsLoad() {
+    if (_repairStationsLoadStarted) return;
+    _repairStationsLoadStarted = true;
+    _repairStationsSubscription =
+        _poiGeoJsonRepository.bicycleRepairStationsUpdates().listen(
+              (geoJson) {
+                _repairStationsGeoJson = geoJson;
+                if (!_firstRepairStationsData.isCompleted) {
+                  _firstRepairStationsData.complete(geoJson);
+                }
+                _scheduleRepairStationsSync();
+              },
+              onError: (Object error, StackTrace stackTrace) => log.w(
+                'Bicycle-repair-station POI update failed',
+                error: error,
+                stackTrace: stackTrace,
+              ),
+              onDone: () {
+                _repairStationsSubscription = null;
+                if (_repairStationsGeoJson == null)
+                  _repairStationsLoadStarted = false;
+              },
+            );
+  }
+
+  Future<void> _reloadPublicToilets() async {
+    await _publicToiletsSubscription?.cancel();
+    _publicToiletsSubscription = null;
+    _publicToiletsLoadStarted = false;
+    _firstPublicToiletsData = Completer<Map<String, dynamic>>();
+    try {
+      await _poiGeoJsonRepository.removeCache(
+        PoiGeoJsonRepository.publicToiletsUrl,
+      );
+    } catch (error, stackTrace) {
+      log.w('Clearing public-toilet POI cache failed',
+          error: error, stackTrace: stackTrace);
+    }
+    if (mounted) _startPublicToiletsLoad();
+  }
+
+  Future<void> _reloadRepairStations() async {
+    await _repairStationsSubscription?.cancel();
+    _repairStationsSubscription = null;
+    _repairStationsLoadStarted = false;
+    _firstRepairStationsData = Completer<Map<String, dynamic>>();
+    try {
+      await _poiGeoJsonRepository.removeCache(
+        PoiGeoJsonRepository.bicycleRepairStationsUrl,
+      );
+    } catch (error, stackTrace) {
+      log.w('Clearing bicycle-repair-station POI cache failed',
+          error: error, stackTrace: stackTrace);
+    }
+    if (mounted) _startRepairStationsLoad();
+  }
+
   Future<void> _navigateToNearbyPoi(
     MapScreenViewModel model,
     NearbyPoiType type,
   ) async {
-    _startDrinkingWaterLoad();
+    switch (type) {
+      case NearbyPoiType.drinkingWater:
+        _startDrinkingWaterLoad();
+        break;
+      case NearbyPoiType.publicToilet:
+        _startPublicToiletsLoad();
+        break;
+      case NearbyPoiType.bicycleRepairStation:
+        _startRepairStationsLoad();
+        break;
+    }
     Map<String, dynamic> geoJson;
     try {
-      geoJson = _drinkingWaterGeoJson ??
-          await _firstDrinkingWaterData.future.timeout(
-            const Duration(seconds: 12),
-          );
+      geoJson = switch (type) {
+        NearbyPoiType.drinkingWater => _drinkingWaterGeoJson ??
+            await _firstDrinkingWaterData.future
+                .timeout(const Duration(seconds: 12)),
+        NearbyPoiType.publicToilet => _publicToiletsGeoJson ??
+            await _firstPublicToiletsData.future
+                .timeout(const Duration(seconds: 12)),
+        NearbyPoiType.bicycleRepairStation => _repairStationsGeoJson ??
+            await _firstRepairStationsData.future
+                .timeout(const Duration(seconds: 12)),
+      };
     } catch (error, stackTrace) {
       log.w(
         'Waiting for nearby POIs failed',
@@ -3401,6 +3588,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ? 'Drinking water fountain'
               : 'Trinkwasserbrunnen',
         ),
+      NearbyPoiType.publicToilet => nearestPoiPlace(
+          geoJson,
+          origin,
+          fallbackName:
+              context.l10n.isEnglish ? 'Public toilet' : 'Öffentliche Toilette',
+        ),
+      NearbyPoiType.bicycleRepairStation => nearestPoiPlace(
+          geoJson,
+          origin,
+          fallbackName: context.l10n.isEnglish
+              ? 'Bicycle repair station'
+              : 'Fahrrad-Servicestation',
+        ),
     };
     if (destination == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3437,35 +3637,42 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         final geoJson = _drinkingWaterGeoJson;
         if (!mounted || controller == null || geoJson == null) return;
         try {
-          if (!_drinkingWaterGeoJsonReady) {
-            await controller.addGeoJsonSource(
-              _kDrinkingWaterSourceId,
-              geoJson,
-            );
-            await controller.addImage(
-              _kDrinkingWaterImageId,
-              await _createDrinkingWaterImage(),
-            );
-            await controller.addSymbolLayer(
-              _kDrinkingWaterSourceId,
-              _kDrinkingWaterLayerId,
-              const SymbolLayerProperties(
-                iconImage: _kDrinkingWaterImageId,
-                iconSize: 1.0,
-                iconAllowOverlap: true,
-                iconIgnorePlacement: false,
-              ),
-              belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
-              minzoom: 13,
-              enableInteraction: false,
-            );
-            _drinkingWaterGeoJsonReady = true;
-          } else {
-            await controller.setGeoJsonSource(
-              _kDrinkingWaterSourceId,
-              geoJson,
-            );
-          }
+          await _serializePoiStyleOperation(() async {
+            if (!mounted ||
+                !_styleLoaded ||
+                !identical(controller, _mapController)) {
+              return;
+            }
+            if (!_drinkingWaterGeoJsonReady) {
+              await controller.addGeoJsonSource(
+                _kDrinkingWaterSourceId,
+                geoJson,
+              );
+              await controller.addImage(
+                _kDrinkingWaterImageId,
+                await _createDrinkingWaterImage(),
+              );
+              await controller.addSymbolLayer(
+                _kDrinkingWaterSourceId,
+                _kDrinkingWaterLayerId,
+                const SymbolLayerProperties(
+                  iconImage: _kDrinkingWaterImageId,
+                  iconSize: 1.0,
+                  iconAllowOverlap: true,
+                  iconIgnorePlacement: false,
+                ),
+                belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+                minzoom: 13,
+                enableInteraction: false,
+              );
+              _drinkingWaterGeoJsonReady = true;
+            } else {
+              await controller.setGeoJsonSource(
+                _kDrinkingWaterSourceId,
+                geoJson,
+              );
+            }
+          });
         } catch (error, stackTrace) {
           // Style changes can race an optional background update. The latest
           // data remains in memory and is applied by the next style callback.
@@ -3480,6 +3687,143 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     } finally {
       _drinkingWaterSyncRunning = false;
       if (_drinkingWaterSyncQueued) _scheduleDrinkingWaterSync();
+    }
+  }
+
+  void _schedulePublicToiletsSync() {
+    if (!_styleLoaded || _publicToiletsGeoJson == null) return;
+    if (_publicToiletsSyncRunning) {
+      _publicToiletsSyncQueued = true;
+      return;
+    }
+    _publicToiletsSyncRunning = true;
+    unawaited(_runPublicToiletsSync());
+  }
+
+  Future<void> _runPublicToiletsSync() async {
+    try {
+      do {
+        _publicToiletsSyncQueued = false;
+        final controller = _mapController;
+        final geoJson = _publicToiletsGeoJson;
+        if (!mounted || controller == null || geoJson == null) return;
+        try {
+          await _serializePoiStyleOperation(() async {
+            if (!mounted ||
+                !_styleLoaded ||
+                !identical(controller, _mapController)) {
+              return;
+            }
+            if (!_publicToiletsGeoJsonReady) {
+              await controller.addGeoJsonSource(
+                  _kPublicToiletsSourceId, geoJson);
+              await controller.addImage(
+                _kPublicToiletsImageId,
+                await _createPoiIconImage(Icons.wc),
+              );
+              await controller.addSymbolLayer(
+                _kPublicToiletsSourceId,
+                _kPublicToiletsLayerId,
+                const SymbolLayerProperties(
+                  iconImage: _kPublicToiletsImageId,
+                  iconSize: .9,
+                  iconAllowOverlap: true,
+                  iconIgnorePlacement: true,
+                ),
+                minzoom: 16,
+                enableInteraction: false,
+              );
+              _publicToiletsGeoJsonReady = true;
+            } else {
+              await controller.setGeoJsonSource(
+                  _kPublicToiletsSourceId, geoJson);
+            }
+          });
+        } catch (error, stackTrace) {
+          _publicToiletsGeoJsonReady = false;
+          log.w('Displaying public-toilet POIs failed',
+              error: error, stackTrace: stackTrace);
+        }
+      } while (_publicToiletsSyncQueued);
+    } finally {
+      _publicToiletsSyncRunning = false;
+      if (_publicToiletsSyncQueued) _schedulePublicToiletsSync();
+    }
+  }
+
+  void _scheduleRepairStationsSync() {
+    if (!_styleLoaded || _repairStationsGeoJson == null) return;
+    if (_repairStationsSyncRunning) {
+      _repairStationsSyncQueued = true;
+      return;
+    }
+    _repairStationsSyncRunning = true;
+    unawaited(_runRepairStationsSync());
+  }
+
+  Future<void> _runRepairStationsSync() async {
+    try {
+      do {
+        _repairStationsSyncQueued = false;
+        final controller = _mapController;
+        final geoJson = _repairStationsGeoJson;
+        if (!mounted || controller == null || geoJson == null) return;
+        try {
+          await _serializePoiStyleOperation(() async {
+            if (!mounted ||
+                !_styleLoaded ||
+                !identical(controller, _mapController)) {
+              return;
+            }
+            if (!_repairStationsGeoJsonReady) {
+              await controller.addGeoJsonSource(
+                  _kRepairStationsSourceId, geoJson);
+              await controller.addImage(
+                _kRepairStationsImageId,
+                await _createPoiIconImage(Icons.build),
+              );
+              await controller.addSymbolLayer(
+                _kRepairStationsSourceId,
+                _kRepairStationsLayerId,
+                const SymbolLayerProperties(
+                  iconImage: _kRepairStationsImageId,
+                  iconSize: 1,
+                  iconAllowOverlap: true,
+                  iconIgnorePlacement: true,
+                ),
+                belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+                minzoom: 13,
+                enableInteraction: false,
+              );
+              _repairStationsGeoJsonReady = true;
+            } else {
+              await controller.setGeoJsonSource(
+                  _kRepairStationsSourceId, geoJson);
+            }
+          });
+        } catch (error, stackTrace) {
+          _repairStationsGeoJsonReady = false;
+          log.w('Displaying bicycle-repair-station POIs failed',
+              error: error, stackTrace: stackTrace);
+        }
+      } while (_repairStationsSyncQueued);
+    } finally {
+      _repairStationsSyncRunning = false;
+      if (_repairStationsSyncQueued) _scheduleRepairStationsSync();
+    }
+  }
+
+  Future<void> _serializePoiStyleOperation(
+    Future<void> Function() operation,
+  ) async {
+    final previous = _poiStyleOperationTail;
+    final completed = Completer<void>();
+    _poiStyleOperationTail = completed.future;
+    try {
+      await previous;
+      await operation();
+    } finally {
+      completed.complete();
     }
   }
 }

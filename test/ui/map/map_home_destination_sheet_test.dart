@@ -114,6 +114,9 @@ void main() {
     await tester.tap(find.text('In der Nähe'));
     await tester.pumpAndSettle();
     expect(find.text('Trinkwasserbrunnen'), findsOneWidget);
+    expect(find.text('Öffentliche Toiletten'), findsOneWidget);
+    expect(find.text('Servicestationen'), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsOneWidget);
     expect(
       tester.getSize(find.text('Trinkwasserbrunnen')).height,
       lessThan(30),

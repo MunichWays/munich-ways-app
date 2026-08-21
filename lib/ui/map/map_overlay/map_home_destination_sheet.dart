@@ -13,7 +13,7 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
-enum NearbyPoiType { drinkingWater }
+enum NearbyPoiType { drinkingWater, publicToilet, bicycleRepairStation }
 
 class MapHomeDestinationSheet extends StatefulWidget {
   const MapHomeDestinationSheet({
@@ -398,39 +398,80 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
 
   Future<void> _openNearby() async {
     _hideAttribution();
-    final type = await showDialog<NearbyPoiType>(
+    final type = await showModalBottomSheet<NearbyPoiType>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(
-          context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: FilledButton.icon(
-              style: AppButtonStyles.primary(dialogContext).copyWith(
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 16),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: .4,
+        minChildSize: .28,
+        maxChildSize: .65,
+        snap: true,
+        snapSizes: const [.28, .4, .65],
+        expand: false,
+        builder: (context, scrollController) => Container(
+          decoration: bottomSheetDecoration(context),
+          child: Column(
+            children: [
+              const BottomSheetDragHandle(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.close,
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ),
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                NearbyPoiType.drinkingWater,
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  children: [
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.drinkingWater,
+                      icon: Icons.water_drop_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Drinking water'
+                          : 'Trinkwasserbrunnen',
+                    ),
+                    const SizedBox(height: 10),
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.publicToilet,
+                      icon: Icons.wc_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Public toilets'
+                          : 'Öffentliche Toiletten',
+                    ),
+                    const SizedBox(height: 10),
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.bicycleRepairStation,
+                      icon: Icons.build_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Service stations'
+                          : 'Servicestationen',
+                    ),
+                  ],
+                ),
               ),
-              icon: const Icon(Icons.water_drop_outlined),
-              label: Text(
-                context.l10n.isEnglish
-                    ? 'Drinking water fountain'
-                    : 'Trinkwasserbrunnen',
-                maxLines: 1,
-              ),
-            ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(context.l10n.tr('Abbrechen')),
-          ),
-        ],
+        ),
       ),
     );
     if (!mounted || type == null) return;
@@ -441,6 +482,22 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       if (mounted) setState(() => _startingNearbyNavigation = false);
     }
   }
+
+  Widget _nearbyButton(
+    BuildContext context, {
+    required NearbyPoiType type,
+    required IconData icon,
+    required String label,
+  }) =>
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          style: AppButtonStyles.secondary(context),
+          onPressed: () => Navigator.pop(context, type),
+          icon: Icon(icon),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {

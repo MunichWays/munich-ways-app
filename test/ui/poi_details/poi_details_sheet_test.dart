@@ -43,6 +43,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Brunnen am Platz'), findsNWidgets(2));
+    expect(find.byIcon(Icons.close), findsOneWidget);
     expect(find.text('Route hierhin'), findsOneWidget);
     expect(
       find.ancestor(
@@ -95,6 +96,126 @@ void main() {
     expect(
       tester.getTopLeft(find.text('OpenStreetMap')).dy,
       lessThan(tester.getTopLeft(find.text('OSM selbst ändern')).dy),
+    );
+  });
+
+  testWidgets('uses a compact English fallback title for an unnamed fountain',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const Scaffold(
+        body: PoiDetailsSheet(
+          details: PoiDetails(tags: {}, title: ''),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Drinking water'), findsOneWidget);
+    final title = tester.widget<Text>(find.text('Drinking water'));
+    expect(title.maxLines, 1);
+    expect(title.overflow, TextOverflow.ellipsis);
+    expect(find.byTooltip('Close'), findsOneWidget);
+  });
+
+  testWidgets('shows public toilet tags in the requested order',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final details = PoiDetails.fromGeoJsonFeature({
+      'properties': {
+        'amenity': 'toilets',
+        'source': 'survey',
+        'portable': 'no',
+        'changing_table': 'limited',
+        'panoramax': 'abc123',
+        'toilets:handwashing': 'yes',
+        'fee': 'no',
+        'opening_hours': '24/7',
+        'toilets:wheelchair': 'designated',
+        'wheelchair': 'yes',
+      },
+    });
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('de'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: PoiDetailsSheet(details: details)),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Öffentliche Toilette'), findsOneWidget);
+    expect(find.text('yes / designated'), findsOneWidget);
+    expect(find.text('Kostenpflichtig'), findsOneWidget);
+    expect(find.text('Wickeltisch'), findsOneWidget);
+    expect(find.text('limited'), findsOneWidget);
+    expect(find.text('panoramax'), findsNothing);
+    final compactFee = tester
+        .widgetList<ListItem>(find.byType(ListItem))
+        .singleWhere((item) => item.label == 'Kostenpflichtig');
+    expect(compactFee.compact, isTrue);
+    expect(
+      tester.getTopLeft(find.text('Rollstuhlgerecht')).dy,
+      lessThan(tester.getTopLeft(find.text('Öffnungszeiten')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('Öffnungszeiten')).dy,
+      lessThan(tester.getTopLeft(find.text('Kostenpflichtig')).dy),
+    );
+  });
+
+  testWidgets('shows bicycle repair equipment before opening hours',
+      (tester) async {
+    final details = PoiDetails.fromGeoJsonFeature({
+      'properties': {
+        'amenity': 'bicycle_repair_station',
+        'opening_hours': '24/7',
+        'service:bicycle:stand': 'yes',
+        'service:bicycle:tools': 'yes',
+        'service:bicycle:pump': 'no',
+        'name': 'Radlpunkt',
+        'description': 'Frei nutzbar',
+        'operator': 'Gemeinde',
+        'source:website': 'https://example.org/service',
+      },
+    });
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('de'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: PoiDetailsSheet(details: details)),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Radlpunkt'), findsNWidgets(2));
+    expect(find.byIcon(Icons.build), findsOneWidget);
+    expect(find.text('Beschreibung'), findsOneWidget);
+    expect(find.text('Frei nutzbar'), findsOneWidget);
+    expect(find.text('Betreiber'), findsOneWidget);
+    expect(find.text('Gemeinde'), findsOneWidget);
+    expect(find.text('Quell-Webseite'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Pumpe')).dy,
+      lessThan(tester.getTopLeft(find.text('Öffnungszeiten')).dy),
     );
   });
 }
