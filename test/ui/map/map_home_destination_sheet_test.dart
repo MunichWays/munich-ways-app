@@ -49,6 +49,7 @@ void main() {
                     searchCenter: searchCenter,
                     onSelected: (_) {},
                     onPlanRoute: () {},
+                    onNearbySelected: (_) async {},
                     onSelectOnMap: () {},
                     onShowInfo: () {},
                     onToggleAttribution: () {},
@@ -80,6 +81,59 @@ void main() {
     expect(sheet.controller!.size, closeTo(.12, .01));
   });
 
+  testWidgets('offers nearby drinking water in compact mode', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    NearbyPoiType? selectedType;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapHomeDestinationSheet(
+                searchCenter: const LatLng(48.1, 11.5),
+                onSelected: (_) {},
+                onPlanRoute: () {},
+                onNearbySelected: (type) async => selectedType = type,
+                onSelectOnMap: () {},
+                onShowInfo: () {},
+                onToggleAttribution: () {},
+                onShowSettings: () {},
+                attributionExpanded: false,
+                favoritesStore: _EmptyFavoritesStore(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('In der Nähe'));
+    await tester.pumpAndSettle();
+    expect(find.text('Trinkwasserbrunnen'), findsOneWidget);
+    expect(find.text('Öffentliche Toiletten'), findsOneWidget);
+    expect(find.text('Servicestationen'), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(
+      tester.getSize(find.text('Trinkwasserbrunnen')).height,
+      lessThan(30),
+    );
+    expect(
+      find.ancestor(
+        of: find.text('Trinkwasserbrunnen'),
+        matching: find.byType(FilledButton),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Trinkwasserbrunnen'));
+    await tester.pumpAndSettle();
+
+    expect(selectedType, NearbyPoiType.drinkingWater);
+  });
+
   testWidgets('expands the home destination header into search',
       (tester) async {
     var selectOnMap = false;
@@ -93,6 +147,7 @@ void main() {
                 searchCenter: null,
                 onSelected: (_) {},
                 onPlanRoute: () {},
+                onNearbySelected: (_) async {},
                 onSelectOnMap: () => selectOnMap = true,
                 onShowInfo: () {},
                 onToggleAttribution: () => attributionHidden = true,
@@ -136,6 +191,7 @@ void main() {
     expect(find.byIcon(Icons.star_outline), findsOneWidget);
     expect(draggable.controller!.size, closeTo(.28, .01));
     expect(find.text('Route planen'), findsOneWidget);
+    expect(find.text('In der Nähe'), findsOneWidget);
     expect(find.text('Auf Karte wählen'), findsNothing);
     final compactPlanRouteX = tester.getCenter(find.text('Route planen')).dx;
 
@@ -148,6 +204,7 @@ void main() {
     expect(find.text('Letztes Ziel'), findsOneWidget);
     expect(find.text('Arbeitsroute'), findsOneWidget);
     expect(find.text('Route planen'), findsOneWidget);
+    expect(find.text('In der Nähe'), findsOneWidget);
     expect(find.text('Auf Karte wählen'), findsNothing);
 
     await tester.drag(find.text('Wohin?'), const Offset(0, -400));

@@ -299,6 +299,8 @@ void main() {
   testWidgets('interrupted navigation offers a prominent resume action',
       (tester) async {
     var resumed = false;
+    var infoShown = false;
+    var settingsShown = false;
     final model = MapScreenViewModel(store: _MemorySettingsStore())
       ..destination = Place('Ziel', const LatLng(48.15, 11.6))
       ..route = MapRoute(
@@ -326,6 +328,8 @@ void main() {
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
               onEndRoute: () {},
+              onShowInfo: () => infoShown = true,
+              onShowSettings: () => settingsShown = true,
             ),
           ),
         ),
@@ -336,6 +340,20 @@ void main() {
     expect(resume, findsOneWidget);
     expect(find.text('Fortsetzen'), findsOneWidget);
     expect(find.text('In 100 m rechts abbiegen'), findsNothing);
+    final info = find.byTooltip('Info');
+    final settings = find.byTooltip('Einstellungen');
+    expect(info, findsOneWidget);
+    expect(settings, findsOneWidget);
+    for (final action in [info, settings]) {
+      final iconButton = tester.widget<IconButton>(
+        find.ancestor(of: action, matching: find.byType(IconButton)),
+      );
+      expect(iconButton.style?.side, isNull);
+      expect(
+        iconButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+        Colors.white70,
+      );
+    }
     expect(tester.getSize(resume), const Size(68, 52));
     final button = tester.widget<IconButton>(
       find.descendant(
@@ -350,6 +368,10 @@ void main() {
 
     await tester.tap(resume);
     expect(resumed, isTrue);
+    await tester.tap(info);
+    await tester.tap(settings);
+    expect(infoShown, isTrue);
+    expect(settingsShown, isTrue);
   });
 
   testWidgets('route stats share a full row above the action buttons',

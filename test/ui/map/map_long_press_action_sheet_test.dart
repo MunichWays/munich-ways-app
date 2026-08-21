@@ -59,6 +59,26 @@ void main() {
     expect(selected, MapLongPressAction.showDetails);
   });
 
+  testWidgets('offers details when a drinking-water POI was hit',
+      (tester) async {
+    MapLongPressAction? selected;
+    await tester.pumpWidget(
+      _Harness(
+        hasPoiDetails: true,
+        onSelected: (value) => selected = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Details anzeigen'), findsOneWidget);
+
+    await tester.tap(find.text('Details anzeigen'));
+    await tester.pumpAndSettle();
+    expect(selected, MapLongPressAction.showDetails);
+  });
+
   testWidgets('offers route editing actions for a selected endpoint',
       (tester) async {
     await tester.pumpWidget(
@@ -84,12 +104,14 @@ class _Harness extends StatelessWidget {
     this.details,
     this.canAddWaypoint = false,
     this.canMoveStart = false,
+    this.hasPoiDetails = false,
     required this.onSelected,
   });
 
   final StreetDetails? details;
   final bool canAddWaypoint;
   final bool canMoveStart;
+  final bool hasPoiDetails;
   final ValueChanged<MapLongPressAction?> onSelected;
 
   @override
@@ -112,6 +134,7 @@ class _Harness extends StatelessWidget {
                 anchor: const Offset(200, 200),
                 overlaySize: const Size(400, 600),
                 streetDetails: details,
+                hasPoiDetails: hasPoiDetails,
                 canAddWaypoint: canAddWaypoint,
                 canMoveStart: canMoveStart,
               ),

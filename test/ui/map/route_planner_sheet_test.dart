@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
+import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -14,7 +16,63 @@ class _SettingsStore extends SettingsStore {
   Future<SettingsData> load() async => SettingsData.defaults;
 }
 
+class _RoutesStore extends SavedRoutesStore {
+  SavedRoute? saved;
+
+  @override
+  Future<void> add(SavedRoute route) async => saved = route;
+}
+
 void main() {
+  testWidgets('reuses and overwrites the selected saved route name',
+      (tester) async {
+    final original = SavedRoute(
+      name: 'Isarrunde',
+      start: Place('Start', const LatLng(48.1, 11.5)),
+      stops: [Place('Alter Stopp', const LatLng(48.2, 11.6))],
+      destination: Place('Ziel', const LatLng(48.3, 11.7)),
+      isFavorite: true,
+      favoriteOrder: 2,
+    );
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..routeStart = original.start
+      ..waypoints.addAll(original.stops)
+      ..destination = original.destination
+      ..selectedSavedRoute = original;
+    final routesStore = _RoutesStore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(
+                context,
+                model: model,
+                routesStore: routesStore,
+              ),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.save_outlined));
+    await tester.pumpAndSettle();
+
+    expect(
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        'Isarrunde');
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+
+    expect(routesStore.saved?.name, 'Isarrunde');
+    expect(routesStore.saved?.isFavorite, isTrue);
+    expect(routesStore.saved?.favoriteOrder, 2);
+  });
+
   testWidgets('uses compact menus and recalculates roles after reorder',
       (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())

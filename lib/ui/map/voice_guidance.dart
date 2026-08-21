@@ -202,7 +202,14 @@ class VoiceGuidance {
       );
       previousManeuverDistance = projection.distanceAlongRoute;
       projectedManeuvers.add(
-        _GuidanceManeuver(maneuver, projection.distanceAlongRoute),
+        _GuidanceManeuver(
+          _adjustTurnModifierFromGeometry(
+            guidanceRoute.points,
+            maneuver,
+            projection.distanceAlongRoute,
+          ),
+          projection.distanceAlongRoute,
+        ),
       );
     }
     final routedManeuvers = projectedManeuvers
@@ -522,18 +529,18 @@ class VoiceGuidance {
     if (!_isIntermediateArrival(index)) {
       return english
           ? 'You have reached your destination.'
-          : 'Sie haben das Ziel erreicht.';
+          : 'Du hast das Ziel erreicht.';
     }
     final name = _intermediateName(index);
     final number = index + 1;
     if (english) {
       return name == null
           ? 'You have reached intermediate destination $number.'
-          : 'You have reached intermediate destination $number $name.';
+          : 'You have reached intermediate destination $number, $name.';
     }
     return name == null
-        ? 'Sie haben das Zwischenziel $number erreicht.'
-        : 'Sie haben das Zwischenziel $number $name erreicht.';
+        ? 'Du hast das Zwischenziel $number erreicht.'
+        : 'Du hast das Zwischenziel $number, $name, erreicht.';
   }
 
   String _formatSpokenManeuver(
@@ -726,6 +733,57 @@ class VoiceGuidance {
         .abs();
   }
 
+  /// OSRM occasionally labels a shallow transition onto an offset cycle path
+  /// as a normal turn. Use the actual route geometry to avoid directing riders
+  /// into a nearby cross street.
+  static RouteManeuver _adjustTurnModifierFromGeometry(
+    List<LatLng> route,
+    RouteManeuver maneuver,
+    double routeDistance,
+  ) {
+    if (maneuver.type != 'turn' ||
+        (maneuver.modifier != 'right' && maneuver.modifier != 'left') ||
+        routeDistance < 8) {
+      return maneuver;
+    }
+    final totalDistance = _routeLength(route);
+    if (totalDistance - routeDistance < 8) return maneuver;
+
+    const sampleDistance = 12.0;
+    final before = _pointAlongRoute(
+      route,
+      max(0, routeDistance - sampleDistance),
+    );
+    final at = _pointAlongRoute(route, routeDistance);
+    final after = _pointAlongRoute(
+      route,
+      min(totalDistance, routeDistance + sampleDistance),
+    );
+    final turnDegrees = _angleBetweenSegments(before, at, at, after);
+    // Do not reinterpret tests/routes whose maneuver is not represented in the
+    // overview geometry (near 0 degrees), or genuine turns above 50 degrees.
+    if (turnDegrees < 15 || turnDegrees > 50) return maneuver;
+
+    return RouteManeuver(
+      location: maneuver.location,
+      type: maneuver.type,
+      modifier: maneuver.modifier == 'right' ? 'slight right' : 'slight left',
+      roadName: maneuver.roadName,
+      exit: maneuver.exit,
+    );
+  }
+
+  static double _routeLength(List<LatLng> route) {
+    const distance = Distance();
+    var result = 0.0;
+    for (var index = 0; index < route.length - 1; index++) {
+      result += distance
+          .as(LengthUnit.Meter, route[index], route[index + 1])
+          .toDouble();
+    }
+    return result;
+  }
+
   /// Adds clear corners that routing services sometimes omit when the route
   /// follows the same named foot/cycle way through a junction.
   static List<_GuidanceManeuver> _geometryTurns(
@@ -813,7 +871,7 @@ class VoiceGuidance {
     if (maneuver.type == 'arrive') {
       return english
           ? 'You have reached your destination.'
-          : 'Sie haben das Ziel erreicht.';
+          : 'Du hast das Ziel erreicht.';
     }
 
     final action = _action(maneuver, english);

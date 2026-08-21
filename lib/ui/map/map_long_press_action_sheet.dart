@@ -18,6 +18,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
   required Offset anchor,
   required Size overlaySize,
   StreetDetails? streetDetails,
+  bool hasPoiDetails = false,
   bool canAddWaypoint = false,
   bool canMoveStart = false,
   bool canMoveDestination = false,
@@ -49,7 +50,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
         if (canAddWaypoint) addWaypointLabel,
         if (canMoveStart) moveStartLabel,
         if (canMoveDestination) moveDestinationLabel,
-        if (streetDetails != null) showDetailsLabel,
+        if (streetDetails != null || hasPoiDetails) showDetailsLabel,
       ];
       final textStyle = Theme.of(overlayContext).textTheme.bodyLarge;
       var widestLabel = 0.0;
@@ -69,7 +70,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
           (canAddWaypoint ? 1 : 0) +
           (canMoveStart ? 1 : 0) +
           (canMoveDestination ? 1 : 0) +
-          (streetDetails != null ? 1 : 0);
+          (streetDetails != null || hasPoiDetails ? 1 : 0);
       final cardHeight = actionCount * 56.0 + (actionCount - 1);
       final cardLeft = (anchor.dx - cardWidth / 2)
           .clamp(12.0, overlaySize.width - cardWidth - 12);
@@ -181,7 +182,7 @@ Future<MapLongPressAction?> showMapLongPressActionOverlay(
                       action: MapLongPressAction.moveDestination,
                     ),
                   ],
-                  if (streetDetails != null) ...[
+                  if (streetDetails != null || hasPoiDetails) ...[
                     const Divider(height: 1),
                     actionRow(
                       icon: Icons.info_outline,

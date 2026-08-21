@@ -13,12 +13,15 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
+enum NearbyPoiType { drinkingWater, publicToilet, bicycleRepairStation }
+
 class MapHomeDestinationSheet extends StatefulWidget {
   const MapHomeDestinationSheet({
     super.key,
     required this.searchCenter,
     required this.onSelected,
     required this.onPlanRoute,
+    required this.onNearbySelected,
     required this.onSelectOnMap,
     required this.onShowInfo,
     required this.onToggleAttribution,
@@ -32,6 +35,7 @@ class MapHomeDestinationSheet extends StatefulWidget {
   final LatLng? searchCenter;
   final ValueChanged<Object> onSelected;
   final VoidCallback onPlanRoute;
+  final Future<void> Function(NearbyPoiType type) onNearbySelected;
   final VoidCallback onSelectOnMap;
   final VoidCallback onShowInfo;
   final VoidCallback onToggleAttribution;
@@ -68,6 +72,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _hasQuery = false;
   bool _hidingAttribution = false;
   bool _selectingFavorite = false;
+  bool _startingNearbyNavigation = false;
   bool _showQuickChoices = false;
   bool _showHomeExtras = true;
   double _preservedSheetSize = .28;
@@ -261,6 +266,10 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     return showDialog<Object>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 24,
+        ),
         title: Text(
           context.l10n.isEnglish
               ? 'Replace a favorite?'
@@ -386,6 +395,109 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     if (!mounted) return;
     widget.onSelectOnMap();
   }
+
+  Future<void> _openNearby() async {
+    _hideAttribution();
+    final type = await showModalBottomSheet<NearbyPoiType>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: .4,
+        minChildSize: .28,
+        maxChildSize: .65,
+        snap: true,
+        snapSizes: const [.28, .4, .65],
+        expand: false,
+        builder: (context, scrollController) => Container(
+          decoration: bottomSheetDecoration(context),
+          child: Column(
+            children: [
+              const BottomSheetDragHandle(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.close,
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  children: [
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.drinkingWater,
+                      icon: Icons.water_drop_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Drinking water'
+                          : 'Trinkwasserbrunnen',
+                    ),
+                    const SizedBox(height: 10),
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.publicToilet,
+                      icon: Icons.wc_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Public toilets'
+                          : 'Öffentliche Toiletten',
+                    ),
+                    const SizedBox(height: 10),
+                    _nearbyButton(
+                      context,
+                      type: NearbyPoiType.bicycleRepairStation,
+                      icon: Icons.build_outlined,
+                      label: context.l10n.isEnglish
+                          ? 'Service stations'
+                          : 'Servicestationen',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || type == null) return;
+    setState(() => _startingNearbyNavigation = true);
+    try {
+      await widget.onNearbySelected(type);
+    } finally {
+      if (mounted) setState(() => _startingNearbyNavigation = false);
+    }
+  }
+
+  Widget _nearbyButton(
+    BuildContext context, {
+    required NearbyPoiType type,
+    required IconData icon,
+    required String label,
+  }) =>
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          style: AppButtonStyles.secondary(context),
+          onPressed: () => Navigator.pop(context, type),
+          icon: Icon(icon),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -638,7 +750,30 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             ),
           ] else ...[
             const SizedBox(width: 8),
-            const Spacer(),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: _startingNearbyNavigation ? null : _openNearby,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.uiPrimary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                ),
+                icon: _startingNearbyNavigation
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.near_me_outlined, size: 18),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),

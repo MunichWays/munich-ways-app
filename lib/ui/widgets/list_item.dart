@@ -5,6 +5,7 @@ class ListItem extends StatelessWidget {
   final String? value;
   final VoidCallback? onTap;
   final bool isLink;
+  final bool compact;
 
   const ListItem({
     Key? key,
@@ -12,6 +13,7 @@ class ListItem extends StatelessWidget {
     required this.value,
     this.onTap,
     this.isLink = false,
+    this.compact = false,
   }) : super(key: key);
 
   @override
@@ -34,37 +36,61 @@ class ListItem extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              this.label,
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                            SizedBox(
-                              height: 6,
-                            ),
-                            Text(
-                              this.value!,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: isLink
-                                        ? Theme.of(context).colorScheme.primary
-                                        : null,
-                                    decoration: isLink
-                                        ? TextDecoration.underline
-                                        : TextDecoration.none,
-                                    decorationColor: isLink
-                                        ? Theme.of(context).colorScheme.primary
-                                        : null,
+                        child: compact
+                            ? Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium,
+                                    ),
                                   ),
-                            )
-                          ],
-                        ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    value!,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    this.label,
+                                    style:
+                                        Theme.of(context).textTheme.labelSmall,
+                                  ),
+                                  SizedBox(
+                                    height: 6,
+                                  ),
+                                  Text(
+                                    this.value!,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: isLink
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : null,
+                                          decoration: isLink
+                                              ? TextDecoration.underline
+                                              : TextDecoration.none,
+                                          decorationColor: isLink
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : null,
+                                        ),
+                                  )
+                                ],
+                              ),
                       ),
                       onTap != null
                           ? Icon(Icons.open_in_browser)
