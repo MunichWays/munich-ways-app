@@ -526,6 +526,44 @@ void main() {
     expect(guidance.update(startOnCyclePath, english: false), isNull);
   });
 
+  test('treats the shallow Lautensackstrasse cycle-path entry as slight right',
+      () {
+    const routeStart = LatLng(48.138215, 11.517741);
+    const cyclePathEntry = LatLng(48.138692, 11.517890);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [
+          routeStart,
+          LatLng(48.138620, 11.517868),
+          cyclePathEntry,
+          LatLng(48.138733, 11.517973),
+          LatLng(48.138905, 11.518033),
+          LatLng(48.139006, 11.518223),
+          LatLng(48.139153, 11.518281),
+          LatLng(48.139328, 11.518345),
+          LatLng(48.139556, 11.518421),
+        ],
+        162.6,
+        35.9,
+        maneuvers: const [
+          RouteManeuver(
+            location: cyclePathEntry,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ],
+      ));
+
+    expect(
+      guidance.display(routeStart, english: false)?.text,
+      'In 50 m leicht rechts',
+    );
+    expect(
+      guidance.display(cyclePathEntry, english: false)?.text,
+      'Hier leicht rechts halten',
+    );
+  });
+
   test('announces arrival independently of route progress projection', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(CycleRoute(
@@ -539,7 +577,7 @@ void main() {
 
     expect(
       guidance.update(end, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
     expect(guidance.update(end, english: false), isNull);
   });
@@ -561,7 +599,7 @@ void main() {
     expect(guidance.finalDestinationReached, isTrue);
     expect(
       guidance.update(end, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
 
     const afterDestination = LatLng(48.1430, 11.5700);
@@ -595,12 +633,12 @@ void main() {
 
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel 1 Marienplatz erreicht.',
+      'Du hast das Zwischenziel 1, Marienplatz, erreicht.',
     );
     expect(guidance.update(intermediate, english: false), isNull);
     expect(
       guidance.update(end, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
   });
 
@@ -626,15 +664,15 @@ void main() {
 
     expect(
       guidance.update(stop1, english: false),
-      'Sie haben das Zwischenziel 1 erreicht.',
+      'Du hast das Zwischenziel 1 erreicht.',
     );
     expect(
       guidance.update(stop2, english: false),
-      'Sie haben das Zwischenziel 2 erreicht.',
+      'Du hast das Zwischenziel 2 erreicht.',
     );
     expect(
       guidance.update(stop3, english: false),
-      'Sie haben das Zwischenziel 3 Marienplatz erreicht.',
+      'Du hast das Zwischenziel 3, Marienplatz, erreicht.',
     );
   });
 
@@ -656,7 +694,7 @@ void main() {
     );
     expect(
       guidance.update(end, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
   });
 
@@ -672,7 +710,7 @@ void main() {
     const nearAddressButOffRoute = LatLng(48.14142, 11.57015);
     expect(
       guidance.update(nearAddressButOffRoute, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
   });
 
@@ -696,11 +734,11 @@ void main() {
 
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel 1 Marienplatz erreicht.',
+      'Du hast das Zwischenziel 1, Marienplatz, erreicht.',
     );
     expect(
       guidance.update(destination, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
   });
 
@@ -855,7 +893,7 @@ void main() {
 
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel 1 erreicht.',
+      'Du hast das Zwischenziel 1 erreicht.',
     );
     expect(
       guidance.display(junction, english: false)?.text,
@@ -879,11 +917,11 @@ void main() {
     expect(guidance.update(start, english: false), isNull);
     expect(
       guidance.update(intermediate, english: false),
-      'Sie haben das Zwischenziel 1 erreicht.',
+      'Du hast das Zwischenziel 1 erreicht.',
     );
     expect(
       guidance.update(start, english: false),
-      'Sie haben das Ziel erreicht.',
+      'Du hast das Ziel erreicht.',
     );
   });
 

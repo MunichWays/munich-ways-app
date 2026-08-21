@@ -16,6 +16,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.onStartNavigation,
     required this.onToggleVoiceGuidance,
     required this.onEndRoute,
+    this.onShowInfo,
+    this.onShowSettings,
     this.nextManeuver,
   });
 
@@ -25,6 +27,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
   final Future<void> Function() onStartNavigation;
   final VoidCallback onToggleVoiceGuidance;
   final VoidCallback onEndRoute;
+  final VoidCallback? onShowInfo;
+  final VoidCallback? onShowSettings;
   final VoiceGuidanceDisplay? nextManeuver;
 
   static String _formatKm(double meters) {
@@ -337,6 +341,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
         ),
       ),
     );
+    Widget pausedAction({
+      required String label,
+      required IconData icon,
+      required VoidCallback onPressed,
+    }) =>
+        SizedBox.square(
+          dimension: 44,
+          child: IconButton(
+            style: IconButton.styleFrom(
+              foregroundColor: Colors.white70,
+              padding: const EdgeInsets.all(8),
+            ),
+            tooltip: label,
+            onPressed: onPressed,
+            icon: Icon(icon, size: 23),
+          ),
+        );
     return Material(
       color: AppColors.mapRouteColor,
       elevation: 3,
@@ -384,6 +405,24 @@ class MapNavigationHeaderBar extends StatelessWidget {
                               ),
                         ),
                       ),
+                      if (navigationTrackingInterrupted &&
+                          onShowInfo != null) ...[
+                        const SizedBox(width: 8),
+                        pausedAction(
+                          label: context.l10n.tr('Info'),
+                          icon: Icons.info_outline,
+                          onPressed: onShowInfo!,
+                        ),
+                      ],
+                      if (navigationTrackingInterrupted &&
+                          onShowSettings != null) ...[
+                        const SizedBox(width: 8),
+                        pausedAction(
+                          label: context.l10n.settings,
+                          icon: Icons.settings_outlined,
+                          onPressed: onShowSettings!,
+                        ),
+                      ],
                     ],
                   ),
                 ),

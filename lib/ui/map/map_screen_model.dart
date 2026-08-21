@@ -12,6 +12,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/route.dart';
+import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
 import 'package:munich_ways/routing/route_error_message.dart';
@@ -185,6 +186,7 @@ class MapScreenViewModel extends ChangeNotifier {
   Place? destination = null;
   Place? routeStart;
   final List<Place> waypoints = [];
+  SavedRoute? selectedSavedRoute;
   int _routePlanRevision = 0;
   int _lastPassedWaypointIndex = -1;
 
@@ -726,6 +728,7 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     routeStart = null;
     waypoints.clear();
+    selectedSavedRoute = null;
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     this.destination = place;
@@ -750,6 +753,7 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     routeStart = null;
     waypoints.clear();
+    selectedSavedRoute = null;
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     destination = place;
@@ -789,6 +793,19 @@ class MapScreenViewModel extends ChangeNotifier {
     unawaited(_requestRoute());
   }
 
+  void setSavedRoutePlan(SavedRoute route) {
+    selectedSavedRoute = route;
+    setRoutePlan(
+      start: route.start,
+      stops: route.stops,
+      destination: route.destination,
+    );
+  }
+
+  void markRouteSaved(SavedRoute route) {
+    selectedSavedRoute = route;
+  }
+
   void clearDestination() {
     // Drop any in-flight route so a late response cannot repopulate the map.
     _routeRequest?.cancel();
@@ -796,6 +813,7 @@ class MapScreenViewModel extends ChangeNotifier {
     this.destination = null;
     routeStart = null;
     waypoints.clear();
+    selectedSavedRoute = null;
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     _navigationStarted = false;

@@ -13,12 +13,15 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
+enum NearbyPoiType { drinkingWater }
+
 class MapHomeDestinationSheet extends StatefulWidget {
   const MapHomeDestinationSheet({
     super.key,
     required this.searchCenter,
     required this.onSelected,
     required this.onPlanRoute,
+    required this.onNearbySelected,
     required this.onSelectOnMap,
     required this.onShowInfo,
     required this.onToggleAttribution,
@@ -32,6 +35,7 @@ class MapHomeDestinationSheet extends StatefulWidget {
   final LatLng? searchCenter;
   final ValueChanged<Object> onSelected;
   final VoidCallback onPlanRoute;
+  final Future<void> Function(NearbyPoiType type) onNearbySelected;
   final VoidCallback onSelectOnMap;
   final VoidCallback onShowInfo;
   final VoidCallback onToggleAttribution;
@@ -68,6 +72,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _hasQuery = false;
   bool _hidingAttribution = false;
   bool _selectingFavorite = false;
+  bool _startingNearbyNavigation = false;
   bool _showQuickChoices = false;
   bool _showHomeExtras = true;
   double _preservedSheetSize = .28;
@@ -261,6 +266,10 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     return showDialog<Object>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 24,
+        ),
         title: Text(
           context.l10n.isEnglish
               ? 'Replace a favorite?'
@@ -385,6 +394,52 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     _openingSearch = false;
     if (!mounted) return;
     widget.onSelectOnMap();
+  }
+
+  Future<void> _openNearby() async {
+    _hideAttribution();
+    final type = await showDialog<NearbyPoiType>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(
+          context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: FilledButton.icon(
+              style: AppButtonStyles.primary(dialogContext).copyWith(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                NearbyPoiType.drinkingWater,
+              ),
+              icon: const Icon(Icons.water_drop_outlined),
+              label: Text(
+                context.l10n.isEnglish
+                    ? 'Drinking water fountain'
+                    : 'Trinkwasserbrunnen',
+                maxLines: 1,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.tr('Abbrechen')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || type == null) return;
+    setState(() => _startingNearbyNavigation = true);
+    try {
+      await widget.onNearbySelected(type);
+    } finally {
+      if (mounted) setState(() => _startingNearbyNavigation = false);
+    }
   }
 
   @override
@@ -638,7 +693,30 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             ),
           ] else ...[
             const SizedBox(width: 8),
-            const Spacer(),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: _startingNearbyNavigation ? null : _openNearby,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.uiPrimary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                ),
+                icon: _startingNearbyNavigation
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.near_me_outlined, size: 18),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),

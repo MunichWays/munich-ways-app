@@ -12,10 +12,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/api/poi_geojson_repository.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/poi_details.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/dark_map_style.dart';
@@ -37,11 +39,13 @@ import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
+import 'package:munich_ways/ui/map/poi_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
+import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
@@ -130,6 +134,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kGesamtnetzMinZoom = 10.0;
   static const _kCurrentLocationSourceId = 'munichways_current_location';
   static const _kCurrentLocationLayerId = 'munichways_current_location_dot';
+  static const _kDrinkingWaterSourceId = 'munichways_drinking_water';
+  static const _kDrinkingWaterLayerId = 'munichways_drinking_water_symbols';
+  static const _kDrinkingWaterImageId = 'munichways_drinking_water_icon';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
   /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
@@ -168,6 +175,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _networkGeoJsonReady = false;
   bool _routeGeoJsonReady = false;
   bool _currentLocationGeoJsonReady = false;
+  bool _drinkingWaterGeoJsonReady = false;
+  bool _drinkingWaterLoadStarted = false;
+  bool _drinkingWaterSyncRunning = false;
+  bool _drinkingWaterSyncQueued = false;
+  Map<String, dynamic>? _drinkingWaterGeoJson;
+  Completer<Map<String, dynamic>> _firstDrinkingWaterData = Completer();
+  final PoiGeoJsonRepository _poiGeoJsonRepository = PoiGeoJsonRepository();
+  StreamSubscription<Map<String, dynamic>>? _drinkingWaterSubscription;
   final List<Symbol> _routePlanSymbols = [];
   latlong2.LatLng? _displayedRouteStartPoint;
   final Set<int> _routeWaypointImages = {};
@@ -286,7 +301,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (style != kOpenFreeMapLibertyStyleAsset) {
       style = dark ? createDarkMapStyle(style) : createCyclingMapStyle(style);
     }
-    if (mounted) setState(() => _mapStyleString = style);
+    // Loading and transforming the bundled style is asynchronous. If the
+    // theme changes again while it is in progress, an older request must not
+    // overwrite the style for the current theme when it finishes last.
+    if (!mounted || _darkMapStyle != dark) return;
+    setState(() => _mapStyleString = style);
   }
 
   @override
@@ -304,6 +323,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    _drinkingWaterSubscription?.cancel();
     _movementHeadingFreshnessTimer?.cancel();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting(resetAttempts: false);
@@ -317,6 +337,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _configureTextToSpeech() async {
     try {
       await _flutterTts.setQueueMode(0);
+      await _flutterTts.setVolume(1.0);
       if (Platform.isAndroid) {
         await _flutterTts.setAudioAttributesForNavigation();
       } else if (Platform.isIOS) {
@@ -343,6 +364,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final generation = ++_speechRequestGeneration;
     try {
       await _flutterTts.setLanguage(english ? 'en-US' : 'de-DE');
+      if (generation != _speechRequestGeneration || !mounted) return;
+      // Keep navigation prompts at the TTS maximum. This is especially
+      // important when the phone is muffled inside a handlebar bag.
+      await _flutterTts.setVolume(1.0);
       if (generation != _speechRequestGeneration || !mounted) return;
       await _flutterTts.stop();
       if (generation != _speechRequestGeneration || !mounted) return;
@@ -646,6 +671,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _networkGeoJsonReady = false;
                               _routeGeoJsonReady = false;
                               _currentLocationGeoJsonReady = false;
+                              _drinkingWaterGeoJsonReady = false;
                               if (!mounted) return;
                               // Style rebuild clears native annotations; drop stale handles.
                               _routePlanSymbols.clear();
@@ -668,6 +694,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 }
                               });
                               _scheduleOverlaySync(model);
+                              _scheduleDrinkingWaterSync();
+                              _startDrinkingWaterLoad();
                               if (!kStoreScreenshots &&
                                   !_locationPrimeStarted) {
                                 _locationPrimeStarted = true;
@@ -891,6 +919,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                         model,
                                         english: context.l10n.isEnglish,
                                       ),
+                                      onShowInfo: () =>
+                                          showMapInfoSheet(context),
+                                      onShowSettings: () =>
+                                          showMapSettingsSheet(
+                                        context,
+                                        model,
+                                        onReloadMapData: () =>
+                                            _reloadMapData(model),
+                                      ),
                                       onEndRoute: () => _endRoute(model),
                                       nextManeuver: _nextManeuver,
                                     ),
@@ -910,14 +947,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 if (selection is Place) {
                                   model.setDestination(selection);
                                 } else if (selection is SavedRoute) {
-                                  model.setRoutePlan(
-                                    start: selection.start,
-                                    stops: selection.stops,
-                                    destination: selection.destination,
-                                  );
+                                  model.setSavedRoutePlan(selection);
                                 }
                               },
                               onPlanRoute: () => _openRoutePlanner(model),
+                              onNearbySelected: (type) =>
+                                  _navigateToNearbyPoi(model, type),
                               onSelectOnMap: () {
                                 _nameNextMapSelection = true;
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -935,8 +970,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 _mapAttributionExpanded =
                                     !_mapAttributionExpanded;
                               }),
-                              onShowSettings: () =>
-                                  showMapSettingsSheet(context, model),
+                              onShowSettings: () => showMapSettingsSheet(
+                                context,
+                                model,
+                                onReloadMapData: () => _reloadMapData(model),
+                              ),
                               attributionExpanded: _mapAttributionExpanded,
                             ),
                           if (_pendingRouteMapSelection case final selection?)
@@ -1699,7 +1737,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _reloadRadnetzAfterInitialFailure(
     MapScreenViewModel model,
   ) async {
-    final updated = await model.reloadRadnetz();
+    final updated = await _reloadMapData(model);
     if (!mounted) return;
     final strings = context.l10n;
     scaffoldMessengerKey.currentState
@@ -1711,6 +1749,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ),
         ),
       );
+  }
+
+  Future<bool> _reloadMapData(MapScreenViewModel model) async {
+    final radnetzReload = model.reloadRadnetz();
+    await _reloadDrinkingWaterPois();
+    return radnetzReload;
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
@@ -1959,19 +2003,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
 
     final details = await _streetDetailsAt(screenPoint);
+    final poiDetails = await _poiDetailsAt(screenPoint);
     final endpoint = await _routeEndpointAt(model, screenPoint);
     if (!mounted) return;
     final action = await _showLongPressActions(
       model,
       screenPoint,
       details,
+      poiDetails,
       endpoint,
     );
     if (!mounted || action == null) return;
 
     switch (action) {
       case MapLongPressAction.showDetails:
-        if (details != null) model.onTap(details);
+        if (poiDetails != null) {
+          _showPoiDetails(model, poiDetails, position);
+        } else if (details != null) {
+          model.onTap(details);
+        }
         return;
       case MapLongPressAction.startRoute:
         final routeReady = await model.setDestinationAndCalculateRoute(
@@ -2023,6 +2073,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model,
     Point<double> screenPoint,
     StreetDetails? details,
+    PoiDetails? poiDetails,
     _RouteEndpointMove? endpoint,
   ) async {
     if (!mounted) return null;
@@ -2049,6 +2100,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       anchor: overlayPoint,
       overlaySize: overlay.size,
       streetDetails: details,
+      hasPoiDetails: poiDetails != null,
       canAddWaypoint: !model.navigationStarted &&
           model.route.state != MapRouteState.NO_ROUTE &&
           model.destination != null,
@@ -2122,6 +2174,65 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
     }
     return null;
+  }
+
+  Future<PoiDetails?> _poiDetailsAt(Point<double> screenPoint) async {
+    final controller = _mapController;
+    if (controller == null || !_drinkingWaterGeoJsonReady) return null;
+    try {
+      final features = await controller.queryRenderedFeatures(
+        screenPoint,
+        const [_kDrinkingWaterLayerId],
+        null,
+      );
+      for (final feature in features) {
+        if (feature is Map && feature['properties'] is Map) {
+          return PoiDetails.fromGeoJsonFeature(feature);
+        }
+      }
+    } catch (error, stackTrace) {
+      log.d(
+        'Querying a long-pressed drinking-water POI failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    return null;
+  }
+
+  void _showPoiDetails(
+    MapScreenViewModel model,
+    PoiDetails details,
+    latlong2.LatLng position,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (sheetContext) => PoiDetailsSheet(
+        details: details,
+        onRouteHere: () {
+          Navigator.pop(sheetContext);
+          unawaited(
+            _startRouteToPoi(model, details, details.location ?? position),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _startRouteToPoi(
+    MapScreenViewModel model,
+    PoiDetails details,
+    latlong2.LatLng position,
+  ) async {
+    final routeReady = await model.setDestinationAndCalculateRoute(
+      Place(details.title, position),
+    );
+    if (!mounted || !routeReady) return;
+    await _startNavigation(model);
   }
 
   Future<void> _requestNavigationNotificationPermission() async {
@@ -2682,6 +2793,32 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createDrinkingWaterImage() async {
+    const size = 72.0;
+    const center = ui.Offset(size / 2, size / 2);
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    canvas.drawCircle(center, 34, ui.Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      30,
+      ui.Paint()..color = AppColors.mapRouteColor,
+    );
+    final drop = ui.Path()
+      ..moveTo(36, 12)
+      ..cubicTo(32, 21, 22, 32, 22, 42)
+      ..cubicTo(22, 51, 28, 58, 36, 58)
+      ..cubicTo(44, 58, 50, 51, 50, 42)
+      ..cubicTo(50, 32, 40, 21, 36, 12)
+      ..close();
+    canvas.drawPath(drop, ui.Paint()..color = Colors.white);
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  }
+
   Future<Uint8List> _createRouteDestinationFlagImage() async {
     const width = 80.0;
     const height = 92.0;
@@ -3162,6 +3299,187 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       setState(() {
         _storeScreenshotNetworkSynced = true;
       });
+    }
+  }
+
+  void _startDrinkingWaterLoad() {
+    if (_drinkingWaterLoadStarted) return;
+    _drinkingWaterLoadStarted = true;
+    _drinkingWaterSubscription =
+        _poiGeoJsonRepository.drinkingWaterUpdates().listen(
+      (geoJson) {
+        _drinkingWaterGeoJson = geoJson;
+        if (!_firstDrinkingWaterData.isCompleted) {
+          _firstDrinkingWaterData.complete(geoJson);
+        }
+        _scheduleDrinkingWaterSync();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        log.w(
+          'Drinking-water POI update failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+      onDone: () {
+        _drinkingWaterSubscription = null;
+        if (_drinkingWaterGeoJson == null) {
+          _drinkingWaterLoadStarted = false;
+        }
+      },
+    );
+  }
+
+  Future<void> _reloadDrinkingWaterPois() async {
+    await _drinkingWaterSubscription?.cancel();
+    _drinkingWaterSubscription = null;
+    _drinkingWaterLoadStarted = false;
+    _firstDrinkingWaterData = Completer<Map<String, dynamic>>();
+    try {
+      await _poiGeoJsonRepository.removeDrinkingWaterCache();
+    } catch (error, stackTrace) {
+      log.w(
+        'Clearing drinking-water POI cache failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (mounted) _startDrinkingWaterLoad();
+  }
+
+  Future<void> _navigateToNearbyPoi(
+    MapScreenViewModel model,
+    NearbyPoiType type,
+  ) async {
+    _startDrinkingWaterLoad();
+    Map<String, dynamic> geoJson;
+    try {
+      geoJson = _drinkingWaterGeoJson ??
+          await _firstDrinkingWaterData.future.timeout(
+            const Duration(seconds: 12),
+          );
+    } catch (error, stackTrace) {
+      log.w(
+        'Waiting for nearby POIs failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.isEnglish
+                ? 'Nearby places could not be loaded.'
+                : 'Orte in der Nähe konnten nicht geladen werden.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final position = _latestPosition ?? await model.resolveRouteStartPosition();
+    if (!mounted) return;
+    if (position == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.isEnglish
+                ? 'Your location could not be determined.'
+                : 'Dein Standort konnte nicht ermittelt werden.',
+          ),
+        ),
+      );
+      return;
+    }
+    _latestPosition = position;
+    final origin = latlong2.LatLng(position.latitude, position.longitude);
+    final destination = switch (type) {
+      NearbyPoiType.drinkingWater => nearestPoiPlace(
+          geoJson,
+          origin,
+          fallbackName: context.l10n.isEnglish
+              ? 'Drinking water fountain'
+              : 'Trinkwasserbrunnen',
+        ),
+    };
+    if (destination == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.isEnglish
+                ? 'No matching place was found.'
+                : 'Es wurde kein passender Ort gefunden.',
+          ),
+        ),
+      );
+      return;
+    }
+    final routeReady = await model.setDestinationAndCalculateRoute(destination);
+    if (!mounted || !routeReady) return;
+    await _startNavigation(model);
+  }
+
+  void _scheduleDrinkingWaterSync() {
+    if (!_styleLoaded || _drinkingWaterGeoJson == null) return;
+    if (_drinkingWaterSyncRunning) {
+      _drinkingWaterSyncQueued = true;
+      return;
+    }
+    _drinkingWaterSyncRunning = true;
+    unawaited(_runDrinkingWaterSync());
+  }
+
+  Future<void> _runDrinkingWaterSync() async {
+    try {
+      do {
+        _drinkingWaterSyncQueued = false;
+        final controller = _mapController;
+        final geoJson = _drinkingWaterGeoJson;
+        if (!mounted || controller == null || geoJson == null) return;
+        try {
+          if (!_drinkingWaterGeoJsonReady) {
+            await controller.addGeoJsonSource(
+              _kDrinkingWaterSourceId,
+              geoJson,
+            );
+            await controller.addImage(
+              _kDrinkingWaterImageId,
+              await _createDrinkingWaterImage(),
+            );
+            await controller.addSymbolLayer(
+              _kDrinkingWaterSourceId,
+              _kDrinkingWaterLayerId,
+              const SymbolLayerProperties(
+                iconImage: _kDrinkingWaterImageId,
+                iconSize: 1.0,
+                iconAllowOverlap: true,
+                iconIgnorePlacement: false,
+              ),
+              belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+              minzoom: 13,
+              enableInteraction: false,
+            );
+            _drinkingWaterGeoJsonReady = true;
+          } else {
+            await controller.setGeoJsonSource(
+              _kDrinkingWaterSourceId,
+              geoJson,
+            );
+          }
+        } catch (error, stackTrace) {
+          // Style changes can race an optional background update. The latest
+          // data remains in memory and is applied by the next style callback.
+          _drinkingWaterGeoJsonReady = false;
+          log.w(
+            'Displaying drinking-water POIs failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      } while (_drinkingWaterSyncQueued);
+    } finally {
+      _drinkingWaterSyncRunning = false;
+      if (_drinkingWaterSyncQueued) _scheduleDrinkingWaterSync();
     }
   }
 }

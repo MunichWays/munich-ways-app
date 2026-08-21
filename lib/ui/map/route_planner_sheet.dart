@@ -61,6 +61,7 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
   required MapScreenViewModel model,
   LatLng? searchCenter,
   RoutePlannerMapSelection? initialPlan,
+  SavedRoutesStore? routesStore,
 }) {
   final sheetController = DraggableScrollableController();
   final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
@@ -86,6 +87,7 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
           initialPlan: initialPlan,
           scrollController: scrollController,
           sheetController: sheetController,
+          routesStore: routesStore ?? savedRoutesStore,
         ),
       ),
     ),
@@ -99,6 +101,7 @@ class _RoutePlannerSheet extends StatefulWidget {
     required this.initialPlan,
     required this.scrollController,
     required this.sheetController,
+    required this.routesStore,
   });
 
   final MapScreenViewModel model;
@@ -106,6 +109,7 @@ class _RoutePlannerSheet extends StatefulWidget {
   final RoutePlannerMapSelection? initialPlan;
   final ScrollController scrollController;
   final DraggableScrollableController sheetController;
+  final SavedRoutesStore routesStore;
 
   @override
   State<_RoutePlannerSheet> createState() => _RoutePlannerSheetState();
@@ -258,7 +262,8 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   Future<void> _saveRoute() async {
     final destination = _destination;
     if (destination == null) return;
-    var name = destination.displayName?.trim() ?? '';
+    final originalRoute = widget.model.selectedSavedRoute;
+    var name = originalRoute?.name ?? destination.displayName?.trim() ?? '';
     final selectedName = await showDialog<String>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -295,14 +300,20 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     final trimmedName = selectedName?.trim();
     if (!mounted || trimmedName == null || trimmedName.isEmpty) return;
     try {
-      await savedRoutesStore.add(
-        SavedRoute(
-          name: trimmedName,
-          start: _start,
-          stops: _stops,
-          destination: destination,
-        ),
+      final savedRoute = SavedRoute(
+        name: trimmedName,
+        start: _start,
+        stops: _stops,
+        destination: destination,
+        isFavorite: trimmedName == originalRoute?.name
+            ? originalRoute!.isFavorite
+            : false,
+        favoriteOrder: trimmedName == originalRoute?.name
+            ? originalRoute!.favoriteOrder
+            : null,
       );
+      await widget.routesStore.add(savedRoute);
+      widget.model.markRouteSaved(savedRoute);
     } catch (error, stackTrace) {
       log.e('Saving route failed', error: error, stackTrace: stackTrace);
       if (!mounted) return;

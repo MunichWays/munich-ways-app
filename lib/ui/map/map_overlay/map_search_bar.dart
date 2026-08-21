@@ -70,11 +70,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
     if (result is Place) {
       widget.model.setDestination(result);
     } else if (result is SavedRoute) {
-      widget.model.setRoutePlan(
-        start: result.start,
-        stops: result.stops,
-        destination: result.destination,
-      );
+      widget.model.setSavedRoutePlan(result);
     } else if (result == PlaceSearchSheetResult.planRoute) {
       await widget.onPlanRoute();
     } else if (result == PlaceSearchSheetResult.selectOnMap) {
