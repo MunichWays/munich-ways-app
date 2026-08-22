@@ -18,6 +18,7 @@ import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/poi_details.dart';
+import 'package:munich_ways/routing/oberbayern_coverage.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/dark_map_style.dart';
@@ -212,6 +213,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _locationStreamUsesForegroundService = false;
   int _locationStreamGeneration = 0;
   Position? _latestPosition;
+  final RoutingCoverage _nearbyPoiCoverage = OberbayernCoverage();
+  bool _showNearbyPois = false;
+  int _nearbyCoverageCheckGeneration = 0;
   Position? _pendingPosition;
   bool _locationRenderRunning = false;
   latlong2.LatLng? _lastLocationCameraPosition;
@@ -982,6 +986,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               onPlanRoute: () => _openRoutePlanner(model),
                               onNearbySelected: (type) =>
                                   _navigateToNearbyPoi(model, type),
+                              showNearby: _showNearbyPois,
                               onSelectOnMap: () {
                                 _nameNextMapSelection = true;
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1147,6 +1152,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     ).listen(
       (position) {
         _latestPosition = position;
+        unawaited(_updateNearbyPoiAvailability(position));
         _pendingPosition = position;
         context
             .read<AppThemeController>()
@@ -2396,12 +2402,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final cachedPosition = await Geolocator.getLastKnownPosition();
     if (!mounted || cachedPosition == null) return;
     _latestPosition = cachedPosition;
+    unawaited(_updateNearbyPoiAvailability(cachedPosition));
     _pendingPosition = cachedPosition;
     context.read<AppThemeController>().updateLocation(
           cachedPosition.latitude,
           cachedPosition.longitude,
         );
     unawaited(_drainLocationUpdates(model));
+  }
+
+  Future<void> _updateNearbyPoiAvailability(Position position) async {
+    final generation = ++_nearbyCoverageCheckGeneration;
+    try {
+      final withinCoverage = await _nearbyPoiCoverage.contains(
+        latlong2.LatLng(position.latitude, position.longitude),
+      );
+      if (!mounted || generation != _nearbyCoverageCheckGeneration) return;
+      if (_showNearbyPois != withinCoverage) {
+        setState(() => _showNearbyPois = withinCoverage);
+      }
+    } catch (error, stackTrace) {
+      log.w(
+        'Checking nearby-POI coverage failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!mounted || generation != _nearbyCoverageCheckGeneration) return;
+      if (_showNearbyPois) setState(() => _showNearbyPois = false);
+    }
   }
 
   Future<void> _refreshLocationOnResume(MapScreenViewModel model) async {

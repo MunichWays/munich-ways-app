@@ -27,6 +27,7 @@ class MapHomeDestinationSheet extends StatefulWidget {
     required this.onToggleAttribution,
     required this.onShowSettings,
     required this.attributionExpanded,
+    this.showNearby = true,
     this.favoritesStore,
     this.recentSearchesStore,
     this.savedRoutesStore,
@@ -41,6 +42,7 @@ class MapHomeDestinationSheet extends StatefulWidget {
   final VoidCallback onToggleAttribution;
   final VoidCallback onShowSettings;
   final bool attributionExpanded;
+  final bool showNearby;
   final RecentSearchesStore? favoritesStore;
   final RecentSearchesStore? recentSearchesStore;
   final SavedRoutesStore? savedRoutesStore;
@@ -748,7 +750,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                 ),
               ),
             ),
-          ] else ...[
+          ] else if (widget.showNearby) ...[
             const SizedBox(width: 8),
             Expanded(
               child: TextButton.icon(
