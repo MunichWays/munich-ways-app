@@ -10,13 +10,13 @@ import '../model/route.dart';
 import 'api_exception.dart';
 
 // routing api based on munichways weights
-// see https://github.com/MunichWays/radlnavi for munichways routing profile
+// see https://github.com/MunichWays/munichways-radlnavi for the routing profile
 // is based on https://github.com/Project-OSRM/osrm-backend, checkout their docs for api
 class RadlNaviApi implements RoutingProvider {
   Client? _client;
   final String baseUrl;
 
-  static const String RADLNAVI_URL = "routing.floschnell.de";
+  static const String RADLNAVI_URL = "api.radlnavi.munichways.de";
 
   RadlNaviApi({this.baseUrl = RADLNAVI_URL, Client? client = null}) {
     if (client == null) {
