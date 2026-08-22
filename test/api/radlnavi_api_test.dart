@@ -13,6 +13,8 @@ void main() {
     //Given
     RadlNaviApi api = RadlNaviApi(client: MockClient((req) async {
       //Then
+      expect(req.url.scheme, "https");
+      expect(req.url.host, "api.radlnavi.munichways.de");
       expect(req.url.path,
           "/route/v1/bike/11.578090968904041,48.142439149231784;11.588108539581299,48.14585899848997");
       expect(req.url.query,
