@@ -55,6 +55,7 @@ void main() {
                     onToggleAttribution: () {},
                     onShowSettings: () {},
                     attributionExpanded: false,
+                    showNearby: false,
                     favoritesStore: _EmptyFavoritesStore(),
                   ),
                 ],
@@ -65,6 +66,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('In der Nähe'), findsNothing);
 
     await tester.drag(find.text('Wohin?'), const Offset(0, 500));
     await tester.pumpAndSettle();
