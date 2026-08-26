@@ -4,34 +4,46 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 
-/// Holds turn guidance until movement establishes the initial travel direction.
+enum NavigationOrientationDecision { waiting, forward, reverse, offRoute }
+
+/// Holds turn guidance until movement establishes the actual travel direction
+/// and keeps detecting riding against the route afterwards.
 class NavigationOrientationGate {
   NavigationOrientationGate({
     this.minimumMovementMeters = 8,
     this.maximumAccuracyThresholdMeters = 15,
+    this.maximumDirectionDifferenceDegrees = 60,
+    this.maximumRouteDistanceMeters = 35,
   });
 
   final double minimumMovementMeters;
   final double maximumAccuracyThresholdMeters;
+  final double maximumDirectionDifferenceDegrees;
+  final double maximumRouteDistanceMeters;
 
   LatLng? _anchor;
   bool _directionEstablished = false;
+  NavigationOrientationDecision _lastDecision =
+      NavigationOrientationDecision.waiting;
 
   void reset([LatLng? anchor]) {
     _anchor = anchor;
     _directionEstablished = false;
+    _lastDecision = NavigationOrientationDecision.waiting;
   }
 
-  bool isWaiting(
+  NavigationOrientationDecision evaluate(
     LatLng position, {
     required double horizontalAccuracyMeters,
     required double speedMetersPerSecond,
+    required List<LatLng> routePoints,
+    double movementHeadingDegrees = double.nan,
+    bool movementHeadingReliable = false,
   }) {
-    if (_directionEstablished) return false;
     final anchor = _anchor;
     if (anchor == null) {
       _anchor = position;
-      return true;
+      return NavigationOrientationDecision.waiting;
     }
 
     final accuracy = horizontalAccuracyMeters.isFinite
@@ -42,11 +54,106 @@ class NavigationOrientationGate {
         : minimumMovementMeters;
     final distance = const Distance().as(LengthUnit.Meter, anchor, position);
     final moving = speedMetersPerSecond.isFinite && speedMetersPerSecond >= 1;
-    if ((moving && distance >= accuracy) || distance >= accuracy * 2) {
-      _directionEstablished = true;
+    final displacementReliable =
+        (moving && distance >= accuracy) || distance >= accuracy * 2;
+    final headingReliable = movementHeadingReliable &&
+        movementHeadingDegrees.isFinite &&
+        movementHeadingDegrees >= 0 &&
+        movementHeadingDegrees < 360;
+    if (!headingReliable && !displacementReliable) {
+      return _directionEstablished
+          ? _lastDecision
+          : NavigationOrientationDecision.waiting;
     }
-    return !_directionEstablished;
+    if (routePoints.length < 2) {
+      return NavigationOrientationDecision.waiting;
+    }
+
+    final travelBearing = headingReliable
+        ? movementHeadingDegrees
+        : const Distance().bearing(anchor, position);
+    final routeDirection = _closestUnambiguousRouteDirection(
+      routePoints,
+      position,
+    );
+    _anchor = position;
+    if (routeDirection == null) {
+      _lastDecision = NavigationOrientationDecision.waiting;
+      return _lastDecision;
+    }
+    final routeTolerance = maximumRouteDistanceMeters +
+        (horizontalAccuracyMeters.isFinite
+            ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
+            : 0);
+    if (routeDirection.distanceFromRoute > routeTolerance) {
+      _lastDecision = NavigationOrientationDecision.offRoute;
+      return _lastDecision;
+    }
+
+    final difference =
+        ((travelBearing - routeDirection.bearing + 540) % 360 - 180).abs();
+    if (difference <= maximumDirectionDifferenceDegrees) {
+      _directionEstablished = true;
+      _lastDecision = NavigationOrientationDecision.forward;
+    } else if (difference >= 180 - maximumDirectionDifferenceDegrees) {
+      _directionEstablished = true;
+      _lastDecision = NavigationOrientationDecision.reverse;
+    } else {
+      _lastDecision = NavigationOrientationDecision.waiting;
+    }
+    return _lastDecision;
   }
+}
+
+_RouteDirection? _closestUnambiguousRouteDirection(
+  List<LatLng> route,
+  LatLng point,
+) {
+  final candidates = <_RouteDirection>[];
+  final latitudeRadians = point.latitude * pi / 180;
+  final metersPerLon = 111320.0 * cos(latitudeRadians);
+  const metersPerLat = 111320.0;
+  for (var index = 0; index < route.length - 1; index++) {
+    final a = route[index];
+    final b = route[index + 1];
+    final ax = (a.longitude - point.longitude) * metersPerLon;
+    final ay = (a.latitude - point.latitude) * metersPerLat;
+    final bx = (b.longitude - point.longitude) * metersPerLon;
+    final by = (b.latitude - point.latitude) * metersPerLat;
+    final dx = bx - ax;
+    final dy = by - ay;
+    final lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared == 0) continue;
+    final t = (-(ax * dx + ay * dy) / lengthSquared).clamp(0.0, 1.0);
+    final px = ax + dx * t;
+    final py = ay + dy * t;
+    candidates.add(
+      _RouteDirection(
+        const Distance().bearing(a, b),
+        sqrt(px * px + py * py),
+      ),
+    );
+  }
+  if (candidates.isEmpty) return null;
+  candidates.sort(
+    (first, second) =>
+        first.distanceFromRoute.compareTo(second.distanceFromRoute),
+  );
+  final closest = candidates.first;
+  for (final candidate in candidates.skip(1)) {
+    if (candidate.distanceFromRoute > closest.distanceFromRoute + 6) break;
+    final difference =
+        ((candidate.bearing - closest.bearing + 540) % 360 - 180).abs();
+    if (difference > 60) return null;
+  }
+  return closest;
+}
+
+class _RouteDirection {
+  const _RouteDirection(this.bearing, this.distanceFromRoute);
+
+  final double bearing;
+  final double distanceFromRoute;
 }
 
 /// Turns OSRM maneuvers and GPS positions into one-shot spoken instructions.

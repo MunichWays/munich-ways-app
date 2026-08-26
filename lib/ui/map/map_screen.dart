@@ -117,6 +117,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MethodChannel('com.munichways.app/notification_permission');
 
   static const _kNetworkSourceId = 'munichways_radlnetz';
+  static const _kRoutingCoverageSourceId = 'munichways_routing_coverage';
+  static const _kRoutingCoverageLayerId = 'munichways_routing_coverage_outline';
+  static const _kRoutingCoverageMaxZoom = 10.0;
   static const _kNetworkLayerVisibleGesamtId =
       'munichways_radlnetz_lines_gesamt';
   static const _kNetworkLayerDashedGesamtId =
@@ -182,6 +185,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Line / GeoJSON feature id → street details (network taps + legacy line taps).
   final Map<String, StreetDetails> _streetDetailsByLineId = {};
   bool _networkGeoJsonReady = false;
+  bool _routingCoverageGeoJsonReady = false;
+  bool _routingCoverageLoadStarted = false;
+  bool _routingCoverageSyncRunning = false;
+  Map<String, dynamic>? _routingCoverageGeoJson;
   bool _routeGeoJsonReady = false;
   bool _currentLocationGeoJsonReady = false;
   bool _drinkingWaterGeoJsonReady = false;
@@ -215,7 +222,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _locationStreamUsesForegroundService = false;
   int _locationStreamGeneration = 0;
   Position? _latestPosition;
-  final RoutingCoverage _nearbyPoiCoverage = OberbayernCoverage();
+  final OberbayernCoverage _nearbyPoiCoverage = OberbayernCoverage();
   bool _showNearbyPois = false;
   int _nearbyCoverageCheckGeneration = 0;
   Position? _pendingPosition;
@@ -236,6 +243,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   );
   final NavigationOrientationGate _navigationOrientationGate =
       NavigationOrientationGate();
+  bool _oppositeDirectionWarningSpoken = false;
   VoiceGuidanceDisplay? _nextManeuver;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
@@ -343,6 +351,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _styleLoaded = false;
       _cameraReady = false;
       _networkGeoJsonReady = false;
+      _routingCoverageGeoJsonReady = false;
       _routeGeoJsonReady = false;
       _currentLocationGeoJsonReady = false;
       _drinkingWaterGeoJsonReady = false;
@@ -459,6 +468,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
     _navigationOrientationGate.reset();
+    _oppositeDirectionWarningSpoken = false;
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting();
     if (_nextManeuver != null) {
@@ -543,6 +553,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
           _navigationOrientationGate.reset();
+          _oppositeDirectionWarningSpoken = false;
           _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
@@ -727,6 +738,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 }
                               }
                               _networkGeoJsonReady = false;
+                              _routingCoverageGeoJsonReady = false;
                               _routeGeoJsonReady = false;
                               _currentLocationGeoJsonReady = false;
                               _drinkingWaterGeoJsonReady = false;
@@ -758,6 +770,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 }
                               });
                               _scheduleOverlaySync(model);
+                              _scheduleRoutingCoverageSync();
+                              _startRoutingCoverageLoad();
                               _scheduleDrinkingWaterSync();
                               _schedulePublicToiletsSync();
                               _scheduleRepairStationsSync();
@@ -1408,43 +1422,86 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           model.waypoints.map((place) => place.displayName).toList(),
     );
     _recoverGuidanceAfterReturningToRoute(model, rawPosition, position);
-    final routeGuidanceDisplay = model.navigationStarted
-        ? _voiceGuidance.display(
-            rawPosition,
-            english: context.l10n.isEnglish,
-            speedMetersPerSecond: position.speed,
-          )
-        : null;
-    final waitingForInitialDirection = model.navigationStarted &&
-        !_voiceGuidance.finalDestinationReached &&
-        _navigationOrientationGate.isWaiting(
-          rawPosition,
-          horizontalAccuracyMeters: position.accuracy,
-          speedMetersPerSecond: position.speed,
-        );
-    if (waitingForInitialDirection) {
+    final routePoints = model.route.route?.points ?? const <latlong2.LatLng>[];
+    final orientation =
+        model.navigationStarted && !_voiceGuidance.finalDestinationReached
+            ? _navigationOrientationGate.evaluate(
+                rawPosition,
+                horizontalAccuracyMeters: position.accuracy,
+                speedMetersPerSecond: position.speed,
+                routePoints: routePoints,
+                movementHeadingDegrees: position.heading,
+                movementHeadingReliable: _hasReliableMovementHeading(position),
+              )
+            : NavigationOrientationDecision.forward;
+    final directionUnknown =
+        orientation == NavigationOrientationDecision.waiting;
+    final ridingInReverse =
+        orientation == NavigationOrientationDecision.reverse;
+    final directionOffRoute =
+        orientation == NavigationOrientationDecision.offRoute;
+    if (directionUnknown || ridingInReverse) {
       if (_offRouteEpisodeActive || _reroutingDisplay != null) {
         _cancelAutomaticRerouting(resetAttempts: false);
       }
     } else {
       _updateAutomaticRerouting(model, rawPosition, position);
     }
+    final routeGuidanceDisplay = model.navigationStarted &&
+            (orientation == NavigationOrientationDecision.forward ||
+                _voiceGuidance.finalDestinationReached)
+        ? _voiceGuidance.display(
+            rawPosition,
+            english: context.l10n.isEnglish,
+            speedMetersPerSecond: position.speed,
+          )
+        : null;
     final nextManeuver = model.navigationStarted
         ? _voiceGuidance.finalDestinationReached
             ? routeGuidanceDisplay
-            : waitingForInitialDirection
+            : directionUnknown
                 ? VoiceGuidanceDisplay(
                     text: context.l10n.followRouteOnMap,
                     type: 'map',
                   )
-                : _reroutingDisplay ?? routeGuidanceDisplay
+                : ridingInReverse
+                    ? VoiceGuidanceDisplay(
+                        text: context.l10n.isEnglish
+                            ? 'Riding in the opposite direction'
+                            : 'Fahrt in Gegenrichtung',
+                        type: 'map',
+                      )
+                    : directionOffRoute
+                        ? VoiceGuidanceDisplay(
+                            text: context.l10n.isEnglish
+                                ? 'Route left or no GPS signal'
+                                : 'Route verlassen oder kein GPS-Signal',
+                            type: 'map',
+                          )
+                        : _reroutingDisplay ?? routeGuidanceDisplay
         : null;
     if (nextManeuver != _nextManeuver) {
       setState(() => _nextManeuver = nextManeuver);
     }
+    if (ridingInReverse) {
+      if (model.voiceGuidanceEnabled &&
+          model.voiceGuidanceAvailable &&
+          !_oppositeDirectionWarningSpoken) {
+        _oppositeDirectionWarningSpoken = true;
+        final english = context.l10n.isEnglish;
+        unawaited(_speak(
+          english
+              ? 'You are riding in the opposite direction.'
+              : 'Du fÃ¤hrst in die entgegengesetzte Richtung.',
+          english: english,
+        ));
+      }
+    } else if (orientation == NavigationOrientationDecision.forward) {
+      _oppositeDirectionWarningSpoken = false;
+    }
     if (model.navigationStarted &&
         model.voiceGuidanceEnabled &&
-        (!waitingForInitialDirection ||
+        (orientation == NavigationOrientationDecision.forward ||
             _voiceGuidance.finalDestinationReached)) {
       final instruction = _voiceGuidance.update(
         rawPosition,
@@ -1833,6 +1890,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
     _offRouteCameraZoomedOut = false;
+    _oppositeDirectionWarningSpoken = false;
     final initialPosition = _latestPosition;
     _navigationOrientationGate.reset(
       initialPosition == null ||
@@ -2617,6 +2675,87 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       unawaited(_syncOverlays(model));
     });
+  }
+
+  void _startRoutingCoverageLoad() {
+    if (_routingCoverageLoadStarted) return;
+    _routingCoverageLoadStarted = true;
+    _nearbyPoiCoverage.featureCollection.then((geoJson) {
+      if (!mounted) return;
+      _routingCoverageGeoJson = geoJson;
+      _scheduleRoutingCoverageSync();
+    }).catchError((Object error, StackTrace stackTrace) {
+      log.w(
+        'Loading Oberbayern routing boundary failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    });
+  }
+
+  void _scheduleRoutingCoverageSync() {
+    if (!mounted ||
+        !_styleLoaded ||
+        _routingCoverageGeoJsonReady ||
+        _routingCoverageSyncRunning ||
+        _routingCoverageGeoJson == null ||
+        _mapController == null) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_syncRoutingCoverage());
+    });
+  }
+
+  Future<void> _syncRoutingCoverage() async {
+    final controller = _mapController;
+    final geoJson = _routingCoverageGeoJson;
+    if (!_styleLoaded ||
+        _routingCoverageGeoJsonReady ||
+        _routingCoverageSyncRunning ||
+        controller == null ||
+        geoJson == null) {
+      return;
+    }
+    _routingCoverageSyncRunning = true;
+    try {
+      await controller.addGeoJsonSource(_kRoutingCoverageSourceId, geoJson);
+      await controller.addLineLayer(
+        _kRoutingCoverageSourceId,
+        _kRoutingCoverageLayerId,
+        LineLayerProperties(
+          lineColor: Theme.of(context).brightness == Brightness.dark
+              ? '#ffb45c'
+              : '#d96b00',
+          lineWidth: const [
+            Expressions.interpolate,
+            ['linear'],
+            [Expressions.zoom],
+            3,
+            1.5,
+            9,
+            3.0,
+          ],
+          lineOpacity: 0.9,
+          lineDasharray: const [2.0, 1.5],
+          lineCap: 'round',
+          lineJoin: 'round',
+        ),
+        belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
+        maxzoom: _kRoutingCoverageMaxZoom,
+        enableInteraction: false,
+      );
+      if (!mounted || !identical(controller, _mapController)) return;
+      _routingCoverageGeoJsonReady = true;
+    } catch (error, stackTrace) {
+      log.w(
+        'Adding Oberbayern routing boundary failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _routingCoverageSyncRunning = false;
+    }
   }
 
   void _retryOverlaySync(MapScreenViewModel model) {

@@ -18,51 +18,138 @@ void main() {
 
   test('holds initial guidance until movement establishes direction', () {
     final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
 
     expect(
-      gate.isWaiting(
+      gate.evaluate(
         start,
         horizontalAccuracyMeters: 5,
         speedMetersPerSecond: 0,
+        routePoints: route,
       ),
-      isTrue,
+      NavigationOrientationDecision.waiting,
     );
     expect(
-      gate.isWaiting(
+      gate.evaluate(
         const LatLng(48.14005, 11.5700),
         horizontalAccuracyMeters: 5,
         speedMetersPerSecond: 2,
+        routePoints: route,
       ),
-      isTrue,
+      NavigationOrientationDecision.waiting,
     );
     expect(
-      gate.isWaiting(
+      gate.evaluate(
         const LatLng(48.14010, 11.5700),
         horizontalAccuracyMeters: 5,
         speedMetersPerSecond: 2,
+        routePoints: route,
       ),
-      isFalse,
+      NavigationOrientationDecision.forward,
     );
   });
 
   test('uses a distance fallback when GPS speed is unavailable', () {
     final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
 
     expect(
-      gate.isWaiting(
+      gate.evaluate(
         const LatLng(48.14010, 11.5700),
         horizontalAccuracyMeters: 8,
         speedMetersPerSecond: 0,
+        routePoints: route,
       ),
-      isTrue,
+      NavigationOrientationDecision.waiting,
     );
     expect(
-      gate.isWaiting(
+      gate.evaluate(
         const LatLng(48.14016, 11.5700),
         horizontalAccuracyMeters: 8,
         speedMetersPerSecond: 0,
+        routePoints: route,
       ),
-      isFalse,
+      NavigationOrientationDecision.forward,
+    );
+  });
+
+  test('detects starting along the route in the opposite direction', () {
+    final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
+
+    expect(
+      gate.evaluate(
+        start,
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 0,
+        routePoints: route,
+      ),
+      NavigationOrientationDecision.waiting,
+    );
+    expect(
+      gate.evaluate(
+        const LatLng(48.13990, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+        routePoints: route,
+      ),
+      NavigationOrientationDecision.reverse,
+    );
+  });
+
+  test('keeps monitoring direction after a correct start', () {
+    final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
+
+    expect(
+      gate.evaluate(
+        const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+        routePoints: route,
+      ),
+      NavigationOrientationDecision.forward,
+    );
+    expect(
+      gate.evaluate(
+        start,
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+        routePoints: route,
+      ),
+      NavigationOrientationDecision.reverse,
+    );
+  });
+
+  test('uses reliable GPS heading before enough displacement accumulated', () {
+    final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
+
+    expect(
+      gate.evaluate(
+        start,
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+        routePoints: route,
+        movementHeadingDegrees: 0,
+        movementHeadingReliable: true,
+      ),
+      NavigationOrientationDecision.forward,
+    );
+  });
+
+  test('recognizes a clear movement away from the route', () {
+    final gate = NavigationOrientationGate()..reset(start);
+    const route = [start, beforeTurn, turn, end];
+
+    expect(
+      gate.evaluate(
+        const LatLng(48.1400, 11.5710),
+        horizontalAccuracyMeters: 5,
+        speedMetersPerSecond: 2,
+        routePoints: route,
+      ),
+      NavigationOrientationDecision.offRoute,
     );
   });
 

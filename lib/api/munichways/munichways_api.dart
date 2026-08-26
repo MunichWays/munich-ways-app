@@ -52,8 +52,32 @@ class MunichwaysApi {
   }
 
   Future<Set<MPolyline>> getBundledRadlVorrangnetz() async {
-    final contents = await rootBundle.loadString(_bundledRadlVorrangAsset);
-    return compute(_parseHappyBikeLevelGeojson, contents);
+    final load = Stopwatch()..start();
+    log.d('bundled RadlVorrang asset load started');
+    // rootBundle.loadString() silently uses compute() for assets larger than
+    // 50 KB. That isolate path can stall indefinitely on affected Android
+    // devices, so load bytes and decode explicitly in the UI isolate.
+    final data = await rootBundle.load(_bundledRadlVorrangAsset);
+    final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final contents = utf8.decode(bytes);
+    log.d(
+      'bundled RadlVorrang asset read: ${contents.length} chars in '
+      '${load.elapsedMilliseconds} ms',
+    );
+
+    // The bundled fallback contains several thousand small line objects. On
+    // some Android devices, transferring that complete custom object graph
+    // back from compute() can consume hundreds of MB and keep one CPU core busy
+    // indefinitely. Parsing it in the UI isolate avoids that second full copy.
+    // The much larger downloaded Upper Bavaria data remains in compute().
+    final parse = Stopwatch()..start();
+    final polylines = _parseHappyBikeLevelGeojson(contents);
+    parse.stop();
+    log.d(
+      'bundled RadlVorrang asset parsed: ${polylines.length} polylines in '
+      '${parse.elapsedMilliseconds} ms',
+    );
+    return polylines;
   }
 
   /// Emits the bundled Munich RadlVorrang network first, followed by cached or

@@ -114,6 +114,14 @@ void main() {
       (tester) async {
     final coverage = OberbayernCoverage();
 
+    final geoJson = await coverage.featureCollection;
+    expect(geoJson['type'], 'FeatureCollection');
+    final features = geoJson['features'] as List<dynamic>;
+    expect(features, hasLength(1));
+    expect(
+      (features.single as Map<String, dynamic>)['geometry']['type'],
+      'Polygon',
+    );
     expect(await coverage.contains(munich), isTrue);
     expect(await coverage.contains(berlin), isFalse);
   });
