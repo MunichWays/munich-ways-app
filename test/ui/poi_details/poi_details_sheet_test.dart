@@ -7,6 +7,21 @@ import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 
 void main() {
+  test('uses the native EveryDoor store for Android and iOS', () {
+    expect(
+      everyDoorUrlForPlatform(TargetPlatform.android),
+      everyDoorPlayStoreUrl,
+    );
+    expect(
+      everyDoorUrlForPlatform(TargetPlatform.iOS),
+      everyDoorAppStoreUrl,
+    );
+    expect(
+      everyDoorUrlForPlatform(TargetPlatform.windows),
+      everyDoorWebsiteUrl,
+    );
+  });
+
   testWidgets(
       'shows translated tags in useful order without translating values',
       (tester) async {
