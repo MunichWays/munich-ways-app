@@ -176,6 +176,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _overlaySyncScheduled = false;
   bool _overlaySyncRunning = false;
   bool _overlaySyncQueued = false;
+  Timer? _overlaySyncRetryTimer;
+  int _overlaySyncRetryCount = 0;
 
   /// Line / GeoJSON feature id → street details (network taps + legacy line taps).
   final Map<String, StreetDetails> _streetDetailsByLineId = {};
@@ -275,6 +277,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   late bool _mountMapView;
   String? _mapStyleString;
   bool? _darkMapStyle;
+  int _mapStyleGeneration = 0;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -330,7 +333,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     // theme changes again while it is in progress, an older request must not
     // overwrite the style for the current theme when it finishes last.
     if (!mounted || _darkMapStyle != dark) return;
-    setState(() => _mapStyleString = style);
+    setState(() {
+      // Recreate the native map for a new style instead of changing the style
+      // underneath in-flight layer operations. In particular on Android,
+      // callbacks from the previous style can otherwise race the new style and
+      // leave overlays missing or crash the native map renderer.
+      _mapStyleGeneration++;
+      _mapController = null;
+      _styleLoaded = false;
+      _cameraReady = false;
+      _networkGeoJsonReady = false;
+      _routeGeoJsonReady = false;
+      _currentLocationGeoJsonReady = false;
+      _drinkingWaterGeoJsonReady = false;
+      _publicToiletsGeoJsonReady = false;
+      _repairStationsGeoJsonReady = false;
+      _lastSyncedNetworkFingerprint = null;
+      _lastRouteFingerprint = null;
+      _mapStyleString = style;
+    });
   }
 
   @override
@@ -352,6 +373,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _publicToiletsSubscription?.cancel();
     _repairStationsSubscription?.cancel();
     _movementHeadingFreshnessTimer?.cancel();
+    _overlaySyncRetryTimer?.cancel();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting(resetAttempts: false);
     _stopVoiceGuidance();
@@ -584,6 +606,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          final mapStyleGeneration = _mapStyleGeneration;
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -638,11 +661,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 children: [
                   const StreetDetailsModalListener(),
                   if (!_mountMapView || _mapStyleString == null)
-                    const Positioned.fill(
+                    Positioned.fill(
                       child: ColoredBox(
-                        color: Colors.white,
+                        color: statusBarBackground,
                         child: Center(
-                          child: SizedBox(
+                          child: const SizedBox(
                             width: 32,
                             height: 32,
                             child: CircularProgressIndicator(strokeWidth: 3),
@@ -662,6 +685,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: RepaintBoundary(
                         key: _mapLibreViewKey,
                         child: MapLibreMap(
+                          key: ValueKey(mapStyleGeneration),
                           styleString: _mapStyleString!,
                           initialCameraPosition: CameraPosition(
                             target:
@@ -680,10 +704,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           myLocationRenderMode:
                               _renderModeFor(model.locationState),
                           onMapCreated: (controller) {
+                            if (!mounted ||
+                                mapStyleGeneration != _mapStyleGeneration) {
+                              return;
+                            }
                             _mapController = controller;
                           },
                           onStyleLoadedCallback: () {
-                            if (!mounted) return;
+                            if (!mounted ||
+                                mapStyleGeneration != _mapStyleGeneration) {
+                              return;
+                            }
                             final c = _mapController;
                             Future<void> afterStyle() async {
                               if (c != null) {
@@ -701,7 +732,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _drinkingWaterGeoJsonReady = false;
                               _publicToiletsGeoJsonReady = false;
                               _repairStationsGeoJsonReady = false;
-                              if (!mounted) return;
+                              if (!mounted ||
+                                  mapStyleGeneration != _mapStyleGeneration ||
+                                  !identical(c, _mapController)) {
+                                return;
+                              }
                               // Style rebuild clears native annotations; drop stale handles.
                               _routePlanSymbols.clear();
                               _routeWaypointImages.clear();
@@ -2575,10 +2610,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _scheduleOverlaySync(MapScreenViewModel model) {
     if (!_styleLoaded || _mapController == null || _overlaySyncScheduled)
       return;
+    _overlaySyncRetryTimer?.cancel();
     _overlaySyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _overlaySyncScheduled = false;
-      _syncOverlays(model);
+      if (!mounted) return;
+      unawaited(_syncOverlays(model));
+    });
+  }
+
+  void _retryOverlaySync(MapScreenViewModel model) {
+    if (!mounted || !_styleLoaded || _mapController == null) return;
+    _overlaySyncRetryTimer?.cancel();
+    final delay = Duration(
+      milliseconds: min(2000, 100 * (1 << min(_overlaySyncRetryCount, 4))),
+    );
+    _overlaySyncRetryCount++;
+    _overlaySyncRetryTimer = Timer(delay, () {
+      if (mounted) _scheduleOverlaySync(model);
     });
   }
 
@@ -2675,12 +2724,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await _ensureRouteGeoJsonLayer(controller);
       if (networkChanged) {
         await _syncNetworkLayers(model, controller);
+        if (!mounted || !identical(controller, _mapController)) return;
         _lastSyncedNetworkFingerprint = netFp;
       }
       if (routeChanged) {
         await _syncRouteAndDestinationLayers(model, controller);
+        if (!mounted || !identical(controller, _mapController)) return;
         _lastRouteFingerprint = routeFp;
       }
+      _overlaySyncRetryCount = 0;
+    } catch (error, stackTrace) {
+      // Native style setup can briefly reject source/layer operations directly
+      // after onStyleLoaded (especially on slower Android devices). Keep the
+      // model data and retry instead of requiring an app restart.
+      log.w(
+        'Map overlay sync failed; retrying',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _retryOverlaySync(model);
     } finally {
       _overlaySyncRunning = false;
       if (_overlaySyncQueued) {
