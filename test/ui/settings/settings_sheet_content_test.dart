@@ -178,6 +178,24 @@ void main() {
     final mapControls = find.text('Karten-Buttons');
     final more = find.text('Weitere Einstellungen');
     expect(routeWish, findsOneWidget);
+    final primaryRouteSetting = tester.widget<Material>(
+      find.byKey(const ValueKey('primary-route-recommendation-setting')),
+    );
+    expect(
+      primaryRouteSetting.color,
+      Theme.of(tester.element(routeWish))
+          .colorScheme
+          .primaryContainer
+          .withValues(alpha: 0.55),
+    );
+    final secondarySwitches = tester.widgetList<Switch>(find.byType(Switch));
+    expect(
+      secondarySwitches
+          .where(
+              (control) => control.activeTrackColor == AppColors.munichWaysBlue)
+          .length,
+      2,
+    );
     expect(find.text('Kürzeste Strecke'), findsNothing);
     expect(zoom, findsOneWidget);
     expect(appearance, findsOneWidget);

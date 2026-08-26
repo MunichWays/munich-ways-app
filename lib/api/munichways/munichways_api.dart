@@ -61,16 +61,26 @@ class MunichwaysApi {
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
   }) async* {
+    final bundledLoad = Stopwatch()..start();
     try {
-      final bundled = await (responseTimeout == null
-          ? getBundledRadlVorrangnetz()
-          : getBundledRadlVorrangnetz().timeout(responseTimeout));
-      log.d('bundled RadlVorrang network loaded: ${bundled.length} polylines');
+      // This is local, guaranteed fallback data. Do not apply the network
+      // response timeout: isolate startup and the first asset parse can exceed
+      // it on slower phones directly after installation or an update. Timing
+      // out does not cancel compute, so the old behavior also left that parse
+      // running while starting the heavier online/cache path in parallel.
+      final bundled = await getBundledRadlVorrangnetz();
+      bundledLoad.stop();
+      log.d(
+        'bundled RadlVorrang network loaded: ${bundled.length} polylines '
+        'in ${bundledLoad.elapsedMilliseconds} ms',
+      );
       yield bundled;
     } catch (e, st) {
+      bundledLoad.stop();
       // A broken asset must not prevent the network-backed data from loading.
       log.e(
-        'bundled RadlVorrang network load failed',
+        'bundled RadlVorrang network load failed after '
+        '${bundledLoad.elapsedMilliseconds} ms',
         error: e,
         stackTrace: st,
       );
