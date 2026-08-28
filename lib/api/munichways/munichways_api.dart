@@ -32,7 +32,14 @@ class MunichwaysApi {
       );
 
       final parse = Stopwatch()..start();
-      final polylines = await compute(_parseHappyBikeLevelGeojson, contents);
+      // The parsed Upper Bavaria network contains tens of thousands of custom
+      // MPolyline, StreetDetails, and LatLng objects. Returning that complete
+      // object graph from compute() intermittently stalls Android devices,
+      // leaves the worker consuming a CPU core, and retains hundreds of MB.
+      // Parse in the main isolate so there is no isolate result copy. The
+      // bundled network has already been emitted, so the usable fallback does
+      // not depend on this optional enrichment completing.
+      final polylines = _parseHappyBikeLevelGeojson(contents);
       parse.stop();
       total.stop();
       log.d(

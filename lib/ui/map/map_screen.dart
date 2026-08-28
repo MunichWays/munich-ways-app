@@ -3734,7 +3734,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.isEnglish
@@ -3749,7 +3749,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final position = _latestPosition ?? await model.resolveRouteStartPosition();
     if (!mounted) return;
     if (position == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.isEnglish
@@ -3785,7 +3785,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         ),
     };
     if (destination == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.isEnglish

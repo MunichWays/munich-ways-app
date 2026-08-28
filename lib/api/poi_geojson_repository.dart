@@ -37,8 +37,22 @@ class PoiGeoJsonRepository {
     )) {
       if (response is! FileInfo) continue;
       try {
+        final total = Stopwatch()..start();
         final contents = await response.file.readAsString();
-        yield await compute(parsePoiFeatureCollection, contents);
+        final readMilliseconds = total.elapsedMilliseconds;
+        // These files are small, while returning their nested GeoJSON maps
+        // from an isolate has intermittently stalled Android devices. Parsing
+        // locally avoids the isolate result copy and keeps all three optional
+        // POI streams independent from worker-isolate failures.
+        final geoJson = parsePoiFeatureCollection(contents);
+        total.stop();
+        log.d(
+          '$description POIs loaded: '
+          '${(geoJson['features'] as List<dynamic>).length} features, '
+          '${contents.length} chars in ${total.elapsedMilliseconds} ms '
+          '(read $readMilliseconds ms)',
+        );
+        yield geoJson;
       } catch (error, stackTrace) {
         // Keep listening: a stale malformed file may still be followed by a
         // valid network response. Optional POIs must never affect the map.
