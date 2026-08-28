@@ -42,6 +42,16 @@ requirement explicitly replaces it.
 
 ## Required automated checks
 
+### Single-owner Flutter workflow
+
+Flutter commands for this workspace run sequentially. Do not run `flutter run`,
+build, analysis, and tests in parallel. In particular, an active VS Code phone
+run owns the Flutter toolchain until disconnecting USB ends that run.
+
+Use `Terminal` > `Run Task...` > `Entwicklung: Status prüfen` before changing
+from device testing to automated checks. For the full local gate, disconnect
+the phone and run `Qualität: Vollständige Prüfung`.
+
 Run formatting before analysis and tests so CI results refer to the final code:
 
 ```text
@@ -58,6 +68,36 @@ regression when this is practical without duplicating implementation details.
 If a running Flutter command holds the tool lock, stop it before the final test
 run. If a required check remains blocked, document that fact and do not treat it
 as a pass.
+
+## Physical-device test workflow
+
+### Immediate test without debugger
+
+1. Connect exactly one Android phone by USB.
+2. Start VS Code `Run Without Debugging` and wait for installation and startup.
+3. Test the changed behavior immediately on the phone and record the result.
+4. Do not run automated Flutter checks while this session is active.
+
+### Road test with the installed build
+
+1. Before launching the app, run `Straßentest: Vorbereiten`. This enlarges the
+   Android circular log buffer to 16 MB and clears old logs.
+2. Start `Run Without Debugging`, wait for the app, and test it immediately.
+3. Unplug USB. This ends the VS Code run while the installed app remains on the
+   phone and can continue running.
+4. Perform the road test. Do not restart the phone or reinstall the app.
+5. Reconnect USB after the ride without first restarting the app.
+6. Run `Straßentest: Logs einsammeln`. Main, system, crash, and Flutter logs are
+   written below `.diagnostics/`, together with a memory snapshot if the app is
+   still running.
+7. Report the exact local time and observed behavior so the log can be matched
+   to the event.
+
+Use Profile mode for performance, startup, CPU, memory, and release-like
+problems. Use Debug mode with the phone attached when breakpoints, hot reload,
+or DevTools are required. The Android log buffer approach also supports a Debug
+road test, but a future bounded in-app diagnostic log will be more reliable for
+long rides or very noisy devices.
 
 ## Regression checklist
 

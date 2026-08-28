@@ -58,7 +58,8 @@ class MunichwaysApi {
     // 50 KB. That isolate path can stall indefinitely on affected Android
     // devices, so load bytes and decode explicitly in the UI isolate.
     final data = await rootBundle.load(_bundledRadlVorrangAsset);
-    final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final bytes =
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     final contents = utf8.decode(bytes);
     log.d(
       'bundled RadlVorrang asset read: ${contents.length} chars in '

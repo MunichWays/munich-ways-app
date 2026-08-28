@@ -2,6 +2,70 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Entwicklung: Status prüfen",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\dev_environment.ps1",
+        "-Action",
+        "status"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Straßentest: Vorbereiten",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\dev_environment.ps1",
+        "-Action",
+        "road-prepare"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Straßentest: Logs einsammeln",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\dev_environment.ps1",
+        "-Action",
+        "road-collect"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Qualität: Vollständige Prüfung",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\dev_environment.ps1",
+        "-Action",
+        "quality"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
       "label": "RadlVorrang-Netz aktualisieren",
       "type": "shell",
       "command": "powershell",

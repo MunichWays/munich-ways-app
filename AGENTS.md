@@ -40,12 +40,18 @@ prefer reverting only that enhancement while retaining unrelated fixes.
 
 ## Verification
 
+Only one Flutter tool command may own this workspace at a time. Never run
+analysis, tests, builds, or deployments in parallel. While the user has an
+active VS Code phone run, limit work to code inspection and read-only ADB/log
+diagnostics. Wait until the user reports that USB is disconnected and the
+Flutter run has ended before starting automated Flutter checks.
+
 For every code change:
 
 1. Format the changed Dart files.
 2. Run `git diff --check`.
-3. Run static analysis.
-4. Run focused tests for the affected behavior.
+3. Run static analysis, and wait for it to finish.
+4. Run focused tests for the affected behavior after analysis has finished.
 5. Add a regression test when practical.
 6. Before a requested push, run the full test suite.
 
