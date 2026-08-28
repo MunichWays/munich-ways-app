@@ -243,7 +243,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   );
   final NavigationOrientationGate _navigationOrientationGate =
       NavigationOrientationGate();
-  bool _oppositeDirectionWarningSpoken = false;
   VoiceGuidanceDisplay? _nextManeuver;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
@@ -468,7 +467,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
     _navigationOrientationGate.reset();
-    _oppositeDirectionWarningSpoken = false;
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting();
     if (_nextManeuver != null) {
@@ -553,7 +551,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
           _navigationOrientationGate.reset();
-          _oppositeDirectionWarningSpoken = false;
           _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
             setState(() => _nextManeuver = null);
@@ -1422,86 +1419,43 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           model.waypoints.map((place) => place.displayName).toList(),
     );
     _recoverGuidanceAfterReturningToRoute(model, rawPosition, position);
-    final routePoints = model.route.route?.points ?? const <latlong2.LatLng>[];
-    final orientation =
-        model.navigationStarted && !_voiceGuidance.finalDestinationReached
-            ? _navigationOrientationGate.evaluate(
-                rawPosition,
-                horizontalAccuracyMeters: position.accuracy,
-                speedMetersPerSecond: position.speed,
-                routePoints: routePoints,
-                movementHeadingDegrees: position.heading,
-                movementHeadingReliable: _hasReliableMovementHeading(position),
-              )
-            : NavigationOrientationDecision.forward;
-    final directionUnknown =
-        orientation == NavigationOrientationDecision.waiting;
-    final ridingInReverse =
-        orientation == NavigationOrientationDecision.reverse;
-    final directionOffRoute =
-        orientation == NavigationOrientationDecision.offRoute;
-    if (directionUnknown || ridingInReverse) {
-      if (_offRouteEpisodeActive || _reroutingDisplay != null) {
-        _cancelAutomaticRerouting(resetAttempts: false);
-      }
-    } else {
-      _updateAutomaticRerouting(model, rawPosition, position);
-    }
-    final routeGuidanceDisplay = model.navigationStarted &&
-            (orientation == NavigationOrientationDecision.forward ||
-                _voiceGuidance.finalDestinationReached)
+    final routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
             rawPosition,
             english: context.l10n.isEnglish,
             speedMetersPerSecond: position.speed,
           )
         : null;
+    final waitingForInitialDirection = model.navigationStarted &&
+        !_voiceGuidance.finalDestinationReached &&
+        _navigationOrientationGate.isWaiting(
+          rawPosition,
+          horizontalAccuracyMeters: position.accuracy,
+          speedMetersPerSecond: position.speed,
+        );
+    if (waitingForInitialDirection) {
+      if (_offRouteEpisodeActive || _reroutingDisplay != null) {
+        _cancelAutomaticRerouting(resetAttempts: false);
+      }
+    } else {
+      _updateAutomaticRerouting(model, rawPosition, position);
+    }
     final nextManeuver = model.navigationStarted
         ? _voiceGuidance.finalDestinationReached
             ? routeGuidanceDisplay
-            : directionUnknown
+            : waitingForInitialDirection
                 ? VoiceGuidanceDisplay(
                     text: context.l10n.followRouteOnMap,
                     type: 'map',
                   )
-                : ridingInReverse
-                    ? VoiceGuidanceDisplay(
-                        text: context.l10n.isEnglish
-                            ? 'Riding in the opposite direction'
-                            : 'Fahrt in Gegenrichtung',
-                        type: 'map',
-                      )
-                    : directionOffRoute
-                        ? VoiceGuidanceDisplay(
-                            text: context.l10n.isEnglish
-                                ? 'Route left or no GPS signal'
-                                : 'Route verlassen oder kein GPS-Signal',
-                            type: 'map',
-                          )
-                        : _reroutingDisplay ?? routeGuidanceDisplay
+                : _reroutingDisplay ?? routeGuidanceDisplay
         : null;
     if (nextManeuver != _nextManeuver) {
       setState(() => _nextManeuver = nextManeuver);
     }
-    if (ridingInReverse) {
-      if (model.voiceGuidanceEnabled &&
-          model.voiceGuidanceAvailable &&
-          !_oppositeDirectionWarningSpoken) {
-        _oppositeDirectionWarningSpoken = true;
-        final english = context.l10n.isEnglish;
-        unawaited(_speak(
-          english
-              ? 'You are riding in the opposite direction.'
-              : 'Du fÃ¤hrst in die entgegengesetzte Richtung.',
-          english: english,
-        ));
-      }
-    } else if (orientation == NavigationOrientationDecision.forward) {
-      _oppositeDirectionWarningSpoken = false;
-    }
     if (model.navigationStarted &&
         model.voiceGuidanceEnabled &&
-        (orientation == NavigationOrientationDecision.forward ||
+        (!waitingForInitialDirection ||
             _voiceGuidance.finalDestinationReached)) {
       final instruction = _voiceGuidance.update(
         rawPosition,
@@ -1890,7 +1844,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
     _offRouteCameraZoomedOut = false;
-    _oppositeDirectionWarningSpoken = false;
     final initialPosition = _latestPosition;
     _navigationOrientationGate.reset(
       initialPosition == null ||
