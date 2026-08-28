@@ -4,6 +4,10 @@ Mobile App displaying the Radlvorangnetz in Flutter for iOS and Android. For mor
 
 ## Development Setup
 
+Development principles, required checks, debugging guidance, and regression
+scenarios are documented in [CONTRIBUTING.md](CONTRIBUTING.md). AI coding agents
+must additionally follow [AGENTS.md](AGENTS.md).
+
 ### Geoapify address search
 
 Ask Thomas for the API key or go to https://myprojects.geoapify.com/, mail@munichways.de, project App-MunichWays
