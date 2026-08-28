@@ -95,6 +95,11 @@ aliasPassword=<Password>
 #### How to test
 - Handy per USB Kabel anschließen
 - Voraussetzung Handy einrichten: Einstellungen > Entwickleroptionen > USB-Debugging aktivieren
+- Für einen eindeutig erkennbaren lokalen Stand in VS Code `Terminal` >
+  `Run Task...` > `Handy: Neuen lokalen Testbuild starten` auswählen. Im
+  Info-Bereich der App steht dann neben der Appversion eine bei jedem Start
+  erhöhte Kennung, zum Beispiel `Testbuild 3`. Ein lokal benötigter
+  `GEOAPIFY_API_KEY` kann zuvor als Umgebungsvariable gesetzt werden.
 - im Android Studion erscheint das USB Symbol bei physical device- z.B Samsung Sm F711B
 - im Visual Studio code App starten: Button run (grüner Pfeil) oder flutter run -v
   C:\Users\Thomas\dev\flutter\munich-ways-app> flutter run -v  

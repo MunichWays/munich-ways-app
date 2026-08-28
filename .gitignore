@@ -2,6 +2,7 @@
 *.class
 *.log
 .diagnostics/
+.local/
 *.pyc
 *.swp
 .DS_Store

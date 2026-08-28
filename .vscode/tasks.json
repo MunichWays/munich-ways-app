@@ -2,6 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Handy: Neuen lokalen Testbuild starten",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\run_local_test_build.ps1"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Entwicklung: Status prüfen",
       "type": "shell",
       "command": "powershell",

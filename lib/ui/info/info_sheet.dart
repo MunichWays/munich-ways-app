@@ -1,13 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/info/app_version_label.dart';
 import 'package:munich_ways/ui/info/imprint_screen.dart';
 import 'package:munich_ways/ui/info/info_sheet_about_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_main_content.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 void showMapInfoSheet(BuildContext context) {
   showModalBottomSheet<void>(
@@ -36,11 +34,10 @@ class _InfoSheetState extends State<InfoSheet> {
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
+    loadAppVersionLabel().then((versionLabel) {
       if (!mounted) return;
       setState(() {
-        _versionLabel =
-            'Version ${info.version}(${info.buildNumber}) ${Platform.isIOS ? 'iOS' : 'Android'}';
+        _versionLabel = versionLabel;
       });
     });
   }
