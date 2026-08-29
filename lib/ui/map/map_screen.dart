@@ -4000,12 +4000,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 _kDrinkingWaterLayerId,
                 const SymbolLayerProperties(
                   iconImage: _kDrinkingWaterImageId,
-                  iconSize: 1.0,
+                  iconSize: .9,
                   iconAllowOverlap: true,
                   iconIgnorePlacement: false,
                 ),
                 belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
-                minzoom: 13,
+                minzoom: 14,
                 enableInteraction: false,
               );
               _drinkingWaterGeoJsonReady = true;
