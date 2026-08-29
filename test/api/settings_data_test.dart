@@ -21,6 +21,16 @@ void main() {
     expect(restored.mapBearing, 25);
   });
 
+  test('persists manual energy saving and defaults it to off', () {
+    expect(SettingsData.fromJson(const {}).energySavingEnabled, isFalse);
+    expect(
+      SettingsData.fromJson(
+        SettingsData.defaults.copyWith(energySavingEnabled: true).toJson(),
+      ).energySavingEnabled,
+      isTrue,
+    );
+  });
+
   test('shows zoom buttons by default, including older settings files', () {
     expect(SettingsData.defaults.showZoomButtons, isTrue);
     expect(SettingsData.fromJson(const {}).showZoomButtons, isTrue);

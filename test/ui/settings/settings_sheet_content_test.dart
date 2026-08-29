@@ -17,6 +17,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/settings/settings_sheet_content.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -140,7 +141,9 @@ void main() {
     );
     final localeController = AppLocaleController(store: store);
     final themeController = AppThemeController(store: store);
+    final energySavingController = EnergySavingController(store: store);
     addTearDown(themeController.dispose);
+    addTearDown(energySavingController.dispose);
     await localeController.load();
     await themeController.load();
 
@@ -149,6 +152,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: localeController),
           ChangeNotifierProvider.value(value: themeController),
+          ChangeNotifierProvider.value(value: energySavingController),
         ],
         child: MaterialApp(
           locale: const Locale('de'),
@@ -217,6 +221,7 @@ void main() {
     expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
+    expect(find.text('Energie sparen'), findsOneWidget);
     expect(mapControls, findsOneWidget);
     expect(find.text('Routenwunsch'), findsOneWidget);
     expect(find.text('Routenberechnung'), findsNothing);

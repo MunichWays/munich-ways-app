@@ -49,6 +49,7 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -97,6 +98,25 @@ bool isFreshCachedPosition(DateTime timestamp, DateTime now) {
   final age = now.difference(timestamp);
   return !age.isNegative && age <= const Duration(minutes: 15);
 }
+
+@visibleForTesting
+Duration trackingIntervalForEnergySaving(bool enabled) =>
+    Duration(seconds: enabled ? 2 : 1);
+
+@visibleForTesting
+String energySavingAnnouncement(bool english) => english
+    ? 'Energy saving mode enabled. Location updates are reduced.'
+    : 'Energiesparmodus aktiviert. Standort wird seltener aktualisiert.';
+
+@visibleForTesting
+bool shouldAcceptTrackingUpdate({
+  required bool energySaving,
+  required DateTime? previousUpdate,
+  required DateTime currentUpdate,
+}) =>
+    !energySaving ||
+    previousUpdate == null ||
+    currentUpdate.difference(previousUpdate) >= const Duration(seconds: 2);
 
 @visibleForTesting
 String offRouteSpokenMessage({
@@ -243,6 +263,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final Set<String> _routePointImages = {};
   StreamSubscription<Position>? _locationSubscription;
   bool _locationStreamUsesForegroundService = false;
+  bool _locationStreamUsesEnergySaving = false;
+  DateTime? _lastAcceptedLocationUpdate;
   int _locationStreamGeneration = 0;
   Position? _latestPosition;
   final OberbayernCoverage _nearbyPoiCoverage = OberbayernCoverage();
@@ -311,6 +333,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   int _mapStyleGeneration = 0;
   bool _initialCameraLoaded = false;
   CameraPosition? _savedInitialCamera;
+  bool _energySavingWasActive = false;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -486,6 +509,43 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  Future<void> _showEnergySavingInfo(
+    EnergySavingController energySaving,
+  ) async {
+    final english = context.l10n.isEnglish;
+    final level = energySaving.batteryLevel;
+    final reason = energySaving.automaticEnabled
+        ? english
+            ? 'It was activated automatically because the battery is at '
+                '${level ?? 20}% or lower.'
+            : 'Er wurde automatisch aktiviert, weil der Akku bei '
+                '${level ?? 20} % oder darunter liegt.'
+        : english
+            ? 'It was activated manually in Settings.'
+            : 'Er wurde manuell in den Einstellungen aktiviert.';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          english ? 'Energy saving mode active' : 'Energie sparen aktiv',
+        ),
+        content: Text(
+          english
+              ? '$reason MunichWays uses dark mode and updates location at '
+                  'half the normal rate.'
+              : '$reason MunichWays verwendet den Dunkelmodus und aktualisiert '
+                  'den Standort halb so oft.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.close),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _speak(String text, {required bool english}) async {
@@ -694,6 +754,27 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          final energySaving =
+              context.watch<EnergySavingController?>()?.effectiveEnabled ??
+                  false;
+          if (energySaving != _energySavingWasActive) {
+            _energySavingWasActive = energySaving;
+            if (energySaving) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                unawaited(_speak(
+                  energySavingAnnouncement(context.l10n.isEnglish),
+                  english: context.l10n.isEnglish,
+                ));
+              });
+            }
+          }
+          if (_locationSubscription != null &&
+              _locationStreamUsesEnergySaving != energySaving) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) unawaited(_updateLocationStream(model));
+            });
+          }
           final mapStyleGeneration = _mapStyleGeneration;
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
@@ -1032,6 +1113,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
+                          if (energySaving)
+                            Positioned(
+                              top: _mapAttributionExpanded ? 80 : 72,
+                              right: 12,
+                              child: IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppColors.munichWaysOrange,
+                                  foregroundColor: AppColors.heroForeground,
+                                ),
+                                tooltip: context.l10n.isEnglish
+                                    ? 'Energy saving mode active'
+                                    : 'Energie sparen aktiv',
+                                onPressed: () => _showEnergySavingInfo(
+                                  context.read<EnergySavingController>(),
+                                ),
+                                icon: const Icon(Icons.battery_saver),
+                              ),
+                            ),
                           if (model.destination != null ||
                               model.initialRatingsLoadFailed)
                             MapBottomActionButtons(
@@ -1219,12 +1318,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   LocationSettings _locationSettings({
     required bool keepNavigationAliveInBackground,
+    required bool energySaving,
   }) {
     if (defaultTargetPlatform == TargetPlatform.android) {
       return AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 0,
-        intervalDuration: const Duration(seconds: 1),
+        intervalDuration: trackingIntervalForEnergySaving(energySaving),
         foregroundNotificationConfig: keepNavigationAliveInBackground
             ? ForegroundNotificationConfig(
                 notificationTitle: context.l10n.isEnglish
@@ -1254,14 +1354,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       final subscription = _locationSubscription;
       _locationSubscription = null;
       _locationStreamUsesForegroundService = false;
+      _locationStreamUsesEnergySaving = false;
+      _lastAcceptedLocationUpdate = null;
       await subscription?.cancel();
       return;
     }
     final shouldUseForegroundService =
         defaultTargetPlatform == TargetPlatform.android &&
             model.navigationStarted;
+    final energySaving =
+        context.read<EnergySavingController?>()?.effectiveEnabled ?? false;
     if (_locationSubscription != null &&
-        _locationStreamUsesForegroundService == shouldUseForegroundService) {
+        _locationStreamUsesForegroundService == shouldUseForegroundService &&
+        _locationStreamUsesEnergySaving == energySaving) {
       return;
     }
     final previousSubscription = _locationSubscription;
@@ -1271,13 +1376,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (!mounted || generation != _locationStreamGeneration) return;
     }
     _locationStreamUsesForegroundService = shouldUseForegroundService;
+    _locationStreamUsesEnergySaving = energySaving;
+    _lastAcceptedLocationUpdate = null;
 
     _locationSubscription = Geolocator.getPositionStream(
       locationSettings: _locationSettings(
         keepNavigationAliveInBackground: shouldUseForegroundService,
+        energySaving: energySaving,
       ),
     ).listen(
       (position) {
+        final receivedAt = DateTime.now();
+        if (!shouldAcceptTrackingUpdate(
+          energySaving: energySaving,
+          previousUpdate: _lastAcceptedLocationUpdate,
+          currentUpdate: receivedAt,
+        )) {
+          return;
+        }
         if (!isFreshCachedPosition(position.timestamp, DateTime.now()) ||
             !isUsableMapPosition(
               latitude: position.latitude,
@@ -1286,6 +1402,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             )) {
           return;
         }
+        _lastAcceptedLocationUpdate = receivedAt;
         _latestPosition = position;
         unawaited(_updateNearbyPoiAvailability(position));
         _pendingPosition = position;

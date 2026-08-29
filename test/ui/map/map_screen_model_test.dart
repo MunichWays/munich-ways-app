@@ -89,6 +89,45 @@ void main() {
     );
   });
 
+  test('halves the tracking update rate while saving energy', () {
+    expect(
+      trackingIntervalForEnergySaving(false),
+      const Duration(seconds: 1),
+    );
+    expect(
+      trackingIntervalForEnergySaving(true),
+      const Duration(seconds: 2),
+    );
+    final now = DateTime(2026, 8, 29, 12);
+    expect(
+      shouldAcceptTrackingUpdate(
+        energySaving: true,
+        previousUpdate: now,
+        currentUpdate: now.add(const Duration(seconds: 1)),
+      ),
+      isFalse,
+    );
+    expect(
+      shouldAcceptTrackingUpdate(
+        energySaving: true,
+        previousUpdate: now,
+        currentUpdate: now.add(const Duration(seconds: 2)),
+      ),
+      isTrue,
+    );
+  });
+
+  test('provides the energy saving announcement in both languages', () {
+    expect(
+      energySavingAnnouncement(false),
+      'Energiesparmodus aktiviert. Standort wird seltener aktualisiert.',
+    );
+    expect(
+      energySavingAnnouncement(true),
+      'Energy saving mode enabled. Location updates are reduced.',
+    );
+  });
+
   test('allows the optional initial network load longer in background',
       () async {
     final api = _RecordingMunichwaysApi();

@@ -90,6 +90,12 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveEnergySavingEnabled(bool enabled) {
+    return _enqueueUpdate((current) => current.copyWith(
+          energySavingEnabled: enabled,
+        ));
+  }
+
   Future<void> saveVoiceGuidanceEnabled(bool enabled) {
     return _enqueueUpdate((current) => current.copyWith(
           voiceGuidanceEnabled: enabled,
@@ -150,6 +156,7 @@ class SettingsData {
     this.mapLongitude,
     this.mapZoom,
     this.mapBearing,
+    this.energySavingEnabled = false,
   });
 
   final bool showZoomButtons;
@@ -169,6 +176,7 @@ class SettingsData {
   final double? mapLongitude;
   final double? mapZoom;
   final double? mapBearing;
+  final bool energySavingEnabled;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: true,
@@ -180,6 +188,7 @@ class SettingsData {
     bRouterProfile: BRouterProfile.trekking,
     routeRecommendation: RouteRecommendation.standard,
     themeModeName: 'automatic',
+    energySavingEnabled: false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -197,6 +206,7 @@ class SettingsData {
         if (mapLongitude != null) 'mapLongitude': mapLongitude,
         if (mapZoom != null) 'mapZoom': mapZoom,
         if (mapBearing != null) 'mapBearing': mapBearing,
+        'energySavingEnabled': energySavingEnabled,
       };
 
   SettingsData copyWith({
@@ -215,6 +225,7 @@ class SettingsData {
     double? mapLongitude,
     double? mapZoom,
     double? mapBearing,
+    bool? energySavingEnabled,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -234,6 +245,7 @@ class SettingsData {
         mapLongitude: mapLongitude ?? this.mapLongitude,
         mapZoom: mapZoom ?? this.mapZoom,
         mapBearing: mapBearing ?? this.mapBearing,
+        energySavingEnabled: energySavingEnabled ?? this.energySavingEnabled,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -279,6 +291,7 @@ class SettingsData {
       mapLongitude: (json['mapLongitude'] as num?)?.toDouble(),
       mapZoom: (json['mapZoom'] as num?)?.toDouble(),
       mapBearing: (json['mapBearing'] as num?)?.toDouble(),
+      energySavingEnabled: json['energySavingEnabled'] as bool? ?? false,
     );
   }
 }

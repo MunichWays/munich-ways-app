@@ -20,9 +20,12 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   double? _latitude;
   double? _longitude;
   AppThemePreference _preference = AppThemePreference.automatic;
+  bool _energySavingEnabled = false;
 
   AppThemePreference get preference => _preference;
-  bool get isDark => switch (_preference) {
+  bool get isDark =>
+      _energySavingEnabled ||
+      switch (_preference) {
         AppThemePreference.light => false,
         AppThemePreference.dark => true,
         AppThemePreference.automatic => _latitude == null || _longitude == null
@@ -63,6 +66,12 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
         value == AppThemePreference.automatic ? isDark : null;
     notifyListeners();
     _store.saveThemeMode(value.name);
+  }
+
+  void setEnergySavingEnabled(bool enabled) {
+    if (_energySavingEnabled == enabled) return;
+    _energySavingEnabled = enabled;
+    notifyListeners();
   }
 
   /// Uses a position already obtained by the map/navigation flow. This method

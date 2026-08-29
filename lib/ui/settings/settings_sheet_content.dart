@@ -4,6 +4,7 @@ import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
@@ -79,6 +80,23 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         childrenPadding: const EdgeInsets.only(bottom: 8),
                         title: Text(strings.moreSettings),
                         children: [
+                          const MenuGroupDivider(),
+                          Consumer<EnergySavingController>(
+                            builder: (context, energySaving, _) =>
+                                MenuGroupItem(
+                              label: strings.isEnglish
+                                  ? 'Save energy'
+                                  : 'Energie sparen',
+                              trailingElement: _SecondarySettingsSwitch(
+                                value: energySaving.effectiveEnabled,
+                                onChanged: energySaving.automaticEnabled
+                                    ? null
+                                    : (enabled) {
+                                        energySaving.setManualEnabled(enabled);
+                                      },
+                              ),
+                            ),
+                          ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
                             label: strings.positionMapButtons,
@@ -187,6 +205,7 @@ class _AppearanceMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final energySaving = context.watch<EnergySavingController>();
     return MenuGroupItem(
       label: strings.isEnglish ? 'Appearance' : 'Darstellung',
       trailingElement: DropdownButtonHideUnderline(
@@ -220,7 +239,9 @@ class _AppearanceMenuItem extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               DropdownButton<AppThemePreference>(
-                value: appTheme.preference,
+                value: energySaving.effectiveEnabled
+                    ? AppThemePreference.dark
+                    : appTheme.preference,
                 alignment: AlignmentDirectional.centerEnd,
                 isDense: true,
                 items: [
@@ -237,9 +258,11 @@ class _AppearanceMenuItem extends StatelessWidget {
                     child: Text('Auto'),
                   ),
                 ],
-                onChanged: (value) {
-                  if (value != null) appTheme.setPreference(value);
-                },
+                onChanged: energySaving.effectiveEnabled
+                    ? null
+                    : (value) {
+                        if (value != null) appTheme.setPreference(value);
+                      },
               ),
             ],
           ),
@@ -256,7 +279,7 @@ class _SecondarySettingsSwitch extends StatelessWidget {
   });
 
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
