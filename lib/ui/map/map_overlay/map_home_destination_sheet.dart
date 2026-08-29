@@ -54,14 +54,19 @@ class MapHomeDestinationSheet extends StatefulWidget {
 
 class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   /// Minimal map-first state: drag handle plus the destination row only.
-  double get _minimalSize => .12;
+  double _minimalSize = .12;
 
   /// Stable compact height: reaches roughly to the location button and leaves
   /// room for the two quick actions plus favorites without jumping after data
   /// finishes loading.
-  double get _compactSize => .28;
+  double _compactSize = .28;
 
-  List<double> get _snapSizes => [_minimalSize, _compactSize, .58, 1.0];
+  List<double> get _snapSizes => [
+        _minimalSize,
+        _compactSize,
+        if (_compactSize < .57) .58,
+        1.0,
+      ];
 
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -79,6 +84,22 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   bool _showHomeExtras = true;
   double _preservedSheetSize = .28;
   bool _restoringAfterParentUpdate = false;
+
+  void _configureSheetSizes(
+    BoxConstraints constraints, {
+    required bool landscapePhone,
+  }) {
+    final minimalSize =
+        landscapePhone ? (76 / constraints.maxHeight).clamp(.12, .9) : .12;
+    final compactSize = landscapePhone
+        ? (190 / constraints.maxHeight).clamp(minimalSize, .9)
+        : .28;
+    if (!_sheetController.isAttached && _preservedSheetSize == _compactSize) {
+      _preservedSheetSize = compactSize;
+    }
+    _minimalSize = minimalSize;
+    _compactSize = compactSize;
+  }
 
   @override
   void didUpdateWidget(covariant MapHomeDestinationSheet oldWidget) {
@@ -505,73 +526,100 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: _model,
-      child: DraggableScrollableSheet(
-        controller: _sheetController,
-        initialChildSize: _compactSize,
-        minChildSize: _minimalSize,
-        maxChildSize: 1,
-        snap: true,
-        snapSizes: _snapSizes,
-        shouldCloseOnMinExtent: false,
-        builder: (context, scrollController) => Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              elevation: 8,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(18)),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  DraggableBottomSheetRegion(
-                    controller: _sheetController,
-                    snapSizes: _snapSizes,
-                    child: const BottomSheetDragHandle(),
-                  ),
-                  if (_searching)
-                    _searchHeader(context)
-                  else
-                    _homeHeader(context),
-                  if (!_selectingFavorite &&
-                      (_searching || _showHomeExtras)) ...[
-                    _searchActions(context, showSelectOnMap: _searching),
-                    if (_showQuickChoices)
-                      Consumer<PlaceSearchScreenViewModel>(
-                        builder: (context, model, _) => Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                          child: _favoriteButtons(context, model),
-                        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final landscapePhone =
+              constraints.maxWidth >= constraints.maxHeight * 1.5;
+          _configureSheetSizes(
+            constraints,
+            landscapePhone: landscapePhone,
+          );
+          final mediaQuery = MediaQuery.of(context);
+          final keyboardInset = mediaQuery.viewInsets.bottom;
+          final usableHeight = (mediaQuery.size.height - keyboardInset)
+              .clamp(0.0, constraints.maxHeight);
+          final keyboardLeavesLittleHeight = landscapePhone &&
+              (constraints.maxHeight < 320 ||
+                  (keyboardInset > 0 && usableHeight < 320));
+          return DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: _compactSize,
+            minChildSize: _minimalSize,
+            maxChildSize: 1,
+            snap: true,
+            snapSizes: _snapSizes,
+            shouldCloseOnMinExtent: false,
+            builder: (context, scrollController) => Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: landscapePhone ? 400 : 480,
+                ),
+                child: Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  elevation: 8,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(18)),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      DraggableBottomSheetRegion(
+                        controller: _sheetController,
+                        snapSizes: _snapSizes,
+                        child: const BottomSheetDragHandle(),
                       ),
-                    const Divider(height: 1),
-                  ],
-                  Expanded(
-                    child: _searching
-                        ? Consumer<PlaceSearchScreenViewModel>(
-                            builder: (context, model, _) => PlaceSearchBody(
-                              model: model,
-                              scrollController: scrollController,
-                              showSavedRoutes: true,
-                              onSelected: _handleSelection,
+                      if (_searching)
+                        _searchHeader(context)
+                      else
+                        _homeHeader(context),
+                      if (!_selectingFavorite &&
+                          (_searching || _showHomeExtras) &&
+                          !keyboardLeavesLittleHeight) ...[
+                        _searchActions(
+                          context,
+                          showSelectOnMap: _searching,
+                        ),
+                        if (_showQuickChoices)
+                          Consumer<PlaceSearchScreenViewModel>(
+                            builder: (context, model, _) => Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                              child: _favoriteButtons(context, model),
                             ),
-                          )
-                        : _showQuickChoices
+                          ),
+                        const Divider(height: 1),
+                      ],
+                      Expanded(
+                        child: _searching
                             ? Consumer<PlaceSearchScreenViewModel>(
                                 builder: (context, model, _) => PlaceSearchBody(
                                   model: model,
-                                  showFavorites: false,
                                   scrollController: scrollController,
+                                  showSavedRoutes: true,
                                   onSelected: _handleSelection,
                                 ),
                               )
-                            : _favoriteShortcuts(context, scrollController),
+                            : _showQuickChoices
+                                ? Consumer<PlaceSearchScreenViewModel>(
+                                    builder: (context, model, _) =>
+                                        PlaceSearchBody(
+                                      model: model,
+                                      showFavorites: false,
+                                      scrollController: scrollController,
+                                      onSelected: _handleSelection,
+                                    ),
+                                  )
+                                : _favoriteShortcuts(
+                                    context,
+                                    scrollController,
+                                  ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

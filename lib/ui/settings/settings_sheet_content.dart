@@ -5,6 +5,7 @@ import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
 import 'package:provider/provider.dart';
 
@@ -51,7 +52,7 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                       label: strings.isEnglish
                           ? 'Recalculate automatically'
                           : 'Automatisch neu berechnen',
-                      trailingElement: Switch.adaptive(
+                      trailingElement: _SecondarySettingsSwitch(
                         value: model.automaticReroutingEnabled,
                         onChanged: model.setAutomaticReroutingEnabled,
                       ),
@@ -59,7 +60,7 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                     const MenuGroupDivider(),
                     MenuGroupItem(
                       label: strings.showZoomButtons,
-                      trailingElement: Switch.adaptive(
+                      trailingElement: _SecondarySettingsSwitch(
                         value: model.showZoomButtons,
                         onChanged: model.setShowZoomButtons,
                       ),
@@ -248,6 +249,26 @@ class _AppearanceMenuItem extends StatelessWidget {
   }
 }
 
+class _SecondarySettingsSwitch extends StatelessWidget {
+  const _SecondarySettingsSwitch({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Switch.adaptive(
+      value: value,
+      onChanged: onChanged,
+      activeTrackColor: AppColors.munichWaysBlue,
+      activeThumbColor: Colors.white,
+    );
+  }
+}
+
 class _RouteRecommendationSettings extends StatelessWidget {
   const _RouteRecommendationSettings({
     required this.model,
@@ -259,44 +280,55 @@ class _RouteRecommendationSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        childrenPadding: const EdgeInsets.only(bottom: 8),
-        title: Row(
-          children: [
-            Expanded(child: Text(strings.routeRecommendation)),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: '${strings.tr('Info')}: ${strings.routeRecommendation}',
-              onPressed: () => _showOverviewInfo(context),
-              icon: const Icon(Icons.info_outline),
-            ),
-          ],
-        ),
-        subtitle: model.routeRecommendation == null
-            ? null
-            : Text(_label(model.routeRecommendation!)),
-        children: [
-          const MenuGroupDivider(),
-          for (final recommendation in RouteRecommendation.values) ...[
-            _RadioMenuItem<RouteRecommendation>(
-              title: _label(recommendation),
-              value: recommendation,
-              groupValue: model.routeRecommendation,
-              onChanged: model.setRouteRecommendation,
-              trailing: IconButton(
+    final theme = Theme.of(context);
+    return Material(
+      key: const ValueKey('primary-route-recommendation-setting'),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.55),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  strings.routeRecommendation,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
                 visualDensity: VisualDensity.compact,
-                tooltip: '${strings.tr('Info')}: ${_label(recommendation)}',
-                onPressed: () => _showInfo(context, recommendation),
+                tooltip:
+                    '${strings.tr('Info')}: ${strings.routeRecommendation}',
+                onPressed: () => _showOverviewInfo(context),
                 icon: const Icon(Icons.info_outline),
               ),
-            ),
-            if (recommendation != RouteRecommendation.values.last)
-              const MenuGroupDivider(),
+            ],
+          ),
+          subtitle: model.routeRecommendation == null
+              ? null
+              : Text(_label(model.routeRecommendation!)),
+          children: [
+            const MenuGroupDivider(),
+            for (final recommendation in RouteRecommendation.values) ...[
+              _RadioMenuItem<RouteRecommendation>(
+                title: _label(recommendation),
+                value: recommendation,
+                groupValue: model.routeRecommendation,
+                onChanged: model.setRouteRecommendation,
+                trailing: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: '${strings.tr('Info')}: ${_label(recommendation)}',
+                  onPressed: () => _showInfo(context, recommendation),
+                  icon: const Icon(Icons.info_outline),
+                ),
+              ),
+              if (recommendation != RouteRecommendation.values.last)
+                const MenuGroupDivider(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

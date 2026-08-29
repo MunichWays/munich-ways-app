@@ -16,7 +16,12 @@ class OberbayernCoverage implements RoutingCoverage {
                 ));
 
   final Future<String> Function() _loadGeoJson;
+  Future<Map<String, dynamic>>? _featureCollection;
   Future<List<LatLng>>? _polygon;
+
+  /// The exact routing-service boundary, also used by the map overview.
+  Future<Map<String, dynamic>> get featureCollection =>
+      _featureCollection ??= _loadFeatureCollection();
 
   @override
   Future<bool> contains(LatLng point) async {
@@ -38,7 +43,7 @@ class OberbayernCoverage implements RoutingCoverage {
   }
 
   Future<List<LatLng>> _loadPolygon() async {
-    final json = jsonDecode(await _loadGeoJson()) as Map<String, dynamic>;
+    final json = await featureCollection;
     final features = json['features'] as List;
     final geometry = (features.first as Map<String, dynamic>)['geometry']
         as Map<String, dynamic>;
@@ -52,4 +57,7 @@ class OberbayernCoverage implements RoutingCoverage {
       );
     }).toList(growable: false);
   }
+
+  Future<Map<String, dynamic>> _loadFeatureCollection() async =>
+      jsonDecode(await _loadGeoJson()) as Map<String, dynamic>;
 }

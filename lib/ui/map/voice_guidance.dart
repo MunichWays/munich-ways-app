@@ -4,48 +4,34 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 
-/// Holds turn guidance until movement establishes the initial travel direction.
-class NavigationOrientationGate {
-  NavigationOrientationGate({
-    this.minimumMovementMeters = 8,
-    this.maximumAccuracyThresholdMeters = 15,
-  });
+/// Defers initial guidance until the rider has left a small start area.
+///
+/// This gate deliberately knows nothing about route direction or off-route
+/// state. Once the distance is reached it stays open, leaving all subsequent
+/// behavior to the regular guidance and rerouting flow.
+class NavigationStartGate {
+  NavigationStartGate({this.minimumDistanceFromStartMeters = 25});
 
-  final double minimumMovementMeters;
-  final double maximumAccuracyThresholdMeters;
+  final double minimumDistanceFromStartMeters;
 
-  LatLng? _anchor;
-  bool _directionEstablished = false;
+  LatLng? _start;
+  bool _released = false;
 
-  void reset([LatLng? anchor]) {
-    _anchor = anchor;
-    _directionEstablished = false;
+  void reset([LatLng? start]) {
+    _start = start;
+    _released = false;
   }
 
-  bool isWaiting(
-    LatLng position, {
-    required double horizontalAccuracyMeters,
-    required double speedMetersPerSecond,
-  }) {
-    if (_directionEstablished) return false;
-    final anchor = _anchor;
-    if (anchor == null) {
-      _anchor = position;
+  bool isWaiting(LatLng position) {
+    if (_released) return false;
+    final start = _start;
+    if (start == null) {
+      _start = position;
       return true;
     }
-
-    final accuracy = horizontalAccuracyMeters.isFinite
-        ? horizontalAccuracyMeters.clamp(
-            minimumMovementMeters,
-            maximumAccuracyThresholdMeters,
-          )
-        : minimumMovementMeters;
-    final distance = const Distance().as(LengthUnit.Meter, anchor, position);
-    final moving = speedMetersPerSecond.isFinite && speedMetersPerSecond >= 1;
-    if ((moving && distance >= accuracy) || distance >= accuracy * 2) {
-      _directionEstablished = true;
-    }
-    return !_directionEstablished;
+    final distance = const Distance().as(LengthUnit.Meter, start, position);
+    if (distance >= minimumDistanceFromStartMeters) _released = true;
+    return !_released;
   }
 }
 
@@ -352,6 +338,51 @@ class VoiceGuidance {
       ),
       type: target.maneuver.type,
       modifier: target.maneuver.modifier,
+    );
+  }
+
+  /// Announces the currently relevant maneuver regardless of its distance.
+  ///
+  /// Used once when the initial 25 metre start gate opens. Regular guidance
+  /// keeps using the normal distance thresholds in [update].
+  String? announceCurrentManeuver(
+    LatLng position, {
+    required bool english,
+    double speedMetersPerSecond = 0,
+  }) {
+    final route = _route;
+    if (route == null || _finalDestinationReached) return null;
+    final projection = _projectionAtCurrentProgress(position);
+    if (projection.isAmbiguous ||
+        projection.distanceFromRoute > maximumRouteDistanceMeters ||
+        _isOverlappingProgress(projection.distanceAlongRoute)) {
+      return null;
+    }
+
+    _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+    final travelled = _predictedDistanceAlongRoute(
+      projection.distanceAlongRoute,
+      speedMetersPerSecond,
+      additionalSeconds: speechLeadSeconds,
+      maximumMeters: maximumSpeechLookAheadMeters,
+    );
+    _advancePastManeuvers(travelled);
+    if (_index >= _maneuvers.length) return null;
+
+    final target = _maneuvers[_index];
+    final remaining = target.routeDistance - travelled;
+    if (remaining < -5 || target.maneuver.type == 'arrive') return null;
+    if (remaining <= nowDistanceMeters) {
+      if (_nowSpoken) return null;
+      _nowSpoken = true;
+      return _formatSpokenManeuver(target, english: english, now: true);
+    }
+    if (_approachSpoken) return null;
+    _approachSpoken = true;
+    return _formatSpokenManeuver(
+      target,
+      english: english,
+      distanceMeters: _roundedDistance(remaining),
     );
   }
 

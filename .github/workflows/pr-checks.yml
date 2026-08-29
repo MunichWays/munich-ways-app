@@ -19,9 +19,9 @@ jobs:
           channel: stable
       - name: Install dependencies
         run: flutter pub get
-      - name: Run tests
-        run: flutter test
       - name: Check Formatting
-        run: dart format --set-exit-if-changed .
+        run: dart format --output=none --set-exit-if-changed .
       - name: Static code analyse
         run: flutter analyze .
+      - name: Run tests
+        run: flutter test

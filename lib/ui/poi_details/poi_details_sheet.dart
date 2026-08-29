@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/poi_details.dart';
@@ -5,6 +6,18 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+
+const everyDoorPlayStoreUrl =
+    'https://play.google.com/store/apps/details?id=info.zverev.ilya.every_door';
+const everyDoorAppStoreUrl =
+    'https://apps.apple.com/us/app/every-door/id1621945342';
+const everyDoorWebsiteUrl = 'https://every-door.app/';
+
+String everyDoorUrlForPlatform(TargetPlatform platform) => switch (platform) {
+      TargetPlatform.android => everyDoorPlayStoreUrl,
+      TargetPlatform.iOS => everyDoorAppStoreUrl,
+      _ => everyDoorWebsiteUrl,
+    };
 
 class PoiDetailsSheet extends StatelessWidget {
   const PoiDetailsSheet({
@@ -277,7 +290,9 @@ class PoiDetailsSheet extends StatelessWidget {
                             english ? 'Edit OSM yourself' : 'OSM selbst ändern',
                         value: 'EveryDoor',
                         isLink: true,
-                        onTap: () => launchUrlString('https://every-door.app/'),
+                        onTap: () => launchUrlString(
+                          everyDoorUrlForPlatform(defaultTargetPlatform),
+                        ),
                       ),
                     ],
                   ),

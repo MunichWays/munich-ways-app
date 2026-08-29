@@ -16,54 +16,31 @@ void main() {
         maneuvers: [maneuver],
       );
 
-  test('holds initial guidance until movement establishes direction', () {
-    final gate = NavigationOrientationGate()..reset(start);
+  test('holds initial guidance until 25 metres from the start', () {
+    final gate = NavigationStartGate()..reset(start);
 
     expect(
-      gate.isWaiting(
-        start,
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 0,
-      ),
+      gate.isWaiting(start),
       isTrue,
     );
     expect(
-      gate.isWaiting(
-        const LatLng(48.14005, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-      ),
+      gate.isWaiting(const LatLng(48.14020, 11.5700)),
       isTrue,
     );
     expect(
-      gate.isWaiting(
-        const LatLng(48.14010, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-      ),
+      gate.isWaiting(const LatLng(48.14025, 11.5700)),
       isFalse,
     );
   });
 
-  test('uses a distance fallback when GPS speed is unavailable', () {
-    final gate = NavigationOrientationGate()..reset(start);
+  test('stays released after the start distance was reached', () {
+    final gate = NavigationStartGate()..reset(start);
 
     expect(
-      gate.isWaiting(
-        const LatLng(48.14010, 11.5700),
-        horizontalAccuracyMeters: 8,
-        speedMetersPerSecond: 0,
-      ),
-      isTrue,
-    );
-    expect(
-      gate.isWaiting(
-        const LatLng(48.14016, 11.5700),
-        horizontalAccuracyMeters: 8,
-        speedMetersPerSecond: 0,
-      ),
+      gate.isWaiting(const LatLng(48.14025, 11.5700)),
       isFalse,
     );
+    expect(gate.isWaiting(start), isFalse);
   });
 
   test('recognizes route re-entry behind the previous guidance progress', () {
@@ -195,6 +172,29 @@ void main() {
     const position = LatLng(48.1000, 11.5005);
     expect(guidance.display(position, english: false), isNull);
     expect(guidance.update(position, english: false), isNull);
+  });
+
+  test('announces a distant current maneuver once after the start gate', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        routeWith(
+          const RouteManeuver(
+            location: turn,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ),
+      );
+
+    expect(
+      guidance.announceCurrentManeuver(start, english: false),
+      'In 110 Metern rechts abbiegen.',
+    );
+    expect(
+      guidance.announceCurrentManeuver(start, english: false),
+      isNull,
+    );
+    expect(guidance.update(start, english: false), isNull);
   });
 
   test('announces approach and turn only once', () {

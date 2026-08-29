@@ -36,7 +36,10 @@ class MapBottomActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom +
+    final mediaQuery = MediaQuery.of(context);
+    final landscapePhone =
+        mediaQuery.size.width >= mediaQuery.size.height * 1.5;
+    final bottomInset = mediaQuery.padding.bottom +
         (attributionExpanded
             ? kMapBottomActionRowExpandedPadding
             : kMapBottomActionRowCollapsedPadding);
@@ -69,7 +72,21 @@ class MapBottomActionButtons extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           if (navigationBar case final bar?) ...[
-            SizedBox(width: double.infinity, child: bar),
+            Padding(
+              padding: EdgeInsets.only(
+                left: landscapePhone ? kMapHorizontalHolderClearance : 0,
+              ),
+              child: Align(
+                alignment:
+                    landscapePhone ? Alignment.centerRight : Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: landscapePhone ? 360 : double.infinity,
+                  ),
+                  child: SizedBox(width: double.infinity, child: bar),
+                ),
+              ),
+            ),
             const SizedBox(height: 8),
           ],
           if (showSearch) ...[

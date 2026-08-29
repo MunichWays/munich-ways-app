@@ -32,7 +32,14 @@ class MunichwaysApi {
       );
 
       final parse = Stopwatch()..start();
-      final polylines = await compute(_parseHappyBikeLevelGeojson, contents);
+      // The parsed Upper Bavaria network contains tens of thousands of custom
+      // MPolyline, StreetDetails, and LatLng objects. Returning that complete
+      // object graph from compute() intermittently stalls Android devices,
+      // leaves the worker consuming a CPU core, and retains hundreds of MB.
+      // Parse in the main isolate so there is no isolate result copy. The
+      // bundled network has already been emitted, so the usable fallback does
+      // not depend on this optional enrichment completing.
+      final polylines = _parseHappyBikeLevelGeojson(contents);
       parse.stop();
       total.stop();
       log.d(
@@ -52,8 +59,33 @@ class MunichwaysApi {
   }
 
   Future<Set<MPolyline>> getBundledRadlVorrangnetz() async {
-    final contents = await rootBundle.loadString(_bundledRadlVorrangAsset);
-    return compute(_parseHappyBikeLevelGeojson, contents);
+    final load = Stopwatch()..start();
+    log.d('bundled RadlVorrang asset load started');
+    // rootBundle.loadString() silently uses compute() for assets larger than
+    // 50 KB. That isolate path can stall indefinitely on affected Android
+    // devices, so load bytes and decode explicitly in the UI isolate.
+    final data = await rootBundle.load(_bundledRadlVorrangAsset);
+    final bytes =
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final contents = utf8.decode(bytes);
+    log.d(
+      'bundled RadlVorrang asset read: ${contents.length} chars in '
+      '${load.elapsedMilliseconds} ms',
+    );
+
+    // The bundled fallback contains several thousand small line objects. On
+    // some Android devices, transferring that complete custom object graph
+    // back from compute() can consume hundreds of MB and keep one CPU core busy
+    // indefinitely. Parsing it in the UI isolate avoids that second full copy.
+    // The much larger downloaded Upper Bavaria data remains in compute().
+    final parse = Stopwatch()..start();
+    final polylines = _parseHappyBikeLevelGeojson(contents);
+    parse.stop();
+    log.d(
+      'bundled RadlVorrang asset parsed: ${polylines.length} polylines in '
+      '${parse.elapsedMilliseconds} ms',
+    );
+    return polylines;
   }
 
   /// Emits the bundled Munich RadlVorrang network first, followed by cached or
@@ -61,16 +93,26 @@ class MunichwaysApi {
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
   }) async* {
+    final bundledLoad = Stopwatch()..start();
     try {
-      final bundled = await (responseTimeout == null
-          ? getBundledRadlVorrangnetz()
-          : getBundledRadlVorrangnetz().timeout(responseTimeout));
-      log.d('bundled RadlVorrang network loaded: ${bundled.length} polylines');
+      // This is local, guaranteed fallback data. Do not apply the network
+      // response timeout: isolate startup and the first asset parse can exceed
+      // it on slower phones directly after installation or an update. Timing
+      // out does not cancel compute, so the old behavior also left that parse
+      // running while starting the heavier online/cache path in parallel.
+      final bundled = await getBundledRadlVorrangnetz();
+      bundledLoad.stop();
+      log.d(
+        'bundled RadlVorrang network loaded: ${bundled.length} polylines '
+        'in ${bundledLoad.elapsedMilliseconds} ms',
+      );
       yield bundled;
     } catch (e, st) {
+      bundledLoad.stop();
       // A broken asset must not prevent the network-backed data from loading.
       log.e(
-        'bundled RadlVorrang network load failed',
+        'bundled RadlVorrang network load failed after '
+        '${bundledLoad.elapsedMilliseconds} ms',
         error: e,
         stackTrace: st,
       );
