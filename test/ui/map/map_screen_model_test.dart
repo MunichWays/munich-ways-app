@@ -39,6 +39,70 @@ void main() {
     );
   });
 
+  test('accepts a coarse initial position but rejects unusable fixes', () {
+    expect(
+      isUsableMapPosition(
+        latitude: 48.14,
+        longitude: 11.57,
+        accuracy: 250,
+      ),
+      isTrue,
+    );
+    expect(
+      isUsableMapPosition(
+        latitude: 48.14,
+        longitude: 11.57,
+        accuracy: 1001,
+      ),
+      isFalse,
+    );
+    expect(
+      isUsableMapPosition(
+        latitude: 91,
+        longitude: 11.57,
+        accuracy: 10,
+      ),
+      isFalse,
+    );
+  });
+
+  test('uses only recent cached positions at startup', () {
+    final now = DateTime(2026, 8, 29, 12);
+
+    expect(
+      isFreshCachedPosition(
+        now.subtract(const Duration(minutes: 15)),
+        now,
+      ),
+      isTrue,
+    );
+    expect(
+      isFreshCachedPosition(
+        now.subtract(const Duration(minutes: 16)),
+        now,
+      ),
+      isFalse,
+    );
+    expect(
+      isFreshCachedPosition(now.add(const Duration(seconds: 1)), now),
+      isFalse,
+    );
+  });
+
+  test('allows the optional initial network load longer in background',
+      () async {
+    final api = _RecordingMunichwaysApi();
+    final model = MapScreenViewModel(
+      store: _MemorySettingsStore(),
+      munichwaysApi: api,
+    );
+
+    model.startInitialLoad();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.responseTimeout, const Duration(seconds: 30));
+  });
+
   test('finishes initial loading when ratings stream stalls offline', () async {
     final model = MapScreenViewModel(
       store: _MemorySettingsStore(),
@@ -92,6 +156,20 @@ class _StalledMunichwaysApi extends MunichwaysApi {
       StreamController<Set<MPolyline>>()
           .stream
           .timeout(responseTimeout ?? const Duration(seconds: 6));
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+}
+
+class _RecordingMunichwaysApi extends MunichwaysApi {
+  Duration? responseTimeout;
+
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
+    Duration? responseTimeout,
+  }) async* {
+    this.responseTimeout = responseTimeout;
+  }
 
   @override
   Future<Map<String, StreetDetails>> getStreetDetails() async => {};
