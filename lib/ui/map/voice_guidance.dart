@@ -4,233 +4,35 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 
-enum NavigationOrientationDecision { waiting, forward, reverse, offRoute }
-
-enum NavigationStartDecision { waiting, onRoute, offRoute }
-
-/// Defers all initial guidance until the rider has left the start area.
+/// Defers initial guidance until the rider has left a small start area.
+///
+/// This gate deliberately knows nothing about route direction or off-route
+/// state. Once the distance is reached it stays open, leaving all subsequent
+/// behavior to the regular guidance and rerouting flow.
 class NavigationStartGate {
-  NavigationStartGate({
-    this.minimumDistanceFromStartMeters = 25,
-    this.routeCorridorMeters = 15,
-    this.maximumAccuracyAllowanceMeters = 8,
-  });
+  NavigationStartGate({this.minimumDistanceFromStartMeters = 25});
 
   final double minimumDistanceFromStartMeters;
-  final double routeCorridorMeters;
-  final double maximumAccuracyAllowanceMeters;
 
   LatLng? _start;
-  NavigationStartDecision _decision = NavigationStartDecision.waiting;
-
-  bool get offRoute => _decision == NavigationStartDecision.offRoute;
+  bool _released = false;
 
   void reset([LatLng? start]) {
     _start = start;
-    _decision = NavigationStartDecision.waiting;
+    _released = false;
   }
 
-  NavigationStartDecision evaluate(
-    LatLng position, {
-    required double horizontalAccuracyMeters,
-    required List<LatLng> routePoints,
-  }) {
+  bool isWaiting(LatLng position) {
+    if (_released) return false;
     final start = _start;
     if (start == null) {
       _start = position;
-      return _decision = NavigationStartDecision.waiting;
+      return true;
     }
-    final distanceFromStart =
-        const Distance().as(LengthUnit.Meter, start, position);
-    if (distanceFromStart < minimumDistanceFromStartMeters) {
-      return _decision = NavigationStartDecision.waiting;
-    }
-    final distanceFromRoute = _distanceFromRoute(routePoints, position);
-    if (distanceFromRoute == null) {
-      return _decision = NavigationStartDecision.waiting;
-    }
-    final accuracyAllowance = horizontalAccuracyMeters.isFinite
-        ? horizontalAccuracyMeters.clamp(0, maximumAccuracyAllowanceMeters)
-        : 0;
-    return _decision =
-        distanceFromRoute <= routeCorridorMeters + accuracyAllowance
-            ? NavigationStartDecision.onRoute
-            : NavigationStartDecision.offRoute;
+    final distance = const Distance().as(LengthUnit.Meter, start, position);
+    if (distance >= minimumDistanceFromStartMeters) _released = true;
+    return !_released;
   }
-}
-
-/// Holds turn guidance until movement establishes the initial travel direction.
-///
-/// Once forward movement has been confirmed, this gate stays open. It must not
-/// monitor later route departures; those belong to the regular delayed
-/// off-route and rerouting flow.
-class NavigationOrientationGate {
-  NavigationOrientationGate({
-    this.minimumMovementMeters = 8,
-    this.maximumAccuracyThresholdMeters = 15,
-    this.maximumDirectionDifferenceDegrees = 60,
-    this.maximumRouteDistanceMeters = 35,
-  });
-
-  final double minimumMovementMeters;
-  final double maximumAccuracyThresholdMeters;
-  final double maximumDirectionDifferenceDegrees;
-  final double maximumRouteDistanceMeters;
-
-  LatLng? _anchor;
-  NavigationOrientationDecision? _establishedDirection;
-
-  void reset([LatLng? anchor]) {
-    _anchor = anchor;
-    _establishedDirection = null;
-  }
-
-  NavigationOrientationDecision evaluate(
-    LatLng position, {
-    required double horizontalAccuracyMeters,
-    required double speedMetersPerSecond,
-    required List<LatLng> routePoints,
-  }) {
-    if (_establishedDirection == NavigationOrientationDecision.forward) {
-      return NavigationOrientationDecision.forward;
-    }
-    final anchor = _anchor;
-    if (anchor == null) {
-      _anchor = position;
-      return NavigationOrientationDecision.waiting;
-    }
-
-    final accuracy = horizontalAccuracyMeters.isFinite
-        ? horizontalAccuracyMeters.clamp(
-            minimumMovementMeters,
-            maximumAccuracyThresholdMeters,
-          )
-        : minimumMovementMeters;
-    final distance = const Distance().as(LengthUnit.Meter, anchor, position);
-    final moving = speedMetersPerSecond.isFinite && speedMetersPerSecond >= 1;
-    if (!((moving && distance >= accuracy) || distance >= accuracy * 2)) {
-      return _establishedDirection ?? NavigationOrientationDecision.waiting;
-    }
-    if (routePoints.length < 2) {
-      return _establishedDirection ?? NavigationOrientationDecision.waiting;
-    }
-
-    final travelBearing = const Distance().bearing(anchor, position);
-    final routeDirection = _closestUnambiguousRouteDirection(
-      routePoints,
-      anchor,
-    );
-    _anchor = position;
-    if (routeDirection == null) {
-      return _establishedDirection ?? NavigationOrientationDecision.waiting;
-    }
-    final accuracyAllowance = horizontalAccuracyMeters.isFinite
-        ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
-        : 0;
-    if (routeDirection.distanceFromRoute >
-        maximumRouteDistanceMeters + accuracyAllowance) {
-      return _establishedDirection ?? NavigationOrientationDecision.offRoute;
-    }
-
-    final difference =
-        ((travelBearing - routeDirection.bearing + 540) % 360 - 180).abs();
-    if (difference <= maximumDirectionDifferenceDegrees) {
-      final currentRoutePosition = _closestUnambiguousRouteDirection(
-        routePoints,
-        position,
-      );
-      if (currentRoutePosition == null) {
-        return _establishedDirection ?? NavigationOrientationDecision.waiting;
-      }
-      if (currentRoutePosition.distanceFromRoute >
-          maximumRouteDistanceMeters + accuracyAllowance) {
-        return _establishedDirection ?? NavigationOrientationDecision.offRoute;
-      }
-      _establishedDirection = NavigationOrientationDecision.forward;
-      return NavigationOrientationDecision.forward;
-    }
-    if (difference >= 180 - maximumDirectionDifferenceDegrees) {
-      _establishedDirection = NavigationOrientationDecision.reverse;
-      return NavigationOrientationDecision.reverse;
-    }
-    return _establishedDirection ?? NavigationOrientationDecision.waiting;
-  }
-}
-
-_RouteDirection? _closestUnambiguousRouteDirection(
-  List<LatLng> route,
-  LatLng point,
-) {
-  final candidates = <_RouteDirection>[];
-  final latitudeRadians = point.latitude * pi / 180;
-  final metersPerLon = 111320.0 * cos(latitudeRadians);
-  const metersPerLat = 111320.0;
-  for (var index = 0; index < route.length - 1; index++) {
-    final a = route[index];
-    final b = route[index + 1];
-    final ax = (a.longitude - point.longitude) * metersPerLon;
-    final ay = (a.latitude - point.latitude) * metersPerLat;
-    final bx = (b.longitude - point.longitude) * metersPerLon;
-    final by = (b.latitude - point.latitude) * metersPerLat;
-    final dx = bx - ax;
-    final dy = by - ay;
-    final lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared == 0) continue;
-    final t = (-(ax * dx + ay * dy) / lengthSquared).clamp(0.0, 1.0);
-    final px = ax + dx * t;
-    final py = ay + dy * t;
-    candidates.add(
-      _RouteDirection(
-        const Distance().bearing(a, b),
-        sqrt(px * px + py * py),
-      ),
-    );
-  }
-  if (candidates.isEmpty) return null;
-  candidates.sort(
-    (first, second) =>
-        first.distanceFromRoute.compareTo(second.distanceFromRoute),
-  );
-  final closest = candidates.first;
-  for (final candidate in candidates.skip(1)) {
-    if (candidate.distanceFromRoute > closest.distanceFromRoute + 6) break;
-    final difference =
-        ((candidate.bearing - closest.bearing + 540) % 360 - 180).abs();
-    if (difference > 60) return null;
-  }
-  return closest;
-}
-
-class _RouteDirection {
-  const _RouteDirection(this.bearing, this.distanceFromRoute);
-
-  final double bearing;
-  final double distanceFromRoute;
-}
-
-double? _distanceFromRoute(List<LatLng> route, LatLng point) {
-  if (route.length < 2) return null;
-  final latitudeRadians = point.latitude * pi / 180;
-  final metersPerLon = 111320.0 * cos(latitudeRadians);
-  const metersPerLat = 111320.0;
-  var closest = double.infinity;
-  for (var index = 0; index < route.length - 1; index++) {
-    final a = route[index];
-    final b = route[index + 1];
-    final ax = (a.longitude - point.longitude) * metersPerLon;
-    final ay = (a.latitude - point.latitude) * metersPerLat;
-    final bx = (b.longitude - point.longitude) * metersPerLon;
-    final by = (b.latitude - point.latitude) * metersPerLat;
-    final dx = bx - ax;
-    final dy = by - ay;
-    final lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared == 0) continue;
-    final t = (-(ax * dx + ay * dy) / lengthSquared).clamp(0.0, 1.0);
-    final px = ax + dx * t;
-    final py = ay + dy * t;
-    closest = min(closest, sqrt(px * px + py * py));
-  }
-  return closest.isFinite ? closest : null;
 }
 
 /// Turns OSRM maneuvers and GPS positions into one-shot spoken instructions.
@@ -539,12 +341,11 @@ class VoiceGuidance {
     );
   }
 
-  /// Announces the currently displayed first maneuver regardless of distance.
+  /// Announces the currently relevant maneuver regardless of its distance.
   ///
-  /// This is only for a newly started or refreshed route after its initial
-  /// travel direction has been confirmed. Normal updates retain their regular
-  /// distance thresholds.
-  String? announceInitialManeuver(
+  /// Used once when the initial 25 metre start gate opens. Regular guidance
+  /// keeps using the normal distance thresholds in [update].
+  String? announceCurrentManeuver(
     LatLng position, {
     required bool english,
     double speedMetersPerSecond = 0,
@@ -572,9 +373,11 @@ class VoiceGuidance {
     final remaining = target.routeDistance - travelled;
     if (remaining < -5 || target.maneuver.type == 'arrive') return null;
     if (remaining <= nowDistanceMeters) {
+      if (_nowSpoken) return null;
       _nowSpoken = true;
       return _formatSpokenManeuver(target, english: english, now: true);
     }
+    if (_approachSpoken) return null;
     _approachSpoken = true;
     return _formatSpokenManeuver(
       target,

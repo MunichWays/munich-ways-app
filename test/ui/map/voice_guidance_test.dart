@@ -16,186 +16,31 @@ void main() {
         maneuvers: [maneuver],
       );
 
-  test('starts guidance after 25 metres only when still on the route', () {
-    const route = [start, beforeTurn, turn, end];
-    final onRouteGate = NavigationStartGate()..reset(start);
-    final offRouteGate = NavigationStartGate()..reset(start);
+  test('holds initial guidance until 25 metres from the start', () {
+    final gate = NavigationStartGate()..reset(start);
 
     expect(
-      onRouteGate.evaluate(
-        const LatLng(48.14015, 11.5700),
-        horizontalAccuracyMeters: 5,
-        routePoints: route,
-      ),
-      NavigationStartDecision.waiting,
+      gate.isWaiting(start),
+      isTrue,
     );
     expect(
-      onRouteGate.evaluate(
-        const LatLng(48.14030, 11.5700),
-        horizontalAccuracyMeters: 5,
-        routePoints: route,
-      ),
-      NavigationStartDecision.onRoute,
+      gate.isWaiting(const LatLng(48.14020, 11.5700)),
+      isTrue,
     );
     expect(
-      offRouteGate.evaluate(
-        const LatLng(48.13970, 11.5700),
-        horizontalAccuracyMeters: 5,
-        routePoints: route,
-      ),
-      NavigationStartDecision.offRoute,
-    );
-    expect(offRouteGate.offRoute, isTrue);
-  });
-
-  test('holds initial guidance until movement establishes direction', () {
-    final gate = NavigationOrientationGate()..reset(start);
-    const route = [start, beforeTurn, turn, end];
-
-    expect(
-      gate.evaluate(
-        start,
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 0,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.waiting,
-    );
-    expect(
-      gate.evaluate(
-        const LatLng(48.14005, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.waiting,
-    );
-    expect(
-      gate.evaluate(
-        const LatLng(48.14010, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.forward,
+      gate.isWaiting(const LatLng(48.14025, 11.5700)),
+      isFalse,
     );
   });
 
-  test('uses a distance fallback when GPS speed is unavailable', () {
-    final gate = NavigationOrientationGate()..reset(start);
-    const route = [start, beforeTurn, turn, end];
+  test('stays released after the start distance was reached', () {
+    final gate = NavigationStartGate()..reset(start);
 
     expect(
-      gate.evaluate(
-        const LatLng(48.14010, 11.5700),
-        horizontalAccuracyMeters: 8,
-        speedMetersPerSecond: 0,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.waiting,
+      gate.isWaiting(const LatLng(48.14025, 11.5700)),
+      isFalse,
     );
-    expect(
-      gate.evaluate(
-        const LatLng(48.14016, 11.5700),
-        horizontalAccuracyMeters: 8,
-        speedMetersPerSecond: 0,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.forward,
-    );
-  });
-
-  test('detects a wrong initial direction but stops checking after forward',
-      () {
-    final gate = NavigationOrientationGate()..reset(start);
-    const route = [start, beforeTurn, turn, end];
-
-    expect(
-      gate.evaluate(
-        const LatLng(48.13990, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.reverse,
-    );
-    expect(
-      gate.evaluate(
-        const LatLng(48.14010, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.forward,
-    );
-    expect(
-      gate.evaluate(
-        start,
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.forward,
-    );
-  });
-
-  test('detects reverse movement after riding beyond the route start', () {
-    final gate = NavigationOrientationGate(
-      maximumRouteDistanceMeters: 10,
-    )..reset(start);
-    const route = [start, beforeTurn, turn, end];
-
-    expect(
-      gate.evaluate(
-        const LatLng(48.13950, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.reverse,
-    );
-  });
-
-  test('keeps a detected reverse direction stable between GPS samples', () {
-    final gate = NavigationOrientationGate()..reset(start);
-    const route = [start, beforeTurn, turn, end];
-
-    expect(
-      gate.evaluate(
-        const LatLng(48.13990, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.reverse,
-    );
-    expect(
-      gate.evaluate(
-        const LatLng(48.13989, 11.5700),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.reverse,
-    );
-  });
-
-  test('keeps off-route handling active during the initial direction check',
-      () {
-    final gate = NavigationOrientationGate(
-      maximumRouteDistanceMeters: 10,
-    )..reset(start);
-    const route = [start, beforeTurn, turn, end];
-
-    expect(
-      gate.evaluate(
-        const LatLng(48.14030, 11.57030),
-        horizontalAccuracyMeters: 5,
-        speedMetersPerSecond: 2,
-        routePoints: route,
-      ),
-      NavigationOrientationDecision.offRoute,
-    );
+    expect(gate.isWaiting(start), isFalse);
   });
 
   test('recognizes route re-entry behind the previous guidance progress', () {
@@ -307,10 +152,6 @@ void main() {
           .having((display) => display.text, 'text', contains('links'))
           .having((display) => display.type, 'type', 'turn'),
     );
-    expect(
-      guidance.announceInitialManeuver(reentry, english: false),
-      contains('links abbiegen'),
-    );
   });
 
   test('does not derive directions for routes without guidance support', () {
@@ -333,8 +174,7 @@ void main() {
     expect(guidance.update(position, english: false), isNull);
   });
 
-  test('announces the first maneuver immediately after direction confirmation',
-      () {
+  test('announces a distant current maneuver once after the start gate', () {
     final guidance = VoiceGuidance()
       ..setRoute(
         routeWith(
@@ -347,8 +187,12 @@ void main() {
       );
 
     expect(
-      guidance.announceInitialManeuver(start, english: false),
+      guidance.announceCurrentManeuver(start, english: false),
       'In 110 Metern rechts abbiegen.',
+    );
+    expect(
+      guidance.announceCurrentManeuver(start, english: false),
+      isNull,
     );
     expect(guidance.update(start, english: false), isNull);
   });
