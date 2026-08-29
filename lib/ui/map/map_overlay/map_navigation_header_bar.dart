@@ -67,6 +67,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required VoidCallback onPressed,
   }) {
     final theme = Theme.of(context);
+    final mediaSize = MediaQuery.sizeOf(context);
+    final compactLandscape = mediaSize.width >= mediaSize.height * 1.5;
     return Semantics(
       container: true,
       button: true,
@@ -78,16 +80,19 @@ class MapNavigationHeaderBar extends StatelessWidget {
         onTap: onPressed,
         child: SizedBox(
           width: double.infinity,
-          height: 56,
+          height: compactLandscape ? 48 : 56,
           child: Center(
             child: IgnorePointer(
               child: FilledButton.icon(
                 style: AppButtonStyles.hero(context).merge(
                   FilledButton.styleFrom(
-                    minimumSize: const Size(180, 48),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                    minimumSize: Size(
+                      compactLandscape ? 160 : 180,
+                      compactLandscape ? 44 : 48,
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compactLandscape ? 18 : 24,
+                      vertical: compactLandscape ? 9 : 12,
                     ),
                     textStyle: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -95,7 +100,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ),
                 ),
                 onPressed: onPressed,
-                icon: Icon(icon, size: 24),
+                icon: Icon(icon, size: compactLandscape ? 21 : 24),
                 label: Text(label),
               ),
             ),
@@ -113,6 +118,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
+    final mediaSize = MediaQuery.sizeOf(context);
+    final compactLandscape = mediaSize.width >= mediaSize.height * 1.5;
+    final actionSize = compactLandscape ? 48.0 : 52.0;
+    final refreshWidth = compactLandscape ? 60.0 : 68.0;
+    final refreshIconSize = compactLandscape ? 24.0 : 28.0;
     final baseStyle = theme.textTheme.bodyLarge?.copyWith(
           color: Colors.white,
         ) ??
@@ -220,8 +230,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
       excludeSemantics: true,
       child: navigationTrackingInterrupted
           ? SizedBox(
-              width: 68,
-              height: 52,
+              width: refreshWidth,
+              height: actionSize,
               child: IconButton.filled(
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.munichWaysOrange,
@@ -234,7 +244,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 tooltip: refreshLabel,
                 onPressed: refreshEnabled ? onRefreshRoute : null,
                 icon: refreshEnabled
-                    ? const Icon(Icons.refresh, size: 28)
+                    ? Icon(Icons.refresh, size: refreshIconSize)
                     : const SizedBox.square(
                         dimension: 22,
                         child: CircularProgressIndicator(
@@ -245,8 +255,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
               ),
             )
           : SizedBox(
-              width: 68,
-              height: 52,
+              width: refreshWidth,
+              height: actionSize,
               child: IconButton.filled(
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -258,7 +268,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 tooltip: refreshLabel,
                 onPressed: refreshEnabled ? onRefreshRoute : null,
                 icon: refreshEnabled
-                    ? const Icon(Icons.refresh, size: 28)
+                    ? Icon(Icons.refresh, size: refreshIconSize)
                     : const SizedBox(
                         width: 22,
                         height: 22,
@@ -279,7 +289,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       onTap: onEditRoute,
       excludeSemantics: true,
       child: SizedBox.square(
-        dimension: 52,
+        dimension: actionSize,
         child: IconButton.outlined(
           style: IconButton.styleFrom(
             foregroundColor: Colors.white,
@@ -287,7 +297,10 @@ class MapNavigationHeaderBar extends StatelessWidget {
           ),
           tooltip: editLabel,
           onPressed: onEditRoute,
-          icon: const Icon(Icons.edit_location_alt, size: 27),
+          icon: Icon(
+            Icons.edit_location_alt,
+            size: compactLandscape ? 24 : 27,
+          ),
         ),
       ),
     );
@@ -309,7 +322,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       onTap: onToggleVoiceGuidance,
       excludeSemantics: true,
       child: SizedBox.square(
-        dimension: 52,
+        dimension: actionSize,
         child: IconButton.outlined(
           style: IconButton.styleFrom(
             foregroundColor: Colors.white,
@@ -319,7 +332,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
           onPressed: onToggleVoiceGuidance,
           icon: Icon(
             model.voiceGuidanceEnabled ? Icons.volume_up : Icons.volume_off,
-            size: 27,
+            size: compactLandscape ? 24 : 27,
           ),
         ),
       ),
@@ -332,12 +345,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
       onTap: onEndRoute,
       excludeSemantics: true,
       child: SizedBox.square(
-        dimension: 56,
+        dimension: compactLandscape ? 48 : 56,
         child: IconButton(
           color: Colors.white70,
           tooltip: closeLabel,
           onPressed: onEndRoute,
-          icon: const Icon(Icons.close),
+          icon: Icon(Icons.close, size: compactLandscape ? 22 : 24),
         ),
       ),
     );
@@ -364,7 +377,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: compactLandscape ? 4 : 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -470,10 +483,10 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   const Spacer(),
                   editAction,
                   if (showVoiceAction) ...[
-                    const SizedBox(width: 10),
+                    SizedBox(width: compactLandscape ? 6 : 10),
                     voiceAction,
                   ],
-                  const SizedBox(width: 16),
+                  SizedBox(width: compactLandscape ? 10 : 16),
                   refreshAction,
                 ],
               ),

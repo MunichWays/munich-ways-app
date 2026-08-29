@@ -78,7 +78,8 @@ class InfoSheetAboutContent extends StatelessWidget {
                   label: context.l10n.isEnglish
                       ? 'About RadlNavi'
                       : 'Über RadlNavi',
-                  onTap: () => _openUrl(context, 'https://radlnavi.de'),
+                  onTap: () =>
+                      _openUrl(context, 'https://radlnavi.munichways.de/'),
                 ),
                 const MenuGroupDivider(),
                 MenuGroupItem(

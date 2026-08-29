@@ -265,4 +265,95 @@ void main() {
     expect(draggable.controller!.size, closeTo(.28, .01));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('fits compact and minimal home modes in landscape',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 360);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapHomeDestinationSheet(
+                searchCenter: null,
+                onSelected: (_) {},
+                onPlanRoute: () {},
+                onNearbySelected: (_) async {},
+                onSelectOnMap: () {},
+                onShowInfo: () {},
+                onToggleAttribution: () {},
+                onShowSettings: () {},
+                attributionExpanded: false,
+                favoritesStore: _EmptyFavoritesStore(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final draggable = tester.widget<DraggableScrollableSheet>(
+      find.byType(DraggableScrollableSheet),
+    );
+    expect(draggable.controller!.pixels, greaterThanOrEqualTo(190));
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('map-destination-search-field')),
+          )
+          .width,
+      lessThan(320),
+    );
+
+    await tester.drag(find.text('Wohin?'), const Offset(0, 500));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(draggable.controller!.pixels, greaterThanOrEqualTo(76));
+  });
+
+  testWidgets('fits landscape search while the keyboard is visible',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 360);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapHomeDestinationSheet(
+                searchCenter: null,
+                onSelected: (_) {},
+                onPlanRoute: () {},
+                onNearbySelected: (_) async {},
+                onSelectOnMap: () {},
+                onShowInfo: () {},
+                onToggleAttribution: () {},
+                onShowSettings: () {},
+                attributionExpanded: false,
+                favoritesStore: _EmptyFavoritesStore(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wohin?'));
+    await tester.pumpAndSettle();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 100);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/route.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
@@ -14,6 +15,45 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 void main() {
+  testWidgets('limits and right-aligns navigation panel in phone landscape',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 360);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = MapScreenViewModel(store: _MemorySettingsStore());
+    const panelKey = ValueKey('landscape-navigation-panel');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapBottomActionButtons(
+                model: model,
+                searchCenterProvider: () => null,
+                onPlanRoute: () async {},
+                onSelectOnMap: () {},
+                onPressLocation: () {},
+                showSearch: false,
+                navigationBar: const ColoredBox(
+                  key: panelKey,
+                  color: Colors.blue,
+                  child: SizedBox(height: 100),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final rect = tester.getRect(find.byKey(panelKey));
+    expect(rect.width, 360);
+    expect(rect.right, 800);
+    expect(tester.takeException(), isNull);
+  });
+
   test('shortens repeated off-route voice announcements', () {
     expect(
       offRouteSpokenMessage(
