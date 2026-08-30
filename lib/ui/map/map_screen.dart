@@ -12,6 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/poi_geojson_repository.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
@@ -48,6 +49,7 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -75,6 +77,46 @@ bool hasReliableMovementHeading({
     speed.isFinite &&
     speed >= 1 &&
     (heading != 0 || headingAccuracy > 0);
+
+@visibleForTesting
+bool isUsableMapPosition({
+  required double latitude,
+  required double longitude,
+  required double accuracy,
+}) =>
+    latitude.isFinite &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude.isFinite &&
+    longitude >= -180 &&
+    longitude <= 180 &&
+    accuracy.isFinite &&
+    accuracy <= 1000;
+
+@visibleForTesting
+bool isFreshCachedPosition(DateTime timestamp, DateTime now) {
+  final age = now.difference(timestamp);
+  return !age.isNegative && age <= const Duration(minutes: 15);
+}
+
+@visibleForTesting
+Duration trackingIntervalForEnergySaving(bool enabled) =>
+    Duration(seconds: enabled ? 2 : 1);
+
+@visibleForTesting
+String energySavingAnnouncement(bool english) => english
+    ? 'Energy saving mode enabled. Location updates are reduced.'
+    : 'Energiesparmodus aktiviert. Standort wird seltener aktualisiert.';
+
+@visibleForTesting
+bool shouldAcceptTrackingUpdate({
+  required bool energySaving,
+  required DateTime? previousUpdate,
+  required DateTime currentUpdate,
+}) =>
+    !energySaving ||
+    previousUpdate == null ||
+    currentUpdate.difference(previousUpdate) >= const Duration(seconds: 2);
 
 @visibleForTesting
 String offRouteSpokenMessage({
@@ -180,6 +222,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _overlaySyncRunning = false;
   bool _overlaySyncQueued = false;
   Timer? _overlaySyncRetryTimer;
+  Timer? _cameraSaveTimer;
   int _overlaySyncRetryCount = 0;
 
   /// Line / GeoJSON feature id → street details (network taps + legacy line taps).
@@ -220,6 +263,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final Set<String> _routePointImages = {};
   StreamSubscription<Position>? _locationSubscription;
   bool _locationStreamUsesForegroundService = false;
+  bool _locationStreamUsesEnergySaving = false;
+  DateTime? _lastAcceptedLocationUpdate;
   int _locationStreamGeneration = 0;
   Position? _latestPosition;
   final OberbayernCoverage _nearbyPoiCoverage = OberbayernCoverage();
@@ -286,6 +331,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   String? _mapStyleString;
   bool? _darkMapStyle;
   int _mapStyleGeneration = 0;
+  bool _initialCameraLoaded = false;
+  CameraPosition? _savedInitialCamera;
+  bool _energySavingWasActive = false;
 
   StreetDetails? _streetDetailsForNetworkFeatureId(dynamic rawId) {
     if (rawId == null) return null;
@@ -299,6 +347,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_configureTextToSpeech());
+    unawaited(_loadInitialCamera());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
     // UIKit/Metal window phase and abort on cold start; a short defer avoids that. Android is fine.
     if (Platform.isIOS) {
@@ -311,6 +360,42 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     } else {
       _mountMapView = true;
     }
+  }
+
+  Future<void> _loadInitialCamera() async {
+    CameraPosition? savedCamera;
+    try {
+      final settings = await settingsStore.load();
+      final latitude = settings.mapLatitude;
+      final longitude = settings.mapLongitude;
+      final zoom = settings.mapZoom;
+      final bearing = settings.mapBearing ?? 0;
+      if (latitude != null &&
+          longitude != null &&
+          zoom != null &&
+          _isValidCoordinate(latitude, longitude) &&
+          zoom.isFinite &&
+          zoom >= 3 &&
+          zoom <= 22 &&
+          bearing.isFinite) {
+        savedCamera = CameraPosition(
+          target: LatLng(latitude, longitude),
+          zoom: zoom,
+          bearing: bearing,
+        );
+      }
+    } catch (error, stackTrace) {
+      log.w(
+        'Loading saved map camera failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _savedInitialCamera = savedCamera;
+      _initialCameraLoaded = true;
+    });
   }
 
   @override
@@ -365,6 +450,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _cameraSaveTimer?.cancel();
+      unawaited(_persistCameraPosition());
+      return;
+    }
     if (state != AppLifecycleState.resumed) return;
 
     if (displayCurrentLocationOnResume) {
@@ -383,6 +475,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _repairStationsSubscription?.cancel();
     _movementHeadingFreshnessTimer?.cancel();
     _overlaySyncRetryTimer?.cancel();
+    _cameraSaveTimer?.cancel();
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting(resetAttempts: false);
     _stopVoiceGuidance();
@@ -416,6 +509,43 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  Future<void> _showEnergySavingInfo(
+    EnergySavingController energySaving,
+  ) async {
+    final english = context.l10n.isEnglish;
+    final level = energySaving.batteryLevel;
+    final reason = energySaving.automaticEnabled
+        ? english
+            ? 'It was activated automatically because the battery is at '
+                '${level ?? 20}% or lower.'
+            : 'Er wurde automatisch aktiviert, weil der Akku bei '
+                '${level ?? 20} % oder darunter liegt.'
+        : english
+            ? 'It was activated manually in Settings.'
+            : 'Er wurde manuell in den Einstellungen aktiviert.';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          english ? 'Energy saving mode active' : 'Energie sparen aktiv',
+        ),
+        content: Text(
+          english
+              ? '$reason MunichWays uses dark mode and updates location at '
+                  'half the normal rate.'
+              : '$reason MunichWays verwendet den Dunkelmodus und aktualisiert '
+                  'den Standort halb so oft.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.close),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _speak(String text, {required bool english}) async {
@@ -613,10 +743,38 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
           ));
         });
+        if (!kStoreScreenshots && !_locationPrimeStarted) {
+          _locationPrimeStarted = true;
+          // Location acquisition is independent of map/style loading. Starting
+          // it here lets the first cached or live fix wait for the map instead
+          // of making the user wait at the Stachus while both run serially.
+          unawaited(_primeLocationOnStart(model));
+        }
         return model;
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          final energySaving =
+              context.watch<EnergySavingController?>()?.effectiveEnabled ??
+                  false;
+          if (energySaving != _energySavingWasActive) {
+            _energySavingWasActive = energySaving;
+            if (energySaving) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                unawaited(_speak(
+                  energySavingAnnouncement(context.l10n.isEnglish),
+                  english: context.l10n.isEnglish,
+                ));
+              });
+            }
+          }
+          if (_locationSubscription != null &&
+              _locationStreamUsesEnergySaving != energySaving) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) unawaited(_updateLocationStream(model));
+            });
+          }
           final mapStyleGeneration = _mapStyleGeneration;
           if (_styleLoaded && !_mapReadyNotified) {
             _mapReadyNotified = true;
@@ -684,7 +842,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                  if (_mountMapView && _mapStyleString != null)
+                  if (_mountMapView &&
+                      _mapStyleString != null &&
+                      _initialCameraLoaded)
                     Listener(
                       onPointerDown: (_) {
                         if (model.locationState == LocationState.FOLLOW ||
@@ -698,11 +858,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         child: MapLibreMap(
                           key: ValueKey(mapStyleGeneration),
                           styleString: _mapStyleString!,
-                          initialCameraPosition: CameraPosition(
-                            target:
-                                LatLng(_stachus.latitude, _stachus.longitude),
-                            zoom: 15,
-                          ),
+                          initialCameraPosition: _savedInitialCamera ??
+                              CameraPosition(
+                                target: LatLng(
+                                  _stachus.latitude,
+                                  _stachus.longitude,
+                                ),
+                                zoom: 15,
+                              ),
                           // Native MapLibre compass (default on) duplicates [MapCompassControl].
                           compassEnabled: false,
                           trackCameraPosition: true,
@@ -778,11 +941,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _startDrinkingWaterLoad();
                               _startPublicToiletsLoad();
                               _startRepairStationsLoad();
-                              if (!kStoreScreenshots &&
-                                  !_locationPrimeStarted) {
-                                _locationPrimeStarted = true;
-                                unawaited(_primeLocationOnStart(model));
-                              }
                               final position = _latestPosition;
                               if (position != null) {
                                 _pendingPosition = position;
@@ -814,6 +972,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           onCameraIdle: () {
                             _compassIdleTick.value++;
                             _activateCamera(model);
+                            _scheduleCameraPersistence();
                           },
                         ),
                       ),
@@ -954,6 +1113,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
+                          if (energySaving)
+                            Positioned(
+                              top: _mapAttributionExpanded ? 80 : 72,
+                              right: 12,
+                              child: IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppColors.munichWaysOrange,
+                                  foregroundColor: AppColors.heroForeground,
+                                ),
+                                tooltip: context.l10n.isEnglish
+                                    ? 'Energy saving mode active'
+                                    : 'Energie sparen aktiv',
+                                onPressed: () => _showEnergySavingInfo(
+                                  context.read<EnergySavingController>(),
+                                ),
+                                icon: const Icon(Icons.battery_saver),
+                              ),
+                            ),
                           if (model.destination != null ||
                               model.initialRatingsLoadFailed)
                             MapBottomActionButtons(
@@ -1141,12 +1318,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   LocationSettings _locationSettings({
     required bool keepNavigationAliveInBackground,
+    required bool energySaving,
   }) {
     if (defaultTargetPlatform == TargetPlatform.android) {
       return AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 0,
-        intervalDuration: const Duration(seconds: 1),
+        intervalDuration: trackingIntervalForEnergySaving(energySaving),
         foregroundNotificationConfig: keepNavigationAliveInBackground
             ? ForegroundNotificationConfig(
                 notificationTitle: context.l10n.isEnglish
@@ -1176,14 +1354,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       final subscription = _locationSubscription;
       _locationSubscription = null;
       _locationStreamUsesForegroundService = false;
+      _locationStreamUsesEnergySaving = false;
+      _lastAcceptedLocationUpdate = null;
       await subscription?.cancel();
       return;
     }
     final shouldUseForegroundService =
         defaultTargetPlatform == TargetPlatform.android &&
             model.navigationStarted;
+    final energySaving =
+        context.read<EnergySavingController?>()?.effectiveEnabled ?? false;
     if (_locationSubscription != null &&
-        _locationStreamUsesForegroundService == shouldUseForegroundService) {
+        _locationStreamUsesForegroundService == shouldUseForegroundService &&
+        _locationStreamUsesEnergySaving == energySaving) {
       return;
     }
     final previousSubscription = _locationSubscription;
@@ -1193,13 +1376,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (!mounted || generation != _locationStreamGeneration) return;
     }
     _locationStreamUsesForegroundService = shouldUseForegroundService;
+    _locationStreamUsesEnergySaving = energySaving;
+    _lastAcceptedLocationUpdate = null;
 
     _locationSubscription = Geolocator.getPositionStream(
       locationSettings: _locationSettings(
         keepNavigationAliveInBackground: shouldUseForegroundService,
+        energySaving: energySaving,
       ),
     ).listen(
       (position) {
+        final receivedAt = DateTime.now();
+        if (!shouldAcceptTrackingUpdate(
+          energySaving: energySaving,
+          previousUpdate: _lastAcceptedLocationUpdate,
+          currentUpdate: receivedAt,
+        )) {
+          return;
+        }
+        if (!isFreshCachedPosition(position.timestamp, DateTime.now()) ||
+            !isUsableMapPosition(
+              latitude: position.latitude,
+              longitude: position.longitude,
+              accuracy: position.accuracy,
+            )) {
+          return;
+        }
+        _lastAcceptedLocationUpdate = receivedAt;
         _latestPosition = position;
         unawaited(_updateNearbyPoiAvailability(position));
         _pendingPosition = position;
@@ -1240,16 +1443,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   ) async {
     if (!mounted) return;
     _updateMovementHeadingAvailability(position);
-    if (!position.latitude.isFinite ||
-        !position.longitude.isFinite ||
-        !position.accuracy.isFinite ||
-        position.accuracy > 50) {
+    if (!isUsableMapPosition(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy: position.accuracy,
+    )) {
       return;
     }
 
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
-    model.updateWaypointProgress(rawPosition);
-    _refreshVoiceGuidance(model, position);
+    final reliableForNavigation = position.accuracy <= 50;
+    if (reliableForNavigation) {
+      model.updateWaypointProgress(rawPosition);
+      _refreshVoiceGuidance(model, position);
+    }
 
     final controller = _mapController;
     if (!mounted || !_styleLoaded || !_cameraReady || controller == null) {
@@ -1257,7 +1464,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     var displayedPosition = rawPosition;
     final routePoints = model.route.route?.points;
-    if (model.navigationStarted &&
+    if (reliableForNavigation &&
+        model.navigationStarted &&
         routePoints != null &&
         routePoints.length >= 2) {
       final snapDistance = (position.accuracy * 1.5).clamp(15.0, 30.0);
@@ -2453,20 +2661,42 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model, {
     bool permissionCheck = true,
   }) async {
-    await model.onPressLocationBtn(permissionCheck: permissionCheck);
+    await model.onPressLocationBtn(
+      permissionCheck: permissionCheck,
+      followLocation: false,
+    );
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
-    await _updateLocationStream(model);
-    final cachedPosition = await Geolocator.getLastKnownPosition();
-    if (!mounted || cachedPosition == null) return;
-    _latestPosition = cachedPosition;
-    unawaited(_updateNearbyPoiAvailability(cachedPosition));
-    _pendingPosition = cachedPosition;
-    context.read<AppThemeController>().updateLocation(
-          cachedPosition.latitude,
-          cachedPosition.longitude,
+    if (model.locationState != LocationState.NOT_AVAILABLE) {
+      try {
+        final cachedPosition = await Geolocator.getLastKnownPosition();
+        if (mounted &&
+            cachedPosition != null &&
+            isFreshCachedPosition(cachedPosition.timestamp, DateTime.now()) &&
+            isUsableMapPosition(
+              latitude: cachedPosition.latitude,
+              longitude: cachedPosition.longitude,
+              accuracy: cachedPosition.accuracy,
+            )) {
+          setState(() => _latestPosition = cachedPosition);
+          unawaited(_updateNearbyPoiAvailability(cachedPosition));
+          _pendingPosition = cachedPosition;
+          context.read<AppThemeController>().updateLocation(
+                cachedPosition.latitude,
+                cachedPosition.longitude,
+              );
+          unawaited(_drainLocationUpdates(model));
+        }
+      } catch (error, stackTrace) {
+        log.d(
+          'Reading cached startup location failed',
+          error: error,
+          stackTrace: stackTrace,
         );
-    unawaited(_drainLocationUpdates(model));
+      }
+    }
+    if (!mounted) return;
+    await _updateLocationStream(model);
   }
 
   Future<void> _updateNearbyPoiAvailability(Position position) async {
@@ -2513,6 +2743,42 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _safeZoom(double? zoom) {
     if (zoom == null || !zoom.isFinite) return 15;
     return zoom.clamp(3, 22);
+  }
+
+  Future<void> _persistCameraPosition() async {
+    if (!_cameraReady || !mounted) return;
+    try {
+      final position = await _mapController?.queryCameraPosition();
+      if (position == null ||
+          !_isValidCoordinate(
+            position.target.latitude,
+            position.target.longitude,
+          ) ||
+          !position.zoom.isFinite ||
+          !position.bearing.isFinite) {
+        return;
+      }
+      _savedInitialCamera = position;
+      await settingsStore.saveMapCamera(
+        latitude: position.target.latitude,
+        longitude: position.target.longitude,
+        zoom: _safeZoom(position.zoom),
+        bearing: position.bearing,
+      );
+    } catch (error, stackTrace) {
+      log.w(
+        'Saving map camera failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _scheduleCameraPersistence() {
+    _cameraSaveTimer?.cancel();
+    _cameraSaveTimer = Timer(const Duration(seconds: 2), () {
+      unawaited(_persistCameraPosition());
+    });
   }
 
   Future<void> _activateCameraAfterStyle(MapScreenViewModel model) async {
@@ -3851,12 +4117,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 _kDrinkingWaterLayerId,
                 const SymbolLayerProperties(
                   iconImage: _kDrinkingWaterImageId,
-                  iconSize: 1.0,
+                  iconSize: .9,
                   iconAllowOverlap: true,
                   iconIgnorePlacement: false,
                 ),
                 belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
-                minzoom: 13,
+                minzoom: 14,
                 enableInteraction: false,
               );
               _drinkingWaterGeoJsonReady = true;

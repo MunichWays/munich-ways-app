@@ -63,6 +63,20 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveMapCamera({
+    required double latitude,
+    required double longitude,
+    required double zoom,
+    required double bearing,
+  }) {
+    return _enqueueUpdate((current) => current.copyWith(
+          mapLatitude: latitude,
+          mapLongitude: longitude,
+          mapZoom: zoom,
+          mapBearing: bearing,
+        ));
+  }
+
   Future<void> saveLanguage(String? languageCode) {
     return _enqueueUpdate((current) => current.copyWith(
           languageCode: languageCode,
@@ -73,6 +87,12 @@ class SettingsStore {
   Future<void> saveThemeMode(String themeModeName) {
     return _enqueueUpdate((current) => current.copyWith(
           themeModeName: themeModeName,
+        ));
+  }
+
+  Future<void> saveEnergySavingEnabled(bool enabled) {
+    return _enqueueUpdate((current) => current.copyWith(
+          energySavingEnabled: enabled,
         ));
   }
 
@@ -132,6 +152,11 @@ class SettingsData {
     required this.bRouterProfile,
     required this.routeRecommendation,
     this.themeModeName = 'automatic',
+    this.mapLatitude,
+    this.mapLongitude,
+    this.mapZoom,
+    this.mapBearing,
+    this.energySavingEnabled = false,
   });
 
   final bool showZoomButtons;
@@ -147,6 +172,11 @@ class SettingsData {
   final BRouterProfile bRouterProfile;
   final RouteRecommendation? routeRecommendation;
   final String themeModeName;
+  final double? mapLatitude;
+  final double? mapLongitude;
+  final double? mapZoom;
+  final double? mapBearing;
+  final bool energySavingEnabled;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: true,
@@ -158,6 +188,7 @@ class SettingsData {
     bRouterProfile: BRouterProfile.trekking,
     routeRecommendation: RouteRecommendation.standard,
     themeModeName: 'automatic',
+    energySavingEnabled: false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -171,6 +202,11 @@ class SettingsData {
         if (routeRecommendation != null)
           'routeRecommendation': routeRecommendation!.name,
         'themeMode': themeModeName,
+        if (mapLatitude != null) 'mapLatitude': mapLatitude,
+        if (mapLongitude != null) 'mapLongitude': mapLongitude,
+        if (mapZoom != null) 'mapZoom': mapZoom,
+        if (mapBearing != null) 'mapBearing': mapBearing,
+        'energySavingEnabled': energySavingEnabled,
       };
 
   SettingsData copyWith({
@@ -185,6 +221,11 @@ class SettingsData {
     RouteRecommendation? routeRecommendation,
     bool clearRouteRecommendation = false,
     String? themeModeName,
+    double? mapLatitude,
+    double? mapLongitude,
+    double? mapZoom,
+    double? mapBearing,
+    bool? energySavingEnabled,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -200,6 +241,11 @@ class SettingsData {
             ? null
             : routeRecommendation ?? this.routeRecommendation,
         themeModeName: themeModeName ?? this.themeModeName,
+        mapLatitude: mapLatitude ?? this.mapLatitude,
+        mapLongitude: mapLongitude ?? this.mapLongitude,
+        mapZoom: mapZoom ?? this.mapZoom,
+        mapBearing: mapBearing ?? this.mapBearing,
+        energySavingEnabled: energySavingEnabled ?? this.energySavingEnabled,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -241,6 +287,11 @@ class SettingsData {
         'dark' => 'dark',
         _ => 'automatic',
       },
+      mapLatitude: (json['mapLatitude'] as num?)?.toDouble(),
+      mapLongitude: (json['mapLongitude'] as num?)?.toDouble(),
+      mapZoom: (json['mapZoom'] as num?)?.toDouble(),
+      mapBearing: (json['mapBearing'] as num?)?.toDouble(),
+      energySavingEnabled: json['energySavingEnabled'] as bool? ?? false,
     );
   }
 }

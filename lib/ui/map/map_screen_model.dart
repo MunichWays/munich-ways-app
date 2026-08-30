@@ -30,6 +30,7 @@ enum MapSidePanelEdge {
 
 class MapScreenViewModel extends ChangeNotifier {
   static const _ratingsRequestTimeout = Duration(seconds: 6);
+  static const _initialRatingsRequestTimeout = Duration(seconds: 30);
 
   static const _refreshLocationSettings = LocationSettings(
     accuracy: LocationAccuracy.medium,
@@ -319,7 +320,11 @@ class MapScreenViewModel extends ChangeNotifier {
   void startInitialLoad() {
     if (_initialLoadStarted) return;
     _initialLoadStarted = true;
-    unawaited(refreshRadlnetze());
+    // The network/cache enrichment is optional background content. A cold
+    // install may need longer than the regular interactive reload timeout for
+    // TLS setup, download and cache creation, while the map, location and
+    // routing remain usable independently.
+    unawaited(refreshRadlnetze(requestTimeout: _initialRatingsRequestTimeout));
   }
 
   /// Requests a fresh GPS fix so Android's cached last-known location is updated.
@@ -435,7 +440,10 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> onPressLocationBtn({bool permissionCheck = true}) async {
+  Future<void> onPressLocationBtn({
+    bool permissionCheck = true,
+    bool followLocation = true,
+  }) async {
     log.d("onPressLocationBtn");
     bool isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!isLocationServiceEnabled) {
@@ -469,7 +477,12 @@ class MapScreenViewModel extends ChangeNotifier {
           _permissionStreamController.add("");
         } else if (afterRequest == LocationPermission.whileInUse ||
             afterRequest == LocationPermission.always) {
-          await _enterLocationFollowAndCenterCamera();
+          if (followLocation) {
+            await _enterLocationFollowAndCenterCamera();
+          } else {
+            locationState = LocationState.DISPLAY;
+            notifyListeners();
+          }
         } else if (afterRequest == LocationPermission.unableToDetermine) {
           _permissionStreamController.add("");
         }
@@ -479,7 +492,12 @@ class MapScreenViewModel extends ChangeNotifier {
         break;
       case LocationPermission.whileInUse:
       case LocationPermission.always:
-        await _enterLocationFollowAndCenterCamera();
+        if (followLocation) {
+          await _enterLocationFollowAndCenterCamera();
+        } else {
+          locationState = LocationState.DISPLAY;
+          notifyListeners();
+        }
         break;
       case LocationPermission.unableToDetermine:
         _permissionStreamController.add("");

@@ -5,6 +5,7 @@ import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -13,11 +14,22 @@ Future<void> main() async {
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final localeController = AppLocaleController();
   final themeController = AppThemeController();
+  final energySavingController = EnergySavingController();
   await themeController.load();
+  await energySavingController.start();
+  themeController.setEnergySavingEnabled(
+    energySavingController.effectiveEnabled,
+  );
+  energySavingController.addListener(() {
+    themeController.setEnergySavingEnabled(
+      energySavingController.effectiveEnabled,
+    );
+  });
   themeController.startAutomaticUpdates();
   runApp(MunichWaysApp(
     localeController: localeController,
     themeController: themeController,
+    energySavingController: energySavingController,
   ));
   localeController.load();
 }
@@ -27,11 +39,15 @@ class MunichWaysApp extends StatelessWidget {
     super.key,
     AppLocaleController? localeController,
     AppThemeController? themeController,
+    EnergySavingController? energySavingController,
   })  : localeController = localeController ?? AppLocaleController(),
-        themeController = themeController ?? AppThemeController();
+        themeController = themeController ?? AppThemeController(),
+        energySavingController =
+            energySavingController ?? EnergySavingController();
 
   final AppLocaleController localeController;
   final AppThemeController themeController;
+  final EnergySavingController energySavingController;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +55,7 @@ class MunichWaysApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: localeController),
         ChangeNotifierProvider.value(value: themeController),
+        ChangeNotifierProvider.value(value: energySavingController),
       ],
       child: Consumer2<AppLocaleController, AppThemeController>(
         builder: (context, controller, appTheme, _) {
