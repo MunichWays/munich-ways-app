@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// MapLibre zoom expressions for route / Radl-Netz GeoJSON line paint.
@@ -20,6 +21,30 @@ abstract final class MapOverlayLineStyle {
     20,
     12.0,
   ];
+
+  /// MapLibre renders the route less prominently on iOS. Add two logical
+  /// pixels there so the blue shoulders remain visible below yellow rating
+  /// segments, while keeping Android and other platforms unchanged.
+  static const List<Object?> iosRouteLineWidthByZoom = [
+    Expressions.interpolate,
+    ['linear'],
+    [Expressions.zoom],
+    10,
+    14.0,
+    11,
+    13.5,
+    14,
+    12.0,
+    17,
+    12.5,
+    20,
+    14.0,
+  ];
+
+  static List<Object?> routeLineWidthForPlatform(TargetPlatform platform) =>
+      platform == TargetPlatform.iOS
+          ? iosRouteLineWidthByZoom
+          : routeLineWidthByZoom;
 
   static const List<Object?> radlLineWidthByZoom = [
     Expressions.interpolate,

@@ -3660,6 +3660,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final routeColor = Theme.of(context).brightness == Brightness.dark
         ? AppColors.mapRouteColorDark
         : AppColors.mapRouteColor;
+    final routeLineWidth =
+        MapOverlayLineStyle.routeLineWidthForPlatform(defaultTargetPlatform);
     await controller.addGeoJsonSource(_kRouteSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
@@ -3677,7 +3679,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteLayerId,
       LineLayerProperties(
         lineColor: _hexColor(routeColor),
-        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineWidth: routeLineWidth,
         lineCap: 'round',
         lineJoin: 'round',
       ),
@@ -3689,7 +3691,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteConnectorLayerId,
       LineLayerProperties(
         lineColor: _hexColor(routeColor),
-        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineWidth: routeLineWidth,
         lineCap: 'round',
         lineJoin: 'round',
         lineDasharray: const [1.5, 1.5],
