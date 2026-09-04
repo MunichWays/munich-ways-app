@@ -31,6 +31,7 @@ import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_home_destination_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_selection_panel.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
@@ -1164,31 +1165,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               }),
                               navigationBar: model.destination == null
                                   ? null
-                                  : MapNavigationHeaderBar(
-                                      model: model,
-                                      onRefreshRoute: () =>
-                                          _refreshRouteAndResumeNavigation(
-                                              model),
-                                      onEditRoute: () =>
-                                          _openRoutePlanner(model),
-                                      onStartNavigation: () =>
-                                          _startNavigation(model),
-                                      onToggleVoiceGuidance: () =>
-                                          _toggleVoiceGuidance(
-                                        model,
-                                        english: context.l10n.isEnglish,
-                                      ),
-                                      onShowInfo: () =>
-                                          showMapInfoSheet(context),
-                                      onShowSettings: () =>
-                                          showMapSettingsSheet(
-                                        context,
-                                        model,
-                                        onReloadMapData: () =>
-                                            _reloadMapData(model),
-                                      ),
-                                      onEndRoute: () => _endRoute(model),
-                                      nextManeuver: _nextManeuver,
+                                  : Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        MapRouteComfortSummary(model: model),
+                                        MapNavigationHeaderBar(
+                                          model: model,
+                                          onRefreshRoute: () =>
+                                              _refreshRouteAndResumeNavigation(
+                                                  model),
+                                          onEditRoute: () =>
+                                              _openRoutePlanner(model),
+                                          onStartNavigation: () =>
+                                              _startNavigation(model),
+                                          onToggleVoiceGuidance: () =>
+                                              _toggleVoiceGuidance(
+                                            model,
+                                            english: context.l10n.isEnglish,
+                                          ),
+                                          onShowInfo: () =>
+                                              showMapInfoSheet(context),
+                                          onShowSettings: () =>
+                                              showMapSettingsSheet(
+                                            context,
+                                            model,
+                                            onReloadMapData: () =>
+                                                _reloadMapData(model),
+                                          ),
+                                          onEndRoute: () => _endRoute(model),
+                                          nextManeuver: _nextManeuver,
+                                        ),
+                                      ],
                                     ),
                             ),
                           if (_initialContentReady &&
@@ -2853,18 +2860,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     BuildContext context,
     MapScreenViewModel model,
   ) {
+    final comfortSummaryOffset = showsRouteComfortSummary(model)
+        ? routeComfortSummaryAdditionalBottomOffset
+        : 0.0;
     // The navigation header always contains a guidance row. If there is no
     // maneuver, it shows "Karte beachten" instead, with the same height.
     final desiredOffset = model.destination == null
         ? 160.0
         : model.navigationStarted
             ? 144.0
-            : 128.0;
+            : 128.0 + comfortSummaryOffset;
     if (MediaQuery.orientationOf(context) == Orientation.landscape) {
       // Landscape has much less vertical room. Capping the offset keeps zoom
       // and compass controls on-screen while the width-limited route panel
       // remains clear below them.
-      return min(desiredOffset, 80.0);
+      return min(desiredOffset, 80.0 + comfortSummaryOffset);
     }
     return desiredOffset;
   }
