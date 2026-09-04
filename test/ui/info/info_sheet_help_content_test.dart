@@ -24,6 +24,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Radl-Komfort-Index'), findsOneWidget);
+    expect(find.textContaining('mindestens 70 Prozent'), findsOneWidget);
+    expect(find.text('Erläuterung'), findsOneWidget);
     expect(find.text('Farben (MunichWays-Bewertung)'), findsOneWidget);
     expect(find.textContaining('Plan / Lücke'), findsNothing);
     expect(find.textContaining('RadlVorrang-Netz'), findsNothing);

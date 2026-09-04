@@ -40,6 +40,9 @@ class RadlNaviApi implements RoutingProvider {
       'alternatives': 'false',
       'steps': 'true',
       'annotations': 'false',
+      // The backend calculates this from its MunichWays ratings. Keeping the
+      // calculation server-side gives web and app identical results.
+      'comfort': 'true',
       // GeoJSON preserves the backend coordinates without encoded-polyline
       // rounding, which otherwise becomes visible beside rating lines at high
       // navigation zoom levels.
@@ -117,10 +120,63 @@ class RadlNaviApi implements RoutingProvider {
           duration.toDouble(),
           maneuvers: spokenManeuvers,
           destinationConnector: access.connector,
+          comfort: _parseComfort(firstRoute['comfort']),
         );
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
+  }
+
+  RouteComfort? _parseComfort(Object? value) {
+    if (value is! Map<String, dynamic>) return null;
+
+    final index = _percentage(value['index'], nullable: true);
+    final coverage = _percentage(value['coverage']);
+    final sufficientCoverage = value['sufficientCoverage'];
+    final rawDistribution = value['distribution'];
+    if (coverage == null ||
+        sufficientCoverage is! bool ||
+        rawDistribution is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final black = _percentage(rawDistribution['black']);
+    final red = _percentage(rawDistribution['red']);
+    final yellow = _percentage(rawDistribution['yellow']);
+    final green = _percentage(rawDistribution['green']);
+    final unrated = _percentage(rawDistribution['unrated']);
+    if (black == null ||
+        red == null ||
+        yellow == null ||
+        green == null ||
+        unrated == null ||
+        black + red + yellow + green + unrated != 100 ||
+        (sufficientCoverage && index == null)) {
+      return null;
+    }
+
+    return RouteComfort(
+      index: index,
+      coverage: coverage,
+      sufficientCoverage: sufficientCoverage,
+      distribution: RouteComfortDistribution(
+        black: black,
+        red: red,
+        yellow: yellow,
+        green: green,
+        unrated: unrated,
+      ),
+    );
+  }
+
+  int? _percentage(Object? value, {bool nullable = false}) {
+    if (nullable && value == null) return null;
+    if (value is! num || !value.isFinite) return null;
+    final integer = value.toInt();
+    if (value.toDouble() != integer || integer < 0 || integer > 100) {
+      return null;
+    }
+    return integer;
   }
 
   List<LatLng> _parseGeometry(Object? geometry) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/info/info_sheet_legend_row.dart';
 import 'package:munich_ways/ui/theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Map usage copy + color legend for [InfoSheet].
 class InfoSheetHelpContent extends StatelessWidget {
@@ -15,6 +16,36 @@ class InfoSheetHelpContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Radl-Komfort-Index',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.isEnglish
+                  ? 'The value ranges from 0 to 100. The higher it is, the more comfortable the route sections rated by MunichWays are. Unrated sections do not affect the value. The index is shown only when at least 70 percent of the route is rated.'
+                  : 'Der Wert reicht von 0 bis 100. Je höher er ist, desto komfortabler sind die von MunichWays bewerteten Abschnitte der Route. Nicht bewertete Abschnitte beeinflussen den Wert nicht. Der Index wird erst angezeigt, wenn mindestens 70 Prozent der Route bewertet sind.',
+            ),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(
+                  'https://www.munichways.de/berwertungskriterien-radwege/#radl-komfort-index',
+                ),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(
+                context.l10n.isEnglish ? 'Explanation' : 'Erläuterung',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 8,

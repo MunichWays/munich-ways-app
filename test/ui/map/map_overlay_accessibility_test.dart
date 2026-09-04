@@ -7,6 +7,7 @@ import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
@@ -449,6 +450,219 @@ void main() {
       tester.getBottomLeft(distance).dy,
       lessThanOrEqualTo(tester.getTopLeft(close).dy),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows backend comfort distribution before navigation starts',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          comfort: const RouteComfort(
+            index: 78,
+            coverage: 82,
+            sufficientCoverage: true,
+            distribution: RouteComfortDistribution(
+              black: 2,
+              red: 7,
+              yellow: 18,
+              green: 68,
+              unrated: 5,
+            ),
+          ),
+        ),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(2),
+          ),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: MapRouteComfortSummary(model: model),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Radl-Komfort'), findsOneWidget);
+    expect(find.text('78/100'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        'Routenbewertung: 2 Prozent sehr stressig, 7 Prozent stressig, '
+        '18 Prozent durchschnittlich, 68 Prozent komfortabel, '
+        '5 Prozent nicht bewertet',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byTooltip('Erläuterung zum Radl-Komfort-Index'),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('comfort-segment-green'))).width,
+      greaterThan(
+        tester
+            .getSize(find.byKey(const ValueKey('comfort-segment-yellow')))
+            .width,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Erläuterung zum Radl-Komfort-Index'));
+    await tester.pumpAndSettle();
+    expect(find.text('Radl-Komfort-Index'), findsOneWidget);
+    expect(find.text('Farben dieser Route'), findsOneWidget);
+    expect(find.text('Sehr stressig'), findsOneWidget);
+    expect(find.text('Stressig'), findsOneWidget);
+    expect(find.text('Durchschnittlich'), findsOneWidget);
+    expect(find.text('Komfortabel'), findsOneWidget);
+    expect(find.text('Nicht bewertet'), findsOneWidget);
+    expect(find.text('5 %'), findsOneWidget);
+    expect(find.textContaining('Braune, nicht bewertete'), findsOneWidget);
+    expect(find.text('Weitere Erläuterungen'), findsOneWidget);
+  });
+
+  testWidgets('shows no index when coverage is insufficient and hides on start',
+      (tester) async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          comfort: const RouteComfort(
+            index: null,
+            coverage: 69,
+            sufficientCoverage: false,
+            distribution: RouteComfortDistribution(
+              black: 2,
+              red: 7,
+              yellow: 18,
+              green: 42,
+              unrated: 31,
+            ),
+          ),
+        ),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapRouteComfortSummary(model: model),
+        ),
+      ),
+    );
+
+    expect(find.text('69 % bewertet'), findsOneWidget);
+    expect(find.textContaining('/100'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapRouteComfortSummary(model: model),
+        ),
+      ),
+    );
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
+  });
+
+  testWidgets('comfort summary stays clear of the location control',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final bearing = ValueNotifier<double>(0);
+    final idle = ValueNotifier<int>(0);
+    addTearDown(bearing.dispose);
+    addTearDown(idle.dispose);
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          comfort: const RouteComfort(
+            index: 78,
+            coverage: 82,
+            sufficientCoverage: true,
+            distribution: RouteComfortDistribution(
+              black: 2,
+              red: 7,
+              yellow: 18,
+              green: 68,
+              unrated: 5,
+            ),
+          ),
+        ),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapSideActionButtons(
+                model: model,
+                mapController: null,
+                mapBearingDegrees: bearing,
+                compassIdleTick: idle,
+                additionalBottomOffset:
+                    128 + routeComfortSummaryAdditionalBottomOffset,
+                onNorthUp: () async {},
+                queryMapBearingDegrees: () async => 0,
+                onPressLocation: () {},
+              ),
+              MapBottomActionButtons(
+                model: model,
+                showSearch: false,
+                searchCenterProvider: () => null,
+                onPlanRoute: () async {},
+                onSelectOnMap: () {},
+                onPressLocation: () {},
+                navigationBar: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MapRouteComfortSummary(model: model),
+                    MapNavigationHeaderBar(
+                      model: model,
+                      onRefreshRoute: () async {},
+                      onEditRoute: () {},
+                      onStartNavigation: () async {},
+                      onToggleVoiceGuidance: () {},
+                      onEndRoute: () {},
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final location = find.bySemanticsLabel('Standort');
+    final summary = find.byKey(const ValueKey('route-comfort-summary'));
+    expect(
+        tester.getRect(location).bottom, lessThan(tester.getRect(summary).top));
     expect(tester.takeException(), isNull);
   });
 

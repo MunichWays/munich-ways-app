@@ -1,0 +1,53 @@
+Categories:
+  - Navigation
+License: Apache-2.0
+WebSite: https://www.munichways.de/
+SourceCode: https://github.com/MunichWays/munich-ways-app
+IssueTracker: https://github.com/MunichWays/munich-ways-app/issues
+Changelog: https://github.com/MunichWays/munich-ways-app/blob/master/CHANGELOG.md
+
+AutoName: MunichWays
+Summary: Munich's cycling network and bicycle navigation
+Description: |-
+  MunichWays displays the Munich cycling priority network and rates routes
+  according to how comfortable they are to cycle. The app also provides
+  bicycle navigation, points of interest and an offline copy of the network.
+
+  The interface is currently in German and focuses on Munich and the
+  surrounding region.
+
+RepoType: git
+Repo: https://github.com/MunichWays/munich-ways-app.git
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Optional map imagery and address search can use proprietary network services.
+
+Builds:
+  - versionName: 3.1.22
+    versionCode: 62
+    commit: 6365084657114c68aabeded1962791592fdae3c8
+    output: build/app/outputs/flutter-apk/app-release.apk
+    srclibs:
+      - flutter@stable
+    rm:
+      - ios
+    prebuild:
+      - git -C $$flutter$$ checkout -f 3.44.7
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get
+    scanignore:
+      - $$flutter$$/bin/cache
+    scandelete:
+      - $$flutter$$
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --dart-define=GEOAPIFY_API_KEY=
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
+CurrentVersion: 3.1.22
+CurrentVersionCode: 62

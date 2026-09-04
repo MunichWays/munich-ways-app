@@ -7,6 +7,7 @@ class CycleRoute {
   List<RouteManeuver> maneuvers;
   bool supportsVoiceGuidance;
   List<LatLng> destinationConnector;
+  RouteComfort? comfort;
 
   CycleRoute(
     this.points,
@@ -15,7 +16,42 @@ class CycleRoute {
     this.maneuvers = const [],
     this.supportsVoiceGuidance = true,
     this.destinationConnector = const [],
+    this.comfort,
   });
+}
+
+/// Radl-Komfort metadata calculated by the RadlNavi backend.
+///
+/// The app deliberately stores and displays these values without calculating
+/// an index from the route geometry or local rating data.
+class RouteComfort {
+  const RouteComfort({
+    required this.index,
+    required this.coverage,
+    required this.sufficientCoverage,
+    required this.distribution,
+  });
+
+  final int? index;
+  final int coverage;
+  final bool sufficientCoverage;
+  final RouteComfortDistribution distribution;
+}
+
+class RouteComfortDistribution {
+  const RouteComfortDistribution({
+    required this.black,
+    required this.red,
+    required this.yellow,
+    required this.green,
+    required this.unrated,
+  });
+
+  final int black;
+  final int red;
+  final int yellow;
+  final int green;
+  final int unrated;
 }
 
 class RouteManeuver {
