@@ -22,6 +22,7 @@ class AppColors {
   static const mapYellow = Color(0xffffd000);
   static const mapRed = Color(0xfff44336);
   static const mapGrey = Color(0xff9c9d9f);
+  static const mapBrown = Color(0xFF8D6E63);
   static const pavedWay = Color(0xFF4F98A5);
   static const pavedWayDark = Color(0xFF5FABB5);
   static const minorStreet = Color(0xFFB8D3C7);

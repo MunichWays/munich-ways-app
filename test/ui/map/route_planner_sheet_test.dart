@@ -5,7 +5,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/saved_route.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -24,6 +26,62 @@ class _RoutesStore extends SavedRoutesStore {
 }
 
 void main() {
+  testWidgets('shows current comfort while navigating and hides it after edit',
+      (tester) async {
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.3, 11.7))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          comfort: const RouteComfort(
+            index: 78,
+            coverage: 82,
+            sufficientCoverage: true,
+            distribution: RouteComfortDistribution(
+              black: 2,
+              red: 7,
+              yellow: 18,
+              green: 68,
+              unrated: 5,
+            ),
+          ),
+        ),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(context, model: model),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsOneWidget);
+    expect(find.text('78/100'), findsOneWidget);
+
+    final destinationMenu = find.byTooltip('Mehr Optionen').last;
+    await tester.ensureVisible(destinationMenu);
+    await tester.tap(destinationMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Löschen'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
+    expect(find.text('78/100'), findsNothing);
+  });
+
   testWidgets('reuses and overwrites the selected saved route name',
       (tester) async {
     final original = SavedRoute(

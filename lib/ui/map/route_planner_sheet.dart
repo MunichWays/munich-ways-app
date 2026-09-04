@@ -4,7 +4,10 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/saved_route.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
+import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
@@ -117,6 +120,7 @@ class _RoutePlannerSheet extends StatefulWidget {
 
 class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   late List<_RoutePoint> _points;
+  bool _routePlanEdited = false;
 
   Place? get _start => _points.first.place;
   Place? get _destination => _points.last.place;
@@ -126,6 +130,15 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       ];
 
   bool get _english => context.l10n.isEnglish;
+
+  RouteComfort? get _routeComfort {
+    if (_routePlanEdited ||
+        widget.initialPlan != null ||
+        widget.model.route.state != MapRouteState.SHOWN) {
+      return null;
+    }
+    return widget.model.route.route?.comfort;
+  }
 
   @override
   void initState() {
@@ -173,12 +186,18 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       return;
     }
     if (result is! Place) return;
-    setState(() => _points[index].place = result);
+    setState(() {
+      _points[index].place = result;
+      _routePlanEdited = true;
+    });
   }
 
   Future<void> _addStop() async {
     final index = _points.length - 1;
-    setState(() => _points.insert(index, _RoutePoint(null)));
+    setState(() {
+      _points.insert(index, _RoutePoint(null));
+      _routePlanEdited = true;
+    });
     if (_points.length - 2 >= 2 && widget.sheetController.isAttached) {
       await widget.sheetController.animateTo(
         1,
@@ -192,6 +211,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   void _deletePoint(int index) {
     setState(() {
+      _routePlanEdited = true;
       if (index == 0 || index == _points.length - 1) {
         _points[index].place = null;
       } else {
@@ -202,6 +222,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   void _reorderPoint(int oldIndex, int newIndex) {
     setState(() {
+      _routePlanEdited = true;
       final point = _points.removeAt(oldIndex);
       _points.insert(newIndex, point);
     });
@@ -393,6 +414,10 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
               ),
             ),
             const SizedBox(height: 8),
+            if (_routeComfort case final comfort?) ...[
+              MapRouteComfortCard(comfort: comfort),
+              const SizedBox(height: 12),
+            ],
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
