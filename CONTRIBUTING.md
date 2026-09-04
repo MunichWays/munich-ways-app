@@ -99,6 +99,69 @@ or DevTools are required. The Android log buffer approach also supports a Debug
 road test, but a future bounded in-app diagnostic log will be more reliable for
 long rides or very noisy devices.
 
+## Navigation guidance user story
+
+As a rider, I want navigation guidance to recover from uncertain GPS and route
+matching without unnecessary recalculations, so that deliberate safety
+fallbacks remain useful and a stale fallback cannot block later directions.
+
+The complete expected behavior is:
+
+- Navigation start has its own 25 metre gate. While the rider is inside that
+  start area, the app asks them to follow the map and neither announces an
+  initial turn nor starts stalled-guidance recovery. The gate measures direct
+  displacement from the start fix in any direction; riding away from the route
+  therefore opens it and hands control to regular off-route detection.
+- Once the start gate opens, the current maneuver is announced when voice
+  guidance is enabled. Enabling voice guidance later repeats the currently
+  relevant maneuver when one is available; otherwise it confirms that voice
+  guidance was enabled.
+- Normal route matching shows and announces approach, turn, intermediate-stop,
+  and final-destination guidance once at the appropriate progress thresholds.
+- A brief departure from the route marks guidance recovery as pending. Re-entry
+  on any valid part of the route re-anchors maneuver progress and resumes normal
+  guidance without requiring a network recalculation.
+- A genuinely off-route rider is handled by the existing movement-aware flow:
+  delayed visual status, delayed spoken warning, and automatic recalculation
+  after 30 seconds when enabled. Stationary riders and isolated inaccurate fixes
+  must not trigger this flow.
+- Nearby route levels, ramps, loops, or parallel segments can make the current
+  route position ambiguous. The app shows `Position unclear - watch map`,
+  suppresses unsafe spoken turns, and continues conservative progress on the
+  earlier continuity candidate.
+- A route re-entry can also leave guidance without a current maneuver even
+  though the RadlNavi route supports voice guidance. The navigation header uses
+  `Follow route on map` for this missing-instruction state.
+- Only a continuous ambiguous-position or missing-instruction state is
+  recoverable by the stalled-guidance watchdog. It requires both 30 seconds and
+  at least 25 metres of accuracy-aware confirmed movement while the rider is
+  still moving. A direct transition between those two recoverable reasons is
+  one continuous stall and must not restart the watchdog.
+- When that watchdog opens, guidance first re-anchors locally at the current
+  position. If this produces a concrete maneuver, no route request is made. A
+  missing instruction alone never causes a network request because it can be
+  legitimate on the final straight. Only if the position remains explicitly
+  ambiguous does the app use the existing automatic route recalculation flow
+  when that setting is enabled.
+- A known overlapping outbound/return section deliberately shows `Watch the
+  map` as `Outbound/return overlap - watch map` while route progress continues.
+  It never starts stalled-guidance recovery or a recalculation merely because
+  the overlap lasts longer than 30 seconds.
+- An unsupported guidance route, interrupted map tracking, and the
+  navigation-start fallback are separate map-only states. They never start
+  stalled-guidance recovery based on their displayed text.
+- A failed recalculation reports the failure and leaves manual recalculation
+  available. Automatic recalculation retains the maximum of three consecutive
+  attempts. Manual recalculation resumes suspended automation; confirmed
+  on-route travel resets the attempt count.
+- Voice guidance and automatic recalculation remain independent settings.
+  Disabling automatic recalculation still permits local guidance re-anchoring,
+  but it prevents the stalled-guidance watchdog from making a network route
+  request.
+- Ending navigation, selecting a new destination, receiving a replacement
+  route, or starting navigation again resets pending stalled-guidance recovery
+  along with the other navigation timers and speech state.
+
 ## Regression checklist
 
 Select all scenarios relevant to the changed flow. Critical startup or map

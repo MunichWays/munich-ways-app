@@ -288,6 +288,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     announceOffRouteWarning: false,
   );
   final NavigationStartGate _navigationStartGate = NavigationStartGate();
+  final StalledGuidanceRecoveryGate _stalledGuidanceRecoveryGate =
+      StalledGuidanceRecoveryGate();
+  VoiceGuidanceStallReason? _activeGuidanceStallReason;
   VoiceGuidanceDisplay? _nextManeuver;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
@@ -478,6 +481,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _overlaySyncRetryTimer?.cancel();
     _cameraSaveTimer?.cancel();
     _voiceSignalTimer?.cancel();
+    _resetStalledGuidanceRecovery();
     _cancelAutomaticRerouting(resetAttempts: false);
     _stopVoiceGuidance();
     _mapBearingDegrees.dispose();
@@ -585,10 +589,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final enabled = !model.voiceGuidanceEnabled;
     model.setVoiceGuidanceEnabled(enabled);
     if (enabled) {
-      unawaited(_speak(
-        english ? 'Voice guidance enabled.' : 'Sprachansagen aktiviert.',
-        english: english,
-      ));
+      final position = _latestPosition;
+      final announcedNextManeuver = position != null &&
+          position.latitude.isFinite &&
+          position.longitude.isFinite &&
+          position.accuracy.isFinite &&
+          position.accuracy <= 50 &&
+          _announceCurrentGuidance(
+            model,
+            latlong2.LatLng(position.latitude, position.longitude),
+            position.speed,
+            repeat: true,
+          );
+      if (!announcedNextManeuver) {
+        unawaited(_speak(
+          english ? 'Voice guidance enabled.' : 'Sprachansagen aktiviert.',
+          english: english,
+        ));
+      }
       _armVoiceSignalWarning(model);
     } else {
       _voiceSignalTimer?.cancel();
@@ -599,6 +617,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _endRoute(MapScreenViewModel model) {
     _voiceGuidance.reset();
     _navigationStartGate.reset();
+    _resetStalledGuidanceRecovery();
     _initialGuidanceAnnouncementPending = false;
     _voiceSignalTimer?.cancel();
     _cancelAutomaticRerouting();
@@ -684,6 +703,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.destinationStream.listen((Place place) {
           _voiceGuidance.reset();
           _navigationStartGate.reset();
+          _resetStalledGuidanceRecovery();
           _initialGuidanceAnnouncementPending = false;
           _cancelAutomaticRerouting();
           if (_nextManeuver != null && mounted) {
@@ -1631,27 +1651,48 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!model.navigationStarted) {
       _navigationStartGate.reset();
     }
-    _voiceGuidance.setRoute(
+    final guidanceRouteChanged = _voiceGuidance.setRoute(
       model.navigationStarted ? model.route.route : null,
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
-    final routeGuidanceDisplay = model.navigationStarted
+    if (guidanceRouteChanged) {
+      _resetStalledGuidanceRecovery();
+    }
+    var routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
             rawPosition,
             english: context.l10n.isEnglish,
             speedMetersPerSecond: position.speed,
           )
         : null;
+    final startGateWasWaiting = model.navigationStarted &&
+        !_voiceGuidance.finalDestinationReached &&
+        !_navigationStartGate.released;
     final waitingForInitialDirection = model.navigationStarted &&
         !_voiceGuidance.finalDestinationReached &&
         _navigationStartGate.isWaiting(rawPosition);
+    if (startGateWasWaiting && !waitingForInitialDirection) {
+      log.i(
+        'Navigation start gate released: '
+        '${_navigationStartGate.distanceFromStartMeters.toStringAsFixed(1)} m, '
+        'accuracy ${position.accuracy.toStringAsFixed(1)} m, '
+        'speed ${position.speed.toStringAsFixed(1)} m/s',
+      );
+    }
     if (waitingForInitialDirection) {
+      _resetStalledGuidanceRecovery();
       if (_offRouteEpisodeActive || _reroutingDisplay != null) {
         _cancelAutomaticRerouting(resetAttempts: false);
       }
     } else {
       _updateAutomaticRerouting(model, rawPosition, position);
+      routeGuidanceDisplay = _recoverPersistentGuidanceStall(
+        model,
+        position,
+        rawPosition,
+        routeGuidanceDisplay,
+      );
     }
     if (!waitingForInitialDirection && _initialGuidanceAnnouncementPending) {
       _initialGuidanceAnnouncementPending = false;
@@ -1664,8 +1705,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ? routeGuidanceDisplay
             : waitingForInitialDirection
                 ? VoiceGuidanceDisplay(
-                    text: context.l10n.followRouteOnMap,
+                    text: context.l10n.navigationStartGuidance,
                     type: 'map',
+                    mapReason: VoiceGuidanceMapReason.navigationStart,
                   )
                 : _reroutingDisplay ?? routeGuidanceDisplay
         : null;
@@ -1695,26 +1737,110 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _announceCurrentGuidance(
+  VoiceGuidanceDisplay? _recoverPersistentGuidanceStall(
+    MapScreenViewModel model,
+    Position position,
+    latlong2.LatLng rawPosition,
+    VoiceGuidanceDisplay? display,
+  ) {
+    final detectedStallReason = recoverableGuidanceStall(
+      display,
+      voiceGuidanceAvailable: model.voiceGuidanceAvailable,
+    );
+    final stallReason = model.navigationStarted &&
+            model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP &&
+            !_offRouteEpisodeActive &&
+            _reroutingDisplay == null
+        ? detectedStallReason
+        : null;
+    if (stallReason != _activeGuidanceStallReason) {
+      log.i(
+        stallReason == null
+            ? 'Guidance stall ended'
+            : 'Guidance stall started: ${stallReason.name}',
+      );
+      _activeGuidanceStallReason = stallReason;
+    }
+    final shouldRecover = _stalledGuidanceRecoveryGate.update(
+      stalled: stallReason != null,
+      position: rawPosition,
+      horizontalAccuracyMeters: position.accuracy,
+      moving: !_gpsStationary,
+    );
+    if (!shouldRecover) return display;
+
+    log.i(
+      'Recovering stalled guidance after persistent map-only fallback',
+    );
+
+    final reanchored = _voiceGuidance.resumeAt(
+      rawPosition,
+      horizontalAccuracyMeters: position.accuracy,
+    );
+    if (!reanchored) {
+      log.i('Local stalled-guidance recovery could not re-anchor');
+      return display;
+    }
+
+    final recoveredDisplay = _voiceGuidance.display(
+      rawPosition,
+      english: context.l10n.isEnglish,
+      speedMetersPerSecond: position.speed,
+    );
+    final remainsAmbiguous =
+        recoveredDisplay?.mapReason == VoiceGuidanceMapReason.ambiguousPosition;
+    if (recoveredDisplay != null && !remainsAmbiguous) {
+      log.i('Stalled guidance recovered locally');
+      return recoveredDisplay;
+    }
+    if (recoveredDisplay == null) {
+      log.i('Guidance still has no current maneuver after local re-anchor');
+      return null;
+    }
+
+    if (model.automaticReroutingEnabled &&
+        !_automaticReroutingSuspended &&
+        !_automaticRerouteCommitted) {
+      log.i('Guidance remains ambiguous; recalculating route');
+      _automaticRerouteCommitted = true;
+      unawaited(_performAutomaticReroute(model));
+    } else {
+      log.i(
+        'Guidance remains ambiguous; automatic recalculation unavailable',
+      );
+    }
+    return recoveredDisplay;
+  }
+
+  void _resetStalledGuidanceRecovery() {
+    _stalledGuidanceRecoveryGate.reset();
+    _activeGuidanceStallReason = null;
+  }
+
+  bool _announceCurrentGuidance(
     MapScreenViewModel model,
     latlong2.LatLng position,
-    double speedMetersPerSecond,
-  ) {
+    double speedMetersPerSecond, {
+    bool repeat = false,
+  }) {
     if (!mounted ||
         !model.navigationStarted ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
-      return;
+      return false;
     }
     final english = context.l10n.isEnglish;
     final instruction = _voiceGuidance.announceCurrentManeuver(
       position,
       english: english,
       speedMetersPerSecond: speedMetersPerSecond,
+      repeat: repeat,
     );
     if (instruction != null) {
       unawaited(_speak(instruction, english: english));
+      return true;
     }
+    return false;
   }
 
   void _updateAutomaticRerouting(
@@ -2070,6 +2196,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
     _offRouteCameraZoomedOut = false;
+    _resetStalledGuidanceRecovery();
     final initialPosition = _latestPosition;
     _navigationStartGate.reset(
       initialPosition == null ||
@@ -2864,7 +2991,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         ? routeComfortSummaryAdditionalBottomOffset
         : 0.0;
     // The navigation header always contains a guidance row. If there is no
-    // maneuver, it shows "Karte beachten" instead, with the same height.
+    // maneuver, it shows a map-only fallback instead, with the same height.
     final desiredOffset = model.destination == null
         ? 160.0
         : model.navigationStarted
@@ -3533,6 +3660,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final routeColor = Theme.of(context).brightness == Brightness.dark
         ? AppColors.mapRouteColorDark
         : AppColors.mapRouteColor;
+    final routeLineWidth =
+        MapOverlayLineStyle.routeLineWidthForPlatform(defaultTargetPlatform);
     await controller.addGeoJsonSource(_kRouteSourceId, {
       'type': 'FeatureCollection',
       'features': <dynamic>[],
@@ -3550,7 +3679,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteLayerId,
       LineLayerProperties(
         lineColor: _hexColor(routeColor),
-        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineWidth: routeLineWidth,
         lineCap: 'round',
         lineJoin: 'round',
       ),
@@ -3562,7 +3691,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteConnectorLayerId,
       LineLayerProperties(
         lineColor: _hexColor(routeColor),
-        lineWidth: MapOverlayLineStyle.routeLineWidthByZoom,
+        lineWidth: routeLineWidth,
         lineCap: 'round',
         lineJoin: 'round',
         lineDasharray: const [1.5, 1.5],

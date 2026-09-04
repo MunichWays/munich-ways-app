@@ -700,7 +700,7 @@ void main() {
     // This is a passive status hint, not an action. Keep it text-only so it
     // cannot be mistaken for one of the tappable map controls.
     expect(find.byIcon(Icons.map_outlined), findsNothing);
-    expect(find.text('Auf Karte achten'), findsOneWidget);
+    expect(find.text('Route auf Karte folgen'), findsOneWidget);
   });
 }
 
