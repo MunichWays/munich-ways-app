@@ -31,6 +31,8 @@ void main() {
       gate.isWaiting(const LatLng(48.14025, 11.5700)),
       isFalse,
     );
+    expect(gate.released, isTrue);
+    expect(gate.distanceFromStartMeters, greaterThanOrEqualTo(25));
   });
 
   test('stays released after the start distance was reached', () {
@@ -41,6 +43,251 @@ void main() {
       isFalse,
     );
     expect(gate.isWaiting(start), isFalse);
+  });
+
+  test('only ambiguous or supported missing guidance is recoverable', () {
+    expect(
+      recoverableGuidanceStall(
+        null,
+        voiceGuidanceAvailable: true,
+      ),
+      VoiceGuidanceStallReason.missingInstruction,
+    );
+    expect(
+      recoverableGuidanceStall(
+        null,
+        voiceGuidanceAvailable: false,
+      ),
+      isNull,
+    );
+    expect(
+      recoverableGuidanceStall(
+        const VoiceGuidanceDisplay(
+          text: 'Auf Karte achten',
+          type: 'map',
+          mapReason: VoiceGuidanceMapReason.ambiguousPosition,
+        ),
+        voiceGuidanceAvailable: true,
+      ),
+      VoiceGuidanceStallReason.ambiguousPosition,
+    );
+    expect(
+      recoverableGuidanceStall(
+        const VoiceGuidanceDisplay(
+          text: 'Auf Karte achten',
+          type: 'map',
+          mapReason: VoiceGuidanceMapReason.overlappingRoute,
+        ),
+        voiceGuidanceAvailable: true,
+      ),
+      isNull,
+    );
+  });
+
+  test('recovers only after a persistent stall and confirmed movement', () {
+    final gate = StalledGuidanceRecoveryGate();
+    final startedAt = DateTime(2026, 9, 4, 12);
+
+    expect(
+      gate.update(
+        stalled: true,
+        position: start,
+        horizontalAccuracyMeters: 5,
+        moving: false,
+        now: startedAt,
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14010, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 10)),
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14020, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 20)),
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14030, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 30)),
+      ),
+      isTrue,
+    );
+  });
+
+  test('does not recover from elapsed time without movement', () {
+    final gate = StalledGuidanceRecoveryGate();
+    final startedAt = DateTime(2026, 9, 4, 12);
+
+    expect(
+      gate.update(
+        stalled: true,
+        position: start,
+        horizontalAccuracyMeters: 5,
+        moving: false,
+        now: startedAt,
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: start,
+        horizontalAccuracyMeters: 5,
+        moving: false,
+        now: startedAt.add(const Duration(minutes: 2)),
+      ),
+      isFalse,
+    );
+  });
+
+  test('ending a guidance stall resets recovery time and movement', () {
+    final gate = StalledGuidanceRecoveryGate();
+    final startedAt = DateTime(2026, 9, 4, 12);
+
+    gate.update(
+      stalled: true,
+      position: start,
+      horizontalAccuracyMeters: 5,
+      moving: false,
+      now: startedAt,
+    );
+    gate.update(
+      stalled: true,
+      position: const LatLng(48.14030, 11.5700),
+      horizontalAccuracyMeters: 5,
+      moving: true,
+      now: startedAt.add(const Duration(seconds: 20)),
+    );
+
+    expect(
+      gate.update(
+        stalled: false,
+        position: const LatLng(48.14030, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 31)),
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14060, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 32)),
+      ),
+      isFalse,
+    );
+  });
+
+  test(
+      'Donnersberger Bridge regression: a recoverable reason change keeps the stall continuous',
+      () {
+    const reentry = LatLng(48.1430, 11.5700);
+    const laterTurn = LatLng(48.1435, 11.5700);
+    const routeEnd = LatLng(48.1440, 11.5700);
+    const ambiguousDisplay = VoiceGuidanceDisplay(
+      text: 'Position unklar - Karte beachten',
+      type: 'map',
+      mapReason: VoiceGuidanceMapReason.ambiguousPosition,
+    );
+    final route = CycleRoute(
+      const [start, reentry, laterTurn, routeEnd],
+      450,
+      100,
+      maneuvers: const [
+        RouteManeuver(
+          location: laterTurn,
+          type: 'turn',
+          modifier: 'left',
+        ),
+      ],
+    );
+    final guidance = VoiceGuidance()..setRoute(route);
+    final gate = StalledGuidanceRecoveryGate();
+    final startedAt = DateTime(2026, 9, 4, 21, 41, 32);
+
+    // The road-test sequence first produced an ambiguous route match and then
+    // no current instruction after re-entry. Both are recoverable map-only
+    // states, so changing between them must not restart the 30-second gate.
+    expect(
+      recoverableGuidanceStall(
+        ambiguousDisplay,
+        voiceGuidanceAvailable: true,
+      ),
+      VoiceGuidanceStallReason.ambiguousPosition,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14270, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt,
+      ),
+      isFalse,
+    );
+
+    expect(
+      recoverableGuidanceStall(null, voiceGuidanceAvailable: true),
+      VoiceGuidanceStallReason.missingInstruction,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14280, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 3)),
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: const LatLng(48.14290, 11.5700),
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 20)),
+      ),
+      isFalse,
+    );
+    expect(
+      gate.update(
+        stalled: true,
+        position: reentry,
+        horizontalAccuracyMeters: 5,
+        moving: true,
+        now: startedAt.add(const Duration(seconds: 31)),
+      ),
+      isTrue,
+    );
+
+    expect(guidance.display(reentry, english: false), isNull);
+    expect(guidance.resumeAt(reentry), isTrue);
+    expect(
+      guidance.display(reentry, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having((display) => display.type, 'type', 'turn')
+          .having((display) => display.modifier, 'modifier', 'left'),
+    );
   });
 
   test('recognizes route re-entry behind the previous guidance progress', () {
@@ -195,6 +442,32 @@ void main() {
       isNull,
     );
     expect(guidance.update(start, english: false), isNull);
+  });
+
+  test('repeats the current maneuver when voice guidance is enabled again', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        routeWith(
+          const RouteManeuver(
+            location: turn,
+            type: 'turn',
+            modifier: 'right',
+          ),
+        ),
+      );
+
+    expect(
+      guidance.announceCurrentManeuver(start, english: false),
+      'In 110 Metern rechts abbiegen.',
+    );
+    expect(
+      guidance.announceCurrentManeuver(
+        start,
+        english: false,
+        repeat: true,
+      ),
+      'In 110 Metern rechts abbiegen.',
+    );
   });
 
   test('announces approach and turn only once', () {
@@ -860,8 +1133,18 @@ void main() {
     // about four metres from the current upper ramp. Both are plausible in
     // 2D, so route continuity must win over the marginally closer section.
     expect(
-      guidance.display(gpsNearLowerRoad, english: false)?.text,
-      'Auf Karte achten',
+      guidance.display(gpsNearLowerRoad, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having(
+            (display) => display.text,
+            'text',
+            'Position unklar - Karte beachten',
+          )
+          .having(
+            (display) => display.mapReason,
+            'mapReason',
+            VoiceGuidanceMapReason.ambiguousPosition,
+          ),
     );
     expect(guidance.update(gpsNearLowerRoad, english: false), isNull);
   });
@@ -941,8 +1224,18 @@ void main() {
     expect(guidance.update(start, english: false), isNot(contains('Karte')));
 
     expect(
-      guidance.display(beforeTurn, english: false)?.text,
-      'Auf Karte achten',
+      guidance.display(beforeTurn, english: false),
+      isA<VoiceGuidanceDisplay>()
+          .having(
+            (display) => display.text,
+            'text',
+            'Hin-/Rückweg gleich - Karte beachten',
+          )
+          .having(
+            (display) => display.mapReason,
+            'mapReason',
+            VoiceGuidanceMapReason.overlappingRoute,
+          ),
     );
     expect(
       guidance.update(beforeTurn, english: false),

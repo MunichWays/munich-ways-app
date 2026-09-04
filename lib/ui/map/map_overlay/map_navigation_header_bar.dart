@@ -137,11 +137,13 @@ class MapNavigationHeaderBar extends StatelessWidget {
             ? VoiceGuidanceDisplay(
                 text: context.l10n.isEnglish ? 'Resume' : 'Fortsetzen',
                 type: 'map',
+                mapReason: VoiceGuidanceMapReason.trackingInterrupted,
               )
             : nextManeuver ??
                 VoiceGuidanceDisplay(
                   text: context.l10n.followRouteOnMap,
                   type: 'map',
+                  mapReason: VoiceGuidanceMapReason.noInstruction,
                 )
         : null;
     final destinationReached = guidanceDisplay?.isFinalDestination ?? false;

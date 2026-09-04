@@ -16,10 +16,15 @@ class NavigationStartGate {
 
   LatLng? _start;
   bool _released = false;
+  double _distanceFromStartMeters = 0;
+
+  bool get released => _released;
+  double get distanceFromStartMeters => _distanceFromStartMeters;
 
   void reset([LatLng? start]) {
     _start = start;
     _released = false;
+    _distanceFromStartMeters = 0;
   }
 
   bool isWaiting(LatLng position) {
@@ -29,9 +34,118 @@ class NavigationStartGate {
       _start = position;
       return true;
     }
-    final distance = const Distance().as(LengthUnit.Meter, start, position);
-    if (distance >= minimumDistanceFromStartMeters) _released = true;
+    _distanceFromStartMeters = const Distance().as(
+      LengthUnit.Meter,
+      start,
+      position,
+    );
+    if (_distanceFromStartMeters >= minimumDistanceFromStartMeters) {
+      _released = true;
+    }
     return !_released;
+  }
+}
+
+/// Distinguishes intentional map-only guidance from an ambiguous route match.
+///
+/// User-facing text is deliberately not used as state because copy and
+/// localization can change independently of navigation behavior.
+enum VoiceGuidanceMapReason {
+  ambiguousPosition,
+  overlappingRoute,
+  navigationStart,
+  noInstruction,
+  trackingInterrupted,
+}
+
+enum VoiceGuidanceStallReason {
+  ambiguousPosition,
+  missingInstruction,
+}
+
+VoiceGuidanceStallReason? recoverableGuidanceStall(
+  VoiceGuidanceDisplay? display, {
+  required bool voiceGuidanceAvailable,
+}) {
+  if (display?.mapReason == VoiceGuidanceMapReason.ambiguousPosition) {
+    return VoiceGuidanceStallReason.ambiguousPosition;
+  }
+  if (display == null && voiceGuidanceAvailable) {
+    return VoiceGuidanceStallReason.missingInstruction;
+  }
+  return null;
+}
+
+/// Requires persistently stalled guidance and movement before recovery.
+///
+/// Time prevents a transient bridge, ramp or noisy fix from triggering a
+/// recalculation. Confirmed movement prevents the same while waiting in place.
+class StalledGuidanceRecoveryGate {
+  StalledGuidanceRecoveryGate({
+    this.minimumDuration = const Duration(seconds: 30),
+    this.minimumMovementMeters = 25,
+  });
+
+  final Duration minimumDuration;
+  final double minimumMovementMeters;
+
+  DateTime? _startedAt;
+  LatLng? _movementAnchor;
+  double? _movementAnchorAccuracy;
+  double _confirmedMovementMeters = 0;
+
+  void reset() {
+    _startedAt = null;
+    _movementAnchor = null;
+    _movementAnchorAccuracy = null;
+    _confirmedMovementMeters = 0;
+  }
+
+  bool update({
+    required bool stalled,
+    required LatLng position,
+    required double horizontalAccuracyMeters,
+    required bool moving,
+    DateTime? now,
+  }) {
+    if (!stalled || !horizontalAccuracyMeters.isFinite) {
+      reset();
+      return false;
+    }
+
+    final currentTime = now ?? DateTime.now();
+    _startedAt ??= currentTime;
+    final anchor = _movementAnchor;
+    if (anchor == null) {
+      _movementAnchor = position;
+      _movementAnchorAccuracy = horizontalAccuracyMeters;
+      return false;
+    }
+
+    final distance = const Distance().as(
+      LengthUnit.Meter,
+      anchor,
+      position,
+    );
+    final accuracy = max(
+      _movementAnchorAccuracy ?? 0,
+      horizontalAccuracyMeters,
+    );
+    final movementThreshold = (accuracy * 1.5).clamp(8.0, 25.0);
+    if (distance >= movementThreshold && distance <= 200) {
+      _confirmedMovementMeters += distance;
+      _movementAnchor = position;
+      _movementAnchorAccuracy = horizontalAccuracyMeters;
+    }
+
+    final persisted = currentTime.difference(_startedAt!) >= minimumDuration;
+    if (!persisted ||
+        !moving ||
+        _confirmedMovementMeters < minimumMovementMeters) {
+      return false;
+    }
+    reset();
+    return true;
   }
 }
 
@@ -148,12 +262,12 @@ class VoiceGuidance {
 
   bool get finalDestinationReached => _finalDestinationReached;
 
-  void setRoute(
+  bool setRoute(
     CycleRoute? route, {
     List<String?> intermediateDestinationNames = const [],
   }) {
     final guidanceRoute = route?.supportsVoiceGuidance == true ? route : null;
-    if (identical(guidanceRoute, _route)) return;
+    if (identical(guidanceRoute, _route)) return false;
     _route = guidanceRoute;
     _index = 0;
     _approachSpoken = false;
@@ -172,7 +286,7 @@ class VoiceGuidance {
         List<String?>.of(intermediateDestinationNames);
     if (guidanceRoute == null || guidanceRoute.points.length < 2) {
       _maneuvers = const [];
-      return;
+      return true;
     }
     if (intermediateDestinationNames.isNotEmpty) {
       _overlappingRouteIntervals =
@@ -238,9 +352,12 @@ class VoiceGuidance {
       );
     }
     _arrivals = arrivals.take(expectedArrivalCount).toList(growable: false);
+    return true;
   }
 
-  void reset() => setRoute(null);
+  void reset() {
+    setRoute(null);
+  }
 
   /// Restarts maneuver guidance at the rider's current place on the route.
   ///
@@ -290,9 +407,13 @@ class VoiceGuidance {
     final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous &&
         !_isOverlappingProgress(projection.distanceAlongRoute)) {
+      _recordAmbiguousProgress(projection);
       return VoiceGuidanceDisplay(
-        text: english ? 'Watch the map' : 'Auf Karte achten',
+        text: english
+            ? 'Position unclear - watch map'
+            : 'Position unklar - Karte beachten',
         type: 'map',
+        mapReason: VoiceGuidanceMapReason.ambiguousPosition,
       );
     }
     final arrivalIndex = _arrivalIndexAt(position);
@@ -316,8 +437,11 @@ class VoiceGuidance {
     if (_isOverlappingProgress(projection.distanceAlongRoute)) {
       _advancePastManeuvers(_routeProgress);
       return VoiceGuidanceDisplay(
-        text: english ? 'Watch the map' : 'Auf Karte achten',
+        text: english
+            ? 'Outbound/return overlap - watch map'
+            : 'Hin-/Rückweg gleich - Karte beachten',
         type: 'map',
+        mapReason: VoiceGuidanceMapReason.overlappingRoute,
       );
     }
     final travelled = _predictedDistanceAlongRoute(
@@ -349,6 +473,7 @@ class VoiceGuidance {
     LatLng position, {
     required bool english,
     double speedMetersPerSecond = 0,
+    bool repeat = false,
   }) {
     final route = _route;
     if (route == null || _finalDestinationReached) return null;
@@ -373,11 +498,11 @@ class VoiceGuidance {
     final remaining = target.routeDistance - travelled;
     if (remaining < -5 || target.maneuver.type == 'arrive') return null;
     if (remaining <= nowDistanceMeters) {
-      if (_nowSpoken) return null;
+      if (_nowSpoken && !repeat) return null;
       _nowSpoken = true;
       return _formatSpokenManeuver(target, english: english, now: true);
     }
-    if (_approachSpoken) return null;
+    if (_approachSpoken && !repeat) return null;
     _approachSpoken = true;
     return _formatSpokenManeuver(
       target,
@@ -403,6 +528,7 @@ class VoiceGuidance {
     final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous &&
         !_isOverlappingProgress(projection.distanceAlongRoute)) {
+      _recordAmbiguousProgress(projection);
       return null;
     }
     final arrivalIndex = _arrivalIndexAt(position);
@@ -473,6 +599,14 @@ class VoiceGuidance {
       );
     }
     return null;
+  }
+
+  void _recordAmbiguousProgress(_RouteProjection projection) {
+    // Keep the continuity-preserving earlier candidate authoritative while
+    // suppressing directions. Otherwise every update can compare the same
+    // route window forever and leave "Watch the map" stuck indefinitely.
+    _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+    _advancePastManeuvers(_routeProgress);
   }
 
   _RouteProjection _projectionAtCurrentProgress(LatLng position) {
@@ -1096,12 +1230,14 @@ class VoiceGuidanceDisplay {
     required this.type,
     this.modifier,
     this.isFinalDestination = false,
+    this.mapReason,
   });
 
   final String text;
   final String type;
   final String? modifier;
   final bool isFinalDestination;
+  final VoiceGuidanceMapReason? mapReason;
 
   @override
   bool operator ==(Object other) =>
@@ -1109,8 +1245,10 @@ class VoiceGuidanceDisplay {
       text == other.text &&
       type == other.type &&
       modifier == other.modifier &&
-      isFinalDestination == other.isFinalDestination;
+      isFinalDestination == other.isFinalDestination &&
+      mapReason == other.mapReason;
 
   @override
-  int get hashCode => Object.hash(text, type, modifier, isFinalDestination);
+  int get hashCode =>
+      Object.hash(text, type, modifier, isFinalDestination, mapReason);
 }

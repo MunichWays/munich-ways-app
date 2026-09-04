@@ -86,7 +86,9 @@ class AppLocalizations {
           'Sprachansagen sind nicht verfügbar, da BRouter keine ausreichend '
           'zuverlässigen Abbiegedaten liefert.';
   String get followRouteOnMap =>
-      isEnglish ? 'Watch the map' : 'Auf Karte achten';
+      isEnglish ? 'Follow route on map' : 'Route auf Karte folgen';
+  String get navigationStartGuidance =>
+      isEnglish ? 'Start riding - follow route' : 'Losfahren - Route folgen';
   String get routePlanningInfo => isEnglish
       ? 'Standard finds low-stress cycling routes whenever possible. '
           'Outside Upper Bavaria, or if the routing service is unavailable, '
