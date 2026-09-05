@@ -99,6 +99,56 @@ or DevTools are required. The Android log buffer approach also supports a Debug
 road test, but a future bounded in-app diagnostic log will be more reliable for
 long rides or very noisy devices.
 
+## Accessibility regression checklist
+
+For changes to the map, route planning, or navigation, verify the primary flow
+once with Android TalkBack enabled:
+
+- Choose a destination, use `In der Nähe`, plan a route, start navigation,
+  interrupt it by moving the map, resume it, and end it. TalkBack must announce
+  the purpose of every action instead of only the icon or an unlabeled button.
+- Check location, zoom, compass, information, settings, route editing, saving,
+  and overflow-menu controls. Interactive targets must remain at least 48 x 48
+  logical pixels even when the visible icon is smaller.
+- Repeat the start window and one representative dialog at 200% system text.
+  Primary actions must remain visible, readable, and tappable without layout
+  overflows.
+- Check important text and controls in light and dark mode. Automated widget
+  tests should include Flutter's label, Android tap-target, and text-contrast
+  guidelines where practical.
+- Do not rely on color alone for the Radl-Komfort-Index: the route summary and
+  legend provide named categories, while stressful red and black map lines use
+  dashed styling in addition to color.
+- Ignore automatic findings only for demonstrably decorative map content or
+  map tiles. Every actually interactive map overlay needs a meaningful label.
+
+## One-trip routing choice user story
+
+As a rider in a hurry, I want to choose a more direct route for only the current
+trip without changing my normal routing preference.
+
+The complete expected behavior is:
+
+- The route start window offers a compact `Direkte Route` icon between ending
+  and editing the route, without increasing the panel height. Its dialog warns
+  that the route can be more stressful, has no turn-by-turn announcements, and
+  therefore requires watching the map. The option is hidden when shortest
+  routing is already configured.
+- Selecting it immediately recalculates with BRouter's `shortest` profile. The
+  action then becomes `Standard`, which recalculates using the latest routing
+  preference from Settings.
+- The temporary choice is the single effective routing preference for every
+  manual retry and automatic off-route recalculation during that trip. Editing
+  the current route or its intermediate stops does not discard it.
+- BRouter routes do not invent spoken maneuvers, but their geometry remains
+  available for off-route detection and automatic recalculation.
+- The choice is never written to Settings. Ending the route, selecting a new
+  destination, or selecting another saved route clears it; the next route uses
+  the configured preference again.
+- While a calculation is running, both start choices are unavailable. After a
+  failed direct-route calculation, `Standard` remains available so the rider
+  can recover using the configured routing mode.
+
 ## Navigation guidance user story
 
 As a rider, I want navigation guidance to recover from uncertain GPS and route

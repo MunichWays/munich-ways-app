@@ -147,6 +147,31 @@ void main() {
     expect(tester.getSize(button), const Size.square(56));
   });
 
+  testWidgets('small attribution circle keeps a 48 pixel tap target',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: MapOverlayButton(
+              tooltip: 'Kartenquellen',
+              size: 28,
+              tapTargetSize: 48,
+              onPressed: () {},
+              child: const Text('©'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final button = find.bySemanticsLabel('Kartenquellen');
+    expect(tester.getSize(button), const Size.square(48));
+    expect(tester.getSize(find.byType(InkWell)), const Size.square(28));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+  });
+
   testWidgets('route close button has an explicit label and large tap target',
       (tester) async {
     final model = MapScreenViewModel(store: _MemorySettingsStore())
@@ -256,6 +281,110 @@ void main() {
 
     expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
     expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
+  });
+
+  testWidgets('start window offers an accessible one-trip direct choice',
+      (tester) async {
+    var toggles = 0;
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: MapNavigationHeaderBar(
+              model: model,
+              onRefreshRoute: () async {},
+              onEditRoute: () {},
+              onStartNavigation: () async {},
+              onToggleTemporaryShortestRoute: () async => toggles++,
+              onToggleVoiceGuidance: () {},
+              onEndRoute: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Starten'), findsOneWidget);
+    expect(find.text('Direkte Route'), findsNothing);
+    expect(find.text('Kürzer, aber möglicherweise stressiger'), findsNothing);
+    final direct = find.bySemanticsLabel('Direkte Route auswählen');
+    expect(direct, findsOneWidget);
+    expect(tester.getSize(direct).height, greaterThanOrEqualTo(48));
+    expect(find.byIcon(Icons.straighten), findsOneWidget);
+    final directIconButton = tester.widget<IconButton>(
+      find.descendant(of: direct, matching: find.byType(IconButton)),
+    );
+    expect(directIconButton.style?.side, isNull);
+    expect(find.byType(OutlinedButton), findsNothing);
+    expect(
+      tester.getCenter(find.bySemanticsLabel('Route beenden')).dx,
+      lessThan(tester.getCenter(direct).dx),
+    );
+    expect(
+      tester.getCenter(direct).dx,
+      lessThan(tester.getCenter(find.bySemanticsLabel('Route bearbeiten')).dx),
+    );
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+
+    await tester.tap(direct);
+    await tester.pumpAndSettle();
+    expect(find.text('Direkte Route'), findsOneWidget);
+    expect(
+      find.textContaining('keine Abbiegeansagen'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('auf die Karte achten'), findsOneWidget);
+    expect(find.text('Bei Standard bleiben'), findsOneWidget);
+    expect(find.text('Direkte Route berechnen'), findsOneWidget);
+    await tester.tap(find.text('Direkte Route berechnen'));
+    await tester.pumpAndSettle();
+    expect(toggles, 1);
+
+    final activeModel = MapScreenViewModel(store: _MemorySettingsStore());
+    await activeModel.setTemporaryShortestRouteEnabled(true);
+    activeModel
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: activeModel,
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleTemporaryShortestRoute: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    final activeDirect = find.bySemanticsLabel('Standardroute auswählen');
+    expect(activeDirect, findsOneWidget);
+    expect(
+      find.descendant(of: activeDirect, matching: find.byIcon(Icons.route)),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.straighten), findsNothing);
+    await tester.tap(activeDirect);
+    await tester.pumpAndSettle();
+    expect(find.text('Direkte Route beibehalten'), findsOneWidget);
+    expect(find.text('Standard berechnen'), findsOneWidget);
   });
 
   testWidgets('passive follow-map hint has no button-like map icon',
@@ -406,6 +535,8 @@ void main() {
       button.style?.backgroundColor?.resolve(<WidgetState>{}),
       AppColors.munichWaysOrange,
     );
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
 
     await tester.tap(resume);
     expect(resumed, isTrue);
@@ -413,6 +544,51 @@ void main() {
     await tester.tap(settings);
     expect(infoShown, isTrue);
     expect(settingsShown, isTrue);
+  });
+
+  testWidgets('start controls remain visible with large system text',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(2),
+          ),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: MapNavigationHeaderBar(
+            model: model,
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {},
+            onToggleTemporaryShortestRoute: () async {},
+            onToggleVoiceGuidance: () {},
+            onEndRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Starten'), findsOneWidget);
+    final directRoute = find.bySemanticsLabel('Direkte Route auswählen');
+    expect(directRoute, findsOneWidget);
+    expect(
+      tester.getCenter(directRoute).dy,
+      greaterThan(tester.getCenter(find.text('Starten')).dy),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('route stats share a full row above the action buttons',

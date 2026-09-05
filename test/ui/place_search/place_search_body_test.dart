@@ -247,6 +247,28 @@ void main() {
     expect(model.places.single.displayName, 'Marien');
   });
 
+  testWidgets('search results have accessible attribution and controls',
+      (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: SuccessfulGeoapifyApi(),
+    );
+    await model.startSearch('Marienplatz');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PlaceSearchBody(model: model)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Powered by'), findsOneWidget);
+    expect(find.bySemanticsLabel('Geoapify'), findsOneWidget);
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+  });
+
   testWidgets('does not show a redundant search hint', (tester) async {
     final model = PlaceSearchScreenViewModel(
       recentSearchesRepo: FakeRecentSearchesStore([]),
@@ -599,10 +621,13 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pump();
 
+    final optionsButton = find.byTooltip('Mehr Optionen').last;
+    await tester.ensureVisible(optionsButton);
+    await tester.pump();
     final listPosition =
         tester.state<ScrollableState>(find.byType(Scrollable).first).position;
     final offsetBefore = listPosition.pixels;
-    await tester.tap(find.byTooltip('Mehr Optionen').last);
+    await tester.tap(optionsButton);
     await tester.pumpAndSettle();
 
     expect(listPosition.pixels, offsetBefore);
@@ -777,6 +802,8 @@ void main() {
     expect(find.byIcon(Icons.delete_outline), findsOneWidget);
     expect(find.byIcon(Icons.check_circle), findsNothing);
     expect(find.text('Umbenennen'), findsNothing);
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
 
     await tester.tap(find.byTooltip('Mehr Optionen'));
     await tester.pumpAndSettle();
@@ -1118,6 +1145,7 @@ void main() {
       ),
     );
     expect(darkHighlightedRoute.tileColor, darkHighlight);
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
   });
 
   testWidgets('starts favorites expanded and lays them out compactly',

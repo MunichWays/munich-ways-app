@@ -70,6 +70,21 @@ void main() {
 
     expect(find.byKey(const ValueKey('route-comfort-summary')), findsOneWidget);
     expect(find.text('78/100'), findsOneWidget);
+    final calculateRoute = find.text('Route berechnen');
+    final comfortSummary = find.byKey(const ValueKey('route-comfort-summary'));
+    expect(
+      tester.getTopLeft(comfortSummary).dy,
+      greaterThan(tester.getBottomLeft(calculateRoute).dy),
+    );
+    expect(calculateRoute.hitTestable(), findsOneWidget);
+    final calculateButton = find
+        .ancestor(of: calculateRoute, matching: find.byType(FilledButton))
+        .first;
+    final scrollViewport = find.byType(SingleChildScrollView).first;
+    expect(
+      tester.getRect(calculateButton).bottom,
+      lessThanOrEqualTo(tester.getRect(scrollViewport).bottom),
+    );
 
     final destinationMenu = find.byTooltip('Mehr Optionen').last;
     await tester.ensureVisible(destinationMenu);
@@ -80,6 +95,65 @@ void main() {
 
     expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
     expect(find.text('78/100'), findsNothing);
+  });
+
+  testWidgets('shows the complete comfort bar at the medium sheet size',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..destination = Place('Ziel', const LatLng(48.3, 11.7))
+      ..route = MapRoute(
+        CycleRoute(
+          const [],
+          4200,
+          1200,
+          comfort: const RouteComfort(
+            index: 78,
+            coverage: 82,
+            sufficientCoverage: true,
+            distribution: RouteComfortDistribution(
+              black: 2,
+              red: 7,
+              yellow: 18,
+              green: 68,
+              unrated: 5,
+            ),
+          ),
+        ),
+        MapRouteState.SHOWN,
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => showRoutePlannerSheet(context, model: model),
+              child: const Text('Öffnen'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Öffnen'));
+    await tester.pumpAndSettle();
+
+    final draggable = tester.widget<DraggableScrollableSheet>(
+      find.byType(DraggableScrollableSheet),
+    );
+    final viewport = tester.getRect(find.byType(SingleChildScrollView).first);
+    final comfortBar = tester.getRect(
+      find.byKey(const ValueKey('comfort-segment-green')),
+    );
+
+    expect(draggable.initialChildSize, 0.55);
+    expect(comfortBar.top, greaterThanOrEqualTo(viewport.top));
+    expect(comfortBar.bottom, lessThanOrEqualTo(viewport.bottom));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('reuses and overwrites the selected saved route name',
@@ -156,7 +230,7 @@ void main() {
     final draggable = tester.widget<DraggableScrollableSheet>(
       find.byType(DraggableScrollableSheet),
     );
-    expect(draggable.initialChildSize, 0.55);
+    expect(draggable.initialChildSize, 1);
     expect(draggable.minChildSize, 0.55);
     expect(draggable.maxChildSize, 1);
     expect(draggable.snapSizes, [0.55, 1]);
@@ -217,6 +291,16 @@ void main() {
       AppColors.uiPrimary,
     );
     expect(calculateButton.style?.foregroundColor?.resolve({}), Colors.white);
+    expect(
+      tester.getSize(find.byTooltip('Route speichern')),
+      const Size.square(48),
+    );
+    expect(
+      tester.getSize(find.byTooltip('Schließen')),
+      const Size.square(48),
+    );
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
 
     await tester.tap(find.byIcon(Icons.save_outlined));
     await tester.pumpAndSettle();
@@ -394,13 +478,14 @@ void main() {
       destinationRow.textColor,
       darkThemeData.colorScheme.onSecondaryContainer,
     );
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
   });
 
-  testWidgets('opens large from the second intermediate stop', (tester) async {
+  testWidgets('opens large from the first intermediate stop', (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())
       ..routeStart = Place('Start', const LatLng(48.1, 11.5))
       ..waypoints.addAll([
-        for (var index = 1; index <= 2; index++)
+        for (var index = 1; index <= 1; index++)
           Place('Zwischenziel $index', LatLng(48.1 + index / 100, 11.5)),
       ])
       ..destination = Place('Ziel', const LatLng(48.3, 11.7));

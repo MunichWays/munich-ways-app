@@ -57,4 +57,15 @@ void main() {
     expect(Theme.of(context).colorScheme.primary, AppColors.uiPrimary);
     expect(Theme.of(context).colorScheme.error, AppColors.danger);
   });
+
+  test('uses accessible green variants for light and dark maps', () {
+    expect(
+      AppColors.getPolylineColor('grün'),
+      const Color(0xFF298A63),
+    );
+    expect(
+      AppColors.getPolylineColor('grün', dark: true),
+      const Color(0xFF27F5A5),
+    );
+  });
 }

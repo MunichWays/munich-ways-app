@@ -88,12 +88,18 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   void _configureSheetSizes(
     BoxConstraints constraints, {
     required bool landscapePhone,
+    required bool largeText,
   }) {
-    final minimalSize =
-        landscapePhone ? (76 / constraints.maxHeight).clamp(.12, .9) : .12;
+    final minimalPixels = largeText ? 96.0 : 76.0;
+    final minimalSize = landscapePhone
+        ? (minimalPixels / constraints.maxHeight).clamp(.12, .9)
+        : .12;
     final compactSize = landscapePhone
-        ? (190 / constraints.maxHeight).clamp(minimalSize, .9)
-        : .28;
+        ? ((largeText ? 280 : 190) / constraints.maxHeight)
+            .clamp(minimalSize, .9)
+        : largeText
+            ? (380 / constraints.maxHeight).clamp(.28, .85)
+            : .28;
     if (!_sheetController.isAttached && _preservedSheetSize == _compactSize) {
       _preservedSheetSize = compactSize;
     }
@@ -530,9 +536,11 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         builder: (context, constraints) {
           final landscapePhone =
               constraints.maxWidth >= constraints.maxHeight * 1.5;
+          final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
           _configureSheetSizes(
             constraints,
             landscapePhone: landscapePhone,
+            largeText: largeText,
           );
           final mediaQuery = MediaQuery.of(context);
           final keyboardInset = mediaQuery.viewInsets.bottom;
@@ -633,33 +641,48 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-              child: Material(
-                key: const ValueKey('map-destination-search-field'),
-                color: AppColors.uiPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: _startDestinationSearch,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.search,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          context.l10n.isEnglish ? 'Destination?' : 'Wohin?',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
+              child: Semantics(
+                container: true,
+                button: true,
+                label: context.l10n.tr('Ziel suchen'),
+                onTap: _startDestinationSearch,
+                excludeSemantics: true,
+                child: Material(
+                  key: const ValueKey('map-destination-search-field'),
+                  color: AppColors.uiPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _startDestinationSearch,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.search,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              context.l10n.isEnglish
+                                  ? 'Destination?'
+                                  : 'Wohin?',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w500,
                                   ),
-                        ),
-                      ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -754,79 +777,102 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     BuildContext context, {
     required bool showSelectOnMap,
   }) {
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+    Widget action({
+      required VoidCallback? onPressed,
+      required IconData icon,
+      required String label,
+      bool loading = false,
+    }) {
+      final labelWidget = Text(
+        label,
+        maxLines: largeText ? 2 : 1,
+        textAlign: TextAlign.center,
+        style: largeText ? null : const TextStyle(fontSize: 13),
+      );
+      if (largeText) {
+        return TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.uiPrimary,
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (loading)
+                const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(icon, size: 18),
+              const SizedBox(width: 8),
+              Flexible(child: labelWidget),
+            ],
+          ),
+        );
+      }
+      return TextButton.icon(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.uiPrimary,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        ),
+        icon: loading
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, size: 18),
+        label: FittedBox(fit: BoxFit.scaleDown, child: labelWidget),
+      );
+    }
+
+    final actions = <Widget>[
+      action(
+        onPressed: () => _runAction(widget.onPlanRoute),
+        icon: Icons.route,
+        label: context.l10n.isEnglish ? 'Plan route' : 'Route planen',
+      ),
+      if (showSelectOnMap)
+        action(
+          onPressed: _selectOnMap,
+          icon: Icons.add_location_alt_outlined,
+          label: context.l10n.tr('Auf Karte wählen'),
+        )
+      else if (widget.showNearby)
+        action(
+          onPressed: _startingNearbyNavigation ? null : _openNearby,
+          icon: Icons.near_me_outlined,
+          label: context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
+          loading: _startingNearbyNavigation,
+        ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 7),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextButton.icon(
-              onPressed: () => _runAction(widget.onPlanRoute),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.uiPrimary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              ),
-              icon: const Icon(Icons.route, size: 18),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  context.l10n.isEnglish ? 'Plan route' : 'Route planen',
-                  maxLines: 1,
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ),
+      child: largeText
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < actions.length; index++) ...[
+                  if (index > 0) const SizedBox(height: 4),
+                  actions[index],
+                ],
+              ],
+            )
+          : Row(
+              children: [
+                for (var index = 0; index < actions.length; index++) ...[
+                  if (index > 0) const SizedBox(width: 8),
+                  Expanded(child: actions[index]),
+                ],
+              ],
             ),
-          ),
-          if (showSelectOnMap) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextButton.icon(
-                onPressed: _selectOnMap,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.uiPrimary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                ),
-                icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    context.l10n.tr('Auf Karte wählen'),
-                    maxLines: 1,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-            ),
-          ] else if (widget.showNearby) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextButton.icon(
-                onPressed: _startingNearbyNavigation ? null : _openNearby,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.uiPrimary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                ),
-                icon: _startingNearbyNavigation
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.near_me_outlined, size: 18),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    context.l10n.isEnglish ? 'Nearby' : 'In der Nähe',
-                    maxLines: 1,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -860,7 +906,7 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                 style: AppButtonStyles.secondary(context).merge(
                   FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size.fromHeight(44),
+                    minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -882,16 +928,28 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
     if (!model.favoritesLoaded) return const SizedBox.shrink();
     return SizedBox(
       width: double.infinity,
-      child: FilledButton.tonalIcon(
+      child: FilledButton.tonal(
         style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
         onPressed: _startFavoriteSelection,
-        icon: const Icon(Icons.star_outline),
-        label: Text(
-          context.l10n.isEnglish ? 'Choose favorite' : 'Favorit wählen',
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.star_outline),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                context.l10n.isEnglish ? 'Choose favorite' : 'Favorit wählen',
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -193,7 +193,7 @@ class VoiceGuidance {
     double horizontalAccuracyMeters = 0,
   }) {
     if (_finalDestinationReached) return false;
-    final route = _route;
+    final route = _trackingRoute;
     if (route == null) return false;
     final accuracyAllowance = horizontalAccuracyMeters.isFinite
         ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
@@ -234,7 +234,7 @@ class VoiceGuidance {
     LatLng position, {
     double horizontalAccuracyMeters = 0,
   }) {
-    final route = _route;
+    final route = _trackingRoute;
     if (route == null) return false;
     final accuracyAllowance = horizontalAccuracyMeters.isFinite
         ? horizontalAccuracyMeters.clamp(0, maximumRouteDistanceMeters)
@@ -243,6 +243,9 @@ class VoiceGuidance {
         maximumRouteDistanceMeters + accuracyAllowance;
   }
 
+  // Geometry tracking also has to work for BRouter routes, which deliberately
+  // have no maneuver guidance but still need automatic off-route rerouting.
+  CycleRoute? _trackingRoute;
   CycleRoute? _route;
   List<_GuidanceManeuver> _maneuvers = const [];
   int _index = 0;
@@ -266,8 +269,9 @@ class VoiceGuidance {
     CycleRoute? route, {
     List<String?> intermediateDestinationNames = const [],
   }) {
+    if (identical(route, _trackingRoute)) return false;
+    _trackingRoute = route;
     final guidanceRoute = route?.supportsVoiceGuidance == true ? route : null;
-    if (identical(guidanceRoute, _route)) return false;
     _route = guidanceRoute;
     _index = 0;
     _approachSpoken = false;

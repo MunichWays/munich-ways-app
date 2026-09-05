@@ -1,14 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
+import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
+import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/routing/oberbayern_coverage.dart';
+import 'package:munich_ways/routing/routing_preferences.dart';
+import 'package:munich_ways/routing/routing_provider.dart';
+import 'package:munich_ways/routing/routing_service.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 
+import '../../support/wakelock_stub.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(stubWakelock);
+
   test('uses a direction arrow only for reliable movement heading', () {
     expect(
       hasReliableMovementHeading(
@@ -185,6 +197,62 @@ void main() {
     expect(model.loading, isFalse);
     expect(model.initialRatingsLoadFailed, isTrue);
   });
+
+  test('temporary shortest route survives refresh and restores settings',
+      () async {
+    const start = LatLng(48.14, 11.56);
+    const destination = LatLng(48.16, 11.60);
+    final radlNavi = _RecordingRoutingProvider();
+    final bRouter = _RecordingRoutingProvider();
+    final store = _MemorySettingsStore(
+      SettingsData.defaults.copyWith(
+        routingMode: RoutingMode.bRouterEverywhere,
+        bRouterProfile: BRouterProfile.fastBike,
+        routeRecommendation: RouteRecommendation.roadBike,
+      ),
+    );
+    final model = MapScreenViewModel(
+      store: store,
+      routingService: RoutingService(
+        radlNavi: radlNavi,
+        bRouter: bRouter,
+        radlNaviCoverage: _AlwaysCovered(),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    model
+      ..routeStart = Place('Start', start)
+      ..destination = Place('Ziel', destination);
+
+    expect(await model.setTemporaryShortestRouteEnabled(true), isTrue);
+    expect(model.temporaryShortestRouteEnabled, isTrue);
+    expect(bRouter.profiles, [BRouterProfile.shortest]);
+
+    // Manual refresh and automatic rerouting share this request path.
+    expect(await model.refreshRoute(), isTrue);
+    expect(
+      bRouter.profiles,
+      [BRouterProfile.shortest, BRouterProfile.shortest],
+    );
+
+    expect(await model.setTemporaryShortestRouteEnabled(false), isTrue);
+    expect(model.temporaryShortestRouteEnabled, isFalse);
+    expect(bRouter.profiles.last, BRouterProfile.fastBike);
+    expect(model.routingMode, RoutingMode.bRouterEverywhere);
+    expect(model.bRouterProfile, BRouterProfile.fastBike);
+    expect(store.routingPreferenceWrites, 0);
+  });
+
+  test('ending a route clears its temporary shortest choice', () async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore());
+
+    await model.setTemporaryShortestRouteEnabled(true);
+    expect(model.temporaryShortestRouteEnabled, isTrue);
+
+    model.clearDestination();
+
+    expect(model.temporaryShortestRouteEnabled, isFalse);
+  });
 }
 
 class _StalledMunichwaysApi extends MunichwaysApi {
@@ -246,6 +314,46 @@ class _ReloadFailureMunichwaysApi extends MunichwaysApi {
 }
 
 class _MemorySettingsStore extends SettingsStore {
+  _MemorySettingsStore([this.data = SettingsData.defaults]);
+
+  final SettingsData data;
+  int routingPreferenceWrites = 0;
+
   @override
-  Future<SettingsData> load() async => SettingsData.defaults;
+  Future<SettingsData> load() async => data;
+
+  @override
+  Future<void> saveRoutingMode(RoutingMode routingMode) async {
+    routingPreferenceWrites++;
+  }
+
+  @override
+  Future<void> saveBRouterProfile(BRouterProfile profile) async {
+    routingPreferenceWrites++;
+  }
+
+  @override
+  Future<void> saveRouteRecommendation(
+    RouteRecommendation? recommendation,
+  ) async {
+    routingPreferenceWrites++;
+  }
+}
+
+class _AlwaysCovered implements RoutingCoverage {
+  @override
+  Future<bool> contains(LatLng point) async => true;
+}
+
+class _RecordingRoutingProvider implements RoutingProvider {
+  final List<BRouterProfile> profiles = [];
+
+  @override
+  Future<CycleRoute> route(
+    List<LatLng> coordinates, {
+    BRouterProfile profile = BRouterProfile.trekking,
+  }) async {
+    profiles.add(profile);
+    return CycleRoute(coordinates, 1000, 300);
+  }
 }

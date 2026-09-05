@@ -21,7 +21,10 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lineColors = <Color>[
-      AppColors.mapGreen,
+      AppColors.getPolylineColor(
+        'grün',
+        dark: theme.brightness == Brightness.dark,
+      ),
       AppColors.mapYellow,
       AppColors.mapRed,
       AppColors.getPolylineColor(

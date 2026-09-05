@@ -14,6 +14,7 @@ class RoutingService {
     required this.radlNaviCoverage,
     this.requestTimeout = const Duration(seconds: 20),
     this.bRouterRequestTimeout = const Duration(seconds: 75),
+    this.comfortRequestTimeout = const Duration(seconds: 30),
   });
 
   final RoutingProvider radlNavi;
@@ -21,6 +22,22 @@ class RoutingService {
   final RoutingCoverage radlNaviCoverage;
   final Duration requestTimeout;
   final Duration bRouterRequestTimeout;
+  final Duration comfortRequestTimeout;
+
+  bool canAnalyzeComfort(CycleRoute route) =>
+      route.analysisContext != null && radlNavi is RouteComfortProvider;
+
+  /// Optional metadata never participates in routing-provider fallback.
+  Future<RouteComfort> analyzeComfort(CycleRoute route) {
+    final provider = radlNavi is RouteComfortProvider
+        ? radlNavi as RouteComfortProvider
+        : null;
+    final context = route.analysisContext;
+    if (provider == null || context == null) {
+      throw StateError('Route does not support comfort analysis');
+    }
+    return provider.analyzeComfort(context).timeout(comfortRequestTimeout);
+  }
 
   Future<CycleRoute> route(
     List<LatLng> coordinates, {

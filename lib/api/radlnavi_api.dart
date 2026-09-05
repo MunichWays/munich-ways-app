@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:google_polyline_algorithm/google_polyline_algorithm.dart';
 import 'package:http/http.dart';
 import 'package:latlong2/latlong.dart';
@@ -12,7 +14,7 @@ import 'api_exception.dart';
 // routing api based on munichways weights
 // see https://github.com/MunichWays/munichways-radlnavi for the routing profile
 // is based on https://github.com/Project-OSRM/osrm-backend, checkout their docs for api
-class RadlNaviApi implements RoutingProvider {
+class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
   Client? _client;
   final String baseUrl;
 
@@ -39,10 +41,8 @@ class RadlNaviApi implements RoutingProvider {
     final queryParameters = {
       'alternatives': 'false',
       'steps': 'true',
-      'annotations': 'false',
-      // The backend calculates this from its MunichWays ratings. Keeping the
-      // calculation server-side gives web and app identical results.
-      'comfort': 'true',
+      // Preserve the exact route for optional, subsequent comfort analysis.
+      'annotations': 'nodes',
       // GeoJSON preserves the backend coordinates without encoded-polyline
       // rounding, which otherwise becomes visible beside rating lines at high
       // navigation zoom levels.
@@ -121,10 +121,60 @@ class RadlNaviApi implements RoutingProvider {
           maneuvers: spokenManeuvers,
           destinationConnector: access.connector,
           comfort: _parseComfort(firstRoute['comfort']),
+          analysisContext: _parseAnalysisContext(firstRoute['legs']),
         );
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
+  }
+
+  RouteAnalysisContext? _parseAnalysisContext(Object? value) {
+    if (value is! List || value.isEmpty) return null;
+    final legs = <List<int>>[];
+    for (final leg in value) {
+      if (leg is! Map) return null;
+      final annotation = leg['annotation'];
+      final nodes = annotation is Map ? annotation['nodes'] : null;
+      // Optional analysis metadata must not invalidate a navigable route.
+      if (nodes is! List || nodes.any((id) => id is! int || id <= 0)) {
+        return null;
+      }
+      legs.add(nodes.cast<int>());
+    }
+    if (legs.every((nodes) => nodes.isEmpty)) return null;
+    return RouteAnalysisContext(legs);
+  }
+
+  @override
+  Future<RouteComfort> analyzeComfort(RouteAnalysisContext context) async {
+    final nodeIds = <int>[];
+    for (final nodes in context.legNodeIds) {
+      // Match the existing backend's route_node_ids contract. Repeated visits
+      // elsewhere in the route must remain in their original order.
+      nodeIds.addAll(
+          nodeIds.isNotEmpty && nodes.isNotEmpty && nodeIds.last == nodes.first
+              ? nodes.skip(1)
+              : nodes);
+    }
+    if (nodeIds.isEmpty) throw ApiException('Missing route analysis nodes');
+    final response = await _client!.post(
+      Uri.https(baseUrl, '/tag_distribution'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'com.munichways.app/flutter',
+      },
+      body: jsonEncode({'node_ids': nodeIds}),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException('Could not retrieve route comfort');
+    }
+    final json = response.jsonBody();
+    final comfort = _parseComfort(json['comfort']);
+    if (json['ok'] != true || comfort == null) {
+      throw ApiException('Invalid route comfort response');
+    }
+    return comfort;
   }
 
   RouteComfort? _parseComfort(Object? value) {
