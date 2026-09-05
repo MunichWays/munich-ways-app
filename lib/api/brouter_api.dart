@@ -17,6 +17,11 @@ class BRouterApi implements RoutingProvider {
 
   static const String defaultBaseUrl = 'brouter.de';
 
+  // BRouter's shortest profile is a foot profile and therefore reports its
+  // total-time at walking speed. Use a conservative bicycle speed for the
+  // duration shown by the app while keeping the shortest route geometry.
+  static const double _shortestProfileCyclingSpeedMetersPerSecond = 16 / 3.6;
+
   final Client _client;
   final String baseUrl;
 
@@ -40,6 +45,7 @@ class BRouterApi implements RoutingProvider {
     };
 
     Response? response;
+    var successfulProfile = profile;
     for (var attempt = 0; attempt < 2; attempt++) {
       final attemptProfile = attempt == 1 && profile != BRouterProfile.shortest
           ? BRouterProfile.shortest
@@ -53,7 +59,10 @@ class BRouterApi implements RoutingProvider {
         'Accept': 'application/geo+json, application/json',
         'User-Agent': 'com.munichways.app/flutter',
       });
-      if (response.statusCode == 200) break;
+      if (response.statusCode == 200) {
+        successfulProfile = attemptProfile;
+        break;
+      }
       if (attempt == 0 && _isTemporaryServerFailure(response)) {
         log.i(
           attemptProfile == BRouterProfile.shortest
@@ -96,10 +105,15 @@ class BRouterApi implements RoutingProvider {
           ? [points.last, destination]
           : <LatLng>[];
 
+      final distance = _number(properties['track-length'], 'track-length');
+      final duration = successfulProfile == BRouterProfile.shortest
+          ? distance / _shortestProfileCyclingSpeedMetersPerSecond
+          : _number(properties['total-time'], 'total-time');
+
       return CycleRoute(
         points,
-        _number(properties['track-length'], 'track-length'),
-        _number(properties['total-time'], 'total-time'),
+        distance,
+        duration,
         supportsVoiceGuidance: false,
         destinationConnector: destinationConnector,
       );

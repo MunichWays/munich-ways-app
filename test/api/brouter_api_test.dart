@@ -63,7 +63,7 @@ void main() {
       }
       expect(request.url.queryParameters['profile'], 'shortest');
       return Response(
-        '{"features":[{"properties":{"track-length":1,"total-time":1},'
+        '{"features":[{"properties":{"track-length":1500,"total-time":1080},'
         '"geometry":{"coordinates":[[11.57,48.14],[12.3155,45.4408]]}}]}',
         200,
       );
@@ -76,24 +76,27 @@ void main() {
 
     expect(requestCount, 2);
     expect(route.points, hasLength(2));
+    expect(route.duration, 337.5);
   });
 
-  test('sends the selected BRouter profile', () async {
+  test('uses cycling time for the selected shortest profile', () async {
     final api = BRouterApi(client: MockClient((request) async {
       expect(request.url.queryParameters['profile'], 'shortest');
       return Response(
-        '{"features":[{"properties":{"track-length":1,"total-time":1},'
+        '{"features":[{"properties":{"track-length":3000,"total-time":2160},'
         '"geometry":{"coordinates":[[11.57,48.14],[11.58,48.15]]}}]}',
         200,
       );
     }));
 
-    await api.route(
+    final route = await api.route(
       const [
         LatLng(48.14, 11.57),
         LatLng(48.15, 11.58),
       ],
       profile: BRouterProfile.shortest,
     );
+
+    expect(route.duration, 675);
   });
 }

@@ -178,7 +178,9 @@ void main() {
 
     final routeWish = find.text('Routenwunsch');
     final zoom = find.text('Zoom-Buttons');
+    final energySaving = find.text('Energie sparen');
     final appearance = find.text('Darstellung');
+    final automaticRerouting = find.text('Automatisch neu berechnen');
     final mapControls = find.text('Karten-Buttons');
     final more = find.text('Weitere Einstellungen');
     expect(routeWish, findsOneWidget);
@@ -202,7 +204,9 @@ void main() {
     );
     expect(find.text('Kürzeste Strecke'), findsNothing);
     expect(zoom, findsOneWidget);
+    expect(energySaving, findsOneWidget);
     expect(appearance, findsOneWidget);
+    expect(automaticRerouting, findsNothing);
     expect(mapControls, findsNothing);
     expect(more, findsOneWidget);
     expect(
@@ -211,17 +215,25 @@ void main() {
     );
     expect(
       tester.getTopLeft(zoom).dy,
+      lessThan(tester.getTopLeft(energySaving).dy),
+    );
+    expect(
+      tester.getTopLeft(energySaving).dy,
       lessThan(tester.getTopLeft(appearance).dy),
     );
     expect(
       tester.getTopLeft(appearance).dy,
       lessThan(tester.getTopLeft(more).dy),
     );
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
 
     expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
-    expect(find.text('Energie sparen'), findsOneWidget);
+    expect(energySaving, findsOneWidget);
+    expect(automaticRerouting, findsOneWidget);
     expect(mapControls, findsOneWidget);
     expect(find.text('Routenwunsch'), findsOneWidget);
     expect(find.text('Routenberechnung'), findsNothing);
@@ -231,6 +243,10 @@ void main() {
     expect(language, findsOneWidget);
     expect(bikeNetwork, findsOneWidget);
     expect(reloadNetwork, findsOneWidget);
+    expect(
+      tester.getTopLeft(automaticRerouting).dy,
+      lessThan(tester.getTopLeft(mapControls).dy),
+    );
     expect(
       tester.getTopLeft(mapControls).dy,
       lessThan(tester.getTopLeft(language).dy),

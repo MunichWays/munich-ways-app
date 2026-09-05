@@ -18,7 +18,8 @@ class AppColors {
   static const danger = Color(0xFFC62828);
 
   static const mapBlack = Colors.black;
-  static const mapGreen = Color(0xff27f5a5);
+  static const mapGreen = Color(0xFF298A63);
+  static const mapGreenDark = Color(0xFF27F5A5);
   static const mapYellow = Color(0xffffd000);
   static const mapRed = Color(0xfff44336);
   static const mapGrey = Color(0xff9c9d9f);
@@ -56,7 +57,7 @@ class AppColors {
       case "schwarz":
         return dark ? const Color(0xFFC7CDD1) : mapBlack;
       case "grün":
-        return mapGreen;
+        return dark ? mapGreenDark : mapGreen;
       case "gelb":
         return mapYellow;
       case "rot":

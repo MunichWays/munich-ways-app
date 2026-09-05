@@ -419,6 +419,13 @@ void main() {
     const position = LatLng(48.1000, 11.5005);
     expect(guidance.display(position, english: false), isNull);
     expect(guidance.update(position, english: false), isNull);
+    expect(guidance.isOnRouteAnywhere(position), isTrue);
+    expect(
+      guidance.isOffRouteForRerouting(
+        const LatLng(48.1020, 11.5040),
+      ),
+      isTrue,
+    );
   });
 
   test('announces a distant current maneuver once after the start gate', () {

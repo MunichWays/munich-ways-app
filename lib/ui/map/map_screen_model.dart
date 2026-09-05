@@ -247,6 +247,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   MunichwaysApi _munichwaysApi = MunichwaysApi();
   late final RoutingService _routingService;
+  bool _disposed = false;
   late final SettingsStore _settingsStore;
 
   late Stream<String> errorMsgs;
@@ -636,6 +637,35 @@ class MapScreenViewModel extends ChangeNotifier {
       _routingMode == RoutingMode.bRouterEverywhere &&
       _bRouterProfile == BRouterProfile.shortest;
 
+  /// A route-scoped alternative to the persisted routing preference.
+  ///
+  /// It remains active for retries and rerouting, but is cleared when the
+  /// current route is ended or replaced with a new destination.
+  bool _temporaryShortestRouteEnabled = false;
+  bool get temporaryShortestRouteEnabled => _temporaryShortestRouteEnabled;
+  bool get canSelectTemporaryShortestRoute => !shortestRouteEnabled;
+
+  Future<bool> setTemporaryShortestRouteEnabled(bool enabled) {
+    if (enabled && shortestRouteEnabled) {
+      return Future<bool>.value(false);
+    }
+    if (_temporaryShortestRouteEnabled == enabled) {
+      return Future<bool>.value(false);
+    }
+    _temporaryShortestRouteEnabled = enabled;
+    // Invalidate a request that may still be resolving the current GPS fix.
+    _routePlanRevision++;
+    notifyListeners();
+    if (destination != null) {
+      return _requestRoute();
+    }
+    return Future<bool>.value(false);
+  }
+
+  void _clearTemporaryShortestRoute() {
+    _temporaryShortestRouteEnabled = false;
+  }
+
   void setShortestRouteEnabled(bool enabled) {
     final routingMode =
         enabled ? RoutingMode.bRouterEverywhere : RoutingMode.automatic;
@@ -747,6 +777,7 @@ class MapScreenViewModel extends ChangeNotifier {
     routeStart = null;
     waypoints.clear();
     selectedSavedRoute = null;
+    _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     this.destination = place;
@@ -772,6 +803,7 @@ class MapScreenViewModel extends ChangeNotifier {
     routeStart = null;
     waypoints.clear();
     selectedSavedRoute = null;
+    _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     destination = place;
@@ -793,6 +825,11 @@ class MapScreenViewModel extends ChangeNotifier {
   }) {
     final wasNavigating = _navigationStarted;
     if (!wasNavigating &&
+        this.destination != null &&
+        this.destination != destination) {
+      _clearTemporaryShortestRoute();
+    }
+    if (!wasNavigating &&
         (locationState == LocationState.FOLLOW ||
             locationState == LocationState.FOLLOW_AND_ROTATE_MAP)) {
       locationState = LocationState.DISPLAY;
@@ -812,6 +849,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void setSavedRoutePlan(SavedRoute route) {
+    _clearTemporaryShortestRoute();
     selectedSavedRoute = route;
     setRoutePlan(
       start: route.start,
@@ -832,6 +870,7 @@ class MapScreenViewModel extends ChangeNotifier {
     routeStart = null;
     waypoints.clear();
     selectedSavedRoute = null;
+    _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
     _navigationStarted = false;
@@ -932,8 +971,12 @@ class MapScreenViewModel extends ChangeNotifier {
     final request = CancelableOperation<CycleRoute>.fromFuture(
       _routingService.route(
         coordinates,
-        mode: _routingMode,
-        bRouterProfile: _bRouterProfile,
+        mode: _temporaryShortestRouteEnabled
+            ? RoutingMode.bRouterEverywhere
+            : _routingMode,
+        bRouterProfile: _temporaryShortestRouteEnabled
+            ? BRouterProfile.shortest
+            : _bRouterProfile,
       ),
       onCancel: () => log.d("canceled prev request"),
     );
@@ -951,6 +994,7 @@ class MapScreenViewModel extends ChangeNotifier {
       this.route = MapRoute(value, MapRouteState.SHOWN);
       _routeStreamController.add(this.route);
       notifyListeners();
+      unawaited(_loadRouteComfort(this.route, planRevision));
       return true;
     } catch (e) {
       // Same as success path: ignore errors from superseded/cancelled requests.
@@ -964,6 +1008,52 @@ class MapScreenViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<void> retryRouteComfort() async {
+    if (route.comfortState != RouteComfortState.error) return;
+    await _loadRouteComfort(route, _routePlanRevision);
+  }
+
+  Future<void> _loadRouteComfort(MapRoute target, int planRevision) async {
+    final cycleRoute = target.route;
+    bool isCurrent() =>
+        !_disposed &&
+        identical(route, target) &&
+        identical(target.route, cycleRoute) &&
+        destination != null &&
+        _routePlanRevision == planRevision &&
+        target.state == MapRouteState.SHOWN;
+
+    if (!isCurrent() ||
+        cycleRoute == null ||
+        cycleRoute.comfort != null ||
+        target.comfortState == RouteComfortState.loading ||
+        !_routingService.canAnalyzeComfort(cycleRoute)) {
+      return;
+    }
+    target.comfortState = RouteComfortState.loading;
+    notifyListeners();
+    try {
+      final comfort = await _routingService.analyzeComfort(cycleRoute);
+      if (!isCurrent()) return;
+      // Preserve navigation identity and do not emit routeStream: both voice
+      // progress and the overview camera treat that as a route replacement.
+      cycleRoute.comfort = comfort;
+      target.comfortState = RouteComfortState.ready;
+    } catch (error, stackTrace) {
+      if (!isCurrent()) return;
+      log.i('Optional route comfort unavailable',
+          error: error, stackTrace: stackTrace);
+      target.comfortState = RouteComfortState.error;
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   void _clearRoute() {

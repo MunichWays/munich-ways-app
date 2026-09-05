@@ -196,6 +196,12 @@ void main() {
     expect(find.text('Route planen'), findsOneWidget);
     expect(find.text('In der Nähe'), findsOneWidget);
     expect(find.text('Auf Karte wählen'), findsNothing);
+    expect(find.bySemanticsLabel('Ziel suchen'), findsOneWidget);
+    expect(find.byTooltip('Info'), findsOneWidget);
+    expect(find.byTooltip('Einstellungen'), findsOneWidget);
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
     final compactPlanRouteX = tester.getCenter(find.text('Route planen')).dx;
 
     await tester.drag(find.text('Wohin?'), const Offset(0, -300));
@@ -354,6 +360,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps primary home actions visible with large system text',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(2),
+          ),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              MapHomeDestinationSheet(
+                searchCenter: const LatLng(48.1, 11.5),
+                onSelected: (_) {},
+                onPlanRoute: () {},
+                onNearbySelected: (_) async {},
+                onSelectOnMap: () {},
+                onShowInfo: () {},
+                onToggleAttribution: () {},
+                onShowSettings: () {},
+                attributionExpanded: false,
+                favoritesStore: _EmptyFavoritesStore(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Wohin?'), findsOneWidget);
+    expect(find.text('Route planen'), findsOneWidget);
+    expect(find.text('In der Nähe'), findsOneWidget);
+    expect(find.byTooltip('Info'), findsOneWidget);
+    expect(find.byTooltip('Einstellungen'), findsOneWidget);
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     expect(tester.takeException(), isNull);
   });
 }

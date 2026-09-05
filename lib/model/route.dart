@@ -8,6 +8,7 @@ class CycleRoute {
   bool supportsVoiceGuidance;
   List<LatLng> destinationConnector;
   RouteComfort? comfort;
+  final RouteAnalysisContext? analysisContext;
 
   CycleRoute(
     this.points,
@@ -17,7 +18,18 @@ class CycleRoute {
     this.supportsVoiceGuidance = true,
     this.destinationConnector = const [],
     this.comfort,
+    this.analysisContext,
   });
+}
+
+/// Exact node annotations of the returned route, preserving leg boundaries.
+class RouteAnalysisContext {
+  RouteAnalysisContext(List<List<int>> legNodeIds)
+      : legNodeIds = List.unmodifiable(
+          legNodeIds.map((nodes) => List<int>.unmodifiable(nodes)),
+        );
+
+  final List<List<int>> legNodeIds;
 }
 
 /// Radl-Komfort metadata calculated by the RadlNavi backend.

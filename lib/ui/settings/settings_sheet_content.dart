@@ -50,20 +50,30 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                     ),
                     const MenuGroupDivider(),
                     MenuGroupItem(
-                      label: strings.isEnglish
-                          ? 'Recalculate automatically'
-                          : 'Automatisch neu berechnen',
+                      label: strings.showZoomButtons,
                       trailingElement: _SecondarySettingsSwitch(
-                        value: model.automaticReroutingEnabled,
-                        onChanged: model.setAutomaticReroutingEnabled,
+                        semanticLabel: strings.showZoomButtons,
+                        value: model.showZoomButtons,
+                        onChanged: model.setShowZoomButtons,
                       ),
                     ),
                     const MenuGroupDivider(),
-                    MenuGroupItem(
-                      label: strings.showZoomButtons,
-                      trailingElement: _SecondarySettingsSwitch(
-                        value: model.showZoomButtons,
-                        onChanged: model.setShowZoomButtons,
+                    Consumer<EnergySavingController>(
+                      builder: (context, energySaving, _) => MenuGroupItem(
+                        label: strings.isEnglish
+                            ? 'Save energy'
+                            : 'Energie sparen',
+                        trailingElement: _SecondarySettingsSwitch(
+                          semanticLabel: strings.isEnglish
+                              ? 'Save energy'
+                              : 'Energie sparen',
+                          value: energySaving.effectiveEnabled,
+                          onChanged: energySaving.automaticEnabled
+                              ? null
+                              : (enabled) {
+                                  energySaving.setManualEnabled(enabled);
+                                },
+                        ),
                       ),
                     ),
                     const MenuGroupDivider(),
@@ -81,43 +91,42 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         title: Text(strings.moreSettings),
                         children: [
                           const MenuGroupDivider(),
-                          Consumer<EnergySavingController>(
-                            builder: (context, energySaving, _) =>
-                                MenuGroupItem(
-                              label: strings.isEnglish
-                                  ? 'Save energy'
-                                  : 'Energie sparen',
-                              trailingElement: _SecondarySettingsSwitch(
-                                value: energySaving.effectiveEnabled,
-                                onChanged: energySaving.automaticEnabled
-                                    ? null
-                                    : (enabled) {
-                                        energySaving.setManualEnabled(enabled);
-                                      },
-                              ),
+                          MenuGroupItem(
+                            label: strings.isEnglish
+                                ? 'Recalculate automatically'
+                                : 'Automatisch neu berechnen',
+                            trailingElement: _SecondarySettingsSwitch(
+                              semanticLabel: strings.isEnglish
+                                  ? 'Recalculate automatically'
+                                  : 'Automatisch neu berechnen',
+                              value: model.automaticReroutingEnabled,
+                              onChanged: model.setAutomaticReroutingEnabled,
                             ),
                           ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
                             label: strings.positionMapButtons,
                             trailingElement: DropdownButtonHideUnderline(
-                              child: DropdownButton<MapSidePanelEdge>(
-                                value: model.sidePanelEdge,
-                                alignment: AlignmentDirectional.centerEnd,
-                                isDense: true,
-                                items: [
-                                  DropdownMenuItem(
-                                    value: MapSidePanelEdge.left,
-                                    child: Text(strings.left),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: MapSidePanelEdge.right,
-                                    child: Text(strings.right),
-                                  ),
-                                ],
-                                onChanged: (v) {
-                                  if (v != null) model.setSidePanelEdge(v);
-                                },
+                              child: SizedBox(
+                                height: 48,
+                                child: DropdownButton<MapSidePanelEdge>(
+                                  value: model.sidePanelEdge,
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  isDense: true,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: MapSidePanelEdge.left,
+                                      child: Text(strings.left),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: MapSidePanelEdge.right,
+                                      child: Text(strings.right),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) model.setSidePanelEdge(v);
+                                  },
+                                ),
                               ),
                             ),
                           ),
@@ -125,38 +134,41 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                           MenuGroupItem(
                             label: strings.language,
                             trailingElement: DropdownButtonHideUnderline(
-                              child: DropdownButton<AppLanguage>(
-                                value: localeController.language,
-                                alignment: AlignmentDirectional.centerEnd,
-                                isDense: true,
-                                items: [
-                                  DropdownMenuItem(
-                                    value: AppLanguage.system,
-                                    child: _LanguageSymbol(
-                                      symbol: '🌐',
-                                      semanticsLabel: strings.systemLanguage,
+                              child: SizedBox(
+                                height: 48,
+                                child: DropdownButton<AppLanguage>(
+                                  value: localeController.language,
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  isDense: true,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: AppLanguage.system,
+                                      child: _LanguageSymbol(
+                                        symbol: '🌐',
+                                        semanticsLabel: strings.systemLanguage,
+                                      ),
                                     ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: AppLanguage.german,
-                                    child: _LanguageSymbol(
-                                      symbol: '🇩🇪',
-                                      semanticsLabel: strings.german,
+                                    DropdownMenuItem(
+                                      value: AppLanguage.german,
+                                      child: _LanguageSymbol(
+                                        symbol: '🇩🇪',
+                                        semanticsLabel: strings.german,
+                                      ),
                                     ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: AppLanguage.english,
-                                    child: _LanguageSymbol(
-                                      symbol: '🇬🇧',
-                                      semanticsLabel: strings.english,
+                                    DropdownMenuItem(
+                                      value: AppLanguage.english,
+                                      child: _LanguageSymbol(
+                                        symbol: '🇬🇧',
+                                        semanticsLabel: strings.english,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    localeController.setLanguage(value);
-                                  }
-                                },
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      localeController.setLanguage(value);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ),
@@ -214,7 +226,6 @@ class _AppearanceMenuItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                visualDensity: VisualDensity.compact,
                 tooltip: strings.isEnglish
                     ? 'About automatic mode'
                     : 'Info zur Automatik',
@@ -238,31 +249,34 @@ class _AppearanceMenuItem extends StatelessWidget {
                 icon: const Icon(Icons.info_outline),
               ),
               const SizedBox(width: 8),
-              DropdownButton<AppThemePreference>(
-                value: energySaving.effectiveEnabled
-                    ? AppThemePreference.dark
-                    : appTheme.preference,
-                alignment: AlignmentDirectional.centerEnd,
-                isDense: true,
-                items: [
-                  DropdownMenuItem(
-                    value: AppThemePreference.light,
-                    child: Text(strings.isEnglish ? 'Light' : 'Hell'),
-                  ),
-                  DropdownMenuItem(
-                    value: AppThemePreference.dark,
-                    child: Text(strings.isEnglish ? 'Dark' : 'Dunkel'),
-                  ),
-                  const DropdownMenuItem(
-                    value: AppThemePreference.automatic,
-                    child: Text('Auto'),
-                  ),
-                ],
-                onChanged: energySaving.effectiveEnabled
-                    ? null
-                    : (value) {
-                        if (value != null) appTheme.setPreference(value);
-                      },
+              SizedBox(
+                height: 48,
+                child: DropdownButton<AppThemePreference>(
+                  value: energySaving.effectiveEnabled
+                      ? AppThemePreference.dark
+                      : appTheme.preference,
+                  alignment: AlignmentDirectional.centerEnd,
+                  isDense: true,
+                  items: [
+                    DropdownMenuItem(
+                      value: AppThemePreference.light,
+                      child: Text(strings.isEnglish ? 'Light' : 'Hell'),
+                    ),
+                    DropdownMenuItem(
+                      value: AppThemePreference.dark,
+                      child: Text(strings.isEnglish ? 'Dark' : 'Dunkel'),
+                    ),
+                    const DropdownMenuItem(
+                      value: AppThemePreference.automatic,
+                      child: Text('Auto'),
+                    ),
+                  ],
+                  onChanged: energySaving.effectiveEnabled
+                      ? null
+                      : (value) {
+                          if (value != null) appTheme.setPreference(value);
+                        },
+                ),
               ),
             ],
           ),
@@ -274,20 +288,29 @@ class _AppearanceMenuItem extends StatelessWidget {
 
 class _SecondarySettingsSwitch extends StatelessWidget {
   const _SecondarySettingsSwitch({
+    required this.semanticLabel,
     required this.value,
     required this.onChanged,
   });
 
+  final String semanticLabel;
   final bool value;
   final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Switch.adaptive(
-      value: value,
-      onChanged: onChanged,
-      activeTrackColor: AppColors.munichWaysBlue,
-      activeThumbColor: Colors.white,
+    return Semantics(
+      label: semanticLabel,
+      toggled: value,
+      enabled: onChanged != null,
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      excludeSemantics: true,
+      child: Switch.adaptive(
+        value: value,
+        onChanged: onChanged,
+        activeTrackColor: AppColors.munichWaysBlue,
+        activeThumbColor: Colors.white,
+      ),
     );
   }
 }
@@ -321,7 +344,6 @@ class _RouteRecommendationSettings extends StatelessWidget {
                 ),
               ),
               IconButton(
-                visualDensity: VisualDensity.compact,
                 tooltip:
                     '${strings.tr('Info')}: ${strings.routeRecommendation}',
                 onPressed: () => _showOverviewInfo(context),
@@ -341,7 +363,6 @@ class _RouteRecommendationSettings extends StatelessWidget {
                 groupValue: model.routeRecommendation,
                 onChanged: model.setRouteRecommendation,
                 trailing: IconButton(
-                  visualDensity: VisualDensity.compact,
                   tooltip: '${strings.tr('Info')}: ${_label(recommendation)}',
                   onPressed: () => _showInfo(context, recommendation),
                   icon: const Icon(Icons.info_outline),

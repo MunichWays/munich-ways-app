@@ -152,43 +152,48 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     return content;
   }
 
-  static const _attributionStyle = TextStyle(
-    color: Colors.black45,
-    fontSize: 10,
-    height: 1.2,
-  );
-
   Widget _buildAttribution(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
+    final provider = model.resultsFromNominatim ? 'Nominatim' : 'Geoapify';
+    final providerUrl = model.resultsFromNominatim
+        ? 'https://nominatim.org/'
+        : 'https://www.geoapify.com/';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       color: Theme.of(context).colorScheme.surface,
       child: Wrap(
+        alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Text('Powered by ', style: _attributionStyle),
-          InkWell(
-            onTap: () => launchUrl(
-              Uri.parse(
-                model.resultsFromNominatim
-                    ? 'https://nominatim.org/'
-                    : 'https://www.geoapify.com/',
+          Text('Powered by', style: style),
+          Semantics(
+            link: true,
+            label: provider,
+            excludeSemantics: true,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                tapTargetSize: MaterialTapTargetSize.padded,
+                textStyle: style?.copyWith(
+                  decoration: TextDecoration.underline,
+                ),
               ),
-              mode: LaunchMode.externalApplication,
-            ),
-            child: Text(
-              model.resultsFromNominatim ? 'Nominatim' : 'Geoapify',
-              style: _attributionStyle.copyWith(
-                decoration: TextDecoration.underline,
-                decorationColor: Colors.black45,
+              onPressed: () => launchUrl(
+                Uri.parse(providerUrl),
+                mode: LaunchMode.externalApplication,
               ),
+              child: Text(provider),
             ),
           ),
           Text(
             context.l10n.isEnglish
                 ? ' · © OpenStreetMap contributors · © City of Munich'
                 : ' · © OpenStreetMap-Mitwirkende · © Stadt München',
-            style: _attributionStyle,
+            style: style,
           ),
         ],
       ),
@@ -219,6 +224,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       initiallyExpanded: true,
       dense: true,
       visualDensity: const VisualDensity(vertical: -3),
+      minTileHeight: 48,
       tilePadding: const EdgeInsets.symmetric(horizontal: 12),
       childrenPadding: EdgeInsets.zero,
       shape: const Border(),
@@ -374,6 +380,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(vertical: -3),
+      minTileHeight: 48,
       tileColor: route.isFavorite
           ? AppColors.favoriteHighlightFor(context)
           : Colors.transparent,
@@ -400,7 +407,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
               ),
               if (nameIsTruncated)
                 SizedBox.square(
-                  dimension: 32,
+                  dimension: 48,
                   child: IconButton(
                     tooltip: context.l10n.isEnglish
                         ? 'Show full route name'
@@ -434,7 +441,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
       onTap: () => widget._completeSelection(context, route),
       onLongPress: () => menuKey.currentState?.showButtonMenu(),
       trailing: SizedBox.square(
-        dimension: 32,
+        dimension: 48,
         child: PopupMenuButton<_SavedRouteAction>(
           key: menuKey,
           tooltip: context.l10n.isEnglish ? 'More options' : 'Mehr Optionen',
@@ -685,7 +692,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                       onLongPress: () => menuKey.currentState?.showButtonMenu(),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minHeight: compact ? 32 : 48,
+                          minHeight: 48,
                         ),
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
@@ -749,6 +756,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                       child: SizedBox.expand(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
+                          excludeFromSemantics: true,
                           onTap: () => menuKey.currentState?.showButtonMenu(),
                           onLongPress: () =>
                               menuKey.currentState?.showButtonMenu(),
@@ -776,7 +784,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     required Widget child,
   }) {
     if (!compact) return child;
-    return SizedBox.square(dimension: 32, child: child);
+    return SizedBox.square(dimension: 48, child: child);
   }
 
   List<PopupMenuEntry<_SavedPlaceAction>> _savedPlaceMenuItems(

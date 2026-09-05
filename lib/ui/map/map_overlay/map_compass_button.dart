@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -175,48 +176,58 @@ class _MapCompassOverlayButtonState extends State<MapCompassOverlayButton> {
   Widget _buildVisibleCompass(BuildContext context) {
     final needleRadians = vector_math.radians(-widget.mapBearingDegrees.value);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Tooltip(
-      message: 'Norden nach oben ausrichten',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => unawaited(_onCompassPressed()),
-        child: Center(
-          child: IgnorePointer(
-            child: SizedBox.square(
-              dimension: _kVisualSize,
-              child: Material(
-                color: dark
-                    ? const Color(0xFF747C82).withValues(alpha: 0.82)
-                    : Colors.black.withValues(alpha: 0.36),
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                shadowColor: Colors.transparent,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white70, width: 1),
+    final label = context.l10n.isEnglish
+        ? 'Orient map north up'
+        : 'Norden nach oben ausrichten';
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: () => unawaited(_onCompassPressed()),
+      excludeSemantics: true,
+      child: Tooltip(
+        message: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => unawaited(_onCompassPressed()),
+          child: Center(
+            child: IgnorePointer(
+              child: SizedBox.square(
+                dimension: _kVisualSize,
+                child: Material(
+                  color: dark
+                      ? const Color(0xFF747C82).withValues(alpha: 0.82)
+                      : Colors.black.withValues(alpha: 0.36),
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  shadowColor: Colors.transparent,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white70, width: 1),
+                        ),
                       ),
-                    ),
-                    Transform.rotate(
-                      angle: needleRadians,
-                      alignment: Alignment.center,
-                      child: Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: ExcludeSemantics(
-                          child: Image.asset(
-                            'images/compass.png',
-                            fit: BoxFit.contain,
+                      Transform.rotate(
+                        angle: needleRadians,
+                        alignment: Alignment.center,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: ExcludeSemantics(
+                            child: Image.asset(
+                              'images/compass.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

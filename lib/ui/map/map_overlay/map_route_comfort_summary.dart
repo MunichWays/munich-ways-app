@@ -13,7 +13,7 @@ const routeComfortSummaryAdditionalBottomOffset = 88.0;
 bool showsRouteComfortSummary(MapScreenViewModel model) =>
     !model.navigationStarted &&
     model.route.state == MapRouteState.SHOWN &&
-    model.route.route?.comfort != null;
+    model.route.comfortState != RouteComfortState.unavailable;
 
 class MapRouteComfortSummary extends StatelessWidget {
   const MapRouteComfortSummary({super.key, required this.model});
@@ -25,15 +25,82 @@ class MapRouteComfortSummary extends StatelessWidget {
     if (!showsRouteComfortSummary(model)) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: MapRouteComfortCard(comfort: model.route.route!.comfort!),
+      child: RouteComfortContent(
+        route: model.route,
+        onRetry: () => model.retryRouteComfort(),
+      ),
+    );
+  }
+}
+
+/// Shared metadata display for the map and the currently open route planner.
+class RouteComfortContent extends StatelessWidget {
+  const RouteComfortContent({
+    super.key,
+    required this.route,
+    required this.onRetry,
+    this.compact = false,
+  });
+
+  final MapRoute route;
+  final VoidCallback onRetry;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final comfort = route.route?.comfort;
+    if (comfort != null) {
+      return MapRouteComfortCard(comfort: comfort, compact: compact);
+    }
+    final loading = route.comfortState == RouteComfortState.loading;
+    if (!loading && route.comfortState != RouteComfortState.error) {
+      return const SizedBox.shrink();
+    }
+    final english = context.l10n.isEnglish;
+    return Material(
+      key: ValueKey(loading ? 'route-comfort-loading' : 'route-comfort-error'),
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Text(loading
+                    ? (english
+                        ? 'Cycling comfort: calculating …'
+                        : 'Radl-Komfort: Wird berechnet …')
+                    : (english
+                        ? 'Cycling comfort currently unavailable'
+                        : 'Radl-Komfort derzeit nicht verfügbar')),
+              ),
+            ),
+            if (!loading)
+              IconButton(
+                tooltip:
+                    english ? 'Retry comfort analysis' : 'Komfort erneut laden',
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class MapRouteComfortCard extends StatelessWidget {
-  const MapRouteComfortCard({super.key, required this.comfort});
+  const MapRouteComfortCard({
+    super.key,
+    required this.comfort,
+    this.compact = false,
+  });
 
   final RouteComfort comfort;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +116,9 @@ class MapRouteComfortCard extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 10),
+        padding: compact
+            ? const EdgeInsets.fromLTRB(12, 2, 4, 6)
+            : const EdgeInsets.fromLTRB(12, 4, 4, 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -121,7 +190,7 @@ class _ComfortDistributionBar extends StatelessWidget {
       (
         name: 'green',
         percentage: comfort.distribution.green,
-        color: AppColors.mapGreen,
+        color: AppColors.getPolylineColor('grün', dark: dark),
       ),
       (
         name: 'unrated',
@@ -249,7 +318,10 @@ Future<void> showRouteComfortInfoDialog(
                   percentage: comfort.distribution.yellow,
                 ),
                 _ComfortLegendRow(
-                  color: AppColors.mapGreen,
+                  color: AppColors.getPolylineColor(
+                    'grün',
+                    dark: theme.brightness == Brightness.dark,
+                  ),
                   label: english ? 'Comfortable' : 'Komfortabel',
                   percentage: comfort.distribution.green,
                 ),

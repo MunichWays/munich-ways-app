@@ -44,12 +44,13 @@ class EnergySavingController extends ChangeNotifier
   StreamSubscription<void>? _stateSubscription;
   bool _manualEnabled = false;
   bool _automaticEnabled = false;
+  bool _automaticSuppressed = false;
   int? _batteryLevel;
   bool _started = false;
 
   bool get manualEnabled => _manualEnabled;
-  bool get automaticEnabled => _automaticEnabled;
-  bool get effectiveEnabled => _manualEnabled || _automaticEnabled;
+  bool get automaticEnabled => _automaticEnabled && !_automaticSuppressed;
+  bool get effectiveEnabled => _manualEnabled || automaticEnabled;
   int? get batteryLevel => _batteryLevel;
 
   Future<void> start() async {
@@ -82,6 +83,18 @@ class EnergySavingController extends ChangeNotifier
     await _store.saveEnergySavingEnabled(enabled);
   }
 
+  /// Turns energy saving off at the user's request. If the low-battery rule
+  /// activated it, automatic activation stays suppressed until the battery
+  /// rises above the threshold and can trigger normally on a later drop.
+  Future<void> disable() async {
+    if (!_manualEnabled && !automaticEnabled) return;
+    final persistManualSetting = _manualEnabled;
+    _manualEnabled = false;
+    if (_automaticEnabled) _automaticSuppressed = true;
+    notifyListeners();
+    if (persistManualSetting) await _store.saveEnergySavingEnabled(false);
+  }
+
   Future<void> refreshBatteryLevel() async {
     try {
       final level = await _battery.batteryLevel;
@@ -90,7 +103,13 @@ class EnergySavingController extends ChangeNotifier
         return;
       }
       final automatic = level <= automaticThresholdPercent;
-      if (_batteryLevel == level && _automaticEnabled == automatic) return;
+      final resetSuppression = !automatic && _automaticSuppressed;
+      if (resetSuppression) _automaticSuppressed = false;
+      if (_batteryLevel == level &&
+          _automaticEnabled == automatic &&
+          !resetSuppression) {
+        return;
+      }
       _batteryLevel = level;
       _automaticEnabled = automatic;
       notifyListeners();

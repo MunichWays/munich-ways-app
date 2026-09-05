@@ -30,6 +30,11 @@ void main() {
     await tester.pump();
 
     expect(find.byTooltip('Norden nach oben ausrichten'), findsOneWidget);
+    final compass = find.bySemanticsLabel('Norden nach oben ausrichten');
+    expect(compass, findsOneWidget);
+    expect(tester.getSize(compass), const Size.square(56));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
 
     await tester.pumpWidget(const SizedBox.shrink());
     displayedBearing.dispose();

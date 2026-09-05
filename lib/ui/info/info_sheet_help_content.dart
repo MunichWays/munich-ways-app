@@ -59,7 +59,10 @@ class InfoSheetHelpContent extends StatelessWidget {
               ),
             ),
             InfoSheetLegendRow(
-              color: AppColors.mapGreen,
+              color: AppColors.getPolylineColor(
+                'grün',
+                dark: theme.brightness == Brightness.dark,
+              ),
               dashed: false,
               label: context.l10n.isEnglish
                   ? 'Comfortable and convenient – solid line'

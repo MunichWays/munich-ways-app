@@ -54,10 +54,40 @@ void main() {
     expect(theme.isDark, isTrue);
     expect(theme.preference, AppThemePreference.light);
 
-    await energy.setManualEnabled(false);
+    await energy.disable();
     theme.setEnergySavingEnabled(energy.effectiveEnabled);
     expect(theme.isDark, isFalse);
     expect(theme.preference, AppThemePreference.light);
+    expect(store.data.energySavingEnabled, isFalse);
+  });
+
+  test('explicit disable suppresses low-battery mode until recovery', () async {
+    final battery = _Battery(20);
+    final controller = EnergySavingController(
+      store: _SettingsStore(),
+      battery: battery,
+      pollInterval: const Duration(days: 1),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.start();
+    await controller.refreshBatteryLevel();
+    expect(controller.automaticEnabled, isTrue);
+
+    await controller.disable();
+    expect(controller.automaticEnabled, isFalse);
+    expect(controller.effectiveEnabled, isFalse);
+
+    await controller.refreshBatteryLevel();
+    expect(controller.effectiveEnabled, isFalse);
+
+    battery.level = 21;
+    await controller.refreshBatteryLevel();
+    expect(controller.automaticEnabled, isFalse);
+
+    battery.level = 20;
+    await controller.refreshBatteryLevel();
+    expect(controller.automaticEnabled, isTrue);
   });
 }
 

@@ -107,7 +107,10 @@ class _CompactColorLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (
-        AppColors.mapGreen,
+        AppColors.getPolylineColor(
+          'grün',
+          dark: Theme.of(context).brightness == Brightness.dark,
+        ),
         context.l10n.isEnglish ? 'Comfortable' : 'Gemütlich',
       ),
       (

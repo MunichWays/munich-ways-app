@@ -31,6 +31,7 @@ import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_home_destination_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_selection_panel.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
@@ -544,6 +545,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   'den Standort halb so oft.',
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await energySaving.disable();
+            },
+            child: Text(english ? 'Disable' : 'Deaktivieren'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(context.l10n.close),
@@ -1060,7 +1068,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             top: 0,
                             left: 0,
                             right: 0,
-                            height: 22,
+                            height: 48,
                             child: IgnorePointer(
                               ignoring: !_mapAttributionExpanded,
                               child: MapAttribution(
@@ -1104,39 +1112,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                            top: _mapAttributionExpanded ? 36 : 28,
+                            top: _mapAttributionExpanded ? 56 : 28,
                             right: 12,
-                            child: Material(
-                              color: Colors.transparent,
-                              elevation: 0,
-                              shape: const CircleBorder(),
-                              child: SizedBox.square(
-                                dimension: 36,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  iconSize: 15,
-                                  tooltip: context.l10n.isEnglish
-                                      ? 'Map attribution'
-                                      : 'Kartenquellen',
-                                  onPressed: () => setState(() {
-                                    _mapAttributionExpanded =
-                                        !_mapAttributionExpanded;
-                                  }),
-                                  icon: const Text(
-                                    '©',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: AppColors.munichWaysBlue,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                            child: MapOverlayButton(
+                              tooltip: context.l10n.isEnglish
+                                  ? 'Map attribution'
+                                  : 'Kartenquellen',
+                              size: 28,
+                              tapTargetSize: 48,
+                              onPressed: () => setState(() {
+                                _mapAttributionExpanded =
+                                    !_mapAttributionExpanded;
+                              }),
+                              child: const Text(
+                                '©',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
                           ),
                           if (energySaving)
                             Positioned(
-                              top: _mapAttributionExpanded ? 80 : 72,
+                              top: _mapAttributionExpanded ? 112 : 84,
                               right: 12,
                               child: IconButton.filled(
                                 style: IconButton.styleFrom(
@@ -1198,6 +1198,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                               _openRoutePlanner(model),
                                           onStartNavigation: () =>
                                               _startNavigation(model),
+                                          onToggleTemporaryShortestRoute:
+                                              () async {
+                                            await model
+                                                .setTemporaryShortestRouteEnabled(
+                                              !model
+                                                  .temporaryShortestRouteEnabled,
+                                            );
+                                          },
                                           onToggleVoiceGuidance: () =>
                                               _toggleVoiceGuidance(
                                             model,

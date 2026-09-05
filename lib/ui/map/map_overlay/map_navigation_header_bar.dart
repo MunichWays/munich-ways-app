@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
@@ -16,6 +18,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.onStartNavigation,
     required this.onToggleVoiceGuidance,
     required this.onEndRoute,
+    this.onToggleTemporaryShortestRoute,
     this.onShowInfo,
     this.onShowSettings,
     this.nextManeuver,
@@ -27,6 +30,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   final Future<void> Function() onStartNavigation;
   final VoidCallback onToggleVoiceGuidance;
   final VoidCallback onEndRoute;
+  final Future<void> Function()? onToggleTemporaryShortestRoute;
   final VoidCallback? onShowInfo;
   final VoidCallback? onShowSettings;
   final VoiceGuidanceDisplay? nextManeuver;
@@ -69,6 +73,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaSize = MediaQuery.sizeOf(context);
     final compactLandscape = mediaSize.width >= mediaSize.height * 1.5;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
     return Semantics(
       container: true,
       button: true,
@@ -80,7 +85,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
         onTap: onPressed,
         child: SizedBox(
           width: double.infinity,
-          height: compactLandscape ? 48 : 56,
+          height:
+              compactLandscape ? (largeText ? 56 : 48) : (largeText ? 64 : 56),
           child: Center(
             child: IgnorePointer(
               child: FilledButton.icon(
@@ -110,6 +116,53 @@ class MapNavigationHeaderBar extends StatelessWidget {
     );
   }
 
+  Future<void> _showDirectRouteDialog(
+    BuildContext context, {
+    required bool directRouteActive,
+    required Future<void> Function() toggleRouteChoice,
+  }) async {
+    final english = context.l10n.isEnglish;
+    final useDirectRoute = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(english ? 'Direct route' : 'Direkte Route'),
+        content: Text(
+          english
+              ? 'The direct route is shorter, but may be more stressful. It has no turn-by-turn voice instructions, so please watch the map. This choice applies only to this trip.'
+              : 'Die direkte Route ist kürzer, kann aber stressiger sein. Sie hat keine Abbiegeansagen, deshalb bitte auf die Karte achten. Die Auswahl gilt nur für diese Fahrt.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(
+              directRouteActive,
+            ),
+            child: Text(
+              directRouteActive
+                  ? (english
+                      ? 'Keep direct route'
+                      : 'Direkte Route beibehalten')
+                  : (english ? 'Keep standard' : 'Bei Standard bleiben'),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(
+              !directRouteActive,
+            ),
+            child: Text(
+              directRouteActive
+                  ? (english ? 'Calculate standard' : 'Standard berechnen')
+                  : (english
+                      ? 'Calculate direct route'
+                      : 'Direkte Route berechnen'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (useDirectRoute == null || useDirectRoute == directRouteActive) return;
+    await toggleRouteChoice();
+  }
+
   @override
   Widget build(BuildContext context) {
     final dest = model.destination;
@@ -120,6 +173,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaSize = MediaQuery.sizeOf(context);
     final compactLandscape = mediaSize.width >= mediaSize.height * 1.5;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
     final actionSize = compactLandscape ? 48.0 : 52.0;
     final refreshWidth = compactLandscape ? 60.0 : 68.0;
     final refreshIconSize = compactLandscape ? 24.0 : 28.0;
@@ -147,6 +201,15 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 )
         : null;
     final destinationReached = guidanceDisplay?.isFinalDestination ?? false;
+    Widget routeStat(IconData icon, String value) => Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white70, size: 19),
+            const SizedBox(width: 7),
+            Text(value, softWrap: false, style: emphasisStyle),
+          ],
+        );
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
@@ -166,42 +229,25 @@ class MapNavigationHeaderBar extends StatelessWidget {
         }
         stats = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          child: largeText
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.route, color: Colors.white70, size: 19),
-                    const SizedBox(width: 7),
-                    Text(
-                      _formatKm(r.distance),
-                      softWrap: false,
-                      style: emphasisStyle,
+                    routeStat(Icons.route, _formatKm(r.distance)),
+                    const SizedBox(height: 4),
+                    routeStat(Icons.schedule, _formatMin(r.duration)),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: routeStat(Icons.route, _formatKm(r.distance)),
+                    ),
+                    Expanded(
+                      child: routeStat(Icons.schedule, _formatMin(r.duration)),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.schedule,
-                      color: Colors.white70,
-                      size: 19,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      _formatMin(r.duration),
-                      softWrap: false,
-                      style: emphasisStyle,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         );
         break;
       case MapRouteState.ERROR:
@@ -214,6 +260,23 @@ class MapNavigationHeaderBar extends StatelessWidget {
     }
 
     final refreshEnabled = route.state != MapRouteState.LOADING;
+    final routeReadyToStart = route.state == MapRouteState.SHOWN &&
+        route.route != null &&
+        !model.navigationStarted &&
+        model.routeStart == null;
+    final showTemporaryRouteChoice = onToggleTemporaryShortestRoute != null &&
+        model.canSelectTemporaryShortestRoute &&
+        !model.navigationStarted &&
+        model.routeStart == null &&
+        route.state != MapRouteState.LOADING;
+    final useConfiguredRoute = model.temporaryShortestRouteEnabled;
+    final routeChoiceLabel = useConfiguredRoute
+        ? (context.l10n.isEnglish
+            ? 'Choose standard route'
+            : 'Standardroute auswählen')
+        : (context.l10n.isEnglish
+            ? 'Choose direct route'
+            : 'Direkte Route auswählen');
     final refreshLabel = refreshEnabled
         ? (navigationTrackingInterrupted
             ? (context.l10n.isEnglish ? 'Resume' : 'Fortsetzen')
@@ -306,6 +369,37 @@ class MapNavigationHeaderBar extends StatelessWidget {
         ),
       ),
     );
+    final routeChoiceAction = Semantics(
+      container: true,
+      button: true,
+      label: routeChoiceLabel,
+      onTap: showTemporaryRouteChoice
+          ? () => unawaited(_showDirectRouteDialog(
+                context,
+                directRouteActive: useConfiguredRoute,
+                toggleRouteChoice: onToggleTemporaryShortestRoute!,
+              ))
+          : null,
+      excludeSemantics: true,
+      child: SizedBox.square(
+        dimension: actionSize,
+        child: IconButton(
+          color: Colors.white70,
+          tooltip: routeChoiceLabel,
+          onPressed: showTemporaryRouteChoice
+              ? () => unawaited(_showDirectRouteDialog(
+                    context,
+                    directRouteActive: useConfiguredRoute,
+                    toggleRouteChoice: onToggleTemporaryShortestRoute!,
+                  ))
+              : null,
+          icon: Icon(
+            useConfiguredRoute ? Icons.route : Icons.straighten,
+            size: compactLandscape ? 23 : 25,
+          ),
+        ),
+      ),
+    );
     final showVoiceAction = route.state == MapRouteState.SHOWN &&
         route.route != null &&
         model.navigationStarted &&
@@ -362,7 +456,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       required VoidCallback onPressed,
     }) =>
         SizedBox.square(
-          dimension: 44,
+          dimension: 48,
           child: IconButton(
             style: IconButton.styleFrom(
               foregroundColor: Colors.white70,
@@ -457,10 +551,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 ),
               ),
             ],
-            if (route.state == MapRouteState.SHOWN &&
-                route.route != null &&
-                !model.navigationStarted &&
-                model.routeStart == null) ...[
+            if (routeReadyToStart) ...[
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -482,6 +573,10 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   if (!destinationReached) closeAction,
+                  if (!destinationReached && showTemporaryRouteChoice) ...[
+                    SizedBox(width: compactLandscape ? 6 : 10),
+                    routeChoiceAction,
+                  ],
                   const Spacer(),
                   editAction,
                   if (showVoiceAction) ...[

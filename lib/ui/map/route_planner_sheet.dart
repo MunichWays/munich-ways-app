@@ -4,7 +4,6 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
@@ -68,7 +67,7 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
 }) {
   final sheetController = DraggableScrollableController();
   final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
-  final initialChildSize = initialStopCount >= 2 ? 1.0 : 0.55;
+  final initialChildSize = initialStopCount >= 1 ? 1.0 : 0.55;
   return showModalBottomSheet<RoutePlannerMapSelection>(
     context: context,
     isScrollControlled: true,
@@ -131,14 +130,11 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
 
   bool get _english => context.l10n.isEnglish;
 
-  RouteComfort? get _routeComfort {
-    if (_routePlanEdited ||
-        widget.initialPlan != null ||
-        widget.model.route.state != MapRouteState.SHOWN) {
-      return null;
-    }
-    return widget.model.route.route?.comfort;
-  }
+  bool get _showsRouteComfort =>
+      !_routePlanEdited &&
+      widget.initialPlan == null &&
+      widget.model.route.state == MapRouteState.SHOWN &&
+      widget.model.route.comfortState != RouteComfortState.unavailable;
 
   @override
   void initState() {
@@ -359,14 +355,14 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 24),
+      minimum: const EdgeInsets.only(bottom: 12),
       child: SingleChildScrollView(
         controller: widget.scrollController,
         padding: EdgeInsets.fromLTRB(
           20,
           0,
           20,
-          MediaQuery.viewInsetsOf(context).bottom + 8,
+          MediaQuery.viewInsetsOf(context).bottom + 4,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -392,8 +388,8 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   ),
                   IconButton.filled(
                     constraints: const BoxConstraints.tightFor(
-                      width: 40,
-                      height: 40,
+                      width: 48,
+                      height: 48,
                     ),
                     style: AppButtonStyles.secondary(context),
                     tooltip: _english ? 'Save route' : 'Route speichern',
@@ -402,7 +398,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   ),
                   IconButton(
                     constraints: const BoxConstraints.tightFor(
-                      width: 40,
+                      width: 48,
                       height: 48,
                     ),
                     padding: const EdgeInsets.all(8),
@@ -413,11 +409,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            if (_routeComfort case final comfort?) ...[
-              MapRouteComfortCard(comfort: comfort),
-              const SizedBox(height: 12),
-            ],
+            const SizedBox(height: 4),
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -480,7 +472,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 );
               },
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 8),
             FilledButton.icon(
               style: AppButtonStyles.primary(context),
               onPressed: _destination == null
@@ -495,6 +487,19 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                     },
               icon: const Icon(Icons.route),
               label: Text(_english ? 'Calculate route' : 'Route berechnen'),
+            ),
+            ListenableBuilder(
+              listenable: widget.model,
+              builder: (context, _) => !_showsRouteComfort
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: RouteComfortContent(
+                        route: widget.model.route,
+                        onRetry: () => widget.model.retryRouteComfort(),
+                        compact: true,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -529,6 +534,9 @@ class _PlaceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -2),
+      minTileHeight: 48,
       contentPadding: backgroundColor == null
           ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 8),
