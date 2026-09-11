@@ -1,3 +1,4 @@
+import 'package:munich_ways/ui/map/map_overlay/map_route_start_panel.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math';
@@ -1185,45 +1186,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               }),
                               navigationBar: model.destination == null
                                   ? null
-                                  : Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        MapRouteComfortSummary(model: model),
-                                        MapNavigationHeaderBar(
-                                          model: model,
-                                          onRefreshRoute: () =>
-                                              _refreshRouteAndResumeNavigation(
-                                                  model),
-                                          onEditRoute: () =>
-                                              _openRoutePlanner(model),
-                                          onStartNavigation: () =>
-                                              _startNavigation(model),
-                                          onToggleTemporaryShortestRoute:
-                                              () async {
-                                            await model
-                                                .setTemporaryShortestRouteEnabled(
-                                              !model
-                                                  .temporaryShortestRouteEnabled,
-                                            );
-                                          },
-                                          onToggleVoiceGuidance: () =>
-                                              _toggleVoiceGuidance(
-                                            model,
-                                            english: context.l10n.isEnglish,
-                                          ),
-                                          onShowInfo: () =>
-                                              showMapInfoSheet(context),
-                                          onShowSettings: () =>
-                                              showMapSettingsSheet(
-                                            context,
-                                            model,
-                                            onReloadMapData: () =>
-                                                _reloadMapData(model),
-                                          ),
-                                          onEndRoute: () => _endRoute(model),
-                                          nextManeuver: _nextManeuver,
+                                  : MapRouteStartPanel(
+                                      model: model,
+                                      builder: (collapsed, toggle) =>
+                                          MapNavigationHeaderBar(
+                                        collapsed: collapsed,
+                                        onToggleCollapsed: toggle,
+                                        model: model,
+                                        onRefreshRoute: () =>
+                                            _refreshRouteAndResumeNavigation(
+                                                model),
+                                        onEditRoute: () =>
+                                            _openRoutePlanner(model),
+                                        onStartNavigation: () =>
+                                            _startNavigation(model),
+                                        onToggleVoiceGuidance: () =>
+                                            _toggleVoiceGuidance(
+                                          model,
+                                          english: context.l10n.isEnglish,
                                         ),
-                                      ],
+                                        onShowInfo: () =>
+                                            showMapInfoSheet(context),
+                                        onShowSettings: () =>
+                                            showMapSettingsSheet(
+                                          context,
+                                          model,
+                                          onReloadMapData: () =>
+                                              _reloadMapData(model),
+                                        ),
+                                        onEndRoute: () => _endRoute(model),
+                                        nextManeuver: _nextManeuver,
+                                      ),
                                     ),
                             ),
                           if (_initialContentReady &&

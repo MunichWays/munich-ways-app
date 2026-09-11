@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -11,7 +10,6 @@ import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/polyline.dart';
-import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
@@ -513,6 +511,9 @@ class MapScreenViewModel extends ChangeNotifier {
   /// reusing the same location-service and permission handling.
   Future<bool> startNavigation() async {
     if (locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      // A late planning choice must never replace navigation after departure.
+      _selectionRevision++;
+      _pendingVariant = null;
       _navigationStarted = true;
       notifyListeners();
       return true;
@@ -523,6 +524,9 @@ class MapScreenViewModel extends ChangeNotifier {
     }
     if (locationState == LocationState.FOLLOW) {
       locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+      // A late planning choice must never replace navigation after departure.
+      _selectionRevision++;
+      _pendingVariant = null;
       _navigationStarted = true;
       notifyListeners();
     }
@@ -645,25 +649,138 @@ class MapScreenViewModel extends ChangeNotifier {
   bool get temporaryShortestRouteEnabled => _temporaryShortestRouteEnabled;
   bool get canSelectTemporaryShortestRoute => !shortestRouteEnabled;
 
-  Future<bool> setTemporaryShortestRouteEnabled(bool enabled) {
-    if (enabled && shortestRouteEnabled) {
-      return Future<bool>.value(false);
+  /// Cached alternatives share one plan revision and never replace each other
+  /// merely because a background request or comfort analysis completes.
+  final Map<bool, MapRoute> _variants = {};
+  final Map<bool, Future<bool>> _variantRequests = {};
+  List<LatLng>? _variantCoordinates;
+  int _selectionRevision = 0;
+  bool? _pendingVariant;
+  bool? get pendingRouteVariant => _pendingVariant;
+  MapRoute? routeVariant(bool direct) => _variants[direct];
+  bool get hasRouteComparison =>
+      canSelectTemporaryShortestRoute && _variants.isNotEmpty;
+
+  Future<bool> setTemporaryShortestRouteEnabled(bool enabled) async {
+    if (enabled && shortestRouteEnabled) return false;
+    if (_navigationStarted) {
+      return _switchRouteVariantDuringNavigation(enabled);
     }
+    final selection = ++_selectionRevision;
+    _pendingVariant = null;
     if (_temporaryShortestRouteEnabled == enabled) {
-      return Future<bool>.value(false);
+      notifyListeners();
+      return false;
     }
-    _temporaryShortestRouteEnabled = enabled;
-    // Invalidate a request that may still be resolving the current GPS fix.
-    _routePlanRevision++;
-    notifyListeners();
-    if (destination != null) {
+    if (destination == null || _variantCoordinates == null) {
+      _temporaryShortestRouteEnabled = enabled;
+      notifyListeners();
+      if (destination == null) return false;
       return _requestRoute();
     }
-    return Future<bool>.value(false);
+    final revision = _routePlanRevision;
+    _pendingVariant = enabled;
+    notifyListeners();
+    final ready = await (_variantRequests[enabled] ??
+        _calculateVariant(enabled, revision));
+    if (_disposed ||
+        revision != _routePlanRevision ||
+        selection != _selectionRevision) return false;
+    _pendingVariant = null;
+    if (ready) {
+      _temporaryShortestRouteEnabled = enabled;
+      route = _variants[enabled]!;
+      _routeStreamController.add(route);
+    } else {
+      _displayErrorMsg(
+          'Die gewählte Route ist derzeit nicht verfügbar. Bitte erneut versuchen.');
+    }
+    notifyListeners();
+    return ready;
+  }
+
+  Future<bool> _switchRouteVariantDuringNavigation(bool enabled) async {
+    final selection = ++_selectionRevision;
+    _pendingVariant = null;
+    if (_temporaryShortestRouteEnabled == enabled) {
+      notifyListeners();
+      return false;
+    }
+    final targetDestination = destination;
+    if (targetDestination == null) return false;
+
+    routeStart = null;
+    if (_lastPassedWaypointIndex >= 0) {
+      final passedCount =
+          (_lastPassedWaypointIndex + 1).clamp(0, waypoints.length).toInt();
+      waypoints.removeRange(0, passedCount);
+    }
+    _lastPassedWaypointIndex = -1;
+
+    final revision = ++_routePlanRevision;
+    final activeDirect = _temporaryShortestRouteEnabled;
+    final activeRoute = route;
+    _variants.clear();
+    _variantRequests.clear();
+    _variantCoordinates = null;
+    if (activeRoute.state == MapRouteState.SHOWN && activeRoute.route != null) {
+      _variants[activeDirect] = activeRoute;
+    }
+    _pendingVariant = enabled;
+    notifyListeners();
+
+    final from = await resolveRouteStartPosition();
+    if (_disposed ||
+        revision != _routePlanRevision ||
+        selection != _selectionRevision ||
+        destination != targetDestination) {
+      return false;
+    }
+    if (from == null) {
+      _pendingVariant = null;
+      _displayErrorMsg(
+          'Keine Route, da kein aktueller Standort als Start vorhanden');
+      notifyListeners();
+      return false;
+    }
+    _variantCoordinates = List.unmodifiable([
+      LatLng(from.latitude, from.longitude),
+      ...waypoints.map((place) => place.latLng),
+      targetDestination.latLng,
+    ]);
+
+    final ready = await _calculateVariant(enabled, revision);
+    if (_disposed ||
+        revision != _routePlanRevision ||
+        selection != _selectionRevision) {
+      return false;
+    }
+    _pendingVariant = null;
+    if (!ready) {
+      _displayErrorMsg(
+          'Die gewählte Route ist derzeit nicht verfügbar. Bitte erneut versuchen.');
+      notifyListeners();
+      return false;
+    }
+
+    _temporaryShortestRouteEnabled = enabled;
+    route = _variants[enabled]!;
+    _routeStreamController.add(route);
+    notifyListeners();
+    return true;
   }
 
   void _clearTemporaryShortestRoute() {
     _temporaryShortestRouteEnabled = false;
+    _invalidateVariants();
+  }
+
+  void _invalidateVariants() {
+    _selectionRevision++;
+    _pendingVariant = null;
+    _variants.clear();
+    _variantRequests.clear();
+    _variantCoordinates = null;
   }
 
   void setShortestRouteEnabled(bool enabled) {
@@ -864,8 +981,6 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void clearDestination() {
     // Drop any in-flight route so a late response cannot repopulate the map.
-    _routeRequest?.cancel();
-    _routeRequest = null;
     this.destination = null;
     routeStart = null;
     waypoints.clear();
@@ -926,103 +1041,116 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
-  /// Current RadlNavi request; cancelled when the user ends navigation or starts a new route.
-  CancelableOperation<CycleRoute>? _routeRequest = null;
-
   Future<bool> _requestRoute() async {
-    final to = this.destination;
-    final planRevision = _routePlanRevision;
-    if (to == null) {
-      _displayErrorMsg("Keine Route, da kein Ziel vorhanden");
-      return false;
-    }
-
-    // Show feedback immediately. Resolving a fresh GPS position can itself take
-    // several seconds and is part of the route recalculation from the user's
-    // perspective.
-    this.route = MapRoute(null, MapRouteState.LOADING);
+    final to = destination;
+    if (to == null || _disposed) return false;
+    // Every refresh has a new generation, including two overlapping GPS fixes.
+    final revision = ++_routePlanRevision;
+    _invalidateVariants();
+    final direct = _temporaryShortestRouteEnabled;
+    route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
-
-    // New destination / retry: abandon the previous request.
-    await _routeRequest?.cancel();
-    if (destination != to || _routePlanRevision != planRevision) {
-      return false;
-    }
-
     final customStart = routeStart;
     final plannedStops = List<Place>.of(waypoints);
     final from = customStart == null ? await resolveRouteStartPosition() : null;
-    if (destination != to || _routePlanRevision != planRevision) {
+    if (_disposed || destination != to || revision != _routePlanRevision)
       return false;
-    }
     if (customStart == null && from == null) {
       _displayErrorMsg(
-          "Keine Route, da kein aktueller Standort als Start vorhanden");
-      this.route = MapRoute(null, MapRouteState.ERROR);
+          'Keine Route, da kein aktueller Standort als Start vorhanden');
+      route = MapRoute(null, MapRouteState.ERROR);
       notifyListeners();
       return false;
     }
-
-    final coordinates = [
+    _variantCoordinates = List.unmodifiable([
       customStart?.latLng ?? LatLng(from!.latitude, from.longitude),
       ...plannedStops.map((place) => place.latLng),
       to.latLng,
-    ];
-    final request = CancelableOperation<CycleRoute>.fromFuture(
-      _routingService.route(
-        coordinates,
-        mode: _temporaryShortestRouteEnabled
-            ? RoutingMode.bRouterEverywhere
-            : _routingMode,
-        bRouterProfile: _temporaryShortestRouteEnabled
-            ? BRouterProfile.shortest
-            : _bRouterProfile,
-      ),
-      onCancel: () => log.d("canceled prev request"),
-    );
-    _routeRequest = request;
-
-    try {
-      final value = await request.valueOrCancellation();
-      // User may have cleared the destination while the request was running.
-      if (!identical(_routeRequest, request) ||
-          destination == null ||
-          _routePlanRevision != planRevision ||
-          value == null) {
-        return false;
-      }
-      this.route = MapRoute(value, MapRouteState.SHOWN);
-      _routeStreamController.add(this.route);
-      notifyListeners();
-      unawaited(_loadRouteComfort(this.route, planRevision));
-      return true;
-    } catch (e) {
-      // Same as success path: ignore errors from superseded/cancelled requests.
-      if (!identical(_routeRequest, request) ||
-          destination == null ||
-          _routePlanRevision != planRevision) {
-        return false;
-      }
-      _displayErrorMsg(routeErrorMessage(e));
-      this.route = MapRoute(null, MapRouteState.ERROR);
-      notifyListeners();
-      return false;
+    ]);
+    final ready = await _calculateVariant(direct, revision, activate: true);
+    if (_disposed || revision != _routePlanRevision) return false;
+    // Start the alternative only after the requested route is already usable.
+    if (ready &&
+        canSelectTemporaryShortestRoute &&
+        _routingService.supportsVariants) {
+      unawaited(_calculateVariant(!direct, revision));
     }
+    return ready;
   }
 
-  Future<void> retryRouteComfort() async {
-    if (route.comfortState != RouteComfortState.error) return;
-    await _loadRouteComfort(route, _routePlanRevision);
-  }
-
-  Future<void> _loadRouteComfort(MapRoute target, int planRevision) async {
-    final cycleRoute = target.route;
+  Future<bool> _calculateVariant(bool direct, int revision,
+      {bool activate = false}) {
+    final cached = _variants[direct];
+    if (cached?.state == MapRouteState.SHOWN) return Future.value(true);
+    final pending = _variantRequests[direct];
+    if (pending != null) return pending;
+    final coordinates = _variantCoordinates;
+    if (coordinates == null) return Future.value(false);
+    final target = MapRoute(null, MapRouteState.LOADING);
+    _variants[direct] = target;
     bool isCurrent() =>
         !_disposed &&
-        identical(route, target) &&
+        destination != null &&
+        revision == _routePlanRevision &&
+        identical(_variants[direct], target);
+    final request = () async {
+      try {
+        final value = await _routingService.route(coordinates,
+            mode: _routingMode,
+            bRouterProfile: _bRouterProfile,
+            direct: direct);
+        if (!isCurrent()) return false;
+        target.route = value;
+        target.state = MapRouteState.SHOWN;
+        target.comfortState = value.comfort == null
+            ? RouteComfortState.unavailable
+            : RouteComfortState.ready;
+        if (activate && _temporaryShortestRouteEnabled == direct) {
+          route = target;
+          _routeStreamController.add(route);
+        }
+        notifyListeners();
+        unawaited(_loadRouteComfort(target));
+        return true;
+      } catch (error, stackTrace) {
+        if (!isCurrent()) return false;
+        target.state = MapRouteState.ERROR;
+        if (activate && _temporaryShortestRouteEnabled == direct) {
+          route = target;
+          _displayErrorMsg(routeErrorMessage(error));
+        } else {
+          log.i('Alternative route unavailable',
+              error: error, stackTrace: stackTrace);
+        }
+        notifyListeners();
+        return false;
+      } finally {
+        if (isCurrent()) _variantRequests.remove(direct);
+      }
+    }();
+    _variantRequests[direct] = request;
+    notifyListeners();
+    return request;
+  }
+
+  Future<void> retryRouteComfort({bool? direct}) async {
+    final target = direct == null ? route : _variants[direct];
+    if (target == null || target.comfortState != RouteComfortState.error)
+      return;
+    await _loadRouteComfort(target);
+  }
+
+  Future<void> _loadRouteComfort(MapRoute target) async {
+    final cycleRoute = target.route;
+    // A navigation switch retains the active route while calculating the new
+    // variant. Its metadata may still complete even across a plan revision.
+    // Identity checks reject results for routes that are no longer retained.
+    bool isCurrent() =>
+        !_disposed &&
+        (identical(route, target) ||
+            _variants.values.any((value) => identical(value, target))) &&
         identical(target.route, cycleRoute) &&
         destination != null &&
-        _routePlanRevision == planRevision &&
         target.state == MapRouteState.SHOWN;
 
     if (!isCurrent() ||
@@ -1053,6 +1181,7 @@ class MapScreenViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _invalidateVariants();
     super.dispose();
   }
 

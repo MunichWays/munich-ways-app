@@ -110,6 +110,78 @@ void main() {
     expect(bRouter.calls, 1);
   });
 
+  test(
+      'persisted shortest and explicit direct use RadlNavi with shortest fallback',
+      () async {
+    final primary = _DirectProvider();
+    final fallback = _FakeProvider();
+    final service = RoutingService(
+        radlNavi: primary,
+        bRouter: fallback,
+        radlNaviCoverage: _FakeCoverage({munich, rosenheim}));
+    await service.route([munich, rosenheim],
+        mode: RoutingMode.bRouterEverywhere,
+        bRouterProfile: BRouterProfile.shortest);
+    expect(primary.directCalls, 1);
+    expect(primary.calls, 0);
+    expect(fallback.calls, 0);
+    primary.fail = true;
+    await service.route([munich, rosenheim],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.fastBike,
+        direct: true);
+    expect(fallback.lastProfile, BRouterProfile.shortest);
+    primary.fail = false;
+    await service.route([munich, rosenheim],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.trekking,
+        direct: true);
+    expect(primary.directCalls, 3);
+    expect(fallback.calls, 1);
+    await service.route([munich, berlin],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.trekking,
+        direct: true);
+    expect(primary.directCalls, 3);
+    expect(fallback.lastProfile, BRouterProfile.shortest);
+  });
+
+  test('direct has its own timeout and falls back when its budget expires',
+      () async {
+    final pending = Completer<CycleRoute>();
+    final primary = _DirectProvider(result: pending.future);
+    final fallback = _FakeProvider();
+    final service = RoutingService(
+        radlNavi: primary,
+        bRouter: fallback,
+        radlNaviCoverage: _FakeCoverage({munich, rosenheim}),
+        requestTimeout: const Duration(milliseconds: 1),
+        directRequestTimeout: const Duration(seconds: 2));
+    final request = service.route([munich, rosenheim],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.trekking,
+        direct: true);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(fallback.calls, 0);
+    final direct = CycleRoute([munich, rosenheim], 100, 20);
+    pending.complete(direct);
+    expect(await request, same(direct));
+
+    final stalled = Completer<CycleRoute>();
+    final timedService = RoutingService(
+        radlNavi: _DirectProvider(result: stalled.future),
+        bRouter: fallback,
+        radlNaviCoverage: _FakeCoverage({munich, rosenheim}),
+        directRequestTimeout: const Duration(milliseconds: 10));
+    await timedService.route([munich, rosenheim],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.trekking,
+        direct: true);
+    expect(fallback.calls, 1);
+    expect(fallback.lastProfile, BRouterProfile.shortest);
+    stalled.complete(direct);
+  });
+
   testWidgets('bundled Oberbayern polygon contains Munich but not Berlin',
       (tester) async {
     final coverage = OberbayernCoverage();
@@ -162,5 +234,19 @@ class _FakeProvider implements RoutingProvider {
       100,
       20,
     );
+  }
+}
+
+class _DirectProvider extends _FakeProvider implements DirectRoutingProvider {
+  _DirectProvider({this.result});
+  final Future<CycleRoute>? result;
+  int directCalls = 0;
+  bool fail = false;
+  @override
+  Future<CycleRoute> routeDirect(List<LatLng> coordinates) async {
+    directCalls++;
+    if (fail) throw StateError('unavailable');
+    if (result != null) return result!;
+    return CycleRoute(coordinates, 100, 20);
   }
 }

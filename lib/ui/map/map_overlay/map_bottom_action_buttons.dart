@@ -42,7 +42,9 @@ class MapBottomActionButtons extends StatelessWidget {
     final bottomInset = mediaQuery.padding.bottom +
         (attributionExpanded
             ? kMapBottomActionRowExpandedPadding
-            : kMapBottomActionRowCollapsedPadding);
+            : navigationBar != null && !model.navigationStarted
+                ? 4
+                : kMapBottomActionRowCollapsedPadding);
     return Positioned(
       left: 0,
       right: 0,
@@ -87,7 +89,7 @@ class MapBottomActionButtons extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            if (showSearch) const SizedBox(height: 8),
           ],
           if (showSearch) ...[
             Padding(

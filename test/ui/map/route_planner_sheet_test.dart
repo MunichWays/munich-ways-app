@@ -73,17 +73,17 @@ void main() {
     final calculateRoute = find.text('Route berechnen');
     final comfortSummary = find.byKey(const ValueKey('route-comfort-summary'));
     expect(
-      tester.getTopLeft(comfortSummary).dy,
-      greaterThan(tester.getBottomLeft(calculateRoute).dy),
+      tester.getTopLeft(calculateRoute).dy,
+      greaterThan(tester.getBottomLeft(comfortSummary).dy),
     );
-    expect(calculateRoute.hitTestable(), findsOneWidget);
     final calculateButton = find
         .ancestor(of: calculateRoute, matching: find.byType(FilledButton))
         .first;
+    expect(calculateRoute.hitTestable(), findsOneWidget);
     final scrollViewport = find.byType(SingleChildScrollView).first;
     expect(
-      tester.getRect(calculateButton).bottom,
-      lessThanOrEqualTo(tester.getRect(scrollViewport).bottom),
+      tester.getRect(calculateButton).top,
+      greaterThanOrEqualTo(tester.getRect(scrollViewport).bottom),
     );
 
     final destinationMenu = find.byTooltip('Mehr Optionen').last;
@@ -516,6 +516,49 @@ void main() {
       tester.getBottomRight(find.text('Route berechnen')).dy,
       lessThan(tester.view.physicalSize.height),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'many stops scroll down automatically while Calculate stays fixed',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..waypoints.addAll([
+        for (var i = 0; i < 10; i++)
+          Place('Stop $i', LatLng(48.1 + i / 100, 11.5))
+      ])
+      ..destination = Place('Ziel', const LatLng(48.3, 11.7));
+    addTearDown(model.dispose);
+    await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!),
+        home: Builder(
+            builder: (context) => Scaffold(
+                body: TextButton(
+                    onPressed: () =>
+                        showRoutePlannerSheet(context, model: model),
+                    child: const Text('Open'))))));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final scroll = tester
+        .widget<SingleChildScrollView>(find.byType(SingleChildScrollView).first)
+        .controller!;
+    expect(scroll.position.maxScrollExtent, greaterThan(0));
+    expect(scroll.offset, closeTo(scroll.position.maxScrollExtent, 1));
+    final calculate = find.text('Route berechnen');
+    expect(calculate.hitTestable(), findsOneWidget);
+    final bottom = tester.getBottomLeft(calculate).dy;
+    scroll.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(calculate.hitTestable(), findsOneWidget);
+    expect(tester.getBottomLeft(calculate).dy, bottom);
+    expect(find.text('Route planen').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

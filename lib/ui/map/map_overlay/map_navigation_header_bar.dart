@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
@@ -18,19 +16,21 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.onStartNavigation,
     required this.onToggleVoiceGuidance,
     required this.onEndRoute,
-    this.onToggleTemporaryShortestRoute,
     this.onShowInfo,
     this.onShowSettings,
     this.nextManeuver,
+    this.collapsed = false,
+    this.onToggleCollapsed,
   });
 
   final MapScreenViewModel model;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapsed;
   final Future<void> Function() onRefreshRoute;
   final VoidCallback onEditRoute;
   final Future<void> Function() onStartNavigation;
   final VoidCallback onToggleVoiceGuidance;
   final VoidCallback onEndRoute;
-  final Future<void> Function()? onToggleTemporaryShortestRoute;
   final VoidCallback? onShowInfo;
   final VoidCallback? onShowSettings;
   final VoiceGuidanceDisplay? nextManeuver;
@@ -69,6 +69,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
+    bool compact = false,
   }) {
     final theme = Theme.of(context);
     final mediaSize = MediaQuery.sizeOf(context);
@@ -85,19 +86,30 @@ class MapNavigationHeaderBar extends StatelessWidget {
         onTap: onPressed,
         child: SizedBox(
           width: double.infinity,
-          height:
-              compactLandscape ? (largeText ? 56 : 48) : (largeText ? 64 : 56),
+          height: compact && !largeText
+              ? 48
+              : compactLandscape
+                  ? (largeText ? 56 : 48)
+                  : (largeText ? 64 : 56),
           child: Center(
             child: IgnorePointer(
               child: FilledButton.icon(
                 style: AppButtonStyles.hero(context).merge(
                   FilledButton.styleFrom(
                     minimumSize: Size(
-                      compactLandscape ? 160 : 180,
+                      compact
+                          ? 144
+                          : compactLandscape
+                              ? 160
+                              : 180,
                       compactLandscape ? 44 : 48,
                     ),
                     padding: EdgeInsets.symmetric(
-                      horizontal: compactLandscape ? 18 : 24,
+                      horizontal: compact
+                          ? 16
+                          : compactLandscape
+                              ? 18
+                              : 24,
                       vertical: compactLandscape ? 9 : 12,
                     ),
                     textStyle: theme.textTheme.titleMedium?.copyWith(
@@ -114,53 +126,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _showDirectRouteDialog(
-    BuildContext context, {
-    required bool directRouteActive,
-    required Future<void> Function() toggleRouteChoice,
-  }) async {
-    final english = context.l10n.isEnglish;
-    final useDirectRoute = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(english ? 'Direct route' : 'Direkte Route'),
-        content: Text(
-          english
-              ? 'The direct route is shorter, but may be more stressful. It has no turn-by-turn voice instructions, so please watch the map. This choice applies only to this trip.'
-              : 'Die direkte Route ist kürzer, kann aber stressiger sein. Sie hat keine Abbiegeansagen, deshalb bitte auf die Karte achten. Die Auswahl gilt nur für diese Fahrt.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(
-              directRouteActive,
-            ),
-            child: Text(
-              directRouteActive
-                  ? (english
-                      ? 'Keep direct route'
-                      : 'Direkte Route beibehalten')
-                  : (english ? 'Keep standard' : 'Bei Standard bleiben'),
-            ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(
-              !directRouteActive,
-            ),
-            child: Text(
-              directRouteActive
-                  ? (english ? 'Calculate standard' : 'Standard berechnen')
-                  : (english
-                      ? 'Calculate direct route'
-                      : 'Direkte Route berechnen'),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (useDirectRoute == null || useDirectRoute == directRouteActive) return;
-    await toggleRouteChoice();
   }
 
   @override
@@ -205,8 +170,10 @@ class MapNavigationHeaderBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white70, size: 19),
-            const SizedBox(width: 7),
+            if (model.navigationStarted || onToggleCollapsed == null) ...[
+              Icon(icon, color: Colors.white70, size: 19),
+              const SizedBox(width: 7),
+            ],
             Text(value, softWrap: false, style: emphasisStyle),
           ],
         );
@@ -228,7 +195,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
           break;
         }
         stats = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(
+              horizontal: 16, vertical: model.navigationStarted ? 8 : 2),
           child: largeText
               ? Column(
                   mainAxisSize: MainAxisSize.min,
@@ -264,19 +232,24 @@ class MapNavigationHeaderBar extends StatelessWidget {
         route.route != null &&
         !model.navigationStarted &&
         model.routeStart == null;
-    final showTemporaryRouteChoice = onToggleTemporaryShortestRoute != null &&
-        model.canSelectTemporaryShortestRoute &&
-        !model.navigationStarted &&
-        model.routeStart == null &&
-        route.state != MapRouteState.LOADING;
-    final useConfiguredRoute = model.temporaryShortestRouteEnabled;
-    final routeChoiceLabel = useConfiguredRoute
-        ? (context.l10n.isEnglish
-            ? 'Choose standard route'
-            : 'Standardroute auswählen')
-        : (context.l10n.isEnglish
-            ? 'Choose direct route'
-            : 'Direkte Route auswählen');
+    if (collapsed && routeReadyToStart) {
+      return Material(
+        color: AppColors.mapRouteColor,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: _heroAction(
+            context,
+            label: context.l10n.tr('Starten'),
+            icon: Icons.navigation,
+            compact: true,
+            onPressed: onStartNavigation,
+          ),
+        ),
+      );
+    }
     final refreshLabel = refreshEnabled
         ? (navigationTrackingInterrupted
             ? (context.l10n.isEnglish ? 'Resume' : 'Fortsetzen')
@@ -369,37 +342,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
         ),
       ),
     );
-    final routeChoiceAction = Semantics(
-      container: true,
-      button: true,
-      label: routeChoiceLabel,
-      onTap: showTemporaryRouteChoice
-          ? () => unawaited(_showDirectRouteDialog(
-                context,
-                directRouteActive: useConfiguredRoute,
-                toggleRouteChoice: onToggleTemporaryShortestRoute!,
-              ))
-          : null,
-      excludeSemantics: true,
-      child: SizedBox.square(
-        dimension: actionSize,
-        child: IconButton(
-          color: Colors.white70,
-          tooltip: routeChoiceLabel,
-          onPressed: showTemporaryRouteChoice
-              ? () => unawaited(_showDirectRouteDialog(
-                    context,
-                    directRouteActive: useConfiguredRoute,
-                    toggleRouteChoice: onToggleTemporaryShortestRoute!,
-                  ))
-              : null,
-          icon: Icon(
-            useConfiguredRoute ? Icons.route : Icons.straighten,
-            size: compactLandscape ? 23 : 25,
-          ),
-        ),
-      ),
-    );
     final showVoiceAction = route.state == MapRouteState.SHOWN &&
         route.route != null &&
         model.navigationStarted &&
@@ -471,14 +413,19 @@ class MapNavigationHeaderBar extends StatelessWidget {
       color: AppColors.mapRouteColor,
       elevation: 3,
       shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: model.navigationStarted && onToggleCollapsed != null
+          ? const BorderRadius.vertical(bottom: Radius.circular(16))
+          : BorderRadius.circular(16),
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: compactLandscape ? 4 : 8),
+        padding: EdgeInsets.symmetric(
+          vertical:
+              collapsed || !model.navigationStarted || compactLandscape ? 4 : 8,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (guidanceDisplay != null)
+            if (!collapsed && guidanceDisplay != null)
               ExcludeSemantics(
                 excluding: navigationTrackingInterrupted,
                 child: Padding(
@@ -536,8 +483,19 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ),
                 ),
               ),
-            SizedBox(width: double.infinity, child: Center(child: stats)),
-            if (destinationReached) ...[
+            if (!collapsed)
+              SizedBox(width: double.infinity, child: Center(child: stats)),
+            if (!collapsed && route.route?.supportsVoiceGuidance == false)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                    context.l10n.isEnglish
+                        ? 'BRouter · no voice instructions'
+                        : 'BRouter · ohne Abbiegeansagen',
+                    textAlign: TextAlign.center,
+                    style: baseStyle),
+              ),
+            if (!collapsed && destinationReached) ...[
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -551,8 +509,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 ),
               ),
             ],
-            if (routeReadyToStart) ...[
-              const SizedBox(height: 8),
+            if (!collapsed && routeReadyToStart) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: kMapHorizontalHolderClearance,
@@ -560,6 +517,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 child: _heroAction(
                   context,
                   label: context.l10n.tr('Starten'),
+                  compact: true,
                   icon: Icons.navigation,
                   onPressed: onStartNavigation,
                 ),
@@ -572,11 +530,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (!destinationReached) closeAction,
-                  if (!destinationReached && showTemporaryRouteChoice) ...[
-                    SizedBox(width: compactLandscape ? 6 : 10),
-                    routeChoiceAction,
-                  ],
+                  if (!destinationReached || collapsed) closeAction,
                   const Spacer(),
                   editAction,
                   if (showVoiceAction) ...[

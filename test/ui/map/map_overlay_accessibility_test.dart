@@ -283,108 +283,29 @@ void main() {
     expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
   });
 
-  testWidgets('start window offers an accessible one-trip direct choice',
+  testWidgets('start window leaves route selection to the planner',
       (tester) async {
-    var toggles = 0;
     final model = MapScreenViewModel(store: _MemorySettingsStore())
       ..destination = Place('Ziel', const LatLng(48.15, 11.6))
-      ..route = MapRoute(
-        CycleRoute(const [], 4200, 1200),
-        MapRouteState.SHOWN,
-      );
-
-    await tester.pumpWidget(
-      MaterialApp(
+      ..route = MapRoute(CycleRoute(const [], 4200, 1200), MapRouteState.SHOWN);
+    await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: SizedBox(
-            width: 360,
-            child: MapNavigationHeaderBar(
-              model: model,
-              onRefreshRoute: () async {},
-              onEditRoute: () {},
-              onStartNavigation: () async {},
-              onToggleTemporaryShortestRoute: () async => toggles++,
-              onToggleVoiceGuidance: () {},
-              onEndRoute: () {},
-            ),
-          ),
-        ),
-      ),
-    );
-
+            body: SizedBox(
+                width: 360,
+                child: MapNavigationHeaderBar(
+                    model: model,
+                    onRefreshRoute: () async {},
+                    onEditRoute: () {},
+                    onStartNavigation: () async {},
+                    onToggleVoiceGuidance: () {},
+                    onEndRoute: () {})))));
     expect(find.text('Starten'), findsOneWidget);
-    expect(find.text('Direkte Route'), findsNothing);
-    expect(find.text('Kürzer, aber möglicherweise stressiger'), findsNothing);
-    final direct = find.bySemanticsLabel('Direkte Route auswählen');
-    expect(direct, findsOneWidget);
-    expect(tester.getSize(direct).height, greaterThanOrEqualTo(48));
-    expect(find.byIcon(Icons.straighten), findsOneWidget);
-    final directIconButton = tester.widget<IconButton>(
-      find.descendant(of: direct, matching: find.byType(IconButton)),
-    );
-    expect(directIconButton.style?.side, isNull);
-    expect(find.byType(OutlinedButton), findsNothing);
-    expect(
-      tester.getCenter(find.bySemanticsLabel('Route beenden')).dx,
-      lessThan(tester.getCenter(direct).dx),
-    );
-    expect(
-      tester.getCenter(direct).dx,
-      lessThan(tester.getCenter(find.bySemanticsLabel('Route bearbeiten')).dx),
-    );
+    expect(find.byIcon(Icons.straighten), findsNothing);
+    expect(find.bySemanticsLabel('Direkte Route auswählen'), findsNothing);
+    expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     await expectLater(tester, meetsGuideline(textContrastGuideline));
-
-    await tester.tap(direct);
-    await tester.pumpAndSettle();
-    expect(find.text('Direkte Route'), findsOneWidget);
-    expect(
-      find.textContaining('keine Abbiegeansagen'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('auf die Karte achten'), findsOneWidget);
-    expect(find.text('Bei Standard bleiben'), findsOneWidget);
-    expect(find.text('Direkte Route berechnen'), findsOneWidget);
-    await tester.tap(find.text('Direkte Route berechnen'));
-    await tester.pumpAndSettle();
-    expect(toggles, 1);
-
-    final activeModel = MapScreenViewModel(store: _MemorySettingsStore());
-    await activeModel.setTemporaryShortestRouteEnabled(true);
-    activeModel
-      ..destination = Place('Ziel', const LatLng(48.15, 11.6))
-      ..route = MapRoute(
-        CycleRoute(const [], 4200, 1200),
-        MapRouteState.SHOWN,
-      );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: MapNavigationHeaderBar(
-            model: activeModel,
-            onRefreshRoute: () async {},
-            onEditRoute: () {},
-            onStartNavigation: () async {},
-            onToggleTemporaryShortestRoute: () async {},
-            onToggleVoiceGuidance: () {},
-            onEndRoute: () {},
-          ),
-        ),
-      ),
-    );
-
-    final activeDirect = find.bySemanticsLabel('Standardroute auswählen');
-    expect(activeDirect, findsOneWidget);
-    expect(
-      find.descendant(of: activeDirect, matching: find.byIcon(Icons.route)),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.straighten), findsNothing);
-    await tester.tap(activeDirect);
-    await tester.pumpAndSettle();
-    expect(find.text('Direkte Route beibehalten'), findsOneWidget);
-    expect(find.text('Standard berechnen'), findsOneWidget);
   });
 
   testWidgets('passive follow-map hint has no button-like map icon',
@@ -573,7 +494,6 @@ void main() {
             onRefreshRoute: () async {},
             onEditRoute: () {},
             onStartNavigation: () async {},
-            onToggleTemporaryShortestRoute: () async {},
             onToggleVoiceGuidance: () {},
             onEndRoute: () {},
           ),
@@ -582,12 +502,7 @@ void main() {
     );
 
     expect(find.text('Starten'), findsOneWidget);
-    final directRoute = find.bySemanticsLabel('Direkte Route auswählen');
-    expect(directRoute, findsOneWidget);
-    expect(
-      tester.getCenter(directRoute).dy,
-      greaterThan(tester.getCenter(find.text('Starten')).dy),
-    );
+    expect(find.bySemanticsLabel('Direkte Route auswählen'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -705,8 +620,15 @@ void main() {
     expect(find.text('Komfortabel'), findsOneWidget);
     expect(find.text('Nicht bewertet'), findsOneWidget);
     expect(find.text('5 %'), findsOneWidget);
-    expect(find.textContaining('Braune, nicht bewertete'), findsOneWidget);
-    expect(find.text('Weitere Erläuterungen'), findsOneWidget);
+    expect(find.text('82 % der Route bewertet'), findsOneWidget);
+    expect(find.text('Radl-Komfort 78/100'), findsOneWidget);
+    expect(
+        find.textContaining('Unbewertete Abschnitte (braun) zählen nicht mit.'),
+        findsOneWidget);
+    expect(find.text('Weitere Infos zum Komfort-Index'), findsOneWidget);
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Radl-Komfort-Index'), findsNothing);
   });
 
   testWidgets('shows no index when coverage is insufficient and hides on start',
@@ -742,6 +664,7 @@ void main() {
       ),
     );
 
+    expect(find.text('Radl-Komfort -'), findsOneWidget);
     expect(find.text('69 % bewertet'), findsOneWidget);
     expect(find.textContaining('/100'), findsNothing);
     expect(tester.takeException(), isNull);

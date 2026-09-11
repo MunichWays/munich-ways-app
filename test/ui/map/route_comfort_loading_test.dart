@@ -150,8 +150,7 @@ void main() {
     expect(previous.comfort, isNull);
   });
 
-  test(
-      'switching to the temporary direct provider ignores standard-route comfort',
+  test('inactive standard comfort is cached without replacing the direct route',
       () async {
     final h = await _Harness.create();
     await h.model.refreshRoute();
@@ -161,7 +160,7 @@ void main() {
     h.primary.pending.single.complete(_comfort);
     await _flush();
     expect(h.model.route.route, same(direct));
-    expect(previous.comfort, isNull);
+    expect(previous.comfort, same(_comfort));
     expect(h.model.route.comfortState, RouteComfortState.unavailable);
     expect(h.fallback.calls, 1);
   });
@@ -204,11 +203,12 @@ void main() {
     ))));
     await tester.tap(find.text('Open planner'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('route-comfort-loading')), findsOneWidget);
+    expect(find.text('Komfort wird geladen…'), findsOneWidget);
     h.primary.pending.single.complete(_comfort);
     await tester.pumpAndSettle();
-    expect(find.text('77/100'), findsOneWidget);
-    expect(find.byKey(const ValueKey('route-comfort-loading')), findsNothing);
+    expect(find.text('Radl-Komfort 77/100'), findsOneWidget);
+    expect(find.text('Komfort wird geladen…'), findsNothing);
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

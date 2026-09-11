@@ -129,25 +129,65 @@ trip without changing my normal routing preference.
 
 The complete expected behavior is:
 
-- The route start window offers a compact `Direkte Route` icon between ending
-  and editing the route, without increasing the panel height. Its dialog warns
-  that the route can be more stressful, has no turn-by-turn announcements, and
-  therefore requires watching the map. The option is hidden when shortest
-  routing is already configured.
-- Selecting it immediately recalculates with BRouter's `shortest` profile. The
-  action then becomes `Standard`, which recalculates using the latest routing
-  preference from Settings.
-- The temporary choice is the single effective routing preference for every
-  manual retry and automatic off-route recalculation during that trip. Editing
-  the current route or its intermediate stops does not discard it.
-- BRouter routes do not invent spoken maneuvers, but their geometry remains
-  available for off-route detection and automatic recalculation.
+- Route selection lives in the planner, with two full-width cards: selection and
+  title, comfort value and information action, distribution bar, distance and
+  duration. The direct card uses smaller regular text and a flatter bar. Standard
+  places its title and index close together. No duplicate comfort card is shown.
+- The direct variant's comfort information links to the unchanged direct-route
+  explanation. This dialog only closes; it never selects or calculates a route.
+  The start window no longer has a separate direct-route icon.
+- RadlNavi calculates the direct route using its separate discovered API and
+  the same maneuver parser, navigation and voice guidance as the standard route.
+  The persisted shortest preference also uses this service. Other configured
+  BRouter profiles remain available.
+- Display the requested route first. Discovery, the alternative route and both
+  comfort analyses must not delay its availability. The planner compares distance,
+  duration and comfort for the configured and direct routes before navigation.
+  Each variant has its own rating distribution bar, including when coverage is
+  insufficient for an index. Standard routing retains a 20-second timeout;
+  isolated direct routing has 45 seconds and optional comfort analysis 60 seconds
+  to tolerate startup delays without blocking the standard route.
+  Before navigation, switching a ready alternative does not recalculate it.
+  During navigation, both radio controls remain available: switching calculates
+  from current GPS and remaining stops, retaining the active route until success.
+  A failure or cancelled switch preserves the route and its pending comfort data.
+- A pending or failed alternative must preserve the currently usable route.
+  Selecting the current variant again cancels a pending switch. Retrying an
+  unavailable alternative must recover without resetting the current route.
+- Each plan generation owns its variant routes and pending analyses. Refreshing,
+  editing or ending a plan invalidates older results. Late comfort updates may
+  update an inactive cached variant, but never replace the active geometry or
+  emit a navigation route event.
+- Comfort requests retain individual legs, repeated nodes, edge distances and
+  snapped endpoints, and use the producing API URL and routing variant.
+  Insufficient coverage is a valid result; comfort errors permit independent retry.
+  Below 70 percent coverage show `Radl-Komfort -`, with the coverage percentage
+  separately in small text. The information sheet shows coverage in small regular
+  text, followed by `Radl-Komfort x/100` (or `-` when no index is available).
+- The temporary choice applies to manual retry and automatic rerouting, including
+  remaining intermediate stops. Refresh calculates the active variant first and
+  then refreshes the alternative using the same new start and stops.
+- Outside RadlNavi coverage, on unavailable discovery and on routing errors,
+  preserve BRouter fallback. Direct uses its shortest profile and is identified
+  as BRouter without voice guidance. Never substitute standard as direct.
 - The choice is never written to Settings. Ending the route, selecting a new
-  destination, or selecting another saved route clears it; the next route uses
-  the configured preference again.
-- While a calculation is running, both start choices are unavailable. After a
-  failed direct-route calculation, `Standard` remains available so the rider
-  can recover using the configured routing mode.
+  destination or selecting another saved route clears it.
+
+## Route panel and planner layout
+
+- The bottom route panel uses compact spacing and respects the system bottom
+  inset. Dragging the grey grip down leaves only Start before navigation, or the
+  bottom action row during navigation. Dragging up restores details.
+- Folding is presentation state only. Comfort updates and navigation rerouting
+  retain it, as does starting navigation. A new destination resets it; loading
+  before navigation is always visible. Speech and tracking continue while folded.
+- Expanding the home destination sheet does not focus search automatically.
+  The keyboard appears only after tapping the actual text input.
+- The planner keeps its header and Calculate button outside the scrollable content.
+  Long plans scroll to the bottom on opening and after adding a stop, while Calculate
+  remains visible at every scroll position.
+- During navigation, recalculating an unedited plan uses current waypoint progress
+  rather than restoring stops from the planner's opening snapshot.
 
 ## Navigation guidance user story
 
