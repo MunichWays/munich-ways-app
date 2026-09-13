@@ -5,12 +5,12 @@ enum RoutingMode {
 
 enum RouteRecommendation {
   standard,
-  shortest,
   aloneAfterDark,
   hotWeather,
   snowAndMud,
   trekking,
   roadBike,
+  shortest,
 }
 
 enum BRouterProfile {

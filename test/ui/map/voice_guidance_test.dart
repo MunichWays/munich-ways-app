@@ -3,6 +3,24 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 
+// Feed the same shared motion sample to recovery as the map screen does.
+class _RecoveryHarness {
+  final motion = NavigationMotionTracker();
+  final gate = StalledGuidanceRecoveryGate();
+
+  bool update(
+      {required bool stalled,
+      required LatLng position,
+      required double horizontalAccuracyMeters,
+      required bool moving,
+      required DateTime now}) {
+    final sample = motion.update(position, horizontalAccuracyMeters, now: now);
+    return gate.update(
+        stalled: stalled,
+        motion: moving ? sample : const NavigationMotionSample());
+  }
+}
+
 void main() {
   const start = LatLng(48.1400, 11.5700);
   const beforeTurn = LatLng(48.1405, 11.5700);
@@ -85,7 +103,7 @@ void main() {
   });
 
   test('recovers only after a persistent stall and confirmed movement', () {
-    final gate = StalledGuidanceRecoveryGate();
+    final gate = _RecoveryHarness();
     final startedAt = DateTime(2026, 9, 4, 12);
 
     expect(
@@ -131,7 +149,7 @@ void main() {
   });
 
   test('does not recover from elapsed time without movement', () {
-    final gate = StalledGuidanceRecoveryGate();
+    final gate = _RecoveryHarness();
     final startedAt = DateTime(2026, 9, 4, 12);
 
     expect(
@@ -157,7 +175,7 @@ void main() {
   });
 
   test('ending a guidance stall resets recovery time and movement', () {
-    final gate = StalledGuidanceRecoveryGate();
+    final gate = _RecoveryHarness();
     final startedAt = DateTime(2026, 9, 4, 12);
 
     gate.update(
@@ -221,7 +239,7 @@ void main() {
       ],
     );
     final guidance = VoiceGuidance()..setRoute(route);
-    final gate = StalledGuidanceRecoveryGate();
+    final gate = _RecoveryHarness();
     final startedAt = DateTime(2026, 9, 4, 21, 41, 32);
 
     // The road-test sequence first produced an ambiguous route match and then

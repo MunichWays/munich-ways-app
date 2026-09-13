@@ -47,7 +47,8 @@ class BRouterApi implements RoutingProvider {
     Response? response;
     var successfulProfile = profile;
     for (var attempt = 0; attempt < 2; attempt++) {
-      final attemptProfile = attempt == 1 && profile != BRouterProfile.shortest
+      // Keep Fastbike on retry so the Direct fallback does not become shortest.
+      final attemptProfile = attempt == 1 && profile == BRouterProfile.trekking
           ? BRouterProfile.shortest
           : profile;
       final uri = Uri.https(baseUrl, '/brouter', {
@@ -65,7 +66,7 @@ class BRouterApi implements RoutingProvider {
       }
       if (attempt == 0 && _isTemporaryServerFailure(response)) {
         log.i(
-          attemptProfile == BRouterProfile.shortest
+          profile != BRouterProfile.trekking
               ? 'BRouter is temporarily overloaded; retrying route calculation'
               : 'BRouter watchdog stopped the selected profile; '
                   'retrying with shortest',

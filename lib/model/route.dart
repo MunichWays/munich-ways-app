@@ -7,6 +7,7 @@ class CycleRoute {
   List<RouteManeuver> maneuvers;
   bool supportsVoiceGuidance;
   List<LatLng> destinationConnector;
+  final List<RouteDisplaySection> displaySections;
   RouteComfort? comfort;
   final RouteAnalysisContext? analysisContext;
 
@@ -17,6 +18,7 @@ class CycleRoute {
     this.maneuvers = const [],
     this.supportsVoiceGuidance = true,
     this.destinationConnector = const [],
+    this.displaySections = const [],
     this.comfort,
     this.analysisContext,
   });
@@ -110,4 +112,13 @@ class RouteManeuver {
   final String? modifier;
   final String roadName;
   final int? exit;
+}
+
+/// Optional rendering metadata. Navigation continues to use CycleRoute.points.
+class RouteDisplaySection {
+  RouteDisplaySection(List<LatLng> points, {required this.pushing})
+      : points = List.unmodifiable(points);
+
+  final List<LatLng> points;
+  final bool pushing;
 }

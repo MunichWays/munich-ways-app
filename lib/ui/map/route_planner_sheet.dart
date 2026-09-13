@@ -406,16 +406,6 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   onPressed: _destination == null ? null : _saveRoute,
                   icon: const Icon(Icons.save_outlined),
                 ),
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 48,
-                    height: 48,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  tooltip: _english ? 'Close' : 'Schließen',
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
               ],
             ),
           ),
@@ -515,27 +505,42 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 ]),
           )),
           const SizedBox(height: 8),
-          FilledButton.icon(
-            style: AppButtonStyles.primary(context),
-            onPressed: _destination == null
-                ? null
-                : () {
-                    if (widget.model.navigationStarted &&
-                        !_routePlanEdited &&
-                        widget.initialPlan == null) {
-                      // Use current progress, not the planner's opening snapshot.
-                      widget.model.refreshRoute();
-                    } else {
-                      widget.model.setRoutePlan(
-                        start: _start,
-                        stops: _stops,
-                        destination: _destination!,
-                      );
-                    }
-                    Navigator.pop(context);
-                  },
-            icon: const Icon(Icons.route),
-            label: Text(_english ? 'Calculate route' : 'Route berechnen'),
+          Row(
+            children: [
+              IconButton(
+                constraints:
+                    const BoxConstraints.tightFor(width: 48, height: 48),
+                tooltip: _english ? 'Close' : 'Schließen',
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  style: AppButtonStyles.primary(context),
+                  onPressed: _destination == null
+                      ? null
+                      : () {
+                          if (widget.model.navigationStarted &&
+                              !_routePlanEdited &&
+                              widget.initialPlan == null) {
+                            // Use current progress, not the planner's opening snapshot.
+                            widget.model.refreshRoute();
+                          } else {
+                            widget.model.setRoutePlan(
+                              start: _start,
+                              stops: _stops,
+                              destination: _destination!,
+                            );
+                          }
+                          Navigator.pop(context);
+                        },
+                  icon: const Icon(Icons.route),
+                  label: Text(_english ? 'Calculate route' : 'Route berechnen'),
+                ),
+              ),
+            ],
           ),
         ]),
       ),

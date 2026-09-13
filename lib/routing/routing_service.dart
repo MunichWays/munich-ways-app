@@ -63,7 +63,7 @@ class RoutingService {
         (mode == RoutingMode.bRouterEverywhere &&
             bRouterProfile == BRouterProfile.shortest);
     final fallbackProfile =
-        useDirect ? BRouterProfile.shortest : bRouterProfile;
+        useDirect ? BRouterProfile.fastBike : bRouterProfile;
     if ((!useDirect && mode == RoutingMode.bRouterEverywhere) ||
         !await _allCoordinatesCovered(coordinates)) {
       return _routeWithBRouter(coordinates, fallbackProfile);

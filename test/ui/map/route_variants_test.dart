@@ -46,6 +46,35 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(stubWakelock);
 
+  test('GPS lookup failure finishes recalculation and later retry recovers',
+      () async {
+    final h = Harness();
+    h.model.routeStart = null;
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    h.model.gpsReply =
+        Future.error(StateError('GPS and cached position unavailable'));
+    expect(await h.model.refreshRoute(), isFalse);
+    expect(h.model.route.state, MapRouteState.ERROR);
+    expect(h.model.navigationStarted, isTrue);
+    h.model.gpsReply = null;
+    expect(await h.model.refreshRoute(), isTrue);
+    expect(h.model.route.state, MapRouteState.SHOWN);
+    expect(h.model.navigationStarted, isTrue);
+  });
+
+  testWidgets(
+      'unresponsive GPS fallback times out rather than locking recalculation',
+      (tester) async {
+    final h = Harness();
+    h.model.routeStart = null;
+    h.model.gpsReply = Completer<Position?>().future;
+    final request = h.model.refreshRoute();
+    await tester.pump(const Duration(seconds: 16));
+    expect(await request, isFalse);
+    expect(h.model.route.state, MapRouteState.ERROR);
+  });
+
   test(
       'standard is usable before direct and comfort; warm switches share navigation',
       () async {
@@ -477,7 +506,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
         find.textContaining(
-            'Die direkte Route bevorzugt die kürzeste befahrbare Strecke'),
+            'Die direkte Route bevorzugt zügiges Fahren ohne Berücksichtigung'),
         findsOneWidget);
     expect(find.text('Direkte Route berechnen'), findsNothing);
     expect(find.text('Bei Standard bleiben'), findsNothing);
@@ -589,16 +618,20 @@ class Fallback implements RoutingProvider {
 
 class TestModel extends MapScreenViewModel {
   TestModel({required super.store, required super.routingService});
+  Future<Position?>? gpsReply;
   @override
-  Future<Position?> resolveRouteStartPosition() async => Position(
-      latitude: 48.11,
-      longitude: 11.60,
-      timestamp: DateTime.now(),
-      accuracy: 5,
-      altitude: 0,
-      altitudeAccuracy: 0,
-      heading: 0,
-      headingAccuracy: 0,
-      speed: 3,
-      speedAccuracy: 0);
+  Future<Position?> resolveRouteStartPosition() async {
+    if (gpsReply != null) return gpsReply;
+    return Position(
+        latitude: 48.11,
+        longitude: 11.60,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 3,
+        speedAccuracy: 0);
+  }
 }

@@ -1052,7 +1052,18 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
     final customStart = routeStart;
     final plannedStops = List<Place>.of(waypoints);
-    final from = customStart == null ? await resolveRouteStartPosition() : null;
+    Position? from;
+    if (customStart == null) {
+      try {
+        from = await resolveRouteStartPosition()
+            .timeout(const Duration(seconds: 16));
+      } catch (error, stackTrace) {
+        // Even the cached-location fallback can fail or never reply. Finish
+        // this attempt normally so automatic and manual retries can recover.
+        log.w('Resolving route start failed',
+            error: error, stackTrace: stackTrace);
+      }
+    }
     if (_disposed || destination != to || revision != _routePlanRevision)
       return false;
     if (customStart == null && from == null) {

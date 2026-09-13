@@ -21,6 +21,7 @@ class RadlNaviApi
   final String variant;
   RadlNaviApi? _directApi;
   Future<RadlNaviApi>? _directDiscovery;
+  int _directConfigurationRevision = 0;
 
   static Uri _endpoint(String base, String path, [Map<String, String>? query]) {
     final uri = Uri.parse(base.contains('://') ? base : 'https://$base');
@@ -53,14 +54,45 @@ class RadlNaviApi
     return RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
   }
 
+  // Optional metadata must never invalidate the standard route. An empty
+  // header clears a previously advertised endpoint; older APIs omit it.
+  void _rememberDirectEndpoint(Response response) {
+    if (variant != 'standard') return;
+    final url = response.headers['x-direct-api-url'];
+    if (url == null) return;
+    _directConfigurationRevision++;
+    _directApi = null;
+    _directDiscovery = null;
+    try {
+      if (url.trim().isEmpty) return;
+      _endpoint(url, 'route');
+      _directApi =
+          RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
+    } catch (_) {
+      // Invalid optional metadata falls back to the existing discovery path.
+    }
+  }
+
   @override
   Future<CycleRoute> routeDirect(List<LatLng> coordinates) async {
     if (variant == 'direct') return route(coordinates);
-    try {
-      _directApi ??= await (_directDiscovery ??= _discoverDirect());
-    } finally {
-      // Do not cache discovery failures: the next attempt can recover.
-      _directDiscovery = null;
+    if (_directApi == null) {
+      final revision = _directConfigurationRevision;
+      final discovery = _directDiscovery ??= _discoverDirect();
+      try {
+        final discovered = await discovery;
+        if (revision == _directConfigurationRevision) {
+          _directApi ??= discovered;
+        }
+      } catch (_) {
+        if (revision == _directConfigurationRevision) rethrow;
+      } finally {
+        // A late discovery must not overwrite or clear newer configuration.
+        if (identical(_directDiscovery, discovery)) _directDiscovery = null;
+      }
+      if (revision != _directConfigurationRevision) {
+        return routeDirect(coordinates);
+      }
     }
     return _directApi!.route(coordinates);
   }
@@ -165,12 +197,23 @@ class RadlNaviApi
           }
         }
 
+        _rememberDirectEndpoint(response);
+        final displaySections = _displaySections(points, steps, access.route);
+        final pushingSteps =
+            steps.where((step) => _isUnriddenMode(step['mode'])).length;
+        log.d('Route display: variant=$variant, steps=${steps.length}, '
+            'pushingSteps=$pushingSteps, sections=${displaySections.length}');
+        if (displaySections.isEmpty && pushingSteps > 0) {
+          log.w(
+              'Pushing display unavailable: step geometry does not match route');
+        }
         return CycleRoute(
           access.route,
           distance.toDouble(),
           duration.toDouble(),
           maneuvers: spokenManeuvers,
           destinationConnector: access.connector,
+          displaySections: displaySections,
           comfort: _parseComfort(firstRoute['comfort']),
           analysisContext:
               _parseAnalysisContext(firstRoute['legs'], json['waypoints']),
@@ -340,6 +383,60 @@ class RadlNaviApi
           .toList();
     }
     throw ApiException('Missing RadlNavi route geometry');
+  }
+
+  List<RouteDisplaySection> _displaySections(
+    List<LatLng> route,
+    List<Map<String, dynamic>> steps,
+    List<LatLng> navigableRoute,
+  ) {
+    // Match ordered step geometry, not nearest locations: loops and repeated
+    // visits to a waypoint can have different modes on the same physical way.
+    List<LatLng> withoutDuplicates(List<LatLng> points) {
+      final result = <LatLng>[];
+      for (final point in points) {
+        if (result.isEmpty || result.last != point) result.add(point);
+      }
+      return result;
+    }
+
+    try {
+      final points = withoutDuplicates(route);
+      if (points.length < 2) return const [];
+      final modes = <bool>[];
+      var cursor = 0;
+      for (final step in steps) {
+        final maneuver = step['maneuver'] as Map<String, dynamic>?;
+        if (maneuver?['type'] == 'arrive') continue;
+        final geometry = withoutDuplicates(_parseGeometry(step['geometry']));
+        if (geometry.isEmpty || geometry.first != points[cursor]) {
+          return const [];
+        }
+        for (final point in geometry.skip(1)) {
+          cursor++;
+          if (cursor >= points.length || point != points[cursor]) {
+            return const [];
+          }
+          modes.add(_isUnriddenMode(step['mode']));
+        }
+      }
+      if (cursor != points.length - 1) return const [];
+      // Final walking access is already rendered by destinationConnector.
+      final limit = withoutDuplicates(navigableRoute).length - 1;
+      final sections = <RouteDisplaySection>[];
+      var first = 0;
+      for (var edge = 0; edge < limit; edge++) {
+        if (edge == limit - 1 || modes[edge] != modes[edge + 1]) {
+          sections.add(RouteDisplaySection(points.sublist(first, edge + 2),
+              pushing: modes[edge]));
+          first = edge + 1;
+        }
+      }
+      return List.unmodifiable(sections);
+    } catch (_) {
+      // Incomplete optional geometry must not break a usable navigation route.
+      return const [];
+    }
   }
 
   _DestinationAccess _splitDestinationAccess(

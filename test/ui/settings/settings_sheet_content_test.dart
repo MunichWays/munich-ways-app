@@ -270,6 +270,23 @@ void main() {
           matching: find.text(label),
         );
     final standardRecommendation = recommendation('Standard (empfohlen)');
+    expect(
+      tester
+          .widgetList<RadioListTile<RouteRecommendation>>(
+            find.byType(RadioListTile<RouteRecommendation>),
+          )
+          .map((tile) => tile.value)
+          .toList(),
+      [
+        RouteRecommendation.standard,
+        RouteRecommendation.aloneAfterDark,
+        RouteRecommendation.hotWeather,
+        RouteRecommendation.snowAndMud,
+        RouteRecommendation.trekking,
+        RouteRecommendation.roadBike,
+        RouteRecommendation.shortest,
+      ],
+    );
     expect(standardRecommendation, findsOneWidget);
     expect(recommendation('Trekking'), findsOneWidget);
     expect(recommendation('Rennrad (schnell)'), findsOneWidget);

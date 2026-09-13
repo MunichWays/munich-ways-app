@@ -226,13 +226,13 @@ void main() {
 
     expect(await model.setTemporaryShortestRouteEnabled(true), isTrue);
     expect(model.temporaryShortestRouteEnabled, isTrue);
-    expect(bRouter.profiles, [BRouterProfile.shortest]);
+    expect(bRouter.profiles, [BRouterProfile.fastBike]);
 
     // Manual refresh and automatic rerouting share this request path.
     expect(await model.refreshRoute(), isTrue);
     expect(
       bRouter.profiles,
-      [BRouterProfile.shortest, BRouterProfile.shortest],
+      [BRouterProfile.fastBike, BRouterProfile.fastBike],
     );
 
     expect(await model.setTemporaryShortestRouteEnabled(false), isTrue);

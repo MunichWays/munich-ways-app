@@ -99,4 +99,27 @@ void main() {
 
     expect(route.duration, 675);
   });
+
+  test('fastbike stays fastbike on retry and preserves its travel time',
+      () async {
+    var requests = 0;
+    final api = BRouterApi(client: MockClient((request) async {
+      requests++;
+      expect(request.url.queryParameters['profile'], 'fastbike');
+      if (requests == 1) return Response('temporarily overloaded', 503);
+      return Response(
+        '{"features":[{"properties":{"track-length":1500,"total-time":456},'
+        '"geometry":{"coordinates":[[11.57,48.14],[11.58,48.15]]}}]}',
+        200,
+      );
+    }));
+
+    final route = await api.route(
+      const [LatLng(48.14, 11.57), LatLng(48.15, 11.58)],
+      profile: BRouterProfile.fastBike,
+    );
+
+    expect(requests, 2);
+    expect(route.duration, 456);
+  });
 }

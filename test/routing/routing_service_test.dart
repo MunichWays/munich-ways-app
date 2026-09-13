@@ -53,7 +53,8 @@ void main() {
     expect(bRouter.lastProfile, BRouterProfile.fastBike);
   });
 
-  test('BRouter everywhere bypasses coverage and RadlNavi', () async {
+  test('legacy shortest uses fastbike when direct provider is unavailable',
+      () async {
     final radlNavi = _FakeProvider();
     final bRouter = _FakeProvider();
     final service = RoutingService(
@@ -69,7 +70,7 @@ void main() {
     );
 
     expect(radlNavi.calls, 0);
-    expect(bRouter.lastProfile, BRouterProfile.shortest);
+    expect(bRouter.lastProfile, BRouterProfile.fastBike);
   });
 
   test('falls back to BRouter after a RadlNavi error', () async {
@@ -111,7 +112,7 @@ void main() {
   });
 
   test(
-      'persisted shortest and explicit direct use RadlNavi with shortest fallback',
+      'persisted shortest and explicit direct use RadlNavi with fastbike fallback',
       () async {
     final primary = _DirectProvider();
     final fallback = _FakeProvider();
@@ -130,7 +131,7 @@ void main() {
         mode: RoutingMode.automatic,
         bRouterProfile: BRouterProfile.fastBike,
         direct: true);
-    expect(fallback.lastProfile, BRouterProfile.shortest);
+    expect(fallback.lastProfile, BRouterProfile.fastBike);
     primary.fail = false;
     await service.route([munich, rosenheim],
         mode: RoutingMode.automatic,
@@ -143,7 +144,7 @@ void main() {
         bRouterProfile: BRouterProfile.trekking,
         direct: true);
     expect(primary.directCalls, 3);
-    expect(fallback.lastProfile, BRouterProfile.shortest);
+    expect(fallback.lastProfile, BRouterProfile.fastBike);
   });
 
   test('direct has its own timeout and falls back when its budget expires',
@@ -178,7 +179,7 @@ void main() {
         bRouterProfile: BRouterProfile.trekking,
         direct: true);
     expect(fallback.calls, 1);
-    expect(fallback.lastProfile, BRouterProfile.shortest);
+    expect(fallback.lastProfile, BRouterProfile.fastBike);
     stalled.complete(direct);
   });
 

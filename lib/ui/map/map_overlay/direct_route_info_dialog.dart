@@ -10,8 +10,8 @@ Future<void> showDirectRouteInfoDialog(BuildContext context) {
             title: Text(english ? 'Direct route' : 'Direkte Route'),
             content: Text(
               english
-                  ? 'The direct route prioritizes the shortest rideable distance and may be more stressful. RadlNavi provides voice instructions and a comfort assessment. If unavailable, BRouter is used without voice instructions. This choice applies only to this trip.'
-                  : 'Die direkte Route bevorzugt die kürzeste befahrbare Strecke und kann stressiger sein. RadlNavi liefert Abbiegeansagen und eine Komfortbewertung. Falls nicht verfügbar, wird BRouter ohne Ansagen verwendet. Die Auswahl gilt nur für diese Fahrt.',
+                  ? 'The direct route prioritizes fast cycling without considering the comfort rating and may be more stressful. RadlNavi provides voice instructions and a comfort assessment. If unavailable, BRouter Fastbike is used without voice instructions. This choice applies only to this trip.'
+                  : 'Die direkte Route bevorzugt zügiges Fahren ohne Berücksichtigung der Komfortbewertung und kann stressiger sein. RadlNavi liefert Abbiegeansagen und eine Komfortbewertung. Falls nicht verfügbar, wird BRouter Fastbike ohne Ansagen verwendet. Die Auswahl gilt nur für diese Fahrt.',
             ),
             actions: [
               FilledButton(

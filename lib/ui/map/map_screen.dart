@@ -47,6 +47,7 @@ import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/poi_geojson.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
+import 'package:munich_ways/ui/map/route_display.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
@@ -278,10 +279,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   latlong2.LatLng? _lastLocationCameraPosition;
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
-  latlong2.LatLng? _gpsMotionAnchor;
-  double? _gpsMotionAnchorAccuracy;
-  DateTime? _lastGpsMovementAt;
-  bool _gpsStationary = true;
+  final NavigationMotionTracker _navigationMotion = NavigationMotionTracker();
+  NavigationMotionSample _motionSample = const NavigationMotionSample();
+  bool get _gpsStationary => !_navigationMotion.isMovingAt(DateTime.now());
   bool _movementHeadingAvailable = false;
   Timer? _movementHeadingFreshnessTimer;
   final FlutterTts _flutterTts = FlutterTts();
@@ -304,6 +304,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Timer? _automaticRerouteTimer;
   bool _offRouteEpisodeActive = false;
   bool _automaticRerouteCommitted = false;
+  bool _automaticRerouteInFlight = false;
+  int _automaticRerouteGeneration = 0;
+  DateTime? _automaticRerouteRetryAt;
   bool _initialGuidanceAnnouncementPending = false;
   bool _automaticReroutingSuspended = false;
   bool _offRouteCameraZoomedOut = false;
@@ -624,6 +627,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _endRoute(MapScreenViewModel model) {
+    _navigationMotion.reset();
     _voiceGuidance.reset();
     _navigationStartGate.reset();
     _resetStalledGuidanceRecovery();
@@ -710,6 +714,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ));
         });
         model.destinationStream.listen((Place place) {
+          _navigationMotion.reset();
           _voiceGuidance.reset();
           _navigationStartGate.reset();
           _resetStalledGuidanceRecovery();
@@ -736,6 +741,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.routeStream.listen((MapRoute route) {
           final position = _latestPosition;
           if (model.navigationStarted) {
+            if (!_automaticRerouteInFlight &&
+                _automaticRerouteRetryAt != null &&
+                route.state == MapRouteState.SHOWN) {
+              // A manual route/variant succeeded during the retry cooldown.
+              // Do not replace it again when the old retry becomes due.
+              _cancelAutomaticRerouting();
+            }
             if (position != null) {
               _refreshVoiceGuidance(model, position);
             }
@@ -1119,17 +1131,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               tooltip: context.l10n.isEnglish
                                   ? 'Map attribution'
                                   : 'Kartenquellen',
+                              isActive: _mapAttributionExpanded,
                               size: 28,
                               tapTargetSize: 48,
                               onPressed: () => setState(() {
                                 _mapAttributionExpanded =
                                     !_mapAttributionExpanded;
                               }),
-                              child: const Text(
+                              child: Text(
                                 '©',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white,
+                                  color: _mapAttributionExpanded
+                                      ? AppColors.mapButtonForegroundActive
+                                      : Colors.white,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -1481,6 +1496,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
     final reliableForNavigation = position.accuracy <= 50;
+    if (!reliableForNavigation) _navigationMotion.reset();
     if (reliableForNavigation) {
       model.updateWaypointProgress(rawPosition);
       _refreshVoiceGuidance(model, position);
@@ -1643,12 +1659,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         !position.latitude.isFinite ||
         !position.longitude.isFinite ||
         !position.accuracy.isFinite ||
-        position.accuracy > 50) {
+        position.accuracy > 50 ||
+        DateTime.now().difference(position.timestamp) >
+            const Duration(seconds: 15)) {
       return;
     }
 
     _armVoiceSignalWarning(model);
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
+    _motionSample = _navigationMotion.update(rawPosition, position.accuracy,
+        now: position.timestamp);
     if (!model.navigationStarted) {
       _navigationStartGate.reset();
     }
@@ -1659,6 +1679,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     if (guidanceRouteChanged) {
       _resetStalledGuidanceRecovery();
+      if (model.navigationStarted &&
+          model.voiceGuidanceEnabled &&
+          model.route.state == MapRouteState.SHOWN &&
+          !model.voiceGuidanceAvailable) {
+        // A BRouter fallback must never silently replace spoken navigation.
+        unawaited(_speak(
+            context.l10n.isEnglish
+                ? 'No turn directions are available for this route. Please watch the map.'
+                : 'Für diese Route sind keine Abbiegeansagen verfügbar. Bitte Karte beachten.',
+            english: context.l10n.isEnglish));
+      }
     }
     var routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
@@ -1744,14 +1775,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     latlong2.LatLng rawPosition,
     VoiceGuidanceDisplay? display,
   ) {
+    // Off-route, ambiguous and missing guidance form one unresolved episode.
+    // A temporary status label must not reset its time and movement budget.
     final detectedStallReason = recoverableGuidanceStall(
       display,
       voiceGuidanceAvailable: model.voiceGuidanceAvailable,
+      offRoute: _voiceGuidance.isOffRouteForRerouting(rawPosition,
+          horizontalAccuracyMeters: position.accuracy),
+      healthyMapProgress: _voiceGuidance.hasHealthyMapProgress(rawPosition),
     );
     final stallReason = model.navigationStarted &&
             model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP &&
-            !_offRouteEpisodeActive &&
-            _reroutingDisplay == null
+            !_voiceGuidance.finalDestinationReached &&
+            model.route.state == MapRouteState.SHOWN &&
+            !_automaticRerouteInFlight
         ? detectedStallReason
         : null;
     if (stallReason != _activeGuidanceStallReason) {
@@ -1764,9 +1801,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     final shouldRecover = _stalledGuidanceRecoveryGate.update(
       stalled: stallReason != null,
-      position: rawPosition,
-      horizontalAccuracyMeters: position.accuracy,
-      moving: !_gpsStationary,
+      motion: _motionSample,
     );
     if (!shouldRecover) return display;
 
@@ -1774,41 +1809,34 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'Recovering stalled guidance after persistent map-only fallback',
     );
 
-    final reanchored = _voiceGuidance.resumeAt(
+    final recovery = _voiceGuidance.recoverGuidance(
       rawPosition,
       horizontalAccuracyMeters: position.accuracy,
-    );
-    if (!reanchored) {
-      log.i('Local stalled-guidance recovery could not re-anchor');
-      return display;
-    }
-
-    final recoveredDisplay = _voiceGuidance.display(
-      rawPosition,
       english: context.l10n.isEnglish,
       speedMetersPerSecond: position.speed,
     );
-    final remainsAmbiguous =
-        recoveredDisplay?.mapReason == VoiceGuidanceMapReason.ambiguousPosition;
-    if (recoveredDisplay != null && !remainsAmbiguous) {
+    final recoveredDisplay = recovery.display;
+    if (!recovery.requiresReroute) {
       log.i('Stalled guidance recovered locally');
+      _cancelAutomaticRerouting(resetAttempts: false);
+      _announceCurrentGuidance(model, rawPosition, position.speed);
       return recoveredDisplay;
-    }
-    if (recoveredDisplay == null) {
-      log.i('Guidance still has no current maneuver after local re-anchor');
-      return null;
     }
 
     if (model.automaticReroutingEnabled &&
         !_automaticReroutingSuspended &&
-        !_automaticRerouteCommitted) {
-      log.i('Guidance remains ambiguous; recalculating route');
+        !_automaticRerouteInFlight) {
+      log.i('Guidance remains unusable; recalculating route');
       _automaticRerouteCommitted = true;
       unawaited(_performAutomaticReroute(model));
     } else {
-      log.i(
-        'Guidance remains ambiguous; automatic recalculation unavailable',
-      );
+      if (!_automaticRerouteCommitted) {
+        _announceNavigationStatus(
+            model,
+            context.l10n.isEnglish
+                ? 'No reliable directions. Please watch the map. Automatic recalculation is disabled or paused.'
+                : 'Keine zuverlässigen Hinweise. Bitte Karte beachten. Automatische Neuberechnung ist ausgeschaltet oder pausiert.');
+      }
     }
     return recoveredDisplay;
   }
@@ -1849,20 +1877,49 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     latlong2.LatLng routePosition,
     Position gpsPosition,
   ) {
+    if (_automaticRerouteInFlight) return;
+    // A committed off-route timer may expire during a stop or GPS outage.
+    // Resume it on the next confirmed movement, rather than leaving a spent
+    // timer and a committed flag that permanently block every recovery path.
+    if (automaticRerouteRecoveryDue(
+        navigationActive: model.navigationStarted,
+        automaticEnabled: model.automaticReroutingEnabled,
+        suspended: _automaticReroutingSuspended,
+        inFlight: _automaticRerouteInFlight,
+        freshFix: _hasFreshNavigationFix,
+        moving: !_gpsStationary,
+        destinationReached: _voiceGuidance.finalDestinationReached,
+        committedTimerElapsed: _automaticRerouteCommitted &&
+            _automaticRerouteTimer?.isActive == false,
+        retryAt: _automaticRerouteRetryAt,
+        now: DateTime.now())) {
+      unawaited(_performAutomaticReroute(model));
+      return;
+    }
     if (_voiceGuidance.finalDestinationReached) {
       if (_offRouteEpisodeActive || _reroutingDisplay != null) {
         _cancelAutomaticRerouting(resetAttempts: false);
       }
       return;
     }
-    _updateGpsMotionState(gpsPosition);
+    if (_automaticRerouteRetryAt != null) return;
     final isOffRoute = _voiceGuidance.isOffRouteForRerouting(
       routePosition,
       horizontalAccuracyMeters: gpsPosition.accuracy,
     );
     if (!model.navigationStarted || _gpsStationary || !isOffRoute) {
       if (model.navigationStarted) {
-        if (!isOffRoute) _recordOnRouteProgress(routePosition);
+        if (!isOffRoute &&
+            !_gpsStationary &&
+            (recoverableGuidanceStall(
+                    _voiceGuidance.display(routePosition,
+                        english: context.l10n.isEnglish),
+                    voiceGuidanceAvailable: model.voiceGuidanceAvailable,
+                    healthyMapProgress:
+                        _voiceGuidance.hasHealthyMapProgress(routePosition)) ==
+                null)) {
+          _recordOnRouteProgress(routePosition);
+        }
       }
       if (_offRouteEpisodeActive || _reroutingDisplay != null) {
         if (_automaticRerouteCommitted &&
@@ -1940,6 +1997,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (model.automaticReroutingEnabled && !_automaticReroutingSuspended) {
       _automaticRerouteTimer = Timer(_automaticRerouteDelay, () {
         if (model.automaticReroutingEnabled &&
+            !_gpsStationary &&
+            _hasFreshNavigationFix &&
             (_automaticRerouteCommitted || _stillOffRoute(model))) {
           unawaited(_performAutomaticReroute(model));
         }
@@ -1947,31 +2006,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _updateGpsMotionState(Position position) {
-    final current = latlong2.LatLng(position.latitude, position.longitude);
-    final anchor = _gpsMotionAnchor;
-    if (anchor == null) {
-      _gpsMotionAnchor = current;
-      _gpsMotionAnchorAccuracy = position.accuracy;
-      _gpsStationary = true;
-      return;
-    }
-
-    final distance = const latlong2.Distance().as(
-      latlong2.LengthUnit.Meter,
-      anchor,
-      current,
-    );
-    final accuracy = max(_gpsMotionAnchorAccuracy ?? 0, position.accuracy);
-    final movementThreshold = (accuracy * 1.5).clamp(8.0, 25.0);
-    if (distance >= movementThreshold && distance <= 200) {
-      _gpsMotionAnchor = current;
-      _gpsMotionAnchorAccuracy = position.accuracy;
-      _lastGpsMovementAt = DateTime.now();
-    }
-    final lastMovement = _lastGpsMovementAt;
-    _gpsStationary = lastMovement == null ||
-        DateTime.now().difference(lastMovement) > const Duration(seconds: 8);
+  bool get _hasFreshNavigationFix {
+    final position = _latestPosition;
+    return position != null &&
+        position.accuracy.isFinite &&
+        position.accuracy <= 50 &&
+        DateTime.now().difference(position.timestamp) <=
+            const Duration(seconds: 15);
   }
 
   bool _stillOffRoute(MapScreenViewModel model) {
@@ -1981,6 +2022,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         position != null &&
         position.accuracy.isFinite &&
         position.accuracy <= 50 &&
+        _hasFreshNavigationFix &&
         !_gpsStationary &&
         _voiceGuidance.isOffRouteForRerouting(
           latlong2.LatLng(position.latitude, position.longitude),
@@ -1988,11 +2030,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         );
   }
 
+  void _announceNavigationStatus(MapScreenViewModel model, String message) {
+    _setReroutingDisplay(message);
+    if (model.navigationStarted && model.voiceGuidanceEnabled) {
+      unawaited(_speak(message, english: context.l10n.isEnglish));
+    }
+  }
+
   Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
+    if (_automaticRerouteInFlight ||
+        !model.navigationStarted ||
+        _voiceGuidance.finalDestinationReached ||
+        !model.automaticReroutingEnabled ||
+        !_hasFreshNavigationFix ||
+        _gpsStationary) return;
     if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
       _automaticReroutingSuspended = true;
       _voiceSignalTimer?.cancel();
-      _setReroutingDisplay(
+      _announceNavigationStatus(
+        model,
         context.l10n.isEnglish
             ? 'Automatic recalculation paused. Recalculate manually to resume.'
             : 'Automatische Neuberechnung pausiert. Zum Fortsetzen manuell '
@@ -2000,19 +2056,40 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
       return;
     }
+    _automaticRerouteInFlight = true;
+    _automaticRerouteCommitted = true;
+    _automaticRerouteRetryAt = null;
+    _offRouteDisplayTimer?.cancel();
+    _offRouteAnnouncementTimer?.cancel();
+    _automaticRerouteTimer?.cancel();
+    final generation = ++_automaticRerouteGeneration;
+    final destination = model.destination;
     _consecutiveAutomaticReroutes++;
     _onRouteDistanceSinceReroute = 0;
     _lastOnRoutePosition = null;
     _onRouteSinceReroute = null;
+    // Keep recalculation visible without another spoken status announcement.
+    // The regular route-left warnings and the resumed maneuver suffice.
     _setReroutingDisplay(
       context.l10n.isEnglish
           ? 'Recalculating route...'
           : 'Route wird neu berechnet...',
     );
     final updated = await model.refreshRoute();
-    if (!mounted) return;
+    if (!mounted ||
+        generation != _automaticRerouteGeneration ||
+        !model.navigationStarted ||
+        model.destination != destination) return;
+    _automaticRerouteInFlight = false;
+    if (!updated && model.route.state != MapRouteState.ERROR) {
+      // A newer manual plan/variant superseded this request.
+      _cancelAutomaticRerouting(resetAttempts: false);
+      return;
+    }
     if (!updated) {
-      _setReroutingDisplay(
+      _automaticRerouteRetryAt = DateTime.now().add(_automaticRerouteDelay);
+      _announceNavigationStatus(
+        model,
         context.l10n.isEnglish
             ? 'Recalculation failed. Will retry later.'
             : 'Neuberechnung fehlgeschlagen. Neuer Versuch später.',
@@ -2028,7 +2105,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
       _initialGuidanceAnnouncementPending = true;
       _cancelAutomaticRerouting(resetAttempts: false);
-      await _restoreNavigationZoom(model);
+      unawaited(_restoreNavigationZoom(model));
       if (position != null) {
         _refreshVoiceGuidance(model, position);
       }
@@ -2036,7 +2113,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (_consecutiveAutomaticReroutes >= _maximumConsecutiveReroutes) {
       _automaticReroutingSuspended = true;
       _voiceSignalTimer?.cancel();
-      _setReroutingDisplay(
+      _automaticRerouteRetryAt = null;
+      _announceNavigationStatus(
+        model,
         context.l10n.isEnglish
             ? 'Automatic recalculation paused after 3 consecutive '
                 'recalculations. Recalculate manually to resume.'
@@ -2098,6 +2177,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _cancelAutomaticRerouting({bool resetAttempts = true}) {
+    _automaticRerouteGeneration++;
+    _automaticRerouteInFlight = false;
+    _automaticRerouteRetryAt = null;
     _offRouteDisplayTimer?.cancel();
     _offRouteAnnouncementTimer?.cancel();
     _automaticRerouteTimer?.cancel();
@@ -2196,6 +2278,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _startNavigation(MapScreenViewModel model) async {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
+    _navigationMotion.reset();
     _offRouteCameraZoomedOut = false;
     _resetStalledGuidanceRecovery();
     final initialPosition = _latestPosition;
@@ -2782,9 +2865,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MapScreenViewModel model) async {
     // A manual recalculation resumes a temporary safety pause. It must not
     // override a setting that the user deliberately switched off.
-    if (_automaticReroutingSuspended && model.automaticReroutingEnabled) {
-      _cancelAutomaticRerouting();
-    }
+    _cancelAutomaticRerouting();
     final routeUpdated = await model.refreshRoute();
     if (!mounted || !routeUpdated) return;
     // A successful refresh resumes navigation exactly like the Start action:
@@ -3182,6 +3263,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     return Object.hash(
       model.route.state,
+      r, // A variant can have the same endpoints but different interior modes.
       pts?.length,
       lat1,
       lng1,
@@ -3269,39 +3351,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     if (model.route.state == MapRouteState.SHOWN && model.route.route != null) {
       final route = model.route.route!;
-      await controller.setGeoJsonSource(_kRouteSourceId, {
-        'type': 'FeatureCollection',
-        'features': [
-          {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'LineString',
-              'coordinates':
-                  route.points.map((p) => [p.longitude, p.latitude]).toList(),
-            },
-          },
-        ],
-      });
+      await controller.setGeoJsonSource(
+        _kRouteSourceId,
+        buildRouteDisplayGeoJson(route, dashed: false),
+      );
       await controller.setGeoJsonSource(
         _kRouteOverlapSourceId,
         buildRouteOverlapGeoJson(route.points),
       );
-      await controller.setGeoJsonSource(_kRouteConnectorSourceId, {
-        'type': 'FeatureCollection',
-        'features': route.destinationConnector.length < 2
-            ? <dynamic>[]
-            : [
-                {
-                  'type': 'Feature',
-                  'geometry': {
-                    'type': 'LineString',
-                    'coordinates': route.destinationConnector
-                        .map((p) => [p.longitude, p.latitude])
-                        .toList(),
-                  },
-                },
-              ],
-      });
+      await controller.setGeoJsonSource(
+        _kRouteConnectorSourceId,
+        buildRouteDisplayGeoJson(route, dashed: true),
+      );
     } else {
       await controller.setGeoJsonSource(_kRouteSourceId, {
         'type': 'FeatureCollection',
@@ -3692,10 +3753,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _kRouteConnectorLayerId,
       LineLayerProperties(
         lineColor: _hexColor(routeColor),
-        lineWidth: routeLineWidth,
-        lineCap: 'round',
+        lineWidth: const [
+          Expressions.interpolate,
+          ['linear'],
+          [Expressions.zoom],
+          10,
+          4.0,
+          17,
+          5.0,
+          20,
+          6.0,
+        ],
+        // Short walking sections need visible gaps even at neighbourhood zoom.
+        // Round caps and the full route width hid the gaps in short passages.
+        lineCap: 'butt',
         lineJoin: 'round',
-        lineDasharray: const [1.5, 1.5],
+        lineDasharray: const [1.2, 1.5],
       ),
       belowLayerId: kOpenFreeMapBasemapOverlayBelowLayerId,
       enableInteraction: false,

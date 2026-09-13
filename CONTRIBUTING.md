@@ -222,17 +222,30 @@ The complete expected behavior is:
 - A route re-entry can also leave guidance without a current maneuver even
   though the RadlNavi route supports voice guidance. The navigation header uses
   `Follow route on map` for this missing-instruction state.
-- Only a continuous ambiguous-position or missing-instruction state is
-  recoverable by the stalled-guidance watchdog. It requires both 30 seconds and
-  at least 25 metres of accuracy-aware confirmed movement while the rider is
-  still moving. A direct transition between those two recoverable reasons is
-  one continuous stall and must not restart the watchdog.
+- Off-route, ambiguous-position and missing-instruction states share one
+  unresolved-guidance watchdog, independent of the displayed wording or any
+  temporary rerouting label. It requires 30 seconds of movement-associated
+  reliable GPS updates and at least 25 metres of confirmed movement. Switching
+  between these reasons does not reset the budget. Stops and GPS outages pause
+  it; a concrete instruction or verified healthy map-only progress ends it.
+- Off-route detection and the watchdog use one accuracy-aware movement source.
+  A gap longer than 20 seconds, inaccurate GPS or a displacement over 200 metres
+  establishes a fresh anchor without counting the gap/jump as ridden distance.
+  Subsequent plausible movement must be recognized again. Replayed GPS fixes
+  never count twice. Moving state expires after 8 seconds without confirmed
+  movement; automatic requests also require a GPS fix no older than 15 seconds.
 - When that watchdog opens, guidance first re-anchors locally at the current
-  position. If this produces a concrete maneuver, no route request is made. A
-  missing instruction alone never causes a network request because it can be
-  legitimate on the final straight. Only if the position remains explicitly
-  ambiguous does the app use the existing automatic route recalculation flow
-  when that setting is enabled.
+  position. If guidance becomes usable, announce the relevant maneuver and do
+  not request a route. If re-anchoring fails or guidance remains unusable, use
+  automatic recalculation when enabled, including missing-instruction states.
+  Show recalculation on screen without an additional spoken announcement.
+  Preserve the existing short route-left warnings; resumed regular guidance
+  makes recovery audible without an extra success/status message.
+  Prefer an occasional extra request over indefinitely silent broken guidance.
+- A correctly matched final straight after the last maneuver needs no invented
+  turn and is not a stall. Silence alone never triggers a recalculation. The
+  separate missing-GPS warning still detects loss of usable location updates;
+  the watchdog covers unusable guidance even while GPS continues arriving.
 - A known overlapping outbound/return section deliberately shows `Watch the
   map` as `Outbound/return overlap - watch map` while route progress continues.
   It never starts stalled-guidance recovery or a recalculation merely because
@@ -241,9 +254,17 @@ The complete expected behavior is:
   navigation-start fallback are separate map-only states. They never start
   stalled-guidance recovery based on their displayed text.
 - A failed recalculation reports the failure and leaves manual recalculation
-  available. Automatic recalculation retains the maximum of three consecutive
-  attempts. Manual recalculation resumes suspended automation; confirmed
-  on-route travel resets the attempt count.
+  available. It schedules a retry no earlier than 30 seconds later, requiring
+  fresh GPS and movement. A committed off-route timer that expires during a
+  stop/outage resumes when confirmed movement returns. Only one automatic
+  request may be in flight. Ending navigation or a new manual plan invalidates
+  old results; GPS lookup errors/timeouts must finish rather than lock loading.
+  Automatic recalculation retains the maximum of three consecutive attempts.
+  Failure and suspended automation are announced when speech is
+  enabled, including routes without turn guidance. A replacement route without
+  turn guidance explicitly announces that limitation instead of silently falling
+  back to map-only navigation. Manual recalculation resumes
+  suspended automation; confirmed healthy on-route travel resets the count.
 - Voice guidance and automatic recalculation remain independent settings.
   Disabling automatic recalculation still permits local guidance re-anchoring,
   but it prevents the stalled-guidance watchdog from making a network route
@@ -253,6 +274,14 @@ The complete expected behavior is:
   along with the other navigation timers and speech state.
 
 ## Regression checklist
+
+Road-test reference: riding through the Laimer Unterführung at Wotanstraße
+successfully produced the missing-guidance/GPS warning, then recalculated and
+resumed spoken directions after the tunnel. The rider observed recovery near
+the junction roughly 150 metres away; retain this timing observation for a
+future log comparison. Removing the extra recalculation announcement does not
+change recovery thresholds or the three short route-left announcements observed
+when riding in the opposite direction.
 
 Select all scenarios relevant to the changed flow. Critical startup or map
 changes should cover most of the first group.
@@ -280,6 +309,12 @@ changes should cover most of the first group.
 - return to the original or recalculated route
 - guidance resumes after recovery
 - inaccurate fixes and implausible GPS jumps
+- GPS outage with more than 200 metres displacement, followed by valid riding
+- stop/resume and off-route/ambiguous/missing changes during one unresolved stall
+- expired rerouting timers, GPS lookup errors/timeouts, failed request and retry
+- local recovery restores an announced maneuver; unresolved recovery recalculates
+- legitimate final straight and known overlapping sections do not loop rerouting
+- failure/suspended-automation warnings are audible, not only visible
 - intermediate destinations and overlapping out-and-back segments
 - voice guidance and automatic recalculation independently enabled or disabled
 - ending navigation cancels pending timers and speech

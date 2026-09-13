@@ -80,6 +80,13 @@ void main() {
         .ancestor(of: calculateRoute, matching: find.byType(FilledButton))
         .first;
     expect(calculateRoute.hitTestable(), findsOneWidget);
+    final closeButton = find.byTooltip('Schließen');
+    expect(closeButton.hitTestable(), findsOneWidget);
+    expect(tester.getRect(closeButton).right,
+        lessThan(tester.getRect(calculateButton).left));
+    expect(tester.getCenter(closeButton).dy,
+        closeTo(tester.getCenter(calculateButton).dy, 1));
+
     final scrollViewport = find.byType(SingleChildScrollView).first;
     expect(
       tester.getRect(calculateButton).top,
@@ -263,9 +270,12 @@ void main() {
     expect(title.overflow, isNull);
     final titleRight = tester.getTopRight(find.text('Route planen')).dx;
     final saveLeft = tester.getTopLeft(find.byIcon(Icons.save_outlined)).dx;
-    final closeLeft = tester.getTopLeft(find.byIcon(Icons.close).first).dx;
+    final closeRect = tester.getRect(find.byTooltip('Schließen'));
     expect(saveLeft - titleRight, lessThan(20));
-    expect(closeLeft, greaterThan(saveLeft + 30));
+    expect(closeRect.top,
+        greaterThan(tester.getBottomLeft(find.text('Route planen')).dy));
+    expect(closeRect.right,
+        lessThan(tester.getTopLeft(find.text('Route berechnen')).dx));
     expect(
       tester.widget<Icon>(find.byIcon(Icons.navigation)).color,
       AppColors.mapAccentColor,
