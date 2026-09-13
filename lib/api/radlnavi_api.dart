@@ -14,13 +14,95 @@ import 'api_exception.dart';
 // routing api based on munichways weights
 // see https://github.com/MunichWays/munichways-radlnavi for the routing profile
 // is based on https://github.com/Project-OSRM/osrm-backend, checkout their docs for api
-class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
+class RadlNaviApi
+    implements RoutingProvider, RouteComfortProvider, DirectRoutingProvider {
   Client? _client;
   final String baseUrl;
+  final String variant;
+  RadlNaviApi? _directApi;
+  Future<RadlNaviApi>? _directDiscovery;
+  int _directConfigurationRevision = 0;
+
+  static Uri _endpoint(String base, String path, [Map<String, String>? query]) {
+    final uri = Uri.parse(base.contains('://') ? base : 'https://$base');
+    if ((uri.scheme != 'https' && uri.scheme != 'http') ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      throw ApiException('Invalid RadlNavi base URL');
+    }
+    final prefix = uri.path.replaceFirst(RegExp(r'/+$'), '');
+    return uri.replace(path: '$prefix/$path', queryParameters: query);
+  }
+
+  Future<RadlNaviApi> _discoverDirect() async {
+    final response = await _client!
+        .get(_endpoint(baseUrl, 'routing_variants'))
+        .timeout(const Duration(seconds: 3));
+    if (response.statusCode != 200)
+      throw ApiException('Direct routing unavailable');
+    final direct = response.jsonBody()['direct'];
+    if (direct is! Map ||
+        direct['available'] != true ||
+        direct['base_url'] is! String) {
+      throw ApiException('Direct routing unavailable');
+    }
+    final url = direct['base_url'] as String;
+    _endpoint(
+        url, 'route'); // Validate before caching, including local HTTP/port.
+    return RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
+  }
+
+  // Optional metadata must never invalidate the standard route. An empty
+  // header clears a previously advertised endpoint; older APIs omit it.
+  void _rememberDirectEndpoint(Response response) {
+    if (variant != 'standard') return;
+    final url = response.headers['x-direct-api-url'];
+    if (url == null) return;
+    _directConfigurationRevision++;
+    _directApi = null;
+    _directDiscovery = null;
+    try {
+      if (url.trim().isEmpty) return;
+      _endpoint(url, 'route');
+      _directApi =
+          RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
+    } catch (_) {
+      // Invalid optional metadata falls back to the existing discovery path.
+    }
+  }
+
+  @override
+  Future<CycleRoute> routeDirect(List<LatLng> coordinates) async {
+    if (variant == 'direct') return route(coordinates);
+    if (_directApi == null) {
+      final revision = _directConfigurationRevision;
+      final discovery = _directDiscovery ??= _discoverDirect();
+      try {
+        final discovered = await discovery;
+        if (revision == _directConfigurationRevision) {
+          _directApi ??= discovered;
+        }
+      } catch (_) {
+        if (revision == _directConfigurationRevision) rethrow;
+      } finally {
+        // A late discovery must not overwrite or clear newer configuration.
+        if (identical(_directDiscovery, discovery)) _directDiscovery = null;
+      }
+      if (revision != _directConfigurationRevision) {
+        return routeDirect(coordinates);
+      }
+    }
+    return _directApi!.route(coordinates);
+  }
 
   static const String RADLNAVI_URL = "api.radlnavi.munichways.de";
 
-  RadlNaviApi({this.baseUrl = RADLNAVI_URL, Client? client = null}) {
+  RadlNaviApi(
+      {this.baseUrl = RADLNAVI_URL,
+      this.variant = 'standard',
+      Client? client = null}) {
     if (client == null) {
       _client = Client();
     } else {
@@ -42,7 +124,8 @@ class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
       'alternatives': 'false',
       'steps': 'true',
       // Preserve the exact route for optional, subsequent comfort analysis.
-      'annotations': 'nodes',
+      'annotations': 'nodes,distance',
+      'variant': variant,
       // GeoJSON preserves the backend coordinates without encoded-polyline
       // rounding, which otherwise becomes visible beside rating lines at high
       // navigation zoom levels.
@@ -52,7 +135,7 @@ class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
     };
 
     Uri uri =
-        Uri.https(baseUrl, 'route/v1/bike/$coordinatesString', queryParameters);
+        _endpoint(baseUrl, 'route/v1/bike/$coordinatesString', queryParameters);
     log.d(uri.toString());
 
     Response response = await _client!.get(uri, headers: {
@@ -114,35 +197,74 @@ class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
           }
         }
 
+        _rememberDirectEndpoint(response);
+        final displaySections = _displaySections(points, steps, access.route);
+        final pushingSteps =
+            steps.where((step) => _isUnriddenMode(step['mode'])).length;
+        log.d('Route display: variant=$variant, steps=${steps.length}, '
+            'pushingSteps=$pushingSteps, sections=${displaySections.length}');
+        if (displaySections.isEmpty && pushingSteps > 0) {
+          log.w(
+              'Pushing display unavailable: step geometry does not match route');
+        }
         return CycleRoute(
           access.route,
           distance.toDouble(),
           duration.toDouble(),
           maneuvers: spokenManeuvers,
           destinationConnector: access.connector,
+          displaySections: displaySections,
           comfort: _parseComfort(firstRoute['comfort']),
-          analysisContext: _parseAnalysisContext(firstRoute['legs']),
+          analysisContext:
+              _parseAnalysisContext(firstRoute['legs'], json['waypoints']),
         );
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
   }
 
-  RouteAnalysisContext? _parseAnalysisContext(Object? value) {
-    if (value is! List || value.isEmpty) return null;
-    final legs = <List<int>>[];
-    for (final leg in value) {
-      if (leg is! Map) return null;
-      final annotation = leg['annotation'];
-      final nodes = annotation is Map ? annotation['nodes'] : null;
-      // Optional analysis metadata must not invalidate a navigable route.
-      if (nodes is! List || nodes.any((id) => id is! int || id <= 0)) {
-        return null;
-      }
-      legs.add(nodes.cast<int>());
+  RouteAnalysisContext? _parseAnalysisContext(
+      Object? value, Object? waypoints) {
+    if (value is! List ||
+        value.isEmpty ||
+        waypoints is! List ||
+        waypoints.length != value.length + 1) return null;
+    LatLng? endpoint(Object? waypoint) {
+      final location = waypoint is Map ? waypoint['location'] : null;
+      if (location is! List ||
+          location.length != 2 ||
+          location.any((v) => v is! num || !v.isFinite) ||
+          (location[0] as num).abs() > 180 ||
+          (location[1] as num).abs() > 90) return null;
+      return LatLng(
+          (location[1] as num).toDouble(), (location[0] as num).toDouble());
     }
-    if (legs.every((nodes) => nodes.isEmpty)) return null;
-    return RouteAnalysisContext(legs);
+
+    final legs = <RouteAnalysisLeg>[];
+    for (var i = 0; i < value.length; i++) {
+      final leg = value[i];
+      final annotation = leg is Map ? leg['annotation'] : null;
+      final nodes = annotation is Map ? annotation['nodes'] : null;
+      final distances = annotation is Map ? annotation['distance'] : null;
+      final start = endpoint(waypoints[i]);
+      final end = endpoint(waypoints[i + 1]);
+      // Broken optional metadata must never invalidate navigation.
+      if (nodes is! List ||
+          nodes.length < 2 ||
+          nodes.any((id) => id is! int || id <= 0) ||
+          distances is! List ||
+          distances.length != nodes.length - 1 ||
+          distances.any((d) => d is! num || !d.isFinite || d < 0) ||
+          start == null ||
+          end == null) return null;
+      legs.add(RouteAnalysisLeg(
+          nodes: nodes.cast<int>(),
+          distance: distances.map((d) => (d as num).toDouble()).toList(),
+          start: start,
+          end: end));
+    }
+    return RouteAnalysisContext(legs.map((leg) => leg.nodes).toList(),
+        legs: legs, baseUrl: baseUrl, variant: variant);
   }
 
   @override
@@ -158,13 +280,18 @@ class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
     }
     if (nodeIds.isEmpty) throw ApiException('Missing route analysis nodes');
     final response = await _client!.post(
-      Uri.https(baseUrl, '/tag_distribution'),
+      _endpoint(context.baseUrl ?? baseUrl, 'tag_distribution'),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'User-Agent': 'com.munichways.app/flutter',
       },
-      body: jsonEncode({'node_ids': nodeIds}),
+      body: jsonEncode(context.legs.isEmpty
+          ? {'node_ids': nodeIds, 'variant': context.variant}
+          : {
+              'legs': context.legs.map((leg) => leg.toJson()).toList(),
+              'variant': context.variant
+            }),
     );
     if (response.statusCode != 200) {
       throw ApiException('Could not retrieve route comfort');
@@ -256,6 +383,60 @@ class RadlNaviApi implements RoutingProvider, RouteComfortProvider {
           .toList();
     }
     throw ApiException('Missing RadlNavi route geometry');
+  }
+
+  List<RouteDisplaySection> _displaySections(
+    List<LatLng> route,
+    List<Map<String, dynamic>> steps,
+    List<LatLng> navigableRoute,
+  ) {
+    // Match ordered step geometry, not nearest locations: loops and repeated
+    // visits to a waypoint can have different modes on the same physical way.
+    List<LatLng> withoutDuplicates(List<LatLng> points) {
+      final result = <LatLng>[];
+      for (final point in points) {
+        if (result.isEmpty || result.last != point) result.add(point);
+      }
+      return result;
+    }
+
+    try {
+      final points = withoutDuplicates(route);
+      if (points.length < 2) return const [];
+      final modes = <bool>[];
+      var cursor = 0;
+      for (final step in steps) {
+        final maneuver = step['maneuver'] as Map<String, dynamic>?;
+        if (maneuver?['type'] == 'arrive') continue;
+        final geometry = withoutDuplicates(_parseGeometry(step['geometry']));
+        if (geometry.isEmpty || geometry.first != points[cursor]) {
+          return const [];
+        }
+        for (final point in geometry.skip(1)) {
+          cursor++;
+          if (cursor >= points.length || point != points[cursor]) {
+            return const [];
+          }
+          modes.add(_isUnriddenMode(step['mode']));
+        }
+      }
+      if (cursor != points.length - 1) return const [];
+      // Final walking access is already rendered by destinationConnector.
+      final limit = withoutDuplicates(navigableRoute).length - 1;
+      final sections = <RouteDisplaySection>[];
+      var first = 0;
+      for (var edge = 0; edge < limit; edge++) {
+        if (edge == limit - 1 || modes[edge] != modes[edge + 1]) {
+          sections.add(RouteDisplaySection(points.sublist(first, edge + 2),
+              pushing: modes[edge]));
+          first = edge + 1;
+        }
+      }
+      return List.unmodifiable(sections);
+    } catch (_) {
+      // Incomplete optional geometry must not break a usable navigation route.
+      return const [];
+    }
   }
 
   _DestinationAccess _splitDestinationAccess(

@@ -175,11 +175,6 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
         _showQuickChoices = shouldShowQuickChoices;
         if (!shouldSearch) _selectingFavorite = false;
       });
-      if (shouldSearch) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _searching) _focusNode.requestFocus();
-        });
-      }
     }
   }
 
@@ -224,7 +219,6 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
       _searching = true;
       _showQuickChoices = false;
     });
-    _focusNode.requestFocus();
   }
 
   void _startFavoriteSelection() {

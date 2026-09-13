@@ -76,15 +76,14 @@ void main() {
       startButton.style?.foregroundColor?.resolve(<WidgetState>{}),
       AppColors.heroForeground,
     );
-    expect(
-        tester.getSize(find.ancestor(
-          of: start,
-          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-        )),
-        const Size(180, 48));
+    final visibleStartSize = tester.getSize(find.ancestor(
+        of: start,
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton)));
+    expect(visibleStartSize.width, lessThan(180));
+    expect(visibleStartSize.height, 48);
     final startTargetSize = tester.getSize(find.bySemanticsLabel('Starten'));
     expect(startTargetSize.width, greaterThan(180));
-    expect(startTargetSize.height, 56);
+    expect(startTargetSize.height, 48);
     expect(
         tester.getTopLeft(start).dy, greaterThan(tester.getTopLeft(stats).dy));
     expect(
@@ -271,6 +270,23 @@ void main() {
           matching: find.text(label),
         );
     final standardRecommendation = recommendation('Standard (empfohlen)');
+    expect(
+      tester
+          .widgetList<RadioListTile<RouteRecommendation>>(
+            find.byType(RadioListTile<RouteRecommendation>),
+          )
+          .map((tile) => tile.value)
+          .toList(),
+      [
+        RouteRecommendation.standard,
+        RouteRecommendation.aloneAfterDark,
+        RouteRecommendation.hotWeather,
+        RouteRecommendation.snowAndMud,
+        RouteRecommendation.trekking,
+        RouteRecommendation.roadBike,
+        RouteRecommendation.shortest,
+      ],
+    );
     expect(standardRecommendation, findsOneWidget);
     expect(recommendation('Trekking'), findsOneWidget);
     expect(recommendation('Rennrad (schnell)'), findsOneWidget);

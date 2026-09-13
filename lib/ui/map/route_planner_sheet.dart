@@ -7,6 +7,7 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
+import 'package:munich_ways/ui/map/map_overlay/route_variant_comparison.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
@@ -67,7 +68,8 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
 }) {
   final sheetController = DraggableScrollableController();
   final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
-  final initialChildSize = initialStopCount >= 1 ? 1.0 : 0.55;
+  final initialChildSize =
+      initialStopCount >= 1 || model.hasRouteComparison ? 1.0 : 0.55;
   return showModalBottomSheet<RoutePlannerMapSelection>(
     context: context,
     isScrollControlled: true,
@@ -131,6 +133,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   bool get _english => context.l10n.isEnglish;
 
   bool get _showsRouteComfort =>
+      !widget.model.hasRouteComparison &&
       !_routePlanEdited &&
       widget.initialPlan == null &&
       widget.model.route.state == MapRouteState.SHOWN &&
@@ -149,6 +152,18 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       for (final stop in stops) _RoutePoint(stop),
       _RoutePoint(destination),
     ];
+    _scrollToEndAfterLayout();
+  }
+
+  void _scrollToEndAfterLayout() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.scrollController.hasClients) return;
+      final end = widget.scrollController.position.maxScrollExtent;
+      if (end <= 0) return;
+      widget.scrollController.animateTo(end,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic);
+    });
   }
 
   RoutePlannerPointType _typeForIndex(int index) {
@@ -194,7 +209,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       _points.insert(index, _RoutePoint(null));
       _routePlanEdited = true;
     });
-    if (_points.length - 2 >= 2 && widget.sheetController.isAttached) {
+    if (_points.length - 2 >= 1 && widget.sheetController.isAttached) {
       await widget.sheetController.animateTo(
         1,
         duration: const Duration(milliseconds: 160),
@@ -203,6 +218,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       if (!mounted) return;
     }
     await _selectPlace(index);
+    if (mounted) _scrollToEndAfterLayout();
   }
 
   void _deletePoint(int index) {
@@ -356,153 +372,177 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.only(bottom: 12),
-      child: SingleChildScrollView(
-        controller: widget.scrollController,
+      child: Padding(
         padding: EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          MediaQuery.viewInsetsOf(context).bottom + 4,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DraggableBottomSheetRegion(
-              controller: widget.sheetController,
-              snapSizes: const [0.55, 1],
-              onDismiss: () => Navigator.of(context).pop(),
-              child: const BottomSheetDragHandle(),
+            20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 4),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          DraggableBottomSheetRegion(
+            controller: widget.sheetController,
+            snapSizes: const [0.55, 1],
+            onDismiss: () => Navigator.of(context).pop(),
+            child: const BottomSheetDragHandle(),
+          ),
+          DraggableBottomSheetRegion(
+            controller: widget.sheetController,
+            snapSizes: const [0.55, 1],
+            onDismiss: () => Navigator.of(context).pop(),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _english ? 'Plan route' : 'Route planen',
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton.filled(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 48,
+                    height: 48,
+                  ),
+                  style: AppButtonStyles.secondary(context),
+                  tooltip: _english ? 'Save route' : 'Route speichern',
+                  onPressed: _destination == null ? null : _saveRoute,
+                  icon: const Icon(Icons.save_outlined),
+                ),
+              ],
             ),
-            DraggableBottomSheetRegion(
-              controller: widget.sheetController,
-              snapSizes: const [0.55, 1],
-              onDismiss: () => Navigator.of(context).pop(),
-              child: Row(
+          ),
+          Expanded(
+              child: SingleChildScrollView(
+            controller: widget.scrollController,
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text(
-                      _english ? 'Plan route' : 'Route planen',
-                      maxLines: 2,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  IconButton.filled(
-                    constraints: const BoxConstraints.tightFor(
-                      width: 48,
-                      height: 48,
-                    ),
-                    style: AppButtonStyles.secondary(context),
-                    tooltip: _english ? 'Save route' : 'Route speichern',
-                    onPressed: _destination == null ? null : _saveRoute,
-                    icon: const Icon(Icons.save_outlined),
-                  ),
-                  IconButton(
-                    constraints: const BoxConstraints.tightFor(
-                      width: 48,
-                      height: 48,
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    tooltip: _english ? 'Close' : 'Schließen',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              itemCount: _points.length,
-              onReorderItem: _reorderPoint,
-              itemBuilder: (context, index) {
-                final point = _points[index];
-                return ReorderableDelayedDragStartListener(
-                  key: point.key,
-                  index: index,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (index == _points.length - 1)
-                        TextButton.icon(
-                          onPressed: _addStop,
-                          icon: const Icon(Icons.add_location_alt_outlined),
-                          label: Text(
-                            _english
-                                ? 'Add intermediate stop'
-                                : 'Zwischenziel hinzufügen',
-                          ),
+                  const SizedBox(height: 4),
+                  ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    itemCount: _points.length,
+                    onReorderItem: _reorderPoint,
+                    itemBuilder: (context, index) {
+                      final point = _points[index];
+                      return ReorderableDelayedDragStartListener(
+                        key: point.key,
+                        index: index,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (index == _points.length - 1)
+                              TextButton.icon(
+                                onPressed: _addStop,
+                                icon:
+                                    const Icon(Icons.add_location_alt_outlined),
+                                label: Text(
+                                  _english
+                                      ? 'Add intermediate stop'
+                                      : 'Zwischenziel hinzufügen',
+                                ),
+                              ),
+                            _PlaceRow(
+                              leading: _pointLeading(index),
+                              value: _pointValue(index),
+                              backgroundColor: index == _points.length - 1
+                                  ? point.place == null
+                                      ? AppColors.uiPrimary
+                                      : Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .secondaryContainer
+                                          : AppColors.secondaryButtonBackground
+                                  : null,
+                              foregroundColor: index == _points.length - 1
+                                  ? point.place == null
+                                      ? Colors.white
+                                      : Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .onSecondaryContainer
+                                          : AppColors.uiPrimary
+                                  : null,
+                              onTap: () => _selectPlace(index),
+                              onEdit: () => _selectPlace(index),
+                              onClear: index == 0 && point.place != null
+                                  ? () => _deletePoint(index)
+                                  : null,
+                              onDelete: point.place == null &&
+                                      (index == 0 ||
+                                          index == _points.length - 1)
+                                  ? null
+                                  : () => _deletePoint(index),
+                            ),
+                          ],
                         ),
-                      _PlaceRow(
-                        leading: _pointLeading(index),
-                        value: _pointValue(index),
-                        backgroundColor: index == _points.length - 1
-                            ? point.place == null
-                                ? AppColors.uiPrimary
-                                : Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .secondaryContainer
-                                    : AppColors.secondaryButtonBackground
-                            : null,
-                        foregroundColor: index == _points.length - 1
-                            ? point.place == null
-                                ? Colors.white
-                                : Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .onSecondaryContainer
-                                    : AppColors.uiPrimary
-                            : null,
-                        onTap: () => _selectPlace(index),
-                        onEdit: () => _selectPlace(index),
-                        onClear: index == 0 && point.place != null
-                            ? () => _deletePoint(index)
-                            : null,
-                        onDelete: point.place == null &&
-                                (index == 0 || index == _points.length - 1)
-                            ? null
-                            : () => _deletePoint(index),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              style: AppButtonStyles.primary(context),
-              onPressed: _destination == null
-                  ? null
-                  : () {
-                      widget.model.setRoutePlan(
-                        start: _start,
-                        stops: _stops,
-                        destination: _destination!,
                       );
-                      Navigator.pop(context);
                     },
-              icon: const Icon(Icons.route),
-              label: Text(_english ? 'Calculate route' : 'Route berechnen'),
-            ),
-            ListenableBuilder(
-              listenable: widget.model,
-              builder: (context, _) => !_showsRouteComfort
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: RouteComfortContent(
-                        route: widget.model.route,
-                        onRetry: () => widget.model.retryRouteComfort(),
-                        compact: true,
-                      ),
-                    ),
-            ),
-          ],
-        ),
+                  ),
+                  const SizedBox(height: 4),
+                  ListenableBuilder(
+                    listenable: widget.model,
+                    builder: (context, _) => !_showsRouteComfort
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: RouteComfortContent(
+                              route: widget.model.route,
+                              onRetry: () => widget.model.retryRouteComfort(),
+                              compact: true,
+                            ),
+                          ),
+                  ),
+                  ListenableBuilder(
+                    listenable: widget.model,
+                    builder: (context, _) =>
+                        _routePlanEdited || widget.initialPlan != null
+                            ? const SizedBox.shrink()
+                            : RouteVariantComparison(model: widget.model),
+                  ),
+                  const SizedBox(height: 8),
+                ]),
+          )),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton(
+                constraints:
+                    const BoxConstraints.tightFor(width: 48, height: 48),
+                tooltip: _english ? 'Close' : 'Schließen',
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  style: AppButtonStyles.primary(context),
+                  onPressed: _destination == null
+                      ? null
+                      : () {
+                          if (widget.model.navigationStarted &&
+                              !_routePlanEdited &&
+                              widget.initialPlan == null) {
+                            // Use current progress, not the planner's opening snapshot.
+                            widget.model.refreshRoute();
+                          } else {
+                            widget.model.setRoutePlan(
+                              start: _start,
+                              stops: _stops,
+                              destination: _destination!,
+                            );
+                          }
+                          Navigator.pop(context);
+                        },
+                  icon: const Icon(Icons.route),
+                  label: Text(_english ? 'Calculate route' : 'Route berechnen'),
+                ),
+              ),
+            ],
+          ),
+        ]),
       ),
     );
   }

@@ -61,20 +61,133 @@ enum VoiceGuidanceMapReason {
 enum VoiceGuidanceStallReason {
   ambiguousPosition,
   missingInstruction,
+  offRoute,
 }
 
 VoiceGuidanceStallReason? recoverableGuidanceStall(
   VoiceGuidanceDisplay? display, {
   required bool voiceGuidanceAvailable,
+  bool offRoute = false,
+  bool healthyMapProgress = false,
 }) {
+  if (offRoute) return VoiceGuidanceStallReason.offRoute;
   if (display?.mapReason == VoiceGuidanceMapReason.ambiguousPosition) {
     return VoiceGuidanceStallReason.ambiguousPosition;
   }
-  if (display == null && voiceGuidanceAvailable) {
+  if ((display == null ||
+          display.mapReason == VoiceGuidanceMapReason.noInstruction) &&
+      voiceGuidanceAvailable &&
+      !healthyMapProgress) {
     return VoiceGuidanceStallReason.missingInstruction;
   }
   return null;
 }
+
+/// One accuracy-aware movement source for off-route and stalled guidance.
+/// Rebase after lost GPS or a jump without counting the gap as ridden distance.
+class NavigationMotionTracker {
+  LatLng? _anchor;
+  double _anchorAccuracy = 0;
+  DateTime? _lastFixAt;
+  DateTime? _lastMovementAt;
+  NavigationMotionSample latest = const NavigationMotionSample();
+
+  bool isMovingAt(DateTime now) =>
+      latest.moving &&
+      _lastMovementAt != null &&
+      now.difference(_lastMovementAt!) <= const Duration(seconds: 8);
+
+  void reset() {
+    _anchor = null;
+    _lastFixAt = null;
+    _lastMovementAt = null;
+    latest = const NavigationMotionSample();
+  }
+
+  NavigationMotionSample update(LatLng position, double accuracy,
+      {required DateTime now}) {
+    if (!accuracy.isFinite ||
+        accuracy < 0 ||
+        accuracy > 50 ||
+        !position.latitude.isFinite ||
+        !position.longitude.isFinite) {
+      reset();
+      return latest;
+    }
+    final previousFix = _lastFixAt;
+    if (previousFix != null && !now.isAfter(previousFix)) {
+      return const NavigationMotionSample();
+    }
+    final elapsed =
+        previousFix == null ? Duration.zero : now.difference(previousFix);
+    _lastFixAt = now;
+    final anchor = _anchor;
+    final distance = anchor == null
+        ? 0.0
+        : const Distance().as(LengthUnit.Meter, anchor, position);
+    if (anchor == null ||
+        elapsed > const Duration(seconds: 20) ||
+        distance > 200) {
+      _anchor = position;
+      _anchorAccuracy = accuracy;
+      _lastMovementAt = null;
+      return latest = const NavigationMotionSample();
+    }
+    final threshold = (max(_anchorAccuracy, accuracy) * 1.5).clamp(8.0, 25.0);
+    var confirmed = 0.0;
+    if (distance >= threshold) {
+      confirmed = distance;
+      _anchor = position;
+      _anchorAccuracy = accuracy;
+      _lastMovementAt = now;
+    }
+    final moving = _lastMovementAt != null &&
+        now.difference(_lastMovementAt!) <= const Duration(seconds: 8);
+    return latest = NavigationMotionSample(
+      moving: moving,
+      confirmedMeters: confirmed,
+      movingDuration: moving ? elapsed : Duration.zero,
+    );
+  }
+}
+
+class NavigationMotionSample {
+  const NavigationMotionSample(
+      {this.moving = false,
+      this.confirmedMeters = 0,
+      this.movingDuration = Duration.zero});
+  final bool moving;
+  final double confirmedMeters;
+  final Duration movingDuration;
+}
+
+class GuidanceRecoveryResult {
+  const GuidanceRecoveryResult(this.display, {required this.requiresReroute});
+  final VoiceGuidanceDisplay? display;
+  final bool requiresReroute;
+}
+
+/// The existing off-route timer and a failed request can both need resuming.
+/// This decision does not own additional timers or navigation state.
+bool automaticRerouteRecoveryDue(
+        {required bool navigationActive,
+        required bool automaticEnabled,
+        required bool suspended,
+        required bool inFlight,
+        required bool freshFix,
+        required bool moving,
+        required bool destinationReached,
+        required bool committedTimerElapsed,
+        required DateTime? retryAt,
+        required DateTime now}) =>
+    navigationActive &&
+    automaticEnabled &&
+    !suspended &&
+    !inFlight &&
+    freshFix &&
+    moving &&
+    !destinationReached &&
+    (retryAt != null ? !now.isBefore(retryAt) : committedTimerElapsed);
 
 /// Requires persistently stalled guidance and movement before recovery.
 ///
@@ -89,58 +202,33 @@ class StalledGuidanceRecoveryGate {
   final Duration minimumDuration;
   final double minimumMovementMeters;
 
-  DateTime? _startedAt;
-  LatLng? _movementAnchor;
-  double? _movementAnchorAccuracy;
+  bool _active = false;
+  Duration _movingDuration = Duration.zero;
   double _confirmedMovementMeters = 0;
 
   void reset() {
-    _startedAt = null;
-    _movementAnchor = null;
-    _movementAnchorAccuracy = null;
+    _active = false;
+    _movingDuration = Duration.zero;
     _confirmedMovementMeters = 0;
   }
 
   bool update({
     required bool stalled,
-    required LatLng position,
-    required double horizontalAccuracyMeters,
-    required bool moving,
-    DateTime? now,
+    required NavigationMotionSample motion,
   }) {
-    if (!stalled || !horizontalAccuracyMeters.isFinite) {
+    if (!stalled) {
       reset();
       return false;
     }
 
-    final currentTime = now ?? DateTime.now();
-    _startedAt ??= currentTime;
-    final anchor = _movementAnchor;
-    if (anchor == null) {
-      _movementAnchor = position;
-      _movementAnchorAccuracy = horizontalAccuracyMeters;
+    if (!_active) {
+      _active = true;
       return false;
     }
-
-    final distance = const Distance().as(
-      LengthUnit.Meter,
-      anchor,
-      position,
-    );
-    final accuracy = max(
-      _movementAnchorAccuracy ?? 0,
-      horizontalAccuracyMeters,
-    );
-    final movementThreshold = (accuracy * 1.5).clamp(8.0, 25.0);
-    if (distance >= movementThreshold && distance <= 200) {
-      _confirmedMovementMeters += distance;
-      _movementAnchor = position;
-      _movementAnchorAccuracy = horizontalAccuracyMeters;
-    }
-
-    final persisted = currentTime.difference(_startedAt!) >= minimumDuration;
-    if (!persisted ||
-        !moving ||
+    _confirmedMovementMeters += motion.confirmedMeters;
+    _movingDuration += motion.movingDuration;
+    if (_movingDuration < minimumDuration ||
+        !motion.moving ||
         _confirmedMovementMeters < minimumMovementMeters) {
       return false;
     }
@@ -264,6 +352,35 @@ class VoiceGuidance {
   bool _routeRecoveryPending = false;
 
   bool get finalDestinationReached => _finalDestinationReached;
+
+  /// Null guidance is legitimate only on the final, correctly matched straight.
+  /// A stale progress window or exhausted maneuvers away from the route is not.
+  bool hasHealthyMapProgress(LatLng position) {
+    if (_route == null || _finalDestinationReached) return false;
+    final projection = _projectionAtCurrentProgress(position);
+    if (projection.isAmbiguous ||
+        projection.distanceFromRoute > maximumRouteDistanceMeters) return false;
+    return _isOverlappingProgress(projection.distanceAlongRoute) ||
+        (_index >= _maneuvers.length &&
+            !_routeRecoveryPending &&
+            projection.distanceAlongRoute >= _routeProgress - 5);
+  }
+
+  GuidanceRecoveryResult recoverGuidance(LatLng position,
+      {required double horizontalAccuracyMeters,
+      required bool english,
+      double speedMetersPerSecond = 0}) {
+    final reanchored =
+        resumeAt(position, horizontalAccuracyMeters: horizontalAccuracyMeters);
+    final recovered = display(position,
+        english: english, speedMetersPerSecond: speedMetersPerSecond);
+    return GuidanceRecoveryResult(recovered,
+        requiresReroute: !reanchored ||
+            recoverableGuidanceStall(recovered,
+                    voiceGuidanceAvailable: _route != null,
+                    healthyMapProgress: hasHealthyMapProgress(position)) !=
+                null);
+  }
 
   bool setRoute(
     CycleRoute? route, {

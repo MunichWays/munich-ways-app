@@ -224,10 +224,14 @@ void main() {
     expect(queryField.decoration?.labelText, isNull);
     expect(queryField.decoration?.hintText, 'Wohin?');
     expect(queryField.decoration?.prefixIcon, isNull);
+    expect(queryField.focusNode?.hasFocus, isFalse);
     expect(
       find.byKey(const ValueKey('destination-query-clear')),
       findsNothing,
     );
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(queryField.focusNode?.hasFocus, isTrue);
     await tester.enterText(find.byType(TextField), 'I');
     await tester.pump();
     expect(
@@ -260,6 +264,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsOneWidget);
     expect(draggable.controller!.size, closeTo(1, .01));
+    expect(tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus,
+        isFalse);
     expect(tester.takeException(), isNull);
 
     expect(find.byTooltip('Schließen'), findsOneWidget);

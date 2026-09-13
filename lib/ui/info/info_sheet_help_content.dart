@@ -150,6 +150,33 @@ class InfoSheetHelpContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
+        Text(
+          context.l10n.isEnglish ? 'Calculated route' : 'Berechnete Route',
+          style:
+              theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        InfoSheetLegendRow(
+          color: theme.brightness == Brightness.dark
+              ? AppColors.mapRouteColorDark
+              : AppColors.mapRouteColor,
+          dashed: false,
+          label: context.l10n.isEnglish ? 'Blue, solid' : 'Blau durchgezogen',
+          description:
+              context.l10n.isEnglish ? 'Calculated route' : 'Berechnete Route',
+        ),
+        const SizedBox(height: 8),
+        InfoSheetLegendRow(
+          color: theme.brightness == Brightness.dark
+              ? AppColors.mapRouteColorDark
+              : AppColors.mapRouteColor,
+          dashed: true,
+          label: context.l10n.isEnglish ? 'Blue, dashed' : 'Blau gestrichelt',
+          description: context.l10n.isEnglish
+              ? 'Sections for pushing your bike, e.g. the last metres to your destination.'
+              : 'Schiebestücke, z. B. die letzten Meter zum Zielpunkt.',
+        ),
+        const SizedBox(height: 24),
         Text(context.l10n.tr('Ziel auswählen'),
             style: theme.textTheme.titleSmall
                 ?.copyWith(fontWeight: FontWeight.w600)),

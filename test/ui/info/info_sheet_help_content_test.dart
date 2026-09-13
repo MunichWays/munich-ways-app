@@ -24,6 +24,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Blau durchgezogen'), findsOneWidget);
+    expect(find.text('Blau gestrichelt'), findsOneWidget);
+    expect(find.textContaining('Schiebestücke'), findsOneWidget);
     expect(find.text('Radl-Komfort-Index'), findsOneWidget);
     expect(find.textContaining('mindestens 70 Prozent'), findsOneWidget);
     expect(find.text('Erläuterung'), findsOneWidget);

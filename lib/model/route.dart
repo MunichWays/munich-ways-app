@@ -7,6 +7,7 @@ class CycleRoute {
   List<RouteManeuver> maneuvers;
   bool supportsVoiceGuidance;
   List<LatLng> destinationConnector;
+  final List<RouteDisplaySection> displaySections;
   RouteComfort? comfort;
   final RouteAnalysisContext? analysisContext;
 
@@ -17,6 +18,7 @@ class CycleRoute {
     this.maneuvers = const [],
     this.supportsVoiceGuidance = true,
     this.destinationConnector = const [],
+    this.displaySections = const [],
     this.comfort,
     this.analysisContext,
   });
@@ -24,12 +26,42 @@ class CycleRoute {
 
 /// Exact node annotations of the returned route, preserving leg boundaries.
 class RouteAnalysisContext {
-  RouteAnalysisContext(List<List<int>> legNodeIds)
-      : legNodeIds = List.unmodifiable(
+  RouteAnalysisContext(
+    List<List<int>> legNodeIds, {
+    this.baseUrl,
+    this.variant = 'standard',
+    List<RouteAnalysisLeg> legs = const [],
+  })  : legs = List.unmodifiable(legs),
+        legNodeIds = List.unmodifiable(
           legNodeIds.map((nodes) => List<int>.unmodifiable(nodes)),
         );
 
   final List<List<int>> legNodeIds;
+  final String? baseUrl;
+  final String variant;
+  final List<RouteAnalysisLeg> legs;
+}
+
+/// Immutable OSRM annotations, including snapped endpoints and partial edges.
+class RouteAnalysisLeg {
+  RouteAnalysisLeg(
+      {required List<int> nodes,
+      required List<double> distance,
+      required this.start,
+      required this.end})
+      : nodes = List.unmodifiable(nodes),
+        distance = List.unmodifiable(distance);
+  final List<int> nodes;
+  final List<double> distance;
+  final LatLng start;
+  final LatLng end;
+
+  Map<String, Object> toJson() => {
+        'nodes': nodes,
+        'distance': distance,
+        'start': [start.longitude, start.latitude],
+        'end': [end.longitude, end.latitude],
+      };
 }
 
 /// Radl-Komfort metadata calculated by the RadlNavi backend.
@@ -80,4 +112,13 @@ class RouteManeuver {
   final String? modifier;
   final String roadName;
   final int? exit;
+}
+
+/// Optional rendering metadata. Navigation continues to use CycleRoute.points.
+class RouteDisplaySection {
+  RouteDisplaySection(List<LatLng> points, {required this.pushing})
+      : points = List.unmodifiable(points);
+
+  final List<LatLng> points;
+  final bool pushing;
 }

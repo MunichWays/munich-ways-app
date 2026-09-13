@@ -129,25 +129,65 @@ trip without changing my normal routing preference.
 
 The complete expected behavior is:
 
-- The route start window offers a compact `Direkte Route` icon between ending
-  and editing the route, without increasing the panel height. Its dialog warns
-  that the route can be more stressful, has no turn-by-turn announcements, and
-  therefore requires watching the map. The option is hidden when shortest
-  routing is already configured.
-- Selecting it immediately recalculates with BRouter's `shortest` profile. The
-  action then becomes `Standard`, which recalculates using the latest routing
-  preference from Settings.
-- The temporary choice is the single effective routing preference for every
-  manual retry and automatic off-route recalculation during that trip. Editing
-  the current route or its intermediate stops does not discard it.
-- BRouter routes do not invent spoken maneuvers, but their geometry remains
-  available for off-route detection and automatic recalculation.
+- Route selection lives in the planner, with two full-width cards: selection and
+  title, comfort value and information action, distribution bar, distance and
+  duration. The direct card uses smaller regular text and a flatter bar. Standard
+  places its title and index close together. No duplicate comfort card is shown.
+- The direct variant's comfort information links to the unchanged direct-route
+  explanation. This dialog only closes; it never selects or calculates a route.
+  The start window no longer has a separate direct-route icon.
+- RadlNavi calculates the direct route using its separate discovered API and
+  the same maneuver parser, navigation and voice guidance as the standard route.
+  The persisted shortest preference also uses this service. Other configured
+  BRouter profiles remain available.
+- Display the requested route first. Discovery, the alternative route and both
+  comfort analyses must not delay its availability. The planner compares distance,
+  duration and comfort for the configured and direct routes before navigation.
+  Each variant has its own rating distribution bar, including when coverage is
+  insufficient for an index. Standard routing retains a 20-second timeout;
+  isolated direct routing has 45 seconds and optional comfort analysis 60 seconds
+  to tolerate startup delays without blocking the standard route.
+  Before navigation, switching a ready alternative does not recalculate it.
+  During navigation, both radio controls remain available: switching calculates
+  from current GPS and remaining stops, retaining the active route until success.
+  A failure or cancelled switch preserves the route and its pending comfort data.
+- A pending or failed alternative must preserve the currently usable route.
+  Selecting the current variant again cancels a pending switch. Retrying an
+  unavailable alternative must recover without resetting the current route.
+- Each plan generation owns its variant routes and pending analyses. Refreshing,
+  editing or ending a plan invalidates older results. Late comfort updates may
+  update an inactive cached variant, but never replace the active geometry or
+  emit a navigation route event.
+- Comfort requests retain individual legs, repeated nodes, edge distances and
+  snapped endpoints, and use the producing API URL and routing variant.
+  Insufficient coverage is a valid result; comfort errors permit independent retry.
+  Below 70 percent coverage show `Radl-Komfort -`, with the coverage percentage
+  separately in small text. The information sheet shows coverage in small regular
+  text, followed by `Radl-Komfort x/100` (or `-` when no index is available).
+- The temporary choice applies to manual retry and automatic rerouting, including
+  remaining intermediate stops. Refresh calculates the active variant first and
+  then refreshes the alternative using the same new start and stops.
+- Outside RadlNavi coverage, on unavailable discovery and on routing errors,
+  preserve BRouter fallback. Direct uses its shortest profile and is identified
+  as BRouter without voice guidance. Never substitute standard as direct.
 - The choice is never written to Settings. Ending the route, selecting a new
-  destination, or selecting another saved route clears it; the next route uses
-  the configured preference again.
-- While a calculation is running, both start choices are unavailable. After a
-  failed direct-route calculation, `Standard` remains available so the rider
-  can recover using the configured routing mode.
+  destination or selecting another saved route clears it.
+
+## Route panel and planner layout
+
+- The bottom route panel uses compact spacing and respects the system bottom
+  inset. Dragging the grey grip down leaves only Start before navigation, or the
+  bottom action row during navigation. Dragging up restores details.
+- Folding is presentation state only. Comfort updates and navigation rerouting
+  retain it, as does starting navigation. A new destination resets it; loading
+  before navigation is always visible. Speech and tracking continue while folded.
+- Expanding the home destination sheet does not focus search automatically.
+  The keyboard appears only after tapping the actual text input.
+- The planner keeps its header and Calculate button outside the scrollable content.
+  Long plans scroll to the bottom on opening and after adding a stop, while Calculate
+  remains visible at every scroll position.
+- During navigation, recalculating an unedited plan uses current waypoint progress
+  rather than restoring stops from the planner's opening snapshot.
 
 ## Navigation guidance user story
 
@@ -182,17 +222,30 @@ The complete expected behavior is:
 - A route re-entry can also leave guidance without a current maneuver even
   though the RadlNavi route supports voice guidance. The navigation header uses
   `Follow route on map` for this missing-instruction state.
-- Only a continuous ambiguous-position or missing-instruction state is
-  recoverable by the stalled-guidance watchdog. It requires both 30 seconds and
-  at least 25 metres of accuracy-aware confirmed movement while the rider is
-  still moving. A direct transition between those two recoverable reasons is
-  one continuous stall and must not restart the watchdog.
+- Off-route, ambiguous-position and missing-instruction states share one
+  unresolved-guidance watchdog, independent of the displayed wording or any
+  temporary rerouting label. It requires 30 seconds of movement-associated
+  reliable GPS updates and at least 25 metres of confirmed movement. Switching
+  between these reasons does not reset the budget. Stops and GPS outages pause
+  it; a concrete instruction or verified healthy map-only progress ends it.
+- Off-route detection and the watchdog use one accuracy-aware movement source.
+  A gap longer than 20 seconds, inaccurate GPS or a displacement over 200 metres
+  establishes a fresh anchor without counting the gap/jump as ridden distance.
+  Subsequent plausible movement must be recognized again. Replayed GPS fixes
+  never count twice. Moving state expires after 8 seconds without confirmed
+  movement; automatic requests also require a GPS fix no older than 15 seconds.
 - When that watchdog opens, guidance first re-anchors locally at the current
-  position. If this produces a concrete maneuver, no route request is made. A
-  missing instruction alone never causes a network request because it can be
-  legitimate on the final straight. Only if the position remains explicitly
-  ambiguous does the app use the existing automatic route recalculation flow
-  when that setting is enabled.
+  position. If guidance becomes usable, announce the relevant maneuver and do
+  not request a route. If re-anchoring fails or guidance remains unusable, use
+  automatic recalculation when enabled, including missing-instruction states.
+  Show recalculation on screen without an additional spoken announcement.
+  Preserve the existing short route-left warnings; resumed regular guidance
+  makes recovery audible without an extra success/status message.
+  Prefer an occasional extra request over indefinitely silent broken guidance.
+- A correctly matched final straight after the last maneuver needs no invented
+  turn and is not a stall. Silence alone never triggers a recalculation. The
+  separate missing-GPS warning still detects loss of usable location updates;
+  the watchdog covers unusable guidance even while GPS continues arriving.
 - A known overlapping outbound/return section deliberately shows `Watch the
   map` as `Outbound/return overlap - watch map` while route progress continues.
   It never starts stalled-guidance recovery or a recalculation merely because
@@ -201,9 +254,17 @@ The complete expected behavior is:
   navigation-start fallback are separate map-only states. They never start
   stalled-guidance recovery based on their displayed text.
 - A failed recalculation reports the failure and leaves manual recalculation
-  available. Automatic recalculation retains the maximum of three consecutive
-  attempts. Manual recalculation resumes suspended automation; confirmed
-  on-route travel resets the attempt count.
+  available. It schedules a retry no earlier than 30 seconds later, requiring
+  fresh GPS and movement. A committed off-route timer that expires during a
+  stop/outage resumes when confirmed movement returns. Only one automatic
+  request may be in flight. Ending navigation or a new manual plan invalidates
+  old results; GPS lookup errors/timeouts must finish rather than lock loading.
+  Automatic recalculation retains the maximum of three consecutive attempts.
+  Failure and suspended automation are announced when speech is
+  enabled, including routes without turn guidance. A replacement route without
+  turn guidance explicitly announces that limitation instead of silently falling
+  back to map-only navigation. Manual recalculation resumes
+  suspended automation; confirmed healthy on-route travel resets the count.
 - Voice guidance and automatic recalculation remain independent settings.
   Disabling automatic recalculation still permits local guidance re-anchoring,
   but it prevents the stalled-guidance watchdog from making a network route
@@ -213,6 +274,14 @@ The complete expected behavior is:
   along with the other navigation timers and speech state.
 
 ## Regression checklist
+
+Road-test reference: riding through the Laimer Unterführung at Wotanstraße
+successfully produced the missing-guidance/GPS warning, then recalculated and
+resumed spoken directions after the tunnel. The rider observed recovery near
+the junction roughly 150 metres away; retain this timing observation for a
+future log comparison. Removing the extra recalculation announcement does not
+change recovery thresholds or the three short route-left announcements observed
+when riding in the opposite direction.
 
 Select all scenarios relevant to the changed flow. Critical startup or map
 changes should cover most of the first group.
@@ -240,6 +309,12 @@ changes should cover most of the first group.
 - return to the original or recalculated route
 - guidance resumes after recovery
 - inaccurate fixes and implausible GPS jumps
+- GPS outage with more than 200 metres displacement, followed by valid riding
+- stop/resume and off-route/ambiguous/missing changes during one unresolved stall
+- expired rerouting timers, GPS lookup errors/timeouts, failed request and retry
+- local recovery restores an announced maneuver; unresolved recovery recalculates
+- legitimate final straight and known overlapping sections do not loop rerouting
+- failure/suspended-automation warnings are audible, not only visible
 - intermediate destinations and overlapping out-and-back segments
 - voice guidance and automatic recalculation independently enabled or disabled
 - ending navigation cancels pending timers and speech

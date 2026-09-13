@@ -1,3 +1,4 @@
+import 'package:munich_ways/ui/map/map_overlay/direct_route_info_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/route.dart';
@@ -16,17 +17,20 @@ bool showsRouteComfortSummary(MapScreenViewModel model) =>
     model.route.comfortState != RouteComfortState.unavailable;
 
 class MapRouteComfortSummary extends StatelessWidget {
-  const MapRouteComfortSummary({super.key, required this.model});
+  const MapRouteComfortSummary(
+      {super.key, required this.model, this.compact = false});
 
   final MapScreenViewModel model;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     if (!showsRouteComfortSummary(model)) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: compact ? 4 : 8),
       child: RouteComfortContent(
         route: model.route,
+        compact: compact,
         onRetry: () => model.retryRouteComfort(),
       ),
     );
@@ -105,9 +109,8 @@ class MapRouteComfortCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final indexText = comfort.sufficientCoverage && comfort.index != null
-        ? '${comfort.index}/100'
-        : '${comfort.coverage} % ${context.l10n.isEnglish ? 'rated' : 'bewertet'}';
+    final hasIndex = comfort.sufficientCoverage && comfort.index != null;
+    final indexText = hasIndex ? '${comfort.index}/100' : '-';
 
     return Material(
       key: const ValueKey('route-comfort-summary'),
@@ -126,23 +129,24 @@ class MapRouteComfortCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Radl-Komfort',
+                    hasIndex ? 'Radl-Komfort' : 'Radl-Komfort -',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                Flexible(
-                  child: Text(
-                    indexText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+                if (hasIndex)
+                  Flexible(
+                    child: Text(
+                      indexText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
                 IconButton(
                   tooltip: context.l10n.isEnglish
                       ? 'About the cycling comfort index'
@@ -155,7 +159,17 @@ class MapRouteComfortCard extends StatelessWidget {
                 ),
               ],
             ),
-            _ComfortDistributionBar(comfort: comfort),
+            if (!hasIndex)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${comfort.coverage} % '
+                  '${context.l10n.isEnglish ? 'rated' : 'bewertet'}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            if (!hasIndex) const SizedBox(height: 3),
+            RouteComfortDistributionBar(comfort: comfort),
           ],
         ),
       ),
@@ -163,10 +177,15 @@ class MapRouteComfortCard extends StatelessWidget {
   }
 }
 
-class _ComfortDistributionBar extends StatelessWidget {
-  const _ComfortDistributionBar({required this.comfort});
+class RouteComfortDistributionBar extends StatelessWidget {
+  const RouteComfortDistributionBar({
+    super.key,
+    required this.comfort,
+    this.height = 14,
+  });
 
   final RouteComfort comfort;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +233,7 @@ class _ComfortDistributionBar extends StatelessWidget {
       label: semanticsLabel,
       excludeSemantics: true,
       child: Container(
-        height: 14,
+        height: height,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           border: Border.all(color: themeBorderColor(context), width: 1.5),
@@ -278,92 +297,133 @@ class _ComfortLegendRow extends StatelessWidget {
 
 Future<void> showRouteComfortInfoDialog(
   BuildContext context,
-  RouteComfort comfort,
-) =>
-    showDialog<void>(
+  RouteComfort comfort, {
+  bool direct = false,
+}) =>
+    showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      constraints: const BoxConstraints(maxWidth: double.infinity),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
         final english = context.l10n.isEnglish;
-        return AlertDialog(
-          title: const Text('Radl-Komfort-Index'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  english ? 'Colors of this route' : 'Farben dieser Route',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                _ComfortLegendRow(
-                  color: AppColors.getPolylineColor(
-                    'schwarz',
-                    dark: theme.brightness == Brightness.dark,
-                  ),
-                  label: english ? 'Very stressful' : 'Sehr stressig',
-                  percentage: comfort.distribution.black,
-                ),
-                _ComfortLegendRow(
-                  color: AppColors.mapRed,
-                  label: english ? 'Stressful' : 'Stressig',
-                  percentage: comfort.distribution.red,
-                ),
-                _ComfortLegendRow(
-                  color: AppColors.mapYellow,
-                  label: english ? 'Average' : 'Durchschnittlich',
-                  percentage: comfort.distribution.yellow,
-                ),
-                _ComfortLegendRow(
-                  color: AppColors.getPolylineColor(
-                    'grün',
-                    dark: theme.brightness == Brightness.dark,
-                  ),
-                  label: english ? 'Comfortable' : 'Komfortabel',
-                  percentage: comfort.distribution.green,
-                ),
-                _ComfortLegendRow(
-                  color: AppColors.mapBrown,
-                  label: english ? 'Unrated' : 'Nicht bewertet',
-                  percentage: comfort.distribution.unrated,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  english
-                      ? '${comfort.coverage} % of the route rated'
-                      : '${comfort.coverage} % der Route bewertet',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  english
-                      ? 'The index ranges from 0 to 100; higher means more comfortable. Brown, unrated sections do not affect it. The index is shown from 70 % rating coverage.'
-                      : 'Der Index reicht von 0 bis 100; höher bedeutet komfortabler. Braune, nicht bewertete Abschnitte fließen nicht ein. Ab 70 % Bewertungsabdeckung wird der Index angezeigt.',
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(_comfortInfoUrl),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(Icons.open_in_new, size: 18),
-              label: Text(
-                english ? 'More details' : 'Weitere Erläuterungen',
-              ),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(context.l10n.close),
-            ),
-          ],
+        final linkStyle = TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            alignment: Alignment.centerLeft,
+            minimumSize: const Size(48, 48));
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                            child: Text('Radl-Komfort-Index',
+                                style: theme.textTheme.titleLarge)),
+                        IconButton(
+                            key: const ValueKey('comfort-info-close'),
+                            tooltip: context.l10n.close,
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close)),
+                      ]),
+                      const SizedBox(height: 8),
+                      Expanded(
+                          child: SingleChildScrollView(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                english
+                                    ? 'Colors of this route'
+                                    : 'Farben dieser Route',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              _ComfortLegendRow(
+                                color: AppColors.getPolylineColor(
+                                  'schwarz',
+                                  dark: theme.brightness == Brightness.dark,
+                                ),
+                                label: english
+                                    ? 'Very stressful'
+                                    : 'Sehr stressig',
+                                percentage: comfort.distribution.black,
+                              ),
+                              _ComfortLegendRow(
+                                color: AppColors.mapRed,
+                                label: english ? 'Stressful' : 'Stressig',
+                                percentage: comfort.distribution.red,
+                              ),
+                              _ComfortLegendRow(
+                                color: AppColors.mapYellow,
+                                label: english ? 'Average' : 'Durchschnittlich',
+                                percentage: comfort.distribution.yellow,
+                              ),
+                              _ComfortLegendRow(
+                                color: AppColors.getPolylineColor(
+                                  'grün',
+                                  dark: theme.brightness == Brightness.dark,
+                                ),
+                                label: english ? 'Comfortable' : 'Komfortabel',
+                                percentage: comfort.distribution.green,
+                              ),
+                              _ComfortLegendRow(
+                                color: AppColors.mapBrown,
+                                label: english ? 'Unrated' : 'Nicht bewertet',
+                                percentage: comfort.distribution.unrated,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                english
+                                    ? '${comfort.coverage} % of the route rated'
+                                    : '${comfort.coverage} % der Route bewertet',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Radl-Komfort '
+                                '${comfort.sufficientCoverage && comfort.index != null ? '${comfort.index}/100' : '-'}',
+                                style: theme.textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                english
+                                    ? 'Index 0 to 100: higher means more comfortable. Unrated sections (brown) are excluded. Shown from 70 % rating coverage.'
+                                    : 'Index 0 bis 100: höher bedeutet komfortabler. Unbewertete Abschnitte (braun) zählen nicht mit. Anzeige ab 70 % Bewertungsabdeckung.',
+                              ),
+                              if (direct)
+                                TextButton(
+                                    style: linkStyle,
+                                    onPressed: () =>
+                                        showDirectRouteInfoDialog(sheetContext),
+                                    child: Text(english
+                                        ? 'About the direct route'
+                                        : 'Info zur direkten Route')),
+                              TextButton(
+                                  style: linkStyle,
+                                  onPressed: () => launchUrl(
+                                      Uri.parse(_comfortInfoUrl),
+                                      mode: LaunchMode.externalApplication),
+                                  child: Text(english
+                                      ? 'More about the comfort index'
+                                      : 'Weitere Infos zum Komfort-Index')),
+                            ]),
+                      )),
+                      Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: FilledButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              child: Text(context.l10n.close))),
+                    ]),
+              )),
         );
       },
     );
