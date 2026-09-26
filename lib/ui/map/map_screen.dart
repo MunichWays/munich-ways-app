@@ -157,8 +157,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _onRouteDurationToResetReroutes = Duration(seconds: 60);
   static const _minimumOnRouteDistanceForTimedReset = 30.0;
   static const _maximumOnRouteProgressStep = 200.0;
-  static const _navigationStartZoom = 18.0;
-  static const _offRouteZoom = _navigationStartZoom - 2;
+  static const _navigationStartZoom = 16.0;
+  static const _offRouteZoom = 15.0;
   static const _notificationPermissionChannel =
       MethodChannel('com.munichways.app/notification_permission');
 
@@ -594,10 +594,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   bool get _navigationSpeechPaused {
-    if (!mounted) return false;
-    final model = context.read<MapScreenViewModel>();
-    return model.navigationStarted &&
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
+    return mounted && mapViewModel.navigationPaused;
   }
 
   void _stopVoiceGuidance() {
@@ -776,7 +773,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               _refreshVoiceGuidance(model, position);
             }
             // A refreshed route must not trigger the pre-navigation overview
-            // camera. It races with zoom 18 from _startNavigation and can leave
+            // camera. It races with the zoom from _startNavigation and can leave
             // active navigation zoomed out to the full route bounds.
             return;
           }

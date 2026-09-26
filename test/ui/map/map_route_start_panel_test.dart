@@ -60,6 +60,7 @@ void main() {
                                       })))))));
       await tester.pumpWidget(app());
       final handle = find.byKey(const ValueKey('route-panel-handle'));
+      expect(tester.getSize(handle).height, greaterThanOrEqualTo(32));
       expect(
         find.descendant(
           of: handle,
@@ -81,7 +82,7 @@ void main() {
       // A parent rebuild such as a comfort update must not expand the panel.
       await tester.pumpWidget(app());
       expect(find.bySemanticsLabel('Route bearbeiten'), findsNothing);
-      await tester.drag(handle, const Offset(0, -80));
+      await tester.tap(handle);
       await tester.pumpAndSettle();
       expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
       await tester.drag(handle, const Offset(0, 80));
@@ -117,6 +118,66 @@ void main() {
           greaterThan(collapsedNavigationHeight));
       expect(tester.takeException(), isNull);
     });
+
+  testWidgets(
+      'paused navigation can end from collapsed panel without expanding',
+      (tester) async {
+    var ended = 0;
+    final model = MapScreenViewModel(store: _Settings())
+      ..destination = Place('Ziel', const LatLng(48.2, 11.6))
+      ..route = MapRoute(
+        CycleRoute(const [], 4200, 1200, comfort: _comfort),
+        MapRouteState.SHOWN,
+      )
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    addTearDown(model.dispose);
+    await model.startNavigation();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 320,
+              child: ListenableBuilder(
+                listenable: model,
+                builder: (context, child) => MapRouteStartPanel(
+                  model: model,
+                  builder: (collapsed, toggle) => MapNavigationHeaderBar(
+                    model: model,
+                    collapsed: collapsed,
+                    onToggleCollapsed: toggle,
+                    onRefreshRoute: () async {},
+                    onEditRoute: () {},
+                    onToggleVoiceGuidance: () {},
+                    onPauseNavigation: model.onUserStoppedFollowingLocation,
+                    onEndRoute: () => ended++,
+                    onStartNavigation: () async {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('Navigation pausieren'));
+    await tester.pump();
+    expect(model.navigationPaused, isTrue);
+
+    final handle = find.byKey(const ValueKey('route-panel-handle'));
+    await tester.drag(handle, const Offset(0, 80));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
+
+    final end = find.bySemanticsLabel('Navigation beenden');
+    await tester.fling(end, const Offset(0, -10), 500);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('route-comfort-summary')), findsNothing);
+    expect(ended, 1);
+  });
 
   testWidgets('a new destination resets folding and loading cannot be hidden',
       (tester) async {

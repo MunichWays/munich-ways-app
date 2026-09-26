@@ -151,8 +151,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
-    final navigationTrackingInterrupted = model.navigationStarted &&
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
+    final navigationTrackingInterrupted = model.navigationPaused;
     final guidanceDisplay = model.navigationStarted
         ? navigationTrackingInterrupted
             ? VoiceGuidanceDisplay(
