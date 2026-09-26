@@ -50,6 +50,7 @@ void main() {
                 onEditRoute: () {},
                 onStartNavigation: () async {},
                 onToggleVoiceGuidance: () {},
+                onPauseNavigation: () {},
                 onEndRoute: () {},
               ),
             ),

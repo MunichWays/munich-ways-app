@@ -566,16 +566,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _speak(String text, {required bool english}) async {
+    if (_navigationSpeechPaused) return;
     final generation = ++_speechRequestGeneration;
     try {
       await _flutterTts.setLanguage(english ? 'en-US' : 'de-DE');
-      if (generation != _speechRequestGeneration || !mounted) return;
+      if (generation != _speechRequestGeneration ||
+          !mounted ||
+          _navigationSpeechPaused) return;
       // Keep navigation prompts at the TTS maximum. This is especially
       // important when the phone is muffled inside a handlebar bag.
       await _flutterTts.setVolume(1.0);
-      if (generation != _speechRequestGeneration || !mounted) return;
+      if (generation != _speechRequestGeneration ||
+          !mounted ||
+          _navigationSpeechPaused) return;
       await _flutterTts.stop();
-      if (generation != _speechRequestGeneration || !mounted) return;
+      if (generation != _speechRequestGeneration ||
+          !mounted ||
+          _navigationSpeechPaused) return;
       await _flutterTts.speak(text, focus: true);
     } catch (error, stackTrace) {
       log.w(
@@ -584,6 +591,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  bool get _navigationSpeechPaused {
+    if (!mounted) return false;
+    final model = context.read<MapScreenViewModel>();
+    return model.navigationStarted &&
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
   }
 
   void _stopVoiceGuidance() {
@@ -648,6 +662,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       unawaited(_syncCompassBearingFromMap());
       _compassIdleTick.value++;
     });
+  }
+
+  void _pauseNavigation(MapScreenViewModel model) {
+    if (!model.navigationStarted ||
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
+      return;
+    }
+    model.onUserStoppedFollowingLocation();
+    _voiceSignalTimer?.cancel();
+    _stopVoiceGuidance();
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -892,7 +916,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         if (model.locationState == LocationState.FOLLOW ||
                             model.locationState ==
                                 LocationState.FOLLOW_AND_ROTATE_MAP) {
-                          model.onUserStoppedFollowingLocation();
+                          if (model.navigationStarted) {
+                            _pauseNavigation(model);
+                          } else {
+                            model.onUserStoppedFollowingLocation();
+                          }
                         }
                       },
                       child: RepaintBoundary(
@@ -1220,6 +1248,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                           model,
                                           english: context.l10n.isEnglish,
                                         ),
+                                        onPauseNavigation: () =>
+                                            _pauseNavigation(model),
                                         onShowInfo: () =>
                                             showMapInfoSheet(context),
                                         onShowSettings: () =>
@@ -2838,6 +2868,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _voiceSignalTimer?.cancel();
     if (_automaticReroutingSuspended ||
         !model.navigationStarted ||
+        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
       return;
@@ -2845,6 +2876,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _voiceSignalTimer = Timer(_voiceSignalWarningDelay, () {
       if (!mounted ||
           !model.navigationStarted ||
+          model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP ||
           !model.voiceGuidanceEnabled ||
           !model.voiceGuidanceAvailable) {
         return;

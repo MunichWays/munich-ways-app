@@ -187,6 +187,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () {},
           ),
         ),
@@ -224,6 +225,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () => ended = true,
           ),
         ),
@@ -273,6 +275,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () {},
           ),
         ),
@@ -298,6 +301,7 @@ void main() {
                     onEditRoute: () {},
                     onStartNavigation: () async {},
                     onToggleVoiceGuidance: () {},
+                    onPauseNavigation: () {},
                     onEndRoute: () {})))));
     expect(find.text('Starten'), findsOneWidget);
     expect(find.byIcon(Icons.straighten), findsNothing);
@@ -332,6 +336,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () {},
           ),
         ),
@@ -344,6 +349,8 @@ void main() {
 
   testWidgets('navigation actions use large evenly spaced tap targets',
       (tester) async {
+    var paused = false;
+    var ended = false;
     final model = MapScreenViewModel(store: _MemorySettingsStore())
       ..destination = Place('Ziel', const LatLng(48.15, 11.6))
       ..route = MapRoute(
@@ -364,7 +371,8 @@ void main() {
               onEditRoute: () {},
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
-              onEndRoute: () {},
+              onPauseNavigation: () => paused = true,
+              onEndRoute: () => ended = true,
             ),
           ),
         ),
@@ -377,6 +385,11 @@ void main() {
     expect(tester.getSize(edit), const Size.square(52));
     expect(tester.getSize(voice), const Size.square(52));
     expect(tester.getSize(refresh), const Size(68, 52));
+    final pause = find.bySemanticsLabel('Navigation pausieren');
+    expect(pause, findsOneWidget);
+    await tester.tap(pause);
+    expect(paused, isTrue);
+    expect(ended, isFalse);
     expect(
       tester.getCenter(voice).dx - tester.getCenter(edit).dx,
       closeTo(62, 0.1),
@@ -390,6 +403,7 @@ void main() {
   testWidgets('interrupted navigation offers a prominent resume action',
       (tester) async {
     var resumed = false;
+    var ended = false;
     var infoShown = false;
     var settingsShown = false;
     final model = MapScreenViewModel(store: _MemorySettingsStore())
@@ -418,7 +432,8 @@ void main() {
               onEditRoute: () {},
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
-              onEndRoute: () {},
+              onPauseNavigation: () {},
+              onEndRoute: () => ended = true,
               onShowInfo: () => infoShown = true,
               onShowSettings: () => settingsShown = true,
             ),
@@ -429,8 +444,14 @@ void main() {
 
     final resume = find.bySemanticsLabel('Fortsetzen');
     expect(resume, findsOneWidget);
-    expect(find.text('Fortsetzen'), findsOneWidget);
+    expect(find.text('Pause'), findsOneWidget);
     expect(find.text('In 100 m rechts abbiegen'), findsNothing);
+    final end = find.bySemanticsLabel('Navigation beenden');
+    expect(end, findsOneWidget);
+    final endButton = tester.widget<IconButton>(
+      find.descendant(of: end, matching: find.byType(IconButton)),
+    );
+    expect(endButton.style?.side?.resolve(<WidgetState>{}), isNotNull);
     final info = find.byTooltip('Info');
     final settings = find.byTooltip('Einstellungen');
     expect(info, findsOneWidget);
@@ -461,6 +482,8 @@ void main() {
 
     await tester.tap(resume);
     expect(resumed, isTrue);
+    await tester.tap(end);
+    expect(ended, isTrue);
     await tester.tap(info);
     await tester.tap(settings);
     expect(infoShown, isTrue);
@@ -495,6 +518,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () {},
           ),
         ),
@@ -526,6 +550,7 @@ void main() {
               onEditRoute: () {},
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
+              onPauseNavigation: () {},
               onEndRoute: () {},
             ),
           ),
@@ -747,6 +772,7 @@ void main() {
                       onEditRoute: () {},
                       onStartNavigation: () async {},
                       onToggleVoiceGuidance: () {},
+                      onPauseNavigation: () {},
                       onEndRoute: () {},
                     ),
                   ],
@@ -790,6 +816,7 @@ void main() {
             onEditRoute: () {},
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
             onEndRoute: () {},
           ),
         ),

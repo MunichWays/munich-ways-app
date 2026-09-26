@@ -68,4 +68,9 @@ void main() {
       const Color(0xFF27F5A5),
     );
   });
+
+  test('uses muted yellow variants for unrated minor streets', () {
+    expect(AppColors.minorStreet, const Color(0xFFE2D39A));
+    expect(AppColors.minorStreetDark, const Color(0xFF71643B));
+  });
 }

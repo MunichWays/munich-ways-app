@@ -50,6 +50,7 @@ void main() {
                                       onRefreshRoute: () async {},
                                       onEditRoute: () {},
                                       onToggleVoiceGuidance: () {},
+                                      onPauseNavigation: () {},
                                       onEndRoute: () {},
                                       onStartNavigation: () async {
                                         starts++;
@@ -93,7 +94,7 @@ void main() {
       expect(handle, findsOneWidget);
       expect(find.text('Starten'), findsNothing);
       expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
-      expect(find.bySemanticsLabel('Route beenden'), findsOneWidget);
+      expect(find.bySemanticsLabel('Navigation pausieren'), findsOneWidget);
       expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
       expect(find.text('4,2 km'), findsNothing);
       final collapsedNavigationHeight =
