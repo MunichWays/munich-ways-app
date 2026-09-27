@@ -7,6 +7,7 @@ import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
+import 'package:munich_ways/ui/place_search/destination_speech_dialog.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
 import 'package:munich_ways/ui/place_search/place_search_screen_model.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -347,9 +348,26 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
   }
 
   void _clearQuery() {
+    _debounce?.cancel();
     _query.clear();
     setState(() => _hasQuery = false);
     _model.resetSearch();
+  }
+
+  Future<void> _startVoiceSearch() async {
+    _debounce?.cancel();
+    _focusNode.unfocus();
+    final text = await showDestinationSpeechDialog(context);
+    if (!mounted || text == null) return;
+    await _startSearching();
+    if (!mounted) return;
+    _debounce?.cancel();
+    _query.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    setState(() => _hasQuery = true);
+    await _model.startSearch(text);
   }
 
   void _closeSearch() {
@@ -684,6 +702,12 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
             ),
           ),
           IconButton(
+            tooltip:
+                context.l10n.isEnglish ? 'Speak destination' : 'Ziel sprechen',
+            onPressed: _startVoiceSearch,
+            icon: const Icon(Icons.mic_none),
+          ),
+          IconButton(
             tooltip: context.l10n.tr('Info'),
             onPressed: () => _runAction(widget.onShowInfo),
             icon: const Icon(Icons.info_outline),
@@ -755,6 +779,13 @@ class _MapHomeDestinationSheetState extends State<MapHomeDestinationSheet> {
                   onSubmitted: _model.startSearch,
                 ),
               ),
+            ),
+            IconButton(
+              tooltip: context.l10n.isEnglish
+                  ? 'Speak destination'
+                  : 'Ziel sprechen',
+              onPressed: _startVoiceSearch,
+              icon: const Icon(Icons.mic_none),
             ),
             IconButton(
               tooltip: context.l10n.close,

@@ -28,6 +28,10 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position auf der Karte anzuzeigen.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MunichWays benötigt das Mikrofon, wenn du die Spracheingabe startest, um dein gesprochenes Ziel zu erfassen.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MunichWays wandelt dein gesprochenes Ziel in Suchtext um. Die Spracherkennung kann dafür einen Onlinedienst verwenden.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position auf der Karte anzuzeigen.</string>
 	<key>UILaunchStoryboardName</key>

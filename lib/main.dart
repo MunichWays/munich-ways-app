@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/speech/speech_input_controller.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/energy_saving_controller.dart';
@@ -53,6 +54,7 @@ class MunichWaysApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SpeechInputController()),
         ChangeNotifierProvider.value(value: localeController),
         ChangeNotifierProvider.value(value: themeController),
         ChangeNotifierProvider.value(value: energySavingController),

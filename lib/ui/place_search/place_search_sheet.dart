@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/place_search/destination_speech_dialog.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 import 'package:munich_ways/ui/place_search/place_search_body.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
@@ -14,6 +15,7 @@ Future<Object?> showPlaceSearchSheet(
   BuildContext context, {
   LatLng? searchCenter,
   bool showRoutePlannerOption = true,
+  bool enableSpeechInput = true,
 }) {
   final sheetController = DraggableScrollableController();
   return showModalBottomSheet<Object?>(
@@ -39,6 +41,7 @@ Future<Object?> showPlaceSearchSheet(
         builder: (context, scrollController) => SizedBox.expand(
           child: _PlaceSearchSheet(
             showRoutePlannerOption: showRoutePlannerOption,
+            enableSpeechInput: enableSpeechInput,
             scrollController: scrollController,
             sheetController: sheetController,
           ),
@@ -51,11 +54,13 @@ Future<Object?> showPlaceSearchSheet(
 class _PlaceSearchSheet extends StatefulWidget {
   const _PlaceSearchSheet({
     required this.showRoutePlannerOption,
+    required this.enableSpeechInput,
     required this.scrollController,
     required this.sheetController,
   });
 
   final bool showRoutePlannerOption;
+  final bool enableSpeechInput;
   final ScrollController scrollController;
   final DraggableScrollableController sheetController;
 
@@ -133,6 +138,20 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
     });
   }
 
+  Future<void> _startVoiceSearch() async {
+    _searchDebounce?.cancel();
+    _searchFocusNode.unfocus();
+    final text = await showDestinationSpeechDialog(context);
+    if (!mounted || text == null) return;
+    _searchDebounce?.cancel();
+    _query.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    setState(() => _hasQuery = true);
+    _submitSearch();
+  }
+
   void _clearQuery() {
     _searchDebounce?.cancel();
     _query.clear();
@@ -153,10 +172,10 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
           constraints: BoxConstraints(
             maxHeight: bottomSheetMaxHeight(context),
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              decoration: bottomSheetDecoration(context),
+          child: Container(
+            decoration: bottomSheetDecoration(context),
+            child: Material(
+              color: Colors.transparent,
               child: Column(
                 mainAxisSize: MainAxisSize.max,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,6 +213,14 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                               onSubmitted: (_) => _submitSearch(),
                             ),
                           ),
+                          if (widget.enableSpeechInput)
+                            IconButton(
+                              tooltip: context.l10n.isEnglish
+                                  ? 'Speak destination'
+                                  : 'Ziel sprechen',
+                              icon: const Icon(Icons.mic_none),
+                              onPressed: _startVoiceSearch,
+                            ),
                           if (_hasQuery)
                             IconButton(
                               tooltip: context.l10n.tr('Eingabe löschen'),
