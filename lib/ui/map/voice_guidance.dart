@@ -917,7 +917,7 @@ class VoiceGuidance {
     return intervals;
   }
 
-  /// Removes short left/right chicanes where the route continues in nearly
+  /// Removes only pairs of slight turns where the route continues in nearly
   /// the same direction. Routing services can otherwise describe a slightly
   /// offset cycle crossing as two turns instead of simply going straight.
   static List<_GuidanceManeuver> _withoutStraightOffsetPairs(
@@ -937,7 +937,7 @@ class VoiceGuidance {
       }
       final second = maneuvers[index + 1];
       final gap = second.routeDistance - first.routeDistance;
-      if (!_areOppositeTurns(first.maneuver, second.maneuver) ||
+      if (!_areOppositeSlightTurns(first.maneuver, second.maneuver) ||
           gap <= 0 ||
           gap > maximumGapMeters) {
         result.add(first);
@@ -969,11 +969,14 @@ class VoiceGuidance {
     return result;
   }
 
-  static bool _areOppositeTurns(RouteManeuver first, RouteManeuver second) {
-    final firstModifier = first.modifier ?? '';
-    final secondModifier = second.modifier ?? '';
-    return firstModifier.contains('left') && secondModifier.contains('right') ||
-        firstModifier.contains('right') && secondModifier.contains('left');
+  static bool _areOppositeSlightTurns(
+      RouteManeuver first, RouteManeuver second) {
+    return first.type == 'turn' &&
+        second.type == 'turn' &&
+        ((first.modifier == 'slight left' &&
+                second.modifier == 'slight right') ||
+            (first.modifier == 'slight right' &&
+                second.modifier == 'slight left'));
   }
 
   static LatLng _pointAlongRoute(List<LatLng> route, double targetDistance) {
