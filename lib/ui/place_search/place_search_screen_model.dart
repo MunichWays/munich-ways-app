@@ -117,7 +117,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
   Future<void> startSearch(String query) async {
     final searchSequence = ++_searchSequence;
     isFirstSearch = false;
-    log.d("startSearch " + query);
+    log.d('Destination search started');
     clearErrorMsg();
 
     if (query.isEmpty) {

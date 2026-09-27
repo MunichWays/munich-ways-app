@@ -61,6 +61,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
     final result = await showPlaceSearchSheet(
       context,
       searchCenter: widget.searchCenterProvider(),
+      enableSpeechInput: !widget.model.navigationStarted,
     );
     if (!context.mounted) {
       return;

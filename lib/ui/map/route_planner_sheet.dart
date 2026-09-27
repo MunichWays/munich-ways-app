@@ -181,6 +181,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       context,
       searchCenter: widget.searchCenter,
       showRoutePlannerOption: false,
+      enableSpeechInput: !widget.model.navigationStarted,
     );
     if (!mounted) return;
     if (result == PlaceSearchSheetResult.selectOnMap) {

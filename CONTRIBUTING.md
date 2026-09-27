@@ -1,5 +1,60 @@
 # Contributing to MunichWays
 
+## Speech input foundation (issue #137)
+
+`SpeechInputController` is provided lazily at app scope. The home destination
+panel and separate place search sheet offer microphone buttons. Navigation
+commands remain a later increment. Startup never initializes the recognizer
+or requests microphone permission.
+
+The microphone dialog calls `start(localeId: ...)` and awaits one recognized
+text (or null on cancellation/error). During recording, `partialText` is
+preview-only; do not submit it to search. A final result takes precedence.
+If recognition ends with `done` or `noMatch` after recognizing text, the
+controller waits briefly for a final correction, then retains the text.
+The device adapter ignores Android `error_client` only after native `done`
+with nonempty recognized text: a redundant stop can report this error after
+recognition ended. The final-result grace period continues unchanged. Earlier
+client errors, empty results, and all other errors are still reported.
+An empty final result also preserves previously recognized text. Technical
+errors return null and retain the preview for explicit "Use text" confirmation
+after cleanup. They never submit it automatically. Retrying clears the preview;
+cancellation never changes the existing query.
+The owning view must call `cancel()` on close. `stop()`
+allows the recognizer to deliver its final result. Only one session may run,
+including setup and cleanup. The controller exposes typed failures for the UI
+to localize, does not log transcripts and does not change navigation state.
+
+Speech input is available for foreground planning before navigation starts.
+The planner hides it during navigation until microphone/TTS coordination has
+been implemented. On first use per app session, the dialog explains that the
+device speech service may process audio online and waits for confirmation.
+Subsequent microphone taps start recording directly. Partial text stays in the
+dialog; only the completed result replaces the query and triggers one search.
+Cancellation preserves the previous query; choosing a search result remains
+explicit. Offline recognition is not guaranteed.
+Android Bluetooth routing is explicitly disabled in this increment; headset
+input and headset-button activation require separate device tests.
+
+Before user-facing release, test on physical Android and iOS devices:
+
+- Grant/deny permissions, grant later in Settings, and revoke after use.
+- Start, stop, cancel, retry, close search, background/resume, and incoming call.
+- No speech, incomplete speech, network loss, unavailable recognition service,
+  missing language, and successful recovery after each transient failure.
+- Repeated recordings, microphone release, German street names/house numbers,
+  ambient noise, and accessibility feedback.
+- Existing TTS/navigation remains usable after microphone access ends.
+
+Automated coverage lives in `test/speech/`; native audio, permission dialogs
+and recognition quality still require device verification.
+
+For a device failure, capture the debug console lines containing `Speech input:`.
+They distinguish native error codes, status, setup phase, and whether text was
+received. Transcripts, audio, and arbitrary platform error details are not logged;
+leave the plugin's verbose `debugLogging` disabled. An unknown completion error
+is not evidence that the device has no recognition service.
+
 ## Quality principles
 
 The app should remain dependable on first installation, after an update, with
