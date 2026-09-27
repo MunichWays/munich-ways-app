@@ -21,6 +21,24 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(stubWakelock);
 
+  test('navigation pause follows the active tracking state', () async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    addTearDown(model.dispose);
+
+    expect(await model.startNavigation(), isTrue);
+    expect(model.navigationPaused, isFalse);
+
+    model.onUserStoppedFollowingLocation();
+    expect(model.navigationPaused, isTrue);
+
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    expect(model.navigationPaused, isFalse);
+
+    model.clearDestination();
+    expect(model.navigationPaused, isFalse);
+  });
+
   test('uses a direction arrow only for reliable movement heading', () {
     expect(
       hasReliableMovementHeading(

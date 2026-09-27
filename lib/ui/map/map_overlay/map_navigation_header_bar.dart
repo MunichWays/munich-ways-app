@@ -15,6 +15,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.onEditRoute,
     required this.onStartNavigation,
     required this.onToggleVoiceGuidance,
+    required this.onPauseNavigation,
     required this.onEndRoute,
     this.onShowInfo,
     this.onShowSettings,
@@ -30,6 +31,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   final VoidCallback onEditRoute;
   final Future<void> Function() onStartNavigation;
   final VoidCallback onToggleVoiceGuidance;
+  final VoidCallback onPauseNavigation;
   final VoidCallback onEndRoute;
   final VoidCallback? onShowInfo;
   final VoidCallback? onShowSettings;
@@ -149,12 +151,11 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
-    final navigationTrackingInterrupted = model.navigationStarted &&
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
+    final navigationTrackingInterrupted = model.navigationPaused;
     final guidanceDisplay = model.navigationStarted
         ? navigationTrackingInterrupted
             ? VoiceGuidanceDisplay(
-                text: context.l10n.isEnglish ? 'Resume' : 'Fortsetzen',
+                text: context.l10n.isEnglish ? 'Paused' : 'Pause',
                 type: 'map',
                 mapReason: VoiceGuidanceMapReason.trackingInterrupted,
               )
@@ -375,19 +376,35 @@ class MapNavigationHeaderBar extends StatelessWidget {
         ),
       ),
     );
-    final closeLabel = context.l10n.tr('Route beenden');
+    final closePausesNavigation =
+        model.navigationStarted && !navigationTrackingInterrupted;
+    final closeLabel = model.navigationStarted
+        ? navigationTrackingInterrupted
+            ? (context.l10n.isEnglish ? 'End navigation' : 'Navigation beenden')
+            : (context.l10n.isEnglish
+                ? 'Pause navigation'
+                : 'Navigation pausieren')
+        : context.l10n.tr('Route beenden');
+    final closeCallback =
+        closePausesNavigation ? onPauseNavigation : onEndRoute;
     final closeAction = Semantics(
       container: true,
       button: true,
       label: closeLabel,
-      onTap: onEndRoute,
+      onTap: closeCallback,
       excludeSemantics: true,
       child: SizedBox.square(
         dimension: compactLandscape ? 48 : 56,
         child: IconButton(
-          color: Colors.white70,
+          style: navigationTrackingInterrupted
+              ? IconButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white70, width: 1.5),
+                )
+              : null,
+          color: navigationTrackingInterrupted ? null : Colors.white70,
           tooltip: closeLabel,
-          onPressed: onEndRoute,
+          onPressed: closeCallback,
           icon: Icon(Icons.close, size: compactLandscape ? 22 : 24),
         ),
       ),

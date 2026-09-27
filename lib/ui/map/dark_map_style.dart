@@ -67,7 +67,7 @@ Map<String, dynamic> _minorStreetLayer(Map<String, dynamic> source) {
   final layer = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
   layer['id'] = '${source['id']}_minor_street';
   final paint = layer['paint'] as Map<String, dynamic>;
-  paint['line-color'] = '#b8d3c7';
+  paint['line-color'] = '#e2d39a';
   return layer;
 }
 
@@ -184,7 +184,7 @@ String _nightLineColorFor(String? id) {
   if (name.contains('paved_cycle') || name.contains('paved_track')) {
     return '#5fabb5';
   }
-  if (name.contains('minor_street')) return '#46675c';
+  if (name.contains('minor_street')) return '#71643b';
   if (name.contains('path_pedestrian')) return '#40515b';
   if (name.contains('rail')) return '#53636c';
   if (name.contains('motorway') || name.contains('trunk')) return '#735a3a';

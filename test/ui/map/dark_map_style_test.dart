@@ -56,7 +56,7 @@ void main() {
       'bridge_street_minor_street',
     ]) {
       final minorStreet = layers.firstWhere((layer) => layer['id'] == id);
-      expect(minorStreet['paint']['line-color'], '#b8d3c7');
+      expect(minorStreet['paint']['line-color'], '#e2d39a');
       expect(minorStreet['filter'].toString(), contains('minor'));
       expect(minorStreet['filter'].toString(), isNot(contains('subclass')));
     }
@@ -105,7 +105,7 @@ void main() {
     final minorStreet = (dark['layers'] as List)
         .cast<Map<String, dynamic>>()
         .firstWhere((layer) => layer['id'] == 'road_minor_minor_street');
-    expect(minorStreet['paint']['line-color'], '#46675c');
+    expect(minorStreet['paint']['line-color'], '#71643b');
 
     final poiLayers = (dark['layers'] as List)
         .cast<Map<String, dynamic>>()

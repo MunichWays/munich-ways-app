@@ -133,8 +133,8 @@ class InfoSheetHelpContent extends StatelessWidget {
               color: AppColors.minorStreetFor(context),
               dashed: false,
               label: context.l10n.isEnglish
-                  ? 'Residential or minor street – subtle solid line'
-                  : 'Wohn- oder Nebenstraße – dezent durchgezogene Linie',
+                  ? 'Residential or minor street – subtle yellow line'
+                  : 'Wohn- oder Nebenstraße – dezent gelbe Linie',
               description: context.l10n.isEnglish
                   ? 'Includes residential, living and other minor streets; without a MunichWays rating'
                   : 'Umfasst Wohn-, Spiel- und andere Nebenstraßen; ohne MunichWays-Bewertung',

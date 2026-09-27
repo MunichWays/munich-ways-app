@@ -205,6 +205,9 @@ class MapScreenViewModel extends ChangeNotifier {
   LocationState locationState = LocationState.NOT_AVAILABLE;
   bool _navigationStarted = false;
   bool get navigationStarted => _navigationStarted;
+  bool get navigationPaused =>
+      _navigationStarted &&
+      locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
   bool _voiceGuidanceEnabled = false;
   bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
   bool _automaticReroutingEnabled = true;
