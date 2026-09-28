@@ -7,6 +7,10 @@ panel and separate place search sheet offer microphone buttons. Navigation
 commands remain a later increment. Startup never initializes the recognizer
 or requests microphone permission.
 
+Voice commands for navigation (#239) are deferred pending a viable voice
+activation approach. A microphone tap before each command was rejected as
+insufficiently useful. See the [analysis and decision](docs/analysis/239-sprachsteuerung-hauptfunktionen.md).
+
 The microphone dialog calls `start(localeId: ...)` and awaits one recognized
 text (or null on cancellation/error). During recording, `partialText` is
 preview-only; do not submit it to search. A final result takes precedence.

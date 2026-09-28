@@ -339,6 +339,7 @@ class VoiceGuidance {
   int _index = 0;
   bool _approachSpoken = false;
   bool _nowSpoken = false;
+  final Set<String> _straightReminderSpoken = {};
   final Set<int> _spokenArrivals = {};
   int _offRouteUpdates = 0;
   bool _offRouteWarningSpoken = false;
@@ -393,6 +394,7 @@ class VoiceGuidance {
     _index = 0;
     _approachSpoken = false;
     _nowSpoken = false;
+    _straightReminderSpoken.clear();
     _spokenArrivals.clear();
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
@@ -625,6 +627,15 @@ class VoiceGuidance {
     }
     if (_approachSpoken && !repeat) return null;
     _approachSpoken = true;
+    // Re-enabling voice at the midpoint already announces this maneuver.
+    // Do not immediately replace that prompt with the halfway reminder.
+    _straightReminder(
+      travelled,
+      target.routeDistance,
+      'maneuver:$_index',
+      english: english,
+      target: target,
+    );
     return _formatSpokenManeuver(
       target,
       english: english,
@@ -688,7 +699,6 @@ class VoiceGuidance {
     }
     _overlappingRouteWarningSpoken = false;
 
-    if (_index >= _maneuvers.length) return null;
     final travelled = _predictedDistanceAlongRoute(
       projection.distanceAlongRoute,
       speedMetersPerSecond,
@@ -696,6 +706,26 @@ class VoiceGuidance {
       maximumMeters: maximumSpeechLookAheadMeters,
     );
     _advancePastManeuvers(travelled);
+    int? nextArrivalIndex;
+    for (var index = 0; index < _arrivals.length; index++) {
+      if (!_spokenArrivals.contains(index) &&
+          _arrivals[index].routeDistance >= travelled) {
+        nextArrivalIndex = index;
+        break;
+      }
+    }
+    if (nextArrivalIndex != null &&
+        (_index >= _maneuvers.length ||
+            _arrivals[nextArrivalIndex].routeDistance <
+                _maneuvers[_index].routeDistance)) {
+      return _straightReminder(
+        travelled,
+        _arrivals[nextArrivalIndex].routeDistance,
+        'arrival:$nextArrivalIndex',
+        english: english,
+        arrivalIndex: nextArrivalIndex,
+      );
+    }
     if (_index >= _maneuvers.length) return null;
 
     final target = _maneuvers[_index];
@@ -719,7 +749,62 @@ class VoiceGuidance {
         distanceMeters: _roundedDistance(remaining),
       );
     }
-    return null;
+    return _straightReminder(
+      travelled,
+      target.routeDistance,
+      'maneuver:$_index',
+      english: english,
+      target: target,
+    );
+  }
+
+  String? _straightReminder(
+    double travelled,
+    double targetDistance,
+    String key, {
+    required bool english,
+    _GuidanceManeuver? target,
+    int? arrivalIndex,
+  }) {
+    var previousDistance = 0.0;
+    for (final maneuver in _maneuvers) {
+      if (maneuver.routeDistance < targetDistance) {
+        previousDistance = max(previousDistance, maneuver.routeDistance);
+      }
+    }
+    for (final arrival in _arrivals) {
+      if (arrival.routeDistance < targetDistance) {
+        previousDistance = max(previousDistance, arrival.routeDistance);
+      }
+    }
+    final sectionLength = targetDistance - previousDistance;
+    final halfway = previousDistance + sectionLength / 2;
+    final remaining = targetDistance - travelled;
+    if (sectionLength <= 500 ||
+        _straightReminderSpoken.contains(key) ||
+        travelled < halfway ||
+        travelled > halfway + _maximumProgressJumpMeters ||
+        remaining <= approachDistanceMeters) {
+      return null;
+    }
+    _straightReminderSpoken.add(key);
+    final distance = _roundedDistance(remaining);
+    if (arrivalIndex != null) {
+      final destination = _isIntermediateArrival(arrivalIndex)
+          ? (english ? 'an intermediate stop' : 'ein Zwischenziel')
+          : (english ? 'your destination' : 'dein Ziel');
+      return english
+          ? 'Continue straight. In $distance meters you will reach $destination.'
+          : 'Weiter geradeaus, in $distance Metern erreichst du $destination.';
+    }
+    final instruction = _formatSpokenManeuver(
+      target!,
+      english: english,
+      distanceMeters: distance,
+    );
+    return english
+        ? 'Continue straight. $instruction'
+        : 'Weiter geradeaus, ${instruction[0].toLowerCase()}${instruction.substring(1)}';
   }
 
   void _recordAmbiguousProgress(_RouteProjection projection) {
@@ -886,9 +971,11 @@ class VoiceGuidance {
   static bool _isRelevant(RouteManeuver maneuver) =>
       maneuver.type != 'depart' &&
       maneuver.type != 'arrive' &&
-      maneuver.type != 'notification' &&
-      !(maneuver.type == 'new name' &&
-          (maneuver.modifier == null || maneuver.modifier == 'straight'));
+      (maneuver.enteringWayType != null ||
+          (maneuver.type != 'notification' &&
+              !(maneuver.type == 'new name' &&
+                  (maneuver.modifier == null ||
+                      maneuver.modifier == 'straight'))));
 
   bool _isOverlappingProgress(double progress) =>
       _overlappingRouteIntervals.any((interval) => interval.contains(progress));
@@ -973,6 +1060,8 @@ class VoiceGuidance {
       RouteManeuver first, RouteManeuver second) {
     return first.type == 'turn' &&
         second.type == 'turn' &&
+        first.enteringWayType == null &&
+        second.enteringWayType == null &&
         ((first.modifier == 'slight left' &&
                 second.modifier == 'slight right') ||
             (first.modifier == 'slight right' &&
@@ -1059,6 +1148,7 @@ class VoiceGuidance {
       modifier: maneuver.modifier == 'right' ? 'slight right' : 'slight left',
       roadName: maneuver.roadName,
       exit: maneuver.exit,
+      enteringWayType: maneuver.enteringWayType,
     );
   }
 
@@ -1209,6 +1299,17 @@ class VoiceGuidance {
   }
 
   static String _action(RouteManeuver maneuver, bool english) {
+    final action = _actionWithoutWayType(maneuver, english);
+    return switch (maneuver.enteringWayType) {
+      RouteWayType.cycleway =>
+        '$action, ${english ? 'onto the cycle path' : 'auf Radweg'}',
+      RouteWayType.road =>
+        '$action, ${english ? 'onto the road' : 'auf Straße'}',
+      null => action,
+    };
+  }
+
+  static String _actionWithoutWayType(RouteManeuver maneuver, bool english) {
     if (maneuver.type == 'roundabout' ||
         maneuver.type == 'rotary' ||
         maneuver.type == 'roundabout turn') {
