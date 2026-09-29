@@ -31,8 +31,9 @@ to localize, does not log transcripts and does not change navigation state.
 
 Speech input is available for foreground planning before navigation starts.
 The planner hides it during navigation until microphone/TTS coordination has
-been implemented. On first use per app session, the dialog explains that the
-device speech service may process audio online and waits for confirmation.
+been implemented. On first use per app session, the dialog waits for an
+explicit recording start. Listening is highlighted in red; failures show a
+warning symbol and an actionable message.
 Subsequent microphone taps start recording directly. Partial text stays in the
 dialog; only the completed result replaces the query and triggers one search.
 Cancellation preserves the previous query; choosing a search result remains

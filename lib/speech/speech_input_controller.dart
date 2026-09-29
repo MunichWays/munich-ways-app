@@ -40,7 +40,7 @@ class SpeechInputController extends ChangeNotifier with WidgetsBindingObserver {
   String _partialText = '';
   int _generation = 0;
   bool _disposed = false;
-  bool _noticeAccepted = false;
+  bool _inputStarted = false;
   bool _requestingPermission = false;
   Future<void>? _preparation;
   Future<void>? _stopping;
@@ -56,9 +56,9 @@ class SpeechInputController extends ChangeNotifier with WidgetsBindingObserver {
   String get partialText => _partialText;
   bool get isBusy => _result != null || _cleanup != null;
 
-  /// The recording dialog explains online processing once per app session.
-  bool get noticeAccepted => _noticeAccepted;
-  void acceptNotice() => _noticeAccepted = true;
+  /// Subsequent microphone taps start directly after the first explicit start.
+  bool get hasStartedInput => _inputStarted;
+  void markInputStarted() => _inputStarted = true;
 
   /// Explicit foreground user action only. Concurrent requests are ignored.
   Future<String?> start({required String localeId}) {
