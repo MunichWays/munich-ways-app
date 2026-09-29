@@ -138,8 +138,8 @@ String offRouteSpokenMessage({
   }
   if (english) {
     return firstAnnouncement && automaticRerouting
-        ? 'Route left. Recalculation follows.'
-        : 'Route left.';
+        ? 'Off route. Recalculation follows.'
+        : 'Off route.';
   }
   return firstAnnouncement && automaticRerouting
       ? 'Route verlassen. Neuberechnung folgt.'
@@ -1969,7 +1969,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (!_stillOffRoute(model)) return;
       _setReroutingDisplay(
         context.l10n.isEnglish
-            ? 'Route left or no GPS signal'
+            ? 'Off route or no GPS signal'
             : 'Route verlassen oder kein GPS-Signal',
       );
       unawaited(_zoomOutAfterMissingDirections());
@@ -1997,9 +1997,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ? isLastAutomaticAnnouncement
                   ? 'Last automatic recalculation shortly. No further '
                       'directions while off the route.'
-                  : 'Route left or no GPS signal. '
+                  : 'Off route or no GPS signal. '
                       'Recalculating automatically shortly.'
-              : 'Route left or no GPS signal.'
+              : 'Off route or no GPS signal.'
           : automatic
               ? isLastAutomaticAnnouncement
                   ? 'Letzte automatische Neuberechnung in Kürze. Keine '
@@ -2882,7 +2882,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       unawaited(
         _speak(
           context.l10n.isEnglish
-              ? 'No directions. Route may have been left or no GPS signal.'
+              ? 'No directions. You may be off route or have no GPS signal.'
               : 'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.',
           english: context.l10n.isEnglish,
         ),

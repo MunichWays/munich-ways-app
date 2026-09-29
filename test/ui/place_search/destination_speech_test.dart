@@ -85,17 +85,19 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text('Ich höre zu …'), findsOneWidget);
+      expect(find.byIcon(Icons.fiber_manual_record), findsOneWidget);
       expect(tester.testTextInput.isVisible, isFalse);
     }
 
     testWidgets(
-        '$view requests permission only after notice confirmation and searches once',
+        '$view starts recording only after confirmation and searches once',
         (tester) async {
       await open(tester);
       await tester.tap(find.byTooltip('Ziel sprechen'));
       await tester.pumpAndSettle();
       expect(engine.initializations, 0);
-      expect(find.textContaining('Audio online'), findsOneWidget);
+      expect(find.text('Sprich dein Ziel.'), findsOneWidget);
+      expect(find.textContaining('Audio online'), findsNothing);
       await tester.tap(find.text('Aufnahme starten'));
       await tester.pumpAndSettle();
       engine.result('Marien', false);
@@ -147,6 +149,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Nicht verstanden. Bitte erneut versuchen.'),
           findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.fiber_manual_record), findsNothing);
       expect(api.queries, isEmpty);
       await tester.tap(find.text('Erneut versuchen'));
       await tester.pumpAndSettle();

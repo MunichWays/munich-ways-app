@@ -7,6 +7,10 @@ panel and separate place search sheet offer microphone buttons. Navigation
 commands remain a later increment. Startup never initializes the recognizer
 or requests microphone permission.
 
+Voice commands for navigation (#239) are deferred pending a viable voice
+activation approach. A microphone tap before each command was rejected as
+insufficiently useful. See the [analysis and decision](docs/analysis/239-sprachsteuerung-hauptfunktionen.md).
+
 The microphone dialog calls `start(localeId: ...)` and awaits one recognized
 text (or null on cancellation/error). During recording, `partialText` is
 preview-only; do not submit it to search. A final result takes precedence.
@@ -27,8 +31,9 @@ to localize, does not log transcripts and does not change navigation state.
 
 Speech input is available for foreground planning before navigation starts.
 The planner hides it during navigation until microphone/TTS coordination has
-been implemented. On first use per app session, the dialog explains that the
-device speech service may process audio online and waits for confirmation.
+been implemented. On first use per app session, the dialog waits for an
+explicit recording start. Listening is highlighted in red; failures show a
+warning symbol and an actionable message.
 Subsequent microphone taps start recording directly. Partial text stays in the
 dialog; only the completed result replaces the query and triggers one search.
 Cancellation preserves the previous query; choosing a search result remains

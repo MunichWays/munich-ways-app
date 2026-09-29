@@ -156,9 +156,27 @@ class RadlNaviApi
         final maneuvers = <RouteManeuver>[];
         final steps = <Map<String, dynamic>>[];
         for (final leg in firstRoute['legs'] as List? ?? const []) {
+          RouteWayType? previousWayType;
           for (final rawStep in leg['steps'] as List? ?? const []) {
             final step = rawStep as Map<String, dynamic>;
             steps.add(step);
+            final intersections = step['intersections'];
+            final outgoingWayType =
+                intersections is List && intersections.isNotEmpty
+                    ? _intersectionWayType(intersections.first)
+                    : null;
+            final enteringWayType = previousWayType != null &&
+                    outgoingWayType != null &&
+                    previousWayType != outgoingWayType
+                ? outgoingWayType
+                : null;
+            // The last intersection describes the actual incoming road at the
+            // NEXT maneuver. Unknown/ignored sections deliberately break the chain.
+            previousWayType = step['mode'] == 'cycling' &&
+                    intersections is List &&
+                    intersections.isNotEmpty
+                ? _intersectionWayType(intersections.last)
+                : null;
             final maneuver =
                 step['maneuver'] as Map<String, dynamic>? ?? const {};
             final location = maneuver['location'] as List?;
@@ -172,6 +190,11 @@ class RadlNaviApi
               modifier: maneuver['modifier'] as String?,
               roadName: step['name'] as String? ?? '',
               exit: (maneuver['exit'] as num?)?.toInt(),
+              enteringWayType: step['mode'] == 'cycling' &&
+                      maneuver['type'] != 'depart' &&
+                      maneuver['type'] != 'arrive'
+                  ? enteringWayType
+                  : null,
             ));
           }
         }
@@ -221,6 +244,15 @@ class RadlNaviApi
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
+  }
+
+  static RouteWayType? _intersectionWayType(Object? intersection) {
+    final classes = intersection is Map ? intersection['classes'] : null;
+    if (classes is! List) return null;
+    final cycleway = classes.contains('cycleway');
+    final road = classes.contains('road');
+    if (cycleway == road) return null;
+    return cycleway ? RouteWayType.cycleway : RouteWayType.road;
   }
 
   RouteAnalysisContext? _parseAnalysisContext(

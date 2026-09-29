@@ -34,7 +34,7 @@ class _DestinationSpeechDialogState extends State<_DestinationSpeechDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.controller.noticeAccepted) {
+    if (widget.controller.hasStartedInput) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_closing) unawaited(_start());
       });
@@ -43,7 +43,7 @@ class _DestinationSpeechDialogState extends State<_DestinationSpeechDialog> {
 
   Future<void> _start() async {
     if (_waiting || widget.controller.isBusy) return;
-    widget.controller.acceptNotice();
+    widget.controller.markInputStarted();
     setState(() {
       _attempted = true;
       _waiting = true;
@@ -117,6 +117,8 @@ class _DestinationSpeechDialogState extends State<_DestinationSpeechDialog> {
               !controller.isBusy &&
               controller.failure != null &&
               controller.partialText.isNotEmpty;
+          final hasFailure = !_waiting && controller.failure != null;
+          final isListening = controller.state == SpeechInputState.listening;
           final status = switch (controller.state) {
             SpeechInputState.initializing =>
               english ? 'Preparing microphone…' : 'Mikrofon wird vorbereitet …',
@@ -136,18 +138,43 @@ class _DestinationSpeechDialogState extends State<_DestinationSpeechDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(english
-                    ? 'The microphone records only during speech input. Your device’s speech service may process audio online.'
-                    : 'Das Mikrofon nimmt nur während der Spracheingabe auf. Der Sprachdienst deines Geräts kann Audio online verarbeiten.'),
                 if (_attempted) ...[
-                  const SizedBox(height: 16),
                   Semantics(
                     liveRegion: true,
-                    child: Text(
-                      !_waiting && controller.failure != null
-                          ? _failureMessage(controller.failure!, english)
-                          : status,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hasFailure || isListening) ...[
+                          ExcludeSemantics(
+                            child: Icon(
+                              hasFailure
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.fiber_manual_record,
+                              color: hasFailure
+                                  ? Colors.amber.shade800
+                                  : Colors.red.shade700,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Flexible(
+                          child: Text(
+                            hasFailure
+                                ? _failureMessage(controller.failure!, english)
+                                : status,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color:
+                                      isListening ? Colors.red.shade700 : null,
+                                  fontWeight:
+                                      isListening ? FontWeight.bold : null,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (controller.partialText.isNotEmpty) ...[
@@ -161,6 +188,7 @@ class _DestinationSpeechDialogState extends State<_DestinationSpeechDialog> {
                         : 'Du kannst den erkannten Text übernehmen und im Suchfeld korrigieren.'),
                   ],
                 ],
+                if (!_attempted) Text(status),
               ],
             ),
             actions: [

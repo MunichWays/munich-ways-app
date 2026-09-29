@@ -98,6 +98,8 @@ class RouteComfortDistribution {
   final int unrated;
 }
 
+enum RouteWayType { cycleway, road }
+
 class RouteManeuver {
   const RouteManeuver({
     required this.location,
@@ -105,6 +107,7 @@ class RouteManeuver {
     this.modifier,
     this.roadName = '',
     this.exit,
+    this.enteringWayType,
   });
 
   final LatLng location;
@@ -112,6 +115,9 @@ class RouteManeuver {
   final String? modifier;
   final String roadName;
   final int? exit;
+
+  /// Present only for a known road <-> cycleway transition at this maneuver.
+  final RouteWayType? enteringWayType;
 }
 
 /// Optional rendering metadata. Navigation continues to use CycleRoute.points.
