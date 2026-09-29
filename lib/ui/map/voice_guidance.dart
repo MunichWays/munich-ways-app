@@ -680,7 +680,7 @@ class VoiceGuidance {
           _offRouteUpdates >= offRouteUpdatesBeforeWarning) {
         _offRouteWarningSpoken = true;
         return english
-            ? 'No directions. Route may have been left or no GPS signal.'
+            ? 'No directions. You may be off route or have no GPS signal.'
             : 'Keine Ansage. Route möglicherweise verlassen oder kein GPS-Signal.';
       }
       return null;
@@ -795,16 +795,16 @@ class VoiceGuidance {
           : (english ? 'your destination' : 'dein Ziel');
       return english
           ? 'Continue straight. In $distance meters you will reach $destination.'
-          : 'Weiter geradeaus, in $distance Metern erreichst du $destination.';
+          : 'Weiter geradeaus. In $distance Metern erreichst du $destination.';
     }
-    final instruction = _formatSpokenManeuver(
-      target!,
+    final instruction = formatManeuver(
+      target!.maneuver,
       english: english,
       distanceMeters: distance,
     );
     return english
         ? 'Continue straight. $instruction'
-        : 'Weiter geradeaus, ${instruction[0].toLowerCase()}${instruction.substring(1)}';
+        : 'Weiter geradeaus. ${instruction[0]}${instruction.substring(1)}';
   }
 
   void _recordAmbiguousProgress(_RouteProjection projection) {

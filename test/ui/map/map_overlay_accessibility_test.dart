@@ -92,6 +92,25 @@ void main() {
     );
   });
 
+  test('English off-route announcement uses an unambiguous phrase', () {
+    expect(
+      offRouteSpokenMessage(
+        english: true,
+        automaticRerouting: true,
+        firstAnnouncement: true,
+      ),
+      'Off route. Recalculation follows.',
+    );
+    expect(
+      offRouteSpokenMessage(
+        english: true,
+        automaticRerouting: false,
+        firstAnnouncement: false,
+      ),
+      'Off route.',
+    );
+  });
+
   testWidgets('left-side controls include the position button', (tester) async {
     final model = _LeftMapScreenViewModel();
     final bearing = ValueNotifier<double>(0);

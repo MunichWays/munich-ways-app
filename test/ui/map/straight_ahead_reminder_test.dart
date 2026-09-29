@@ -50,7 +50,7 @@ void main() {
     expect(guidance.update(beforeMidpoint, english: false), isNull);
     expect(
       guidance.update(midpoint, english: false),
-      'Weiter geradeaus, in 400 Metern rechts abbiegen.',
+      'Weiter geradeaus. In 400 Metern rechts abbiegen.',
     );
     expect(guidance.update(midpoint, english: false), isNull);
     advanceSilently(guidance, 0.0036, 0.0067);
@@ -59,6 +59,34 @@ void main() {
       'In 60 Metern rechts abbiegen.',
     );
     expect(guidance.update(nearTurn, english: false), isNull);
+  });
+
+  test('straight reminder omits the close second turn', () {
+    const midpoint = LatLng(48.1436, 11.57);
+    const firstTurn = LatLng(48.1472, 11.57);
+    const secondTurn = LatLng(48.1472, 11.57027);
+    const end = LatLng(48.148, 11.57027);
+    final guidance = VoiceGuidance()
+      ..setRoute(CycleRoute(
+        const [start, midpoint, firstTurn, secondTurn, end],
+        900,
+        100,
+        maneuvers: const [
+          RouteManeuver(location: firstTurn, type: 'turn', modifier: 'right'),
+          RouteManeuver(location: secondTurn, type: 'turn', modifier: 'left'),
+        ],
+      ));
+
+    advanceSilently(guidance, 0, 0.0036);
+    expect(
+      guidance.update(midpoint, english: false),
+      'Weiter geradeaus. In 400 Metern rechts abbiegen.',
+    );
+    advanceSilently(guidance, 0.0036, 0.0067);
+    expect(
+      guidance.update(const LatLng(48.1467, 11.57), english: false),
+      contains('danach sofort'),
+    );
   });
 
   test('does not remind on a section shorter than 500 metres', () {
@@ -103,7 +131,7 @@ void main() {
     advanceSilently(guidance, 0, 0.0036);
     expect(
       guidance.update(midpoint, english: false),
-      'Weiter geradeaus, in 400 Metern erreichst du dein Ziel.',
+      'Weiter geradeaus. In 400 Metern erreichst du dein Ziel.',
     );
     expect(guidance.update(midpoint, english: false), isNull);
   });
