@@ -2572,11 +2572,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         }
         return;
       case MapLongPressAction.startRoute:
-        final routeReady = await model.setDestinationAndCalculateRoute(
+        await model.setDestinationAndCalculateRoute(
           Place(null, position),
         );
-        if (!mounted || !routeReady) return;
-        await _startNavigation(model);
         return;
       case MapLongPressAction.addWaypoint:
         model.setRoutePlan(
