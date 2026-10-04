@@ -39,6 +39,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
+import 'package:munich_ways/ui/map/navigation_audio.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -498,22 +499,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _configureTextToSpeech() async {
     try {
-      await _flutterTts.setQueueMode(0);
-      await _flutterTts.setVolume(1.0);
-      if (Platform.isAndroid) {
-        await _flutterTts.setAudioAttributesForNavigation();
-      } else if (Platform.isIOS) {
-        await _flutterTts.setSharedInstance(true);
-        await _flutterTts.setIosAudioCategory(
-          IosTextToSpeechAudioCategory.playback,
-          [
-            IosTextToSpeechAudioCategoryOptions
-                .interruptSpokenAudioAndMixWithOthers,
-            IosTextToSpeechAudioCategoryOptions.duckOthers,
-          ],
-          IosTextToSpeechAudioMode.voicePrompt,
-        );
-      }
+      await initializeNavigationAudio(_flutterTts, android: Platform.isAndroid);
     } catch (error, stackTrace) {
       log.w(
         'Text-to-speech initialization failed',
@@ -585,7 +571,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (generation != _speechRequestGeneration ||
           !mounted ||
           _navigationSpeechPaused) return;
-      await _flutterTts.speak(text, focus: true);
+      if (Platform.isIOS &&
+          !await prepareIosNavigationAudio(
+            _flutterTts,
+            isCurrent: () =>
+                generation == _speechRequestGeneration &&
+                mounted &&
+                !_navigationSpeechPaused,
+          )) return;
+      final result = await _flutterTts.speak(text, focus: true);
+      if (result != 1) {
+        throw StateError('Voice guidance announcement was rejected');
+      }
     } catch (error, stackTrace) {
       log.w(
         'Voice guidance announcement failed',
