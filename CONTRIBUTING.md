@@ -361,6 +361,14 @@ changes should cover most of the first group.
 
 ### Navigation and routing
 
+- iOS: start navigation in the foreground, lock the screen and verify location
+  updates and spoken turns continue, including after a longer stationary stop
+- iOS: restore GPS after an outage with the screen locked; verify guidance
+  recovers, then unlock and check route progress remains current
+- iOS: end navigation and verify background location tracking stops; restart
+  navigation and lock again to verify tracking and speech resume
+- iOS: verify speaker and Bluetooth output, including interruptions from calls
+  and spoken media; test with When In Use location permission
 - navigation start while stationary
 - normal forward travel on the route
 - short and sustained route departure

@@ -46,6 +46,16 @@ active VS Code phone run, limit work to code inspection and read-only ADB/log
 diagnostics. Wait until the user reports that USB is disconnected and the
 Flutter run has ended before starting automated Flutter checks.
 
+Before handing a code change to the user for a local phone test, finish all
+analysis, tests, and builds and verify that their processes have exited. Check
+the workspace status and any remaining Flutter, Dart, Gradle, or VS Code run
+processes using this workspace; an available Flutter lock alone does not prove
+that a failed build or run has stopped. Do not start `Run Without Debugging` or
+`run_local_test_build.ps1` while another process is still building, analyzing,
+testing, deploying, or running this app. If a stale process remains after a
+failed attempt, stop it and check again before starting the phone test. Do not
+report the build as ready for local testing while this check is unresolved.
+
 For every code change:
 
 1. Format the changed Dart files.
