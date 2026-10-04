@@ -38,6 +38,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_route_selection_panel.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
+import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -266,7 +267,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final Set<int> _routeWaypointImages = {};
   final Set<String> _routePointImages = {};
   StreamSubscription<Position>? _locationSubscription;
-  bool _locationStreamUsesForegroundService = false;
+  bool _locationStreamUsesBackgroundNavigation = false;
   bool _locationStreamUsesEnergySaving = false;
   DateTime? _lastAcceptedLocationUpdate;
   int _locationStreamGeneration = 0;
@@ -506,7 +507,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         await _flutterTts.setIosAudioCategory(
           IosTextToSpeechAudioCategory.playback,
           [
-            IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+            IosTextToSpeechAudioCategoryOptions
+                .interruptSpokenAudioAndMixWithOthers,
             IosTextToSpeechAudioCategoryOptions.duckOthers,
           ],
           IosTextToSpeechAudioMode.voicePrompt,
@@ -1412,6 +1414,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             : null,
       );
     }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return iosNavigationLocationSettings(
+        navigationActive: keepNavigationAliveInBackground,
+      );
+    }
     return const LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 0,
@@ -1423,19 +1430,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (model.locationState == LocationState.NOT_AVAILABLE) {
       final subscription = _locationSubscription;
       _locationSubscription = null;
-      _locationStreamUsesForegroundService = false;
+      _locationStreamUsesBackgroundNavigation = false;
       _locationStreamUsesEnergySaving = false;
       _lastAcceptedLocationUpdate = null;
       await subscription?.cancel();
       return;
     }
-    final shouldUseForegroundService =
-        defaultTargetPlatform == TargetPlatform.android &&
+    final shouldKeepNavigationAliveInBackground =
+        (defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.iOS) &&
             model.navigationStarted;
     final energySaving =
         context.read<EnergySavingController?>()?.effectiveEnabled ?? false;
     if (_locationSubscription != null &&
-        _locationStreamUsesForegroundService == shouldUseForegroundService &&
+        _locationStreamUsesBackgroundNavigation ==
+            shouldKeepNavigationAliveInBackground &&
         _locationStreamUsesEnergySaving == energySaving) {
       return;
     }
@@ -1445,13 +1454,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       await previousSubscription.cancel();
       if (!mounted || generation != _locationStreamGeneration) return;
     }
-    _locationStreamUsesForegroundService = shouldUseForegroundService;
+    _locationStreamUsesBackgroundNavigation =
+        shouldKeepNavigationAliveInBackground;
     _locationStreamUsesEnergySaving = energySaving;
     _lastAcceptedLocationUpdate = null;
 
     _locationSubscription = Geolocator.getPositionStream(
       locationSettings: _locationSettings(
-        keepNavigationAliveInBackground: shouldUseForegroundService,
+        keepNavigationAliveInBackground: shouldKeepNavigationAliveInBackground,
         energySaving: energySaving,
       ),
     ).listen(
