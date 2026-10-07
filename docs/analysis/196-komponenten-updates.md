@@ -119,6 +119,32 @@ Startzeit, flüssige Kartenbewegung und Absturzfreiheit vergleichen.
    reproduzierbaren Schritten melden. Vor Veröffentlichung iOS-Archiv und
    Store-Validierung der aktualisierten nativen Pakete prüfen.
 
+## Validierung und verbleibender Folgeschritt
+
+- Lokale technische Prüfung: Analyzer ohne Befund, Format-/Diff-Prüfung
+  erfolgreich, 402 Tests bestanden. Der zunächst übersprungene optionale
+  Live-Test wurde separat erfolgreich ausgeführt. Android-Release-APK gebaut.
+- Nutzer-Rückmeldung: erste Android-Handytests erfolgreich. Anschließend
+  iOS-TestFlight-Build erfolgreich; Suche, Sprachansage bei Zielsuche, Routing
+  und Navigationsansagen funktionieren. Die übrigen Beta-Szenarien oben sind
+  dadurch noch nicht vollständig abgedeckt.
+  Der [iOS-CI-Lauf für Commit 83493f2](https://github.com/MunichWays/munich-ways-app/actions/runs/37637237146)
+  ist ebenfalls erfolgreich abgeschlossen.
+- Upstream-Nachprüfung: TTS-Migrations-PRs
+  [#643](https://github.com/dlutton/flutter_tts/pull/643) und
+  [#656](https://github.com/dlutton/flutter_tts/pull/656) sind weiterhin offen.
+  Auch der aktuelle Geolocator-Upstream setzt Java-Quell-/Zielversion 8.
+- Ein späteres veröffentlichtes TTS-Update muss die eigene Anwendung von KGP
+  entfernen und `compilerOptions` unterstützen. Danach App-KGP-Deklarationen
+  entfernen und Built-in Kotlin aktivieren; `android.newDsl=false` separat
+  nach Flutter-Unterstützung beurteilen. Geolocator muss sein Java-Ziel selbst
+  modernisieren. Beide Änderungen mit regulärem Android-Release-Build prüfen;
+  auf dem Handy Ansagen, Unterbrechung/Wiederaufnahme sowie Standort-Recovery
+  und Navigation erneut testen.
+- Eine sofortige Migration erfordert eigene, reproduzierbar gepinnte
+  Plugin-Versionen und deren weitere Pflege. Das ist ein zusätzlicher
+  Wartungsumfang gegenüber den bislang verwendeten veröffentlichten Paketen.
+
 ## Primärquellen
 
 - [Flutter Stable-Changelog](https://github.com/flutter/flutter/blob/stable/CHANGELOG.md)
