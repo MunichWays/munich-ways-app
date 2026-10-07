@@ -21,6 +21,26 @@ and automatic rerouting as critical paths.
 - Before a requested commit or push, review the complete diff and run the
   quality checks below. Commit only files belonging to the requested work.
 
+## Scrumboard and user stories
+
+- Without explicit user approval, limit Scrumboard and user-story updates to
+  the agent's own comments, clearly marked as AI comments. Editing story
+  descriptions, titles, status, fields, or other board content requires approval.
+- Keep additions and changes to user stories brief: summaries only. Put
+  implementation details in the branch and pull request.
+- At completion, the user story should concisely document:
+  1. What problem, feature, or requirement is addressed.
+  2. How it was implemented: a broad summary of the code changes, with links
+     to the branch and pull request for details.
+  3. How to test it: what to check during hands-on phone testing and beta
+     testing, with concrete user steps, relevant conditions, and expected app
+     behavior. Do not include AI verification, automated code tests, analysis,
+     or build results in this section; report those in the pull request and
+     technical handoff instead.
+- Provide this completion summary in an AI comment unless the user has
+  approved editing the story itself. Do not imply that a branch, pull request,
+  or successful check exists before it has been created or verified.
+
 ## Engineering workflow
 
 Before changing code, trace the complete affected flow and its existing tests.

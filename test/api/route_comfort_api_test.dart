@@ -398,8 +398,8 @@ void main() {
         ]));
       }
       expect(request.url.path, '/tag_distribution');
-      expect(
-          request.headers['content-type'], 'application/json; charset=utf-8');
+      // http 1.6 follows RFC 8259: JSON does not add a charset parameter.
+      expect(request.headers['content-type'], 'application/json');
       final body = jsonDecode(request.body);
       expect(body['variant'], 'standard');
       expect(body['node_ids'], isNull);

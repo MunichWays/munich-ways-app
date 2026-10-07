@@ -69,17 +69,18 @@ class RoutingService {
       return _routeWithBRouter(coordinates, fallbackProfile);
     }
 
+    final provider = radlNavi;
+    if (useDirect && provider is! DirectRoutingProvider) {
+      return _routeWithBRouter(coordinates, fallbackProfile);
+    }
+
     try {
       if (useDirect) {
-        final provider = radlNavi;
-        if (provider is! DirectRoutingProvider) {
-          return _routeWithBRouter(coordinates, fallbackProfile);
-        }
         return await (provider as DirectRoutingProvider)
             .routeDirect(coordinates)
             .timeout(directRequestTimeout);
       }
-      return await radlNavi.route(coordinates).timeout(requestTimeout);
+      return await provider.route(coordinates).timeout(requestTimeout);
     } catch (error, stackTrace) {
       log.i(
         'RadlNavi routing unavailable; falling back to BRouter',

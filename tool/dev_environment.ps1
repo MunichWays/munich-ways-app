@@ -8,7 +8,9 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $diagnosticsDirectory = Join-Path $workspace '.diagnostics'
 $applicationId = 'com.munichways.app'
-$pinnedFlutterRoot = Join-Path $workspace '.fvm\versions\3.44.7'
+$pinnedFlutterVersion = (Get-Content -LiteralPath (Join-Path $workspace '.fvmrc') -Raw |
+    ConvertFrom-Json).flutter
+$pinnedFlutterRoot = Join-Path $workspace ".fvm\versions\$pinnedFlutterVersion"
 
 function Resolve-Adb {
     $fromPath = Get-Command adb -ErrorAction SilentlyContinue
@@ -165,7 +167,7 @@ function Invoke-QualityChecks {
     $flutterTools = Join-Path $pinnedFlutterRoot 'bin\cache\flutter_tools.snapshot'
     if (-not (Test-Path -LiteralPath $dart) -or
         -not (Test-Path -LiteralPath $flutterTools)) {
-        throw 'Gepinntes Flutter 3.44.7 wurde unter .fvm nicht gefunden.'
+        throw "Gepinntes Flutter $pinnedFlutterVersion wurde unter .fvm nicht gefunden."
     }
 
     Push-Location $workspace
