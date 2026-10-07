@@ -1,3 +1,6 @@
 analyzer:
   exclude:
     - test/missing_imgs_retriever/**
+    - build/**
+    - android/**
+    - ios/**

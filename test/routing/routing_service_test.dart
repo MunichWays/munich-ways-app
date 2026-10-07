@@ -73,6 +73,36 @@ void main() {
     expect(bRouter.lastProfile, BRouterProfile.fastBike);
   });
 
+  test(
+      'unsupported direct fallback fails once and recovers on the next request',
+      () async {
+    final failure = StateError('BRouter temporarily unavailable');
+    final radlNavi = _FakeProvider();
+    final bRouter = _FakeProvider(error: failure);
+    final service = RoutingService(
+      radlNavi: radlNavi,
+      bRouter: bRouter,
+      radlNaviCoverage: _FakeCoverage({munich, rosenheim}),
+    );
+
+    Future<CycleRoute> request() => service.route(
+          const [munich, rosenheim],
+          mode: RoutingMode.automatic,
+          bRouterProfile: BRouterProfile.trekking,
+          direct: true,
+        );
+
+    await expectLater(request(), throwsA(same(failure)));
+    expect(radlNavi.calls, 0);
+    expect(bRouter.calls, 1);
+    expect(bRouter.lastProfile, BRouterProfile.fastBike);
+
+    bRouter.error = null;
+    expect(await request(), isA<CycleRoute>());
+    expect(radlNavi.calls, 0);
+    expect(bRouter.calls, 2);
+  });
+
   test('falls back to BRouter after a RadlNavi error', () async {
     final radlNavi = _FakeProvider(error: Exception('unavailable'));
     final bRouter = _FakeProvider();
@@ -215,7 +245,7 @@ class _FakeProvider implements RoutingProvider {
     Future<CycleRoute>? result,
   }) : _result = result;
 
-  final Object? error;
+  Object? error;
   final Future<CycleRoute>? _result;
   int calls = 0;
   BRouterProfile? lastProfile;

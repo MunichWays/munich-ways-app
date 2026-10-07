@@ -52,10 +52,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
     defaultConfig {
         applicationId "com.munichways.app"
         // flutter_tts requires minSdk >= 24 (maplibre_gl requires >= 23).
@@ -97,6 +93,12 @@ android {
     namespace 'com.munichways.munich_ways'
     lint {
         disable 'InvalidPackage'
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
