@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/speech/speech_input_controller.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
+import 'package:munich_ways/ui/first_run/first_run_safety_gate.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -13,6 +16,16 @@ import 'package:provider/provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // Decide before settings/camera writes can make a fresh install look like an
+  // update. Only small local files are touched; network POIs stay independent.
+  var showSafetyNotice = false;
+  try {
+    await initialPlacesStore.ensureInitialized();
+    showSafetyNotice = await initialPlacesStore.shouldShowSafetyNotice();
+  } catch (error, stackTrace) {
+    log.w('Initializing first-run data failed',
+        error: error, stackTrace: stackTrace);
+  }
   final localeController = AppLocaleController();
   final themeController = AppThemeController();
   final energySavingController = EnergySavingController();
@@ -28,6 +41,7 @@ Future<void> main() async {
   });
   themeController.startAutomaticUpdates();
   runApp(MunichWaysApp(
+    showSafetyNotice: showSafetyNotice,
     localeController: localeController,
     themeController: themeController,
     energySavingController: energySavingController,
@@ -38,6 +52,7 @@ Future<void> main() async {
 class MunichWaysApp extends StatelessWidget {
   MunichWaysApp({
     super.key,
+    this.showSafetyNotice = false,
     AppLocaleController? localeController,
     AppThemeController? themeController,
     EnergySavingController? energySavingController,
@@ -47,6 +62,7 @@ class MunichWaysApp extends StatelessWidget {
             energySavingController ?? EnergySavingController();
 
   final AppLocaleController localeController;
+  final bool showSafetyNotice;
   final AppThemeController themeController;
   final EnergySavingController energySavingController;
 
@@ -96,7 +112,13 @@ class MunichWaysApp extends StatelessWidget {
             ],
             onGenerateRoute: (settings) => MaterialPageRoute(
               settings: RouteSettings(name: settings.name),
-              builder: (context) => MapScreen(),
+              builder: (context) => FirstRunSafetyGate(
+                showNotice: showSafetyNotice,
+                onDismiss: initialPlacesStore.dismissSafetyNotice,
+                builder: (_, interactionsEnabled) => MapScreen(
+                  startupInteractionsEnabled: interactionsEnabled,
+                ),
+              ),
             ),
           );
         },

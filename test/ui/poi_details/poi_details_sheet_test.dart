@@ -3,10 +3,57 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/poi_details.dart';
+import 'package:munich_ways/model/example_places.dart';
 import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/widgets/list_item.dart';
 
 void main() {
+  for (final language in ['de', 'en']) {
+    testWidgets('example POI details and route action work in $language',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var selected = false;
+      final details = PoiDetails.fromGeoJsonFeature(
+        (examplePlacesGeoJson()['features'] as List).first,
+      );
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        locale: Locale(language),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: PoiDetailsSheet(
+            details: details,
+            onRouteHere: () => selected = true,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.place), findsOneWidget);
+      expect(find.byIcon(Icons.water_drop), findsNothing);
+      expect(
+          find.text(language == 'de' ? 'Adresse' : 'Address'), findsOneWidget);
+      expect(find.text(exampleDestinations.first.address), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester
+          .tap(find.text(language == 'de' ? 'Route hierhin' : 'Route here'));
+      expect(selected, isTrue);
+    });
+  }
+
   test('uses the native EveryDoor store for Android and iOS', () {
     expect(
       everyDoorUrlForPlatform(TargetPlatform.android),

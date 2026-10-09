@@ -27,8 +27,9 @@ enum MapSidePanelEdge {
 }
 
 class MapScreenViewModel extends ChangeNotifier {
-  static const _ratingsRequestTimeout = Duration(seconds: 6);
-  static const _initialRatingsRequestTimeout = Duration(seconds: 30);
+  // Limit inactivity, not total download time; the API reports byte progress.
+  static const _ratingsRequestTimeout = Duration(seconds: 90);
+  Future<bool>? _ratingsRefresh;
 
   static const _refreshLocationSettings = LocationSettings(
     accuracy: LocationAccuracy.medium,
@@ -225,15 +226,20 @@ class MapScreenViewModel extends ChangeNotifier {
   Map<String, StreetDetails> _streetDetailsByFeatureId = {};
   int _networkRevision = 0;
   int get networkRevision => _networkRevision;
+  bool get hasRatings => _polylinesGesamtnetz.isNotEmpty;
 
   StreetDetails? streetDetailsForFeatureId(dynamic rawId) {
     if (rawId == null) return null;
     return _streetDetailsByFeatureId[rawId.toString()];
   }
 
-  Future<void> _loadStreetDetailsInBackground() async {
+  Future<void> _loadStreetDetailsInBackground(
+      {bool forceRefresh = false}) async {
     try {
-      final details = await _munichwaysApi.getStreetDetails();
+      final details = await _munichwaysApi.getStreetDetails(
+        forceRefresh: forceRefresh,
+      );
+      if (_disposed) return;
       _streetDetailsByFeatureId = details;
       log.d('street details loaded in background: ${details.length}');
     } catch (e, st) {
@@ -322,11 +328,9 @@ class MapScreenViewModel extends ChangeNotifier {
   void startInitialLoad() {
     if (_initialLoadStarted) return;
     _initialLoadStarted = true;
-    // The network/cache enrichment is optional background content. A cold
-    // install may need longer than the regular interactive reload timeout for
-    // TLS setup, download and cache creation, while the map, location and
-    // routing remain usable independently.
-    unawaited(refreshRadlnetze(requestTimeout: _initialRatingsRequestTimeout));
+    // Local ratings are available first; online enrichment stays independent
+    // of map, location and routing and tolerates a slow but active download.
+    unawaited(refreshRadlnetze());
   }
 
   /// Requests a fresh GPS fix so Android's cached last-known location is updated.
@@ -558,7 +562,23 @@ class MapScreenViewModel extends ChangeNotifier {
   Future<bool> refreshRadlnetze({
     Duration minimumLoadingDuration = Duration.zero,
     Duration requestTimeout = _ratingsRequestTimeout,
+    bool forceRefresh = false,
+  }) {
+    // The initial fallback clears the blocking spinner before enrichment ends.
+    // Reload must join that enrichment, not race it or clear its cache.
+    return _ratingsRefresh ??= Future<bool>(() => _refreshRadlnetze(
+          minimumLoadingDuration: minimumLoadingDuration,
+          requestTimeout: requestTimeout,
+          forceRefresh: forceRefresh,
+        )).whenComplete(() => _ratingsRefresh = null);
+  }
+
+  Future<bool> _refreshRadlnetze({
+    required Duration minimumLoadingDuration,
+    required Duration requestTimeout,
+    required bool forceRefresh,
   }) async {
+    if (_disposed) return false;
     final startedAt = DateTime.now();
     final isInitialLoad = _firstLoad;
     loading = true;
@@ -569,7 +589,8 @@ class MapScreenViewModel extends ChangeNotifier {
 
     try {
       await for (final polylines in _munichwaysApi.getRadlvorrangnetzUpdates(
-          responseTimeout: requestTimeout)) {
+          responseTimeout: requestTimeout, forceRefresh: forceRefresh)) {
+        if (_disposed) return false;
         log.d('ratings received by map model: ${polylines.length} polylines');
         _polylinesGesamtnetz = polylines;
         _networkRevision++;
@@ -578,7 +599,7 @@ class MapScreenViewModel extends ChangeNotifier {
           detailsLoadStarted = true;
           // Prioritize the bundled geometry, then load full Munich details in
           // parallel with the lightweight Upper Bavaria update.
-          unawaited(_loadStreetDetailsInBackground());
+          unawaited(_loadStreetDetailsInBackground(forceRefresh: forceRefresh));
         }
         if (_firstLoad) {
           _firstLoad = false;
@@ -595,15 +616,16 @@ class MapScreenViewModel extends ChangeNotifier {
       return receivedData;
     } catch (e) {
       refreshFailed = true;
-      if (!receivedData) {
+      if (!_disposed && !receivedData && !hasRatings) {
         _displayErrorMsg(
           'Bewertungen konnten nicht geladen werden. '
           'Die Karte kann weiterhin verwendet werden.',
         );
       }
-      if (e is! TimeoutException) {
-        log.e("Error loading Netze", error: e);
-      }
+      log.w(
+          'Ratings update failed (timeout=${requestTimeout.inSeconds}s, '
+          'localRatings=$hasRatings)',
+          error: e);
       return false;
     } finally {
       final remaining =
@@ -614,31 +636,24 @@ class MapScreenViewModel extends ChangeNotifier {
       if (_firstLoad) {
         _firstLoad = false;
       }
-      if (isInitialLoad && refreshFailed) {
-        initialRatingsLoadFailed = true;
+      if (isInitialLoad || forceRefresh) {
+        initialRatingsLoadFailed = refreshFailed || !receivedData;
       }
       loading = false;
       log.d(
         'ratings refresh finished: receivedData=$receivedData, '
         'loading=$loading, revision=$_networkRevision',
       );
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
-  /// Clears the Radnetz GeoJSON cache, then downloads and parses it again so the map
-  /// overlay can update without leaving the screen.
-  Future<bool> reloadRadnetz() async {
-    loading = true;
-    notifyListeners();
-    await _munichwaysApi.removeRatingsCache();
-    final updated = await refreshRadlnetze(
-      minimumLoadingDuration: const Duration(milliseconds: 1500),
-    );
-    initialRatingsLoadFailed = !updated;
-    notifyListeners();
-    return updated;
-  }
+  /// Revalidates online ratings while preserving the usable downloaded cache.
+  /// Repeated reloads join the current request and cannot create competing loads.
+  Future<bool> reloadRadnetz() => refreshRadlnetze(
+        minimumLoadingDuration: const Duration(milliseconds: 1500),
+        forceRefresh: true,
+      );
 
   bool get shortestRouteEnabled =>
       _routingMode == RoutingMode.bRouterEverywhere &&

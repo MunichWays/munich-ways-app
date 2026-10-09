@@ -13,6 +13,43 @@ import 'package:munich_ways/model/street_details.dart';
 import '../api_exception.dart';
 
 class MunichwaysApi {
+  MunichwaysApi({
+    Stream<FileResponse> Function(String url, bool forceRefresh)?
+        ratingsResponses,
+    Future<void> Function(String url)? removeCachedRatings,
+  })  : _ratingsResponses = ratingsResponses ?? _cachedRatingsResponses,
+        _removeCachedRatings = removeCachedRatings ?? _removeRatingsFile;
+
+  final Stream<FileResponse> Function(String url, bool forceRefresh)
+      _ratingsResponses;
+  final Future<void> Function(String url) _removeCachedRatings;
+
+  static Future<void> _removeRatingsFile(String url) =>
+      DefaultCacheManager().removeFile(url);
+
+  // CacheManager.getFileStream suppresses progress after emitting a cached file.
+  // Keep progress during revalidation too, and preserve the usable cache on retry.
+  static Stream<FileResponse> _cachedRatingsResponses(
+      String url, bool forceRefresh) async* {
+    final cache = DefaultCacheManager();
+    FileInfo? cached;
+    try {
+      cached = await cache.getFileFromCache(url);
+    } catch (error, stackTrace) {
+      log.w('Reading ratings cache failed; trying the network',
+          error: error, stackTrace: stackTrace);
+    }
+    if (cached != null) yield cached;
+    if (cached == null ||
+        forceRefresh ||
+        cached.validTill.isBefore(DateTime.now()) ||
+        !await cached.file.exists()) {
+      // Reuse an in-flight download instead of starting another one. A failed
+      // download leaves the cached file available for the next app start.
+      yield* cache.webHelper.downloadFile(url);
+    }
+  }
+
   static const _bundledRadlVorrangAsset =
       'assets/radlnetz/happy_bike_level_munich_RV.geojson';
   final String _happyBikeLevelUrl =
@@ -40,6 +77,9 @@ class MunichwaysApi {
       // bundled network has already been emitted, so the usable fallback does
       // not depend on this optional enrichment completing.
       final polylines = _parseHappyBikeLevelGeojson(contents);
+      if (polylines.isEmpty) {
+        throw ApiException('Ratings file contains no usable lines');
+      }
       parse.stop();
       total.stop();
       log.d(
@@ -77,7 +117,7 @@ class MunichwaysApi {
     // some Android devices, transferring that complete custom object graph
     // back from compute() can consume hundreds of MB and keep one CPU core busy
     // indefinitely. Parsing it in the UI isolate avoids that second full copy.
-    // The much larger downloaded Upper Bavaria data remains in compute().
+    // The downloaded Upper Bavaria data uses the same approach (see _parse).
     final parse = Stopwatch()..start();
     final polylines = _parseHappyBikeLevelGeojson(contents);
     parse.stop();
@@ -92,6 +132,7 @@ class MunichwaysApi {
   /// downloaded ratings for all of Upper Bavaria.
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
+    bool forceRefresh = false,
   }) async* {
     final bundledLoad = Stopwatch()..start();
     try {
@@ -119,21 +160,27 @@ class MunichwaysApi {
     }
 
     final responses = StreamIterator(
-      DefaultCacheManager().getFileStream(
-        _happyBikeLevelUrl,
-        withProgress: false,
-      ),
+      _ratingsResponses(_happyBikeLevelUrl, forceRefresh),
     );
     try {
       while (await (responseTimeout == null
           ? responses.moveNext()
           : responses.moveNext().timeout(responseTimeout))) {
         final response = responses.current;
+        // Each progress event renews the inactivity timeout. A slow download
+        // may take minutes as long as bytes keep arriving; stalled I/O is bounded.
         if (response is FileInfo) {
           log.d("ratings valid till ${response.validTill.toIso8601String()}");
           // Parsing is deliberately outside the response timeout. A cached file
           // may take longer to decode on slower devices, but is still valid.
-          yield await _parse(response.file);
+          try {
+            yield await _parse(response.file);
+          } catch (_) {
+            if (response.source != FileSource.Cache) rethrow;
+            // Only a broken cached file is removed. On resuming, the response
+            // stream sees the missing file and downloads it without stale ETags.
+            await _removeCachedRatings(_happyBikeLevelUrl);
+          }
         }
       }
     } finally {
@@ -144,8 +191,13 @@ class MunichwaysApi {
   Future<Set<MPolyline>> getRadlvorrangnetz() =>
       getRadlvorrangnetzUpdates().first;
 
-  Future<Map<String, StreetDetails>> getStreetDetails() async {
-    final response = await DefaultCacheManager().getSingleFile(_detailsUrl);
+  Future<Map<String, StreetDetails>> getStreetDetails({
+    bool forceRefresh = false,
+  }) async {
+    final cache = DefaultCacheManager();
+    final response = forceRefresh
+        ? (await cache.downloadFile(_detailsUrl)).file
+        : await cache.getSingleFile(_detailsUrl);
     final contents = await response.readAsString();
     return compute(_parseV20Details, contents);
   }

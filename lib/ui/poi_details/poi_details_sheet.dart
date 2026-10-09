@@ -63,6 +63,7 @@ class PoiDetailsSheet extends StatelessWidget {
 
   static const _germanLabels = {
     'name': 'Name',
+    'address': 'Adresse',
     'amenity': 'Einrichtungsart',
     'drinking_water': 'Trinkwasser',
     'access': 'Zugang',
@@ -95,6 +96,7 @@ class PoiDetailsSheet extends StatelessWidget {
 
   static const _englishLabels = {
     'name': 'Name',
+    'address': 'Address',
     'amenity': 'Feature type',
     'drinking_water': 'Drinking water',
     'access': 'Access',
@@ -153,6 +155,7 @@ class PoiDetailsSheet extends StatelessWidget {
             'source',
           ],
         PoiType.drinkingWater => _tagOrder,
+        PoiType.place => const ['name', 'address', 'website'],
       };
 
   List<MapEntry<String, String>> _orderedTags() {
@@ -197,12 +200,14 @@ class PoiDetailsSheet extends StatelessWidget {
         english ? 'Public toilet' : 'Öffentliche Toilette',
       PoiType.bicycleRepairStation =>
         english ? 'Bicycle repair station' : 'Fahrrad-Servicestation',
+      PoiType.place => english ? 'Place' : 'Ort',
     };
     final title = details.title.isEmpty ? fallbackTitle : details.title;
     final icon = switch (details.type) {
       PoiType.drinkingWater => Icons.water_drop,
       PoiType.publicToilet => Icons.wc,
       PoiType.bicycleRepairStation => Icons.build,
+      PoiType.place => Icons.place,
     };
     return Material(
       color: Colors.transparent,

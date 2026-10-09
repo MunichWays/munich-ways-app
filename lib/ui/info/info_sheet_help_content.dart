@@ -182,8 +182,8 @@ class InfoSheetHelpContent extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Text(context.l10n.isEnglish
-            ? 'Touch and hold a place on the map and select “Start route here”. The route is calculated and navigation starts immediately.'
-            : 'Halte einen Ort auf der Karte gedrückt und wähle „Route hierhin“. Die Route wird berechnet und die Navigation startet direkt.'),
+            ? 'Touch and hold a place on the map and select “Start route here”. The route is calculated.'
+            : 'Halte einen Ort auf der Karte gedrückt und wähle „Route hierhin“. Die Route wird berechnet.'),
         const SizedBox(height: 24),
         Text(context.l10n.tr('Details zu Streckenabschnitten'),
             style: theme.textTheme.titleSmall

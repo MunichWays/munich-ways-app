@@ -1,21 +1,28 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:munich_ways/api/initial_places_store.dart';
+import 'package:munich_ways/model/example_places.dart';
 import 'package:munich_ways/model/place.dart';
-import 'package:path_provider/path_provider.dart';
 
+final initialPlacesStore = InitialPlacesStore(places: initialExamplePlaces());
 var recentSearchesRepo = RecentSearchesStore();
 var favoritePlacesRepo = RecentSearchesStore(fileName: "favoritePlaces.json");
 
 class RecentSearchesStore {
   static const maxEntries = 25;
-  RecentSearchesStore({String fileName = "recentSearches.json"})
-      : _fileName = fileName;
+  RecentSearchesStore({
+    String fileName = "recentSearches.json",
+    InitialPlacesStore? initializer,
+  })  : _fileName = fileName,
+        _initializer = initializer ?? initialPlacesStore;
 
   final String _fileName;
+  final InitialPlacesStore _initializer;
 
   Future<File> _getJsonFile() async {
-    Directory directory = await getApplicationSupportDirectory();
+    await _initializer.ensureInitialized();
+    Directory directory = await _initializer.directoryProvider();
     return File("${directory.path}/$_fileName");
   }
 
@@ -34,7 +41,7 @@ class RecentSearchesStore {
     File file = await _getJsonFile();
     await file.create(recursive: true);
     String json = jsonEncode(RecentSearchesFile(places));
-    file.writeAsString(json);
+    await file.writeAsString(json);
   }
 
   Future<void> add(
