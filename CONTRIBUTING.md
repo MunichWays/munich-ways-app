@@ -228,8 +228,11 @@ The complete expected behavior is:
   remaining intermediate stops. Refresh calculates the active variant first and
   then refreshes the alternative using the same new start and stops.
 - Outside RadlNavi coverage, on unavailable discovery and on routing errors,
-  preserve BRouter fallback. Direct uses its shortest profile and is identified
-  as BRouter without voice guidance. Never substitute standard as direct.
+  preserve BRouter fallback. Direct uses Fastbike and is identified
+  as BRouter. Valid maneuver data enables voice guidance, including intermediate
+  stops matched within 20 metres to unambiguous route positions in planned order.
+  Absent/invalid hints or ambiguous/distant stops retain map-only guidance. Never
+  substitute standard as direct. See `docs/analysis/249-brouter-abbiegeansagen.md`.
 - The choice is never written to Settings. Ending the route, selecting a new
   destination or selecting another saved route clears it.
 
