@@ -1,0 +1,757 @@
+{
+  "results": [
+    {
+      "name": "Horn",
+      "district": "Feldbach",
+      "city": "Hombrechtikon",
+      "county": "Bezirk Meilen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8714",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.787221,
+      "lat": 47.2347186,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "city",
+      "village": "Feldbach",
+      "isolated_dwelling": "Horn",
+      "distance": 231611.0203688458,
+      "formatted": "Horn, 8714 Hombrechtikon, Schweiz",
+      "address_line1": "Horn",
+      "address_line2": "8714 Hombrechtikon, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6QMP+VV",
+      "plus_code_short": "6QMP+VV Hombrechtikon, Bezirk Meilen, Schweiz",
+      "rank": {
+        "importance": 0.10672143663691155,
+        "confidence": 0.5,
+        "confidence_city_level": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "51e77283a10e93214059a76153420b9e4740f00103f90125edb96202000000c00208920304486f726e"
+    },
+    {
+      "name": "Horn",
+      "street": "Chaltenbrunnenstrasse",
+      "district": "Schaugen",
+      "city": "Hinwil",
+      "county": "Bezirk Hinwil",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8342",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.8801817,
+      "lat": 47.2986069,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "ref": "70923904",
+      "other_names": {
+        "ref": "70923904"
+      },
+      "village": "Girenbad",
+      "hamlet": "Schaugen",
+      "distance": 222177.5953633765,
+      "formatted": "Horn, Chaltenbrunnenstrasse, 8342 Hinwil, Schweiz",
+      "address_line1": "Horn",
+      "address_line2": "Chaltenbrunnenstrasse, 8342 Hinwil, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC7VXJ+C3",
+      "plus_code_short": "7VXJ+C3 Hinwil, Bezirk Hinwil, Schweiz",
+      "rank": {
+        "importance": 0.000051367208361898486,
+        "confidence": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "514b13002da7c221405913ee3ac038a64740f00103f901401ed97b01000000c00201920304486f726e"
+    },
+    {
+      "name": "Horn",
+      "city": "Dorf",
+      "county": "Bezirk Andelfingen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8458",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.6516182,
+      "lat": 47.5704576,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "postcode",
+      "distance": 227110.68715920008,
+      "formatted": "8458 Dorf, Schweiz",
+      "address_line1": "8458 Dorf",
+      "address_line2": "Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVCHMC2+5J",
+      "rank": {
+        "importance": 0.08005000152590216,
+        "confidence": 0.5,
+        "confidence_city_level": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "51eff494e6a04d21405998e02fc104c94740f00102f90112d0094100000000c00207920307383435382b6368",
+      "bbox": {
+        "lon1": 8.6507743,
+        "lat1": 47.5694015,
+        "lon2": 8.6524307,
+        "lat2": 47.5709338
+      }
+    },
+    {
+      "name": "Horn",
+      "district": "Feldbach",
+      "city": "Hombrechtikon",
+      "county": "Bezirk Meilen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8714",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.7894012,
+      "lat": 47.2358902,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "city",
+      "village": "Feldbach",
+      "distance": 231405.43638294493,
+      "formatted": "Feldbach, 8714 Hombrechtikon, Schweiz",
+      "address_line1": "Feldbach",
+      "address_line2": "8714 Hombrechtikon, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6QPQ+9Q",
+      "plus_code_short": "6QPQ+9Q Hombrechtikon, Bezirk Meilen, Schweiz",
+      "rank": {
+        "importance": 0.06672143663691157,
+        "confidence": 0.5,
+        "confidence_city_level": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "51a8d8e2642c9421405934396ba6319e4740f00103f901d1b405f701000000c00208920304486f726e"
+    },
+    {
+      "name": "Horn",
+      "district": "Itschnach",
+      "city": "Küsnacht",
+      "county": "Bezirk Meilen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8700",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.5775679,
+      "lat": 47.3176482,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "suburb": "Itschnach",
+      "quarter": "Goldbach",
+      "distance": 242065.0473861603,
+      "formatted": "Horn, 8700 Küsnacht, Schweiz",
+      "address_line1": "Horn",
+      "address_line2": "8700 Küsnacht, Schweiz",
+      "category": "leisure.park",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC8H9H+32",
+      "plus_code_short": "9H+32 Küsnacht, Bezirk Meilen, Schweiz",
+      "rank": {
+        "importance": 0.08005390630960553,
+        "confidence": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "515570d3fab6272140590f513bb2a8a84740f00102f901328dfd1600000000c00201920304486f726e",
+      "bbox": {
+        "lon1": 8.576829,
+        "lat1": 47.3170536,
+        "lon2": 8.5784391,
+        "lat2": 47.3183054
+      }
+    },
+    {
+      "name": "Horn",
+      "district": "Fuchsloch",
+      "city": "Meilen",
+      "county": "Bezirk Meilen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8706",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.6283585,
+      "lat": 47.2715224,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "other_names": {
+        "loc_name": "Horn"
+      },
+      "village": "Feldmeilen",
+      "hamlet": "Fuchsloch",
+      "distance": 240645.11419608467,
+      "formatted": "Horn, 8706 Meilen, Schweiz",
+      "address_line1": "Horn",
+      "address_line2": "8706 Meilen, Schweiz",
+      "category": "leisure.park",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC7JCH+J8",
+      "plus_code_short": "7JCH+J8 Meilen, Bezirk Meilen, Schweiz",
+      "rank": {
+        "importance": 0.08005287479972531,
+        "confidence": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "51c5538f34b841214059d310fa3ec1a24740f00102f9015e8ef00d00000000c00201920304486f726e",
+      "bbox": {
+        "lon1": 8.6276015,
+        "lat1": 47.2708787,
+        "lon2": 8.630088,
+        "lat2": 47.2722737
+      }
+    },
+    {
+      "housenumber": "5",
+      "name": "Horn",
+      "street": "Hornstrasse",
+      "city": "Richterswil",
+      "county": "Bezirk Horgen",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8805",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.7057457,
+      "lat": 47.2108721,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "distance": 238299.36296920094,
+      "formatted": "Hornstrasse 5, 8805 Richterswil, Schweiz",
+      "address_line1": "Hornstrasse 5",
+      "address_line2": "8805 Richterswil, Schweiz",
+      "category": "catering.cafe",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6P64+87",
+      "plus_code_short": "64+87 Richterswil, Bezirk Horgen, Schweiz",
+      "rank": {
+        "importance": 0.00005102693217360216,
+        "confidence": 0.5,
+        "match_type": "full_match"
+      },
+      "place_id": "51d39519805769214059c69162dbfd9a4740f00103f9012d97c51000000000c00201920304486f726e"
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Zurich Versicherungen",
+      "other_names": {
+        "brand": "Zurich"
+      },
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Bayern",
+      "county": "Landkreis Forchheim",
+      "city": "Forchheim",
+      "postcode": "91301",
+      "street": "Hornschuchallee",
+      "housenumber": "22",
+      "iso3166_2": "DE-BY",
+      "lon": 11.0602042,
+      "lat": 49.7198853,
+      "state_code": "BY",
+      "district": "Forchheim",
+      "result_type": "amenity",
+      "distance": 179981.36110847458,
+      "NUTS_3": "DE248",
+      "formatted": "Zurich Versicherungen, Hornschuchallee 22, 91301 Forchheim, Deutschland",
+      "address_line1": "Zurich Versicherungen",
+      "address_line2": "Hornschuchallee 22, 91301 Forchheim, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FXHP396+X3",
+      "plus_code_short": "96+X3, 91301 Forchheim, Deutschland",
+      "rank": {
+        "importance": 0.00005729533836876505,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51e729bc15d31e264059822f963325dc4840f00103f9010517790901000000c002019203155a757269636820566572736963686572756e67656e",
+      "bbox": {
+        "lon1": 11.0601542,
+        "lat1": 49.7198353,
+        "lon2": 11.0602542,
+        "lat2": 49.7199353
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Verein Bildungszentrum Gärtner JardinSuisse Zürich",
+      "ref": "1631LTM",
+      "other_names": {
+        "ref": "1631LTM"
+      },
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Pfäffikon",
+      "city": "Pfäffikon ZH",
+      "postcode": "8330",
+      "district": "Güüch",
+      "street": "Hörnlistrasse",
+      "housenumber": "77",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7911522,
+      "lat": 47.3675654,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 225088.8053718424,
+      "formatted": "Verein Bildungszentrum Gärtner JardinSuisse Zürich, Hörnlistrasse 77, 8330 Pfäffikon ZH, Schweiz",
+      "address_line1": "Verein Bildungszentrum Gärtner JardinSuisse Zürich",
+      "address_line2": "Hörnlistrasse 77, 8330 Pfäffikon ZH, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9Q9R+2F",
+      "rank": {
+        "importance": 0.00005025177386124998,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "512151b2e6119521405911120e620caf4740f00103f9016a23f22503000000c0020192033456657265696e2042696c64756e67737a656e7472756d2047c3a472746e6572204a617264696e537569737365205ac3bc72696368",
+      "bbox": {
+        "lon1": 8.7911022,
+        "lat1": 47.3675154,
+        "lon2": 8.7912022,
+        "lat2": 47.3676154
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Richterswiler Horn",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7069777,
+      "lat": 47.2119194,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 238163.95152285282,
+      "postcode": "8805",
+      "city": "Richterswil",
+      "formatted": "Richterswiler Horn, 8805 Richterswil, Schweiz",
+      "address_line1": "Richterswiler Horn",
+      "address_line2": "8805 Richterswil, Schweiz",
+      "category": "natural.water.reef",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6P64+QQ",
+      "plus_code_short": "64+QQ Richterswil, Zürich, Schweiz",
+      "rank": {
+        "importance": 0.10671769359884029,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51aa0029fbf869214059a831c62c209b4740f00102f901595fee3700000000c00201920312526963687465727377696c657220486f726e",
+      "bbox": {
+        "lon1": 8.7066248,
+        "lat1": 47.2115359,
+        "lon2": 8.7073945,
+        "lat2": 47.2122319
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Feldbacher Häuser – Typisch für das gesamte Zürichseegebiet",
+      "ref": "11",
+      "other_names": {
+        "ref": "11"
+      },
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Meilen",
+      "city": "Hombrechtikon",
+      "village": "Feldbach",
+      "hamlet": "Langenriet",
+      "postcode": "8714",
+      "street": "Hornstrasse",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7873012,
+      "lat": 47.238817,
+      "state_code": "ZH",
+      "district": "Langenriet",
+      "result_type": "amenity",
+      "distance": 231401.20994885243,
+      "formatted": "Feldbacher Häuser – Typisch für das gesamte Zürichseegebiet, Hornstrasse, 8714 Hombrechtikon, Schweiz",
+      "address_line1": "Feldbacher Häuser – Typisch für das gesamte Zürichseegebiet",
+      "address_line2": "Hornstrasse, 8714 Hombrechtikon, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6QQP+GW",
+      "plus_code_short": "6QQP+GW Hombrechtikon, Bezirk Meilen, Schweiz",
+      "rank": {
+        "importance": 0.00005476997024486179,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51ff33942419932140594a5d328e919e4740f00103f901fb80953a02000000c0020192034046656c646261636865722048c3a47573657220e2809320547970697363682066c3bc722064617320676573616d7465205ac3bc72696368736565676562696574",
+      "bbox": {
+        "lon1": 8.7872512,
+        "lat1": 47.238767,
+        "lon2": 8.7873512,
+        "lat2": 47.238867
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Zum Goldenen Horn",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Winterthur",
+      "city": "Winterthur",
+      "postcode": "8400",
+      "district": "Heiligberg",
+      "suburb": "Stadt",
+      "quarter": "Neuwiesen",
+      "street": "Neumarkt",
+      "housenumber": "13",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7261226,
+      "lat": 47.4988298,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 224307.61295301004,
+      "formatted": "Zum Goldenen Horn, Neumarkt 13, 8400 Winterthur, Schweiz",
+      "address_line1": "Zum Goldenen Horn",
+      "address_line2": "Neumarkt 13, 8400 Winterthur, Schweiz",
+      "category": "catering.restaurant",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVCFPXG+GC",
+      "plus_code_short": "XG+GC Winterthur, Bezirk Winterthur, Schweiz",
+      "rank": {
+        "importance": 0.00006545433737692863,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51e2c56757c67321405997a2a6a7d9bf4740f00103f901f2cfe72900000000c002019203115a756d20476f6c64656e656e20486f726e",
+      "bbox": {
+        "lon1": 8.7260726,
+        "lat1": 47.4987798,
+        "lon2": 8.7261726,
+        "lat2": 47.4988798
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Hornbach",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Zürich",
+      "city": "Zürich",
+      "postcode": "8008",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.5537686,
+      "lat": 47.3548374,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 242124.340355959,
+      "formatted": "Hornbach, 8008 Zürich, Schweiz",
+      "address_line1": "Hornbach",
+      "address_line2": "8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+WG",
+      "plus_code_short": "33+WG Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.1679799034751623,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51791ad58e871b214059e732da4f6bad4740f00102f9011a72c80100000000c00201920308486f726e62616368",
+      "bbox": {
+        "lon1": 8.5529411,
+        "lat1": 47.3542664,
+        "lon2": 8.554612,
+        "lat2": 47.3553834
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Jugendherberge Richterswil",
+      "other_names": {
+        "name:en": "Richterswil Youth Hostel",
+        "name:fr": "Auberge de jeunesse Richterswil",
+        "alt_name": "Richterswiler Horn"
+      },
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Horgen",
+      "city": "Richterswil",
+      "postcode": "8805",
+      "street": "Hornstrasse",
+      "housenumber": "5",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7058626,
+      "lat": 47.2107341,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 238298.35828149164,
+      "formatted": "Jugendherberge Richterswil, Hornstrasse 5, 8805 Richterswil, Schweiz",
+      "address_line1": "Jugendherberge Richterswil",
+      "address_line2": "Hornstrasse 5, 8805 Richterswil, Schweiz",
+      "category": "accommodation.hostel",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6P64+78",
+      "plus_code_short": "64+78 Richterswil, Bezirk Horgen, Schweiz",
+      "rank": {
+        "importance": 0.00005102693217360216,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "5166f09cd2666921405975d3c155f99a4740f00103f901ad86a81000000000c0020192031a4a7567656e64686572626572676520526963687465727377696c",
+      "bbox": {
+        "lon1": 8.7058126,
+        "lat1": 47.2106841,
+        "lon2": 8.7059126,
+        "lat2": 47.2107841
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Horn - Grosse Treppe",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Horgen",
+      "city": "Richterswil",
+      "postcode": "8805",
+      "street": "Hornstrasse",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.7065545,
+      "lat": 47.2115439,
+      "state_code": "ZH",
+      "result_type": "amenity",
+      "distance": 238211.24948088333,
+      "formatted": "Horn - Grosse Treppe, Hornstrasse, 8805 Richterswil, Schweiz",
+      "address_line1": "Horn - Grosse Treppe",
+      "address_line2": "Hornstrasse, 8805 Richterswil, Schweiz",
+      "category": "sport.sports_centre",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC6P64+JJ",
+      "plus_code_short": "64+JJ Richterswil, Bezirk Horgen, Schweiz",
+      "rank": {
+        "importance": 0.00005102693217360216,
+        "confidence": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51eaaeec82c1692140598b15dade139b4740f00103f9018767f08101000000c00201920314486f726e202d2047726f73736520547265707065",
+      "bbox": {
+        "lon1": 8.7065045,
+        "lat1": 47.2114939,
+        "lon2": 8.7066045,
+        "lat2": 47.2115939
+      }
+    }
+  ],
+  "query": {
+    "text": "Zürich Horn",
+    "categories": []
+  }
+}

@@ -75,6 +75,14 @@ class SuccessfulNominatimApi extends NominatimApi {
       ];
 }
 
+class AliasNominatimApi extends NominatimApi {
+  @override
+  Future<List<Place>> search(String query, {LatLng? searchCenter}) async => [
+        Place('Am Markt, Tübingen', const LatLng(48.52, 9.05),
+            alternativeNames: ['Marktplatz']),
+      ];
+}
+
 class DelayedGeoapifyApi extends GeoapifyApi {
   DelayedGeoapifyApi() : super(apiKey: 'test');
 
@@ -110,6 +118,33 @@ class HangingStreetCorrector extends MunichStreetCorrector {
 }
 
 void main() {
+  testWidgets(
+      'shows an alternate name while selecting the canonical destination',
+      (tester) async {
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: FakeRecentSearchesStore([]),
+      api: EmptyGeoapifyApi(),
+      fallbackApi: AliasNominatimApi(),
+      streetCorrector: MunichStreetCorrector.fromStreetNames(const []),
+    );
+    addTearDown(model.dispose);
+    await model.startSearch('Marktplatz, 72070 Tübingen');
+    Object? selected;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: PlaceSearchBody(
+      model: model,
+      onSelected: (place) => selected = place,
+    ))));
+    await tester.pump();
+    expect(find.text('Am Markt, Tübingen'), findsOneWidget);
+    expect(find.textContaining('Marktplatz'), findsOneWidget);
+    expect(find.bySemanticsLabel('Nominatim'), findsOneWidget);
+    await tester.tap(find.text('Am Markt, Tübingen'));
+    expect(selected, same(model.places.single));
+    expect((selected as Place).alternativeNames, ['Marktplatz']);
+  });
+
   test('combines and persistently reorders destination and route favorites',
       () async {
     final home = Place(

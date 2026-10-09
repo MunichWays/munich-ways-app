@@ -1,0 +1,61 @@
+{
+  "results": [
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Marienplatz",
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Bayern",
+      "city": "München",
+      "postcode": "80331",
+      "suburb": "Altstadt-Lehel",
+      "quarter": "Kreuzviertel",
+      "street": "Marienplatz",
+      "iso3166_2": "DE-BY",
+      "lon": 11.5760333,
+      "lat": 48.1369545,
+      "state_code": "BY",
+      "result_type": "street",
+      "formatted": "Marienplatz, 80331 München, Deutschland",
+      "address_line1": "Marienplatz",
+      "address_line2": "80331 München, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWH4HPG+QC",
+      "rank": {
+        "importance": 0.41264182722604775,
+        "confidence": 1,
+        "confidence_city_level": 1,
+        "confidence_street_level": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "515dd031d6ed2627405920459db987114840f00102f9018db6220200000000c0020492030b4d617269656e706c61747a",
+      "bbox": {
+        "lon1": 11.5749139,
+        "lat1": 48.1364966,
+        "lon2": 11.5770922,
+        "lat2": 48.1372433
+      }
+    }
+  ],
+  "query": {
+    "text": "Marienplatz Munich",
+    "parsed": {
+      "street": "marienplatz",
+      "city": "munich",
+      "expected_type": "street"
+    }
+  }
+}

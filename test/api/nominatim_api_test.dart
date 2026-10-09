@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
@@ -12,7 +15,8 @@ void main() {
       //Then
       expect(req.url.path, "/search");
       expect(req.url.queryParameters['q'], 'Marienplatz');
-      expect(req.url.queryParameters['format'], 'geocodejson');
+      expect(req.url.queryParameters['format'], 'jsonv2');
+      expect(req.url.queryParameters['namedetails'], '1');
       expect(req.url.queryParameters['addressdetails'], '1');
       expect(
         req.url.queryParameters['viewbox'],
@@ -79,5 +83,54 @@ void main() {
       'Doctor Drooly, Häberlstraße 7, Ludwigsvorstadt, 80337 München',
     );
     expect(places.single.latLng, const LatLng(48.128, 11.557));
+  });
+
+  test('recorded alternative-name search retains canonical address and aliases',
+      () async {
+    final body = File('test/fixtures/nominatim/marktplatz_tuebingen.json')
+        .readAsStringSync();
+    final api = NominatimApi(client: MockClient((request) async {
+      expect(request.url.queryParameters['q'], 'Marktplatz, 72070 Tübingen');
+      expect(request.url.queryParameters['format'], 'jsonv2');
+      expect(request.url.queryParameters['namedetails'], '1');
+      return Response(body, 200,
+          headers: {'content-type': 'application/json; charset=utf-8'});
+    }));
+    final place = (await api.search('Marktplatz, 72070 Tübingen')).single;
+    expect(place.displayName, startsWith('Am Markt'));
+    expect(place.displayName, contains('Tübingen'));
+    expect(place.alternativeNames, ['Marktplatz']);
+    expect(place.latLng, const LatLng(48.5202629, 9.0535540));
+  });
+
+  test('splits alternate names and keeps JSONv2 POI street details', () async {
+    final body = jsonEncode([
+      {
+        'name': 'Green City e.V.',
+        'lat': '48.128',
+        'lon': '11.557',
+        'address': {
+          'road': 'Lindwurmstraße',
+          'house_number': '88',
+          'postcode': '80337',
+          'city': 'München',
+          'suburb': 'Ludwigsvorstadt'
+        },
+        'namedetails': {
+          'name': 'Green City e.V.',
+          'alt_name': 'GreenCity; Green City e.V.;GreenCity',
+          'loc_name': 'GreenCity',
+          'short_name': 'GC',
+          'name:en': 'English name'
+        },
+      }
+    ]);
+    final api = NominatimApi(
+        client: MockClient((_) async => Response(body, 200,
+            headers: {'content-type': 'application/json; charset=utf-8'})));
+    final place = (await api.search('Green City e.V.')).single;
+    expect(place.displayName,
+        'Green City e.V., Lindwurmstraße 88, Ludwigsvorstadt, 80337 München');
+    expect(place.alternativeNames, ['GreenCity', 'GC']);
   });
 }

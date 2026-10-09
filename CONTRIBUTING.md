@@ -60,6 +60,51 @@ received. Transcripts, audio, and arbitrary platform error details are not logge
 leave the plugin's verbose `debugLogging` disabled. An unknown completion error
 is not evidence that the device has no recognition service.
 
+## Address and POI search (issue #245)
+
+- Search original spelling first. After empty results, normalize CamelCase
+  boundaries and association suffixes. Preserve address numbers, locations
+  and punctuation. Only one additional spelling variant is tried.
+- Discard autocomplete suggestions that contradict the parsed query postcode
+  or city so they cannot block the existing Nominatim fallback. Missing
+  location fields remain valid. Preserve city-name prefixes while typing,
+  umlaut transliterations and fully recognized localized city names.
+- One conservative compound-name retry is allowed for empty or unrelated mixed
+  results; exact original names and normal street/city results
+  keep their existing fast path. Never replace usable results with loose matches
+  or an optional request failure.
+- Keep Nominatim alternative names with the canonical destination and coordinates.
+  Saved favorites and recent destinations remain compatible with older data.
+- Query cancellation and replacement govern both results and provider attribution.
+  Empty input must end loading and invalidate a pending request.
+- See `docs/analysis/245-adresssuche-pois-alternativnamen.md` for current scope,
+  remaining work and concrete phone tests.
+
+## Local phone tests in VS Code
+
+Select the local launch configuration `munich-ways-app (release mode)` for
+hands-on phone tests, `profile mode` for performance inspection, or the
+standard debug configuration for development. Each configuration runs
+`Handy: Testbuild vorbereiten` as its `preLaunchTask` and supplies
+`--dart-define-from-file=${workspaceFolder}/.local/test_build_defines.json`
+in `toolArgs`. Preserve the same Geoapify API key in all three local
+configurations. The ignored `.vscode/launch.json` remains machine-local.
+
+The preparation task invokes `tool/run_local_test_build.ps1 -PrepareOnly`.
+It increments the existing `.local/test_build_number` counter and writes
+`LOCAL_TEST_BUILD` to the JSON defines file. Every new VS Code launch gets
+a new number, shown in the app's version information as `Testbuild N`.
+Hot reload/restart within the same run keeps the number. Failed build attempts
+may leave gaps; the counter is independent of the published app version.
+Both generated files are ignored by Git. The existing command-line testbuild
+script shares the counter and uses the Flutter version pinned in `.fvmrc`.
+
+After installation, stop the VS Code run, force-stop the app on the phone,
+unplug USB and open the app from its icon for a fresh standalone test.
+Keep app data for normal update tests. When a failure occurs, reconnect and
+collect logs before restarting the app. Profile/release app logging requires
+separate configuration; this launch setup does not enable diagnostic logging.
+
 ## Quality principles
 
 The app should remain dependable on first installation, after an update, with

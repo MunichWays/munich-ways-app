@@ -1,5 +1,6 @@
 import 'package:http/http.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:munich_ways/api/place_search_query.dart';
 import 'package:munich_ways/common/json_body_extension.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
@@ -112,7 +113,20 @@ class GeoapifyApi {
     log.d(response.body);
     final json = response.jsonBody() as Map<String, dynamic>;
     final results = json['results'] as List<dynamic>? ?? const [];
-    final rawResults = results.cast<Map<String, dynamic>>();
+    final parsedQuery = (json['query'] as Map<String, dynamic>?)?['parsed']
+        as Map<String, dynamic>?;
+    final requestedPostcode =
+        parsedQuery == null ? '' : _normalizedValue(parsedQuery, 'postcode');
+    final requestedCity = parsedQuery == null
+        ? ''
+        : PlaceSearchQuery.nameKey(_value(parsedQuery, 'city'));
+    // Suggestions that contradict an explicit location must not block the
+    // Nominatim fallback. Missing location fields are not a contradiction.
+    final rawResults = results.cast<Map<String, dynamic>>().where((result) =>
+        (requestedPostcode.isEmpty ||
+            _value(result, 'postcode').isEmpty ||
+            _normalizedValue(result, 'postcode') == requestedPostcode) &&
+        _matchesRequestedCity(result, requestedCity));
     var reverseLookups = 0;
     final enrichedResults = await Future.wait(rawResults.map((result) {
       if (_needsReverseAddress(result) &&
@@ -154,6 +168,21 @@ class GeoapifyApi {
     }
 
     return placesByAddress.values.toList();
+  }
+
+  static bool _matchesRequestedCity(
+    Map<String, dynamic> result,
+    String requestedCity,
+  ) {
+    if (requestedCity.isEmpty || _value(result, 'city').isEmpty) return true;
+    final rank = result['rank'];
+    // A fully recognized city can have another localized spelling, e.g.
+    // "Munich" in the query and "München" in the German response.
+    if (rank is Map && rank['confidence_city_level'] == 1) return true;
+    return ['city', 'town', 'village', 'hamlet', 'suburb', 'municipality']
+        .map((key) => PlaceSearchQuery.nameKey(_value(result, key)))
+        // Preserve autocomplete while the city name is still being typed.
+        .any((city) => city.startsWith(requestedCity));
   }
 
   static bool _needsReverseAddress(Map<String, dynamic> result) =>
