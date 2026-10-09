@@ -1,0 +1,39 @@
+[
+  {
+    "place_id": 121491965,
+    "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+    "osm_type": "relation",
+    "osm_id": 18369321,
+    "lat": "48.5202629",
+    "lon": "9.0535540",
+    "category": "highway",
+    "type": "pedestrian",
+    "place_rank": 25,
+    "importance": 0.06673561684596017,
+    "addresstype": "pedestrian",
+    "name": "Am Markt",
+    "display_name": "Am Markt, Altstadt, Zentrum, Tübingen, Landkreis Tübingen, Baden-Württemberg, Deutschland",
+    "address": {
+      "pedestrian": "Am Markt",
+      "neighbourhood": "Altstadt",
+      "town": "Tübingen",
+      "county": "Landkreis Tübingen",
+      "state": "Baden-Württemberg",
+      "ISO3166-2-lvl4": "DE-BW",
+      "country": "Deutschland",
+      "country_code": "de"
+    },
+    "namedetails": {
+      "name": "Am Markt",
+      "name:de": "Am Markt",
+      "alt_name": "Marktplatz",
+      "loc_name": "Marktplatz"
+    },
+    "boundingbox": [
+      "48.5200162",
+      "48.5204854",
+      "9.0533033",
+      "9.0543152"
+    ]
+  }
+]

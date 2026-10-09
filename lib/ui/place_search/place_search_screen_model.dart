@@ -6,11 +6,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/geoapify_api.dart';
 import 'package:munich_ways/api/munich_street_corrector.dart';
 import 'package:munich_ways/api/nominatim_api.dart';
+import 'package:munich_ways/api/place_search_query.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';
+
+typedef _PlaceSearchResult = ({List<Place> places, bool fromNominatim});
 
 const maxNumberStoredRecentSearches = 25;
 
@@ -114,15 +117,24 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     super.dispose();
   }
 
+  bool _isCurrentSearch(int sequence) =>
+      !_disposed && sequence == _searchSequence;
+
   Future<void> startSearch(String query) async {
+    if (_disposed) return;
     final searchSequence = ++_searchSequence;
+    final originalQuery = query.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final normalizedQuery = PlaceSearchQuery.normalize(originalQuery);
     isFirstSearch = false;
     log.d('Destination search started');
     clearErrorMsg();
 
-    if (query.isEmpty) {
+    if (normalizedQuery.isEmpty) {
+      loading = false;
+      places = [];
+      correctedQuery = null;
       _displayErrorMsg(
-          "Suchanfrage ist leer.\nBitte gebe ein Suchbegriff z.B. eine Straße in München ein.");
+          'Suchanfrage ist leer. Bitte gebe einen Suchbegriff ein.');
       return;
     }
 
@@ -130,44 +142,80 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      var newPlaces = await _searchProviders(query);
-      MunichStreetCorrection? correction;
-      if (newPlaces.isEmpty) {
-        correction = await streetCorrector.correct(query);
-        if (correction != null && correction.query != query) {
-          newPlaces = await _searchProviders(correction.query);
+      var result = await _searchProviders(originalQuery, searchSequence);
+      if (!_isCurrentSearch(searchSequence)) return;
+      String? correction;
+      if (result.places.isEmpty && normalizedQuery != originalQuery) {
+        result = await _searchProviders(normalizedQuery, searchSequence);
+        if (!_isCurrentSearch(searchSequence)) return;
+        correction = normalizedQuery;
+      }
+      final compound = PlaceSearchQuery.compoundAlternative(normalizedQuery);
+      if (normalizedQuery == originalQuery &&
+          compound != null &&
+          !result.places.any((place) =>
+              _matchesName(place, normalizedQuery) ||
+              _matchesName(place, normalizedQuery.split(' ').first))) {
+        // A single optional probe must not replace usable results with an
+        // error or a loosely matching different place. Provider attribution
+        // belongs to the winning result, not to whichever request finished last.
+        try {
+          final alternative = await _searchProviders(compound, searchSequence);
+          if (!_isCurrentSearch(searchSequence)) return;
+          final exact = alternative.places
+              .where((place) => _matchesName(place, compound))
+              .toList(growable: false);
+          if (exact.isNotEmpty) {
+            result = (places: exact, fromNominatim: alternative.fromNominatim);
+            correction = compound;
+          }
+        } catch (error, stackTrace) {
+          log.w('Optional compound-name search failed',
+              error: error, stackTrace: stackTrace);
         }
       }
-      if (searchSequence != _searchSequence) {
-        return;
+      if (!_isCurrentSearch(searchSequence)) return;
+      if (result.places.isEmpty) {
+        final streetCorrection = await streetCorrector.correct(normalizedQuery);
+        if (!_isCurrentSearch(searchSequence)) return;
+        if (streetCorrection != null &&
+            streetCorrection.query != normalizedQuery) {
+          result =
+              await _searchProviders(streetCorrection.query, searchSequence);
+          correction = streetCorrection.displayName;
+        }
       }
-      places = newPlaces;
-      correctedQuery =
-          correction?.query == query ? null : correction?.displayName;
+      if (!_isCurrentSearch(searchSequence)) return;
+      places = result.places;
+      resultsFromNominatim = result.fromNominatim;
+      correctedQuery = places.isEmpty ? null : correction;
       _notifyListeners();
     } catch (e) {
-      if (searchSequence != _searchSequence) {
-        return;
-      }
+      if (!_isCurrentSearch(searchSequence)) return;
       _displayErrorMsg(
           "Fehler bei Straßensuche. Bitte versuche es erneut.\n\n${e.toString()}");
     } finally {
-      if (searchSequence == _searchSequence) {
+      if (_isCurrentSearch(searchSequence)) {
         loading = false;
         _notifyListeners();
       }
     }
   }
 
-  Future<List<Place>> _searchProviders(String query) async {
+  static bool _matchesName(Place place, String query) {
+    final key = PlaceSearchQuery.nameKey(query);
+    return [
+      place.displayName?.split(',').first ?? '',
+      ...place.alternativeNames,
+    ].any((name) => PlaceSearchQuery.nameKey(name) == key);
+  }
+
+  Future<_PlaceSearchResult> _searchProviders(
+      String query, int sequence) async {
     try {
-      final result = await api.search(
-        query,
-        searchCenter: searchCenter,
-      );
+      final result = await api.search(query, searchCenter: searchCenter);
       if (result.isNotEmpty) {
-        resultsFromNominatim = false;
-        return result;
+        return (places: result, fromNominatim: false);
       }
       log.d('Geoapify returned no places, trying Nominatim fallback');
     } catch (error, stackTrace) {
@@ -177,12 +225,11 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
         stackTrace: stackTrace,
       );
     }
-    final result = await fallbackApi.search(
-      query,
-      searchCenter: searchCenter,
-    );
-    resultsFromNominatim = true;
-    return result;
+    if (!_isCurrentSearch(sequence)) {
+      return (places: const <Place>[], fromNominatim: false);
+    }
+    final result = await fallbackApi.search(query, searchCenter: searchCenter);
+    return (places: result, fromNominatim: true);
   }
 
   void _displayErrorMsg(String msg) {
@@ -275,6 +322,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
       name,
       place.latLng,
       favoriteOrder: favoritePlaces[favoriteIndex].favoriteOrder,
+      alternativeNames: favoritePlaces[favoriteIndex].alternativeNames,
     );
     favoritePlaces[favoriteIndex] = renamed;
 
@@ -298,7 +346,8 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
           recent.latLng.longitude == place.latLng.longitude,
     );
     if (recentIndex < 0) return;
-    final renamed = Place(name, place.latLng);
+    final renamed = Place(name, place.latLng,
+        alternativeNames: recentSearches[recentIndex].alternativeNames);
     recentSearches[recentIndex] = renamed;
 
     final favoriteIndex = favoritePlaces.indexWhere(
@@ -311,6 +360,7 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
         name,
         place.latLng,
         favoriteOrder: favoritePlaces[favoriteIndex].favoriteOrder,
+        alternativeNames: favoritePlaces[favoriteIndex].alternativeNames,
       );
       await favoritesRepo.store(favoritePlaces);
     }

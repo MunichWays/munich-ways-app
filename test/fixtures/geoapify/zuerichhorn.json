@@ -1,0 +1,601 @@
+{
+  "results": [
+    {
+      "name": "Zürichhorn",
+      "street": "Bellerivestrasse",
+      "district": "Riesbach",
+      "city": "Zürich",
+      "county": "Bezirk Zürich",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8008",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.5520938,
+      "lat": 47.354347,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "ref": "68424501",
+      "other_names": {
+        "ref": "68424501"
+      },
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "distance": 242261.75299787728,
+      "formatted": "Zürichhorn, Bellerivestrasse, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn",
+      "address_line2": "Bellerivestrasse, 8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H32+PR",
+      "plus_code_short": "32+PR Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "5113a6de09ac1a214059c537143e5bad4740f00103f901e47669de01000000c0020192030b5ac3bc72696368686f726e"
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Zürichhorn",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Zürich",
+      "city": "Zürich",
+      "postcode": "8008",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "street": "Bellerivestrasse",
+      "housenumber": "150",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.5524458,
+      "lat": 47.3541877,
+      "state_code": "ZH",
+      "district": "Riesbach",
+      "result_type": "amenity",
+      "distance": 242243.88260708004,
+      "formatted": "Zürichhorn, Bellerivestrasse 150, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn",
+      "address_line2": "Bellerivestrasse 150, 8008 Zürich, Schweiz",
+      "category": "amenity.toilet",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H32+MX",
+      "plus_code_short": "32+MX Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "5107a0072dda1a2140599e12c60556ad4740f00103f9012394cd2101000000c0020192030b5ac3bc72696368686f726e",
+      "bbox": {
+        "lon1": 8.5523958,
+        "lat1": 47.3541377,
+        "lon2": 8.5524958,
+        "lat2": 47.3542377
+      }
+    },
+    {
+      "name": "Zürichhorn (See)",
+      "street": "Bellerivestrasse",
+      "district": "Riesbach",
+      "city": "Zürich",
+      "county": "Bezirk Zürich",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8008",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.5531756,
+      "lat": 47.3519534,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "ref": "3046",
+      "other_names": {
+        "ref": "3046"
+      },
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "distance": 242286.8754778785,
+      "formatted": "Zürichhorn (See), Bellerivestrasse, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn (See)",
+      "address_line2": "Bellerivestrasse, 8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H23+Q7",
+      "plus_code_short": "23+Q7 Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "51eee30dd5391b214059a65b1bcf0cad4740f00103f9015645c50400000000c002019203115ac3bc72696368686f726e202853656529e203216f70656e7374726565746d61703a76656e75653a6e6f64652f3830303337323036"
+    },
+    {
+      "country_code": "ch",
+      "name": "Zürichhorn",
+      "country": "Schweiz",
+      "county": "Zürich",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state": "Zürich",
+      "state_code": "ZH",
+      "district": "Zürich",
+      "city": "Zürich",
+      "suburb": "Riesbach",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.552446,
+      "lat": 47.354188,
+      "result_type": "amenity",
+      "distance": 242243.8560641863,
+      "postcode": "8008",
+      "formatted": "Zürichhorn, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn",
+      "address_line2": "8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H32+MX",
+      "plus_code_short": "32+MX Zürich, Schweiz",
+      "rank": {
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "51ae9cbd33da1a2140595d514a0856ad4740f00103f9012394cd2101000000c0020192030b5ac3bc72696368686f726ee203236f70656e7374726565746d61703a76656e75653a6e6f64652f34383632303838323237"
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Parkhaus Zürichhorn",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Zürich",
+      "city": "Zürich",
+      "postcode": "8008",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "street": "Dufourstrasse",
+      "housenumber": "142",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.5531163,
+      "lat": 47.3557489,
+      "state_code": "ZH",
+      "district": "Riesbach",
+      "result_type": "amenity",
+      "distance": 242131.62767869746,
+      "formatted": "Parkhaus Zürichhorn, Dufourstrasse 142, 8008 Zürich, Schweiz",
+      "address_line1": "Parkhaus Zürichhorn",
+      "address_line2": "Dufourstrasse 142, 8008 Zürich, Schweiz",
+      "category": "parking.cars",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H43+76",
+      "plus_code_short": "43+76 Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "51e0c4460f321b214059438b112e89ad4740f00103f901eb87021000000000c002019203145061726b68617573205ac3bc72696368686f726ee203226f70656e7374726565746d61703a76656e75653a6e6f64652f323638363031333233",
+      "bbox": {
+        "lon1": 8.5530663,
+        "lat1": 47.3556989,
+        "lon2": 8.5531663,
+        "lat2": 47.3557989
+      }
+    },
+    {
+      "country_code": "ch",
+      "name": "Zürichhorn/Lakeside",
+      "country": "Schweiz",
+      "county": "Zürich",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state": "Zürich",
+      "state_code": "ZH",
+      "district": "Zürich",
+      "city": "Zürich",
+      "suburb": "Riesbach",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.55386,
+      "lat": 47.352909,
+      "result_type": "amenity",
+      "distance": 242198.9563030848,
+      "postcode": "8008",
+      "formatted": "Zürichhorn/Lakeside, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn/Lakeside",
+      "address_line2": "8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+5G",
+      "plus_code_short": "33+5G Zürich, Schweiz",
+      "rank": {
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "510820b589931b21405966bb421f2cad4740f00103f901d58818b200000000c002019203145ac3bc72696368686f726e2f4c616b6573696465e203236f70656e7374726565746d61703a76656e75653a6e6f64652f32393837393532333431"
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Zürichhorn/Lakeside",
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Zürich",
+      "city": "Zürich",
+      "postcode": "8008",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "street": "Bellerivestrasse",
+      "housenumber": "170",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.5538598,
+      "lat": 47.3529089,
+      "state_code": "ZH",
+      "district": "Riesbach",
+      "result_type": "amenity",
+      "distance": 242198.97445536422,
+      "formatted": "Zürichhorn/Lakeside, Bellerivestrasse 170, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn/Lakeside",
+      "address_line2": "Bellerivestrasse 170, 8008 Zürich, Schweiz",
+      "category": "amenity.toilet",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+5G",
+      "plus_code_short": "33+5G Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "516123ff82931b214059d2fb6b1e2cad4740f00103f901d58818b200000000c002019203145ac3bc72696368686f726e2f4c616b6573696465",
+      "bbox": {
+        "lon1": 8.5538098,
+        "lat1": 47.3528589,
+        "lon2": 8.5539098,
+        "lat2": 47.3529589
+      }
+    },
+    {
+      "name": "Zürichhorn",
+      "street": "Seefeldquai",
+      "district": "Riesbach",
+      "city": "Zürich",
+      "county": "Bezirk Zürich",
+      "state": "Zürich",
+      "country": "Schweiz",
+      "postcode": "8008",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "country_code": "ch",
+      "lon": 8.5502537,
+      "lat": 47.3537456,
+      "state_code": "ZH",
+      "iso3166_2": "CH-ZH",
+      "result_type": "amenity",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "distance": 242415.35634753524,
+      "formatted": "Zürichhorn, Seefeldquai, 8008 Zürich, Schweiz",
+      "address_line1": "Zürichhorn",
+      "address_line2": "Seefeldquai, 8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H32+F4",
+      "plus_code_short": "32+F4 Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "5189015cdaba192140594d8d2b8947ad4740f00103f9019a61c6cf01000000c0020192030b5ac3bc72696368686f726e"
+    },
+    {
+      "country_code": "ch",
+      "name": "Casino Zürichhorn",
+      "housenumber": "170",
+      "street": "Bellerivestrasse",
+      "country": "Schweiz",
+      "county": "Zürich",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "postcode": "8008",
+      "state": "Zürich",
+      "state_code": "ZH",
+      "district": "Zürich",
+      "city": "Zürich",
+      "suburb": "Riesbach",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.553816,
+      "lat": 47.352756,
+      "result_type": "amenity",
+      "distance": 242208.45772734476,
+      "formatted": "Casino Zürichhorn, Bellerivestrasse 170, 8008 Zürich, Schweiz",
+      "address_line1": "Casino Zürichhorn",
+      "address_line2": "Bellerivestrasse 170, 8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+4G",
+      "plus_code_short": "33+4G Zürich, Schweiz",
+      "rank": {
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "51c90050c58d1b214059e0bbcd1b27ad4740f00102f9011780d60500000000c00201920312436173696e6f205ac3bc72696368686f726ee203206f70656e7374726565746d61703a76656e75653a7761792f3937393433353735",
+      "bbox": {
+        "lon1": 8.5536047,
+        "lat1": 47.3526366,
+        "lon2": 8.5540613,
+        "lat2": 47.3529432
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Parkhaus Zürichhorn",
+      "ref": "11039196",
+      "other_names": {
+        "ref": "11039196"
+      },
+      "country": "Schweiz",
+      "country_code": "ch",
+      "state": "Zürich",
+      "county": "Bezirk Zürich",
+      "city": "Zürich",
+      "postcode": "8008",
+      "suburb": "Kreis 8",
+      "quarter": "Seefeld",
+      "street": "Bellerivestrasse",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.5530265,
+      "lat": 47.3546481,
+      "state_code": "ZH",
+      "district": "Riesbach",
+      "result_type": "amenity",
+      "distance": 242184.05283179088,
+      "formatted": "Parkhaus Zürichhorn, Bellerivestrasse, 8008 Zürich, Schweiz",
+      "address_line1": "Parkhaus Zürichhorn",
+      "address_line2": "Bellerivestrasse, 8008 Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+V6",
+      "plus_code_short": "33+V6 Zürich, Bezirk Zürich, Schweiz",
+      "rank": {
+        "importance": 0.0000785145342183111,
+        "confidence": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "5187a4164a261b214059558be31b65ad4740f00103f90175ce914300000000c002019203145061726b68617573205ac3bc72696368686f726e",
+      "bbox": {
+        "lon1": 8.5529765,
+        "lat1": 47.3545981,
+        "lon2": 8.5530765,
+        "lat2": 47.3546981
+      }
+    },
+    {
+      "country_code": "ch",
+      "name": "Zürichhorn",
+      "country": "Schweiz",
+      "county": "Zürich",
+      "datasource": {
+        "sourcename": "whosonfirst",
+        "attribution": "Who's On First",
+        "license": "CC0",
+        "url": "https://www.whosonfirst.org/docs/licenses/"
+      },
+      "state": "Zürich",
+      "state_code": "ZH",
+      "district": "Zürich",
+      "city": "Zürich",
+      "suburb": "Zürichhorn",
+      "iso3166_2": "CH-ZH",
+      "lon": 8.552878,
+      "lat": 47.353489,
+      "result_type": "suburb",
+      "distance": 242243.07211861396,
+      "formatted": "Zürichhorn, Zürich, Schweiz",
+      "address_line1": "Zürichhorn",
+      "address_line2": "Zürich, Schweiz",
+      "timezone": {
+        "name": "Europe/Zurich",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FVC9H33+95",
+      "plus_code_short": "33+95 Zürich, Schweiz",
+      "rank": {
+        "confidence": 1,
+        "confidence_city_level": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "51145b41d3121b214059753fa7203fad4740c0020592030b5ac3bc72696368686f726ee2032277686f736f6e66697273743a6e65696768626f7572686f6f643a3835383030363837",
+      "bbox": {
+        "lon1": 8.534753,
+        "lat1": 47.341066,
+        "lon2": 8.553858,
+        "lat2": 47.359293
+      }
+    },
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Zum Eichhorn",
+      "old_name": "Zum Eichhorn",
+      "other_names": {
+        "old_name": "Zum Eichhorn"
+      },
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Thüringen",
+      "city": "Erfurt",
+      "postcode": "99084",
+      "suburb": "Altstadt",
+      "street": "Pergamentergasse",
+      "iso3166_2": "DE-TH",
+      "lon": 11.0248132,
+      "lat": 50.9787661,
+      "state_code": "TH",
+      "district": "Altstadt",
+      "result_type": "amenity",
+      "distance": 318463.1523619634,
+      "formatted": "Zum Eichhorn, Pergamentergasse, 99084 Erfurt, Deutschland",
+      "address_line1": "Zum Eichhorn",
+      "address_line2": "Pergamentergasse, 99084 Erfurt, Deutschland",
+      "category": "building.residential",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "9F2HX2HF+GW",
+      "plus_code_short": "HF+GW Erfurt, Thüringen, Deutschland",
+      "rank": {
+        "importance": 0.00007104829480425753,
+        "confidence": 0.7,
+        "match_type": "full_match"
+      },
+      "place_id": "51aa04d550b40c2640597cf72235487d4940f00102f90180eb511000000000c0020192030c5a756d2045696368686f726e",
+      "bbox": {
+        "lon1": 11.0247294,
+        "lat1": 50.9787192,
+        "lon2": 11.0248963,
+        "lat2": 50.9788165
+      }
+    }
+  ],
+  "query": {
+    "text": "Zürichhorn",
+    "categories": []
+  }
+}

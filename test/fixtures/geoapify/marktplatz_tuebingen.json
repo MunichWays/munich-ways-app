@@ -1,0 +1,763 @@
+{
+  "results": [
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Esslingen",
+      "city": "Neckartenzlingen",
+      "municipality": "GVV Neckartenzlingen",
+      "postcode": "72654",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "other_names": {
+        "ref": "L 1208b",
+        "name": "Marktplatz",
+        "name:de": "Marktplatz"
+      },
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.2330821,
+      "lat": 48.5904981,
+      "result_type": "street",
+      "NUTS_3": "DE113",
+      "formatted": "Marktplatz, 72654 Neckartenzlingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72654 Neckartenzlingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFH6RM+56",
+      "plus_code_short": "RM+56 Neckartenzlingen, Landkreis Esslingen, Deutschland",
+      "rank": {
+        "confidence": 0.3157894736842105,
+        "confidence_city_level": 0.3157894736842105,
+        "confidence_street_level": 0.3157894736842105,
+        "match_type": "full_match"
+      },
+      "place_id": "51e69079895677224059d1ec1571954b4840f00102f901531ef80100000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.2326137,
+        "lat1": 48.5903643,
+        "lon2": 9.2335474,
+        "lat2": 48.5906469
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Zollernalbkreis",
+      "city": "Grosselfingen",
+      "municipality": "VVG der Gemeinde Bisingen",
+      "postcode": "72415",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 8.8866443,
+      "lat": 48.3314423,
+      "result_type": "street",
+      "NUTS_3": "DE143",
+      "formatted": "Marktplatz, 72415 Grosselfingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72415 Grosselfingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWC8VJP+HM",
+      "plus_code_short": "JP+HM Grosselfingen, Zollernalbkreis, Deutschland",
+      "rank": {
+        "confidence": 0.42857142857142855,
+        "confidence_city_level": 0.42857142857142855,
+        "confidence_street_level": 0.42857142857142855,
+        "match_type": "full_match"
+      },
+      "place_id": "51a05edf3df6c5214059698187b36c2a4840f00102f90123b9120200000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 8.8853914,
+        "lat1": 48.3313935,
+        "lon2": 8.887868,
+        "lat2": 48.3315792
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Reutlingen",
+      "city": "Reutlingen",
+      "postcode": "72764",
+      "suburb": "Reutlingen (Kernstadt)",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.2114485,
+      "lat": 48.4918406,
+      "result_type": "street",
+      "NUTS_3": "DE141",
+      "formatted": "Marktplatz, 72764 Reutlingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72764 Reutlingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFF6R6+PH",
+      "plus_code_short": "R6+PH Reutlingen, Landkreis Reutlingen, Deutschland",
+      "rank": {
+        "confidence": 0.23809523809523808,
+        "confidence_city_level": 0.3,
+        "confidence_street_level": 0.3,
+        "match_type": "full_match"
+      },
+      "place_id": "51969350fa426c2240592aecfda1f43e4840f00102f9012b587b3b00000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.210881,
+        "lat1": 48.4914661,
+        "lon2": 9.211979,
+        "lat2": 48.4922443
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Esslingen",
+      "city": "Oberaichen",
+      "municipality": "Leinfelden-Echterdingen",
+      "postcode": "70771",
+      "suburb": "Leinfelden",
+      "quarter": "Unteraichen",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.1410239,
+      "lat": 48.697001,
+      "result_type": "street",
+      "NUTS_3": "DE113",
+      "formatted": "Marktplatz, 70771 Oberaichen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "70771 Oberaichen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFM4WR+RC",
+      "rank": {
+        "confidence": 0.2727272727272727,
+        "confidence_city_level": 0.2727272727272727,
+        "confidence_street_level": 0.2727272727272727,
+        "match_type": "full_match"
+      },
+      "place_id": "51a4e8dc483448224059c0232a5437594840f00102f90128505a0100000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.1409705,
+        "lat1": 48.6966882,
+        "lon2": 9.1410699,
+        "lat2": 48.6973176
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Zollernalbkreis",
+      "city": "Hechingen",
+      "municipality": "VVG der Stadt Hechingen",
+      "postcode": "72379",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 8.9641828,
+      "lat": 48.3526195,
+      "result_type": "street",
+      "NUTS_3": "DE143",
+      "formatted": "Marktplatz, 72379 Hechingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72379 Hechingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWC9X37+2M",
+      "plus_code_short": "37+2M Hechingen, Zollernalbkreis, Deutschland",
+      "rank": {
+        "confidence": 0.3,
+        "confidence_city_level": 0.3,
+        "confidence_street_level": 0.3,
+        "match_type": "full_match"
+      },
+      "place_id": "513ebb325ea9ed2140594837c2a2222d4840f00102f90165034d0b00000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 8.9641385,
+        "lat1": 48.3525721,
+        "lon2": 8.964227,
+        "lat2": 48.3526668
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Böblingen",
+      "postcode": "71032",
+      "suburb": "Böblingen (Kernstadt)",
+      "quarter": "Altstadt",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.0119575,
+      "lat": 48.6850264,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71032 Böblingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71032 Böblingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFM2P6+2Q",
+      "plus_code_short": "P6+2Q Böblingen, Landkreis Böblingen, Deutschland",
+      "rank": {
+        "confidence": 0.3,
+        "confidence_city_level": 0.3,
+        "confidence_street_level": 0.3,
+        "match_type": "full_match"
+      },
+      "place_id": "5143e21e4b1f06224059c472f0f1ae574840f00102f9011bfbd30000000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.0114965,
+        "lat1": 48.6848348,
+        "lon2": 9.0126704,
+        "lat2": 48.6852139
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Ehningen",
+      "municipality": "GVV Gärtringen/Ehningen",
+      "postcode": "71139",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 8.9414989,
+      "lat": 48.6589469,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71139 Ehningen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71139 Ehningen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWCMW5R+HH",
+      "plus_code_short": "+HH Ehningen, Landkreis Böblingen, Deutschland",
+      "rank": {
+        "confidence": 0.2857142857142857,
+        "confidence_city_level": 0.2857142857142857,
+        "confidence_street_level": 0.2857142857142857,
+        "match_type": "full_match"
+      },
+      "place_id": "51a070d1240ce221405979a63c5f58544840f00102f901608e6d0100000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 8.9410534,
+        "lat1": 48.6586045,
+        "lon2": 8.9415113,
+        "lat2": 48.6591259
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Sindelfingen (Stadt)",
+      "postcode": "71063",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.0029901,
+      "lat": 48.7081451,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71063 Sindelfingen (Stadt), Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71063 Sindelfingen (Stadt), Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFP253+75",
+      "rank": {
+        "confidence": 0.2631578947368421,
+        "confidence_city_level": 0.2631578947368421,
+        "confidence_street_level": 0.2631578947368421,
+        "match_type": "full_match"
+      },
+      "place_id": "516d6c1beb87012240594da9a67fa45a4840f00102f901d2f6d30000000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.0015194,
+        "lat1": 48.7077955,
+        "lon2": 9.0038119,
+        "lat2": 48.7085294
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Reutlingen",
+      "city": "Pfullingen",
+      "postcode": "72793",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.225365,
+      "lat": 48.4655714,
+      "result_type": "street",
+      "NUTS_3": "DE141",
+      "formatted": "Marktplatz, 72793 Pfullingen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72793 Pfullingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFF68G+64",
+      "plus_code_short": "8G+64 Pfullingen, Landkreis Reutlingen, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0.3,
+        "confidence_street_level": 0.3,
+        "match_type": "full_match"
+      },
+      "place_id": "517a53910a6373224059fa79f8d7973b4840f00102f9018959ad0400000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.2252925,
+        "lat1": 48.4655585,
+        "lon2": 9.2254495,
+        "lat2": 48.4656142
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Reutlingen",
+      "city": "Pliezhausen",
+      "municipality": "VVG der Gemeinde Pliezhausen",
+      "postcode": "72124",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.2061564,
+      "lat": 48.5582455,
+      "result_type": "street",
+      "NUTS_3": "DE141",
+      "formatted": "Marktplatz, 72124 Pliezhausen, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "72124 Pliezhausen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFH654+7F",
+      "plus_code_short": "54+7F Pliezhausen, Landkreis Reutlingen, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0.3,
+        "confidence_street_level": 0.3,
+        "match_type": "full_match"
+      },
+      "place_id": "51e1b8e7548d69224059d0d1aa9674474840f00102f9017cb3d44700000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.2061445,
+        "lat1": 48.5581935,
+        "lon2": 9.2061683,
+        "lat2": 48.5582975
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Waldenbuch",
+      "village": "Glashütte",
+      "municipality": "GVV Waldenbuch/Steinenbronn",
+      "postcode": "71111",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.1317045,
+      "lat": 48.6369695,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71111 Waldenbuch, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71111 Waldenbuch, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFJ4PJ+QM",
+      "plus_code_short": "PJ+QM Waldenbuch, Landkreis Böblingen, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0,
+        "confidence_street_level": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51d978b0c56e432240595586713788514840f00102f9019fedd61800000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.1316912,
+        "lat1": 48.6368294,
+        "lon2": 9.1317177,
+        "lat2": 48.6371095
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "city": "Stuttgart",
+      "postcode": "70173",
+      "suburb": "Rathaus",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.1785179,
+      "lat": 48.7751882,
+      "result_type": "street",
+      "formatted": "Marktplatz, 70173 Stuttgart, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "70173 Stuttgart, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFQ5GH+3C",
+      "plus_code_short": "GH+3C Stuttgart, Baden-Württemberg, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0,
+        "confidence_street_level": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "514e80bcb2665b224059609fef5d39634840f00101f9014ede550000000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.1776427,
+        "lat1": 48.7746381,
+        "lon2": 9.1792089,
+        "lat2": 48.7756767
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Weil",
+      "postcode": "71093",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.0611055,
+      "lat": 48.6213338,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71093 Weil, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71093 Weil, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFJ3C6+GC",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0,
+        "confidence_street_level": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "5122365838491f2240592073afdd874f4840f00102f901f98a6d0100000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.0608646,
+        "lat1": 48.6211144,
+        "lon2": 9.0618755,
+        "lat2": 48.6215438
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Leonberg",
+      "postcode": "71229",
+      "suburb": "Haldengebiet",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 9.0154151,
+      "lat": 48.8008627,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71229 Leonberg, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71229 Leonberg, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFR228+85",
+      "plus_code_short": "28+85, 71229 Leonberg, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0,
+        "confidence_street_level": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51a9baec7ce4072240590b8b40ab82664840f00102f90181e28f2a00000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 9.0153749,
+        "lat1": 48.8008463,
+        "lon2": 9.0154554,
+        "lat2": 48.800879
+      }
+    },
+    {
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Böblingen",
+      "city": "Magstadt",
+      "postcode": "71106",
+      "street": "Marktplatz",
+      "name": "Marktplatz",
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "state_code": "BW",
+      "iso3166_2": "DE-BW",
+      "lon": 8.9635175,
+      "lat": 48.7422476,
+      "result_type": "street",
+      "NUTS_3": "DE112",
+      "formatted": "Marktplatz, 71106 Magstadt, Deutschland",
+      "address_line1": "Marktplatz",
+      "address_line2": "71106 Magstadt, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWCPXR7+VC",
+      "plus_code_short": "R7+VC Magstadt, Landkreis Böblingen, Deutschland",
+      "rank": {
+        "confidence": 0,
+        "confidence_city_level": 0,
+        "confidence_street_level": 0,
+        "match_type": "full_match"
+      },
+      "place_id": "51533f6f2a52ed2140596ac427f8015f4840f00102f90194b19b0100000000c0020492030a4d61726b74706c61747a",
+      "bbox": {
+        "lon1": 8.963042,
+        "lat1": 48.7414272,
+        "lon2": 8.9647739,
+        "lat2": 48.7430637
+      }
+    }
+  ],
+  "query": {
+    "text": "Marktplatz, 72070 Tübingen",
+    "parsed": {
+      "street": "marktplatz",
+      "postcode": "72070",
+      "city": "tübingen",
+      "expected_type": "street"
+    }
+  }
+}

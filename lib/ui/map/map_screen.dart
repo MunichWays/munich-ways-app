@@ -40,6 +40,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
 import 'package:munich_ways/ui/map/navigation_audio.dart';
+import 'package:munich_ways/ui/map/navigation_notification_permission.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -161,8 +162,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _maximumOnRouteProgressStep = 200.0;
   static const _navigationStartZoom = 16.0;
   static const _offRouteZoom = 15.0;
-  static const _notificationPermissionChannel =
-      MethodChannel('com.munichways.app/notification_permission');
 
   static const _kNetworkSourceId = 'munichways_radlnetz';
   static const _kRoutingCoverageSourceId = 'munichways_routing_coverage';
@@ -317,7 +316,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double _onRouteDistanceSinceReroute = 0;
   latlong2.LatLng? _lastOnRoutePosition;
   DateTime? _onRouteSinceReroute;
-  bool _notificationPermissionExplained = false;
+  final _notificationPermission = NavigationNotificationPermission();
   bool _mapAttributionExpanded = false;
 
   /// Map camera bearing (clockwise from north); [MapCompassControl] listens for
@@ -2352,7 +2351,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     _armVoiceSignalWarning(model);
-    await _requestNavigationNotificationPermission();
+    await _requestNavigationNotificationPermission(model);
     if (!mounted) return;
     final position = _latestPosition;
     if (position != null) {
@@ -2813,16 +2812,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _startNavigation(model);
   }
 
-  Future<void> _requestNavigationNotificationPermission() async {
-    if (defaultTargetPlatform != TargetPlatform.android) return;
-    try {
-      final granted = await _notificationPermissionChannel
-              .invokeMethod<bool>('isGranted') ??
-          false;
-      if (granted || !mounted) return;
-
-      if (!_notificationPermissionExplained) {
-        final proceed = await showDialog<bool>(
+  Future<void> _requestNavigationNotificationPermission(
+    MapScreenViewModel model,
+  ) async {
+    final route = model.route.route;
+    await _notificationPermission.request(
+      isCurrent: () =>
+          mounted &&
+          model.navigationStarted &&
+          identical(model.route.route, route),
+      onGranted: () {
+        model.setVoiceGuidanceEnabled(true);
+        _armVoiceSignalWarning(model);
+      },
+      explain: () async {
+        return await showDialog<bool>(
               context: context,
               builder: (dialogContext) => AlertDialog(
                 title: Text(
@@ -2853,17 +2857,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ),
             ) ??
             false;
-        _notificationPermissionExplained = true;
-        if (!proceed || !mounted) return;
-      }
-      await _notificationPermissionChannel.invokeMethod<bool>('request');
-    } on PlatformException catch (error, stackTrace) {
-      log.w(
-        'Requesting navigation notification permission failed',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+      },
+    );
   }
 
   void _armVoiceSignalWarning(MapScreenViewModel model) {

@@ -236,8 +236,8 @@ class _AppearanceMenuItem extends StatelessWidget {
                         ? 'Automatic appearance'
                         : 'Automatische Darstellung'),
                     content: Text(strings.isEnglish
-                        ? 'Auto uses sunrise and sunset at your current location. Until a location is available, it follows the system setting.'
-                        : 'Auto verwendet Sonnenauf- und -untergang am aktuellen Standort. Bis ein Standort verfügbar ist, folgt die Darstellung der Systemeinstellung.'),
+                        ? 'Auto uses dark mode when your phone is set to dark or after sunset at your current location. Without a location, it follows the system setting.'
+                        : 'Auto verwendet den Dunkelmodus, wenn dein Handy auf dunkel eingestellt ist oder am aktuellen Standort die Sonne untergegangen ist. Ohne Standort folgt die Darstellung der Systemeinstellung.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),

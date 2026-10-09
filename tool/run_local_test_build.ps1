@@ -1,29 +1,52 @@
 param(
+    [switch]$PrepareOnly,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$FlutterArguments
 )
 
 $ErrorActionPreference = 'Stop'
-
-$counterDirectory = Join-Path $PSScriptRoot '..\.local'
+$workspace = Split-Path -Parent $PSScriptRoot
+$counterDirectory = Join-Path $workspace '.local'
 $counterFile = Join-Path $counterDirectory 'test_build_number'
+$definesFile = Join-Path $counterDirectory 'test_build_defines.json'
 New-Item -ItemType Directory -Force -Path $counterDirectory | Out-Null
 
 $testBuild = 1
 if (Test-Path -LiteralPath $counterFile) {
     $previousBuild = 0
-    if ([int]::TryParse((Get-Content -LiteralPath $counterFile -Raw).Trim(), [ref]$previousBuild)) {
-        $testBuild = $previousBuild + 1
+    if (-not [int]::TryParse((Get-Content -LiteralPath $counterFile -Raw).Trim(), [ref]$previousBuild) -or
+        $previousBuild -lt 0 -or $previousBuild -eq [int]::MaxValue) {
+        throw "Ungueltige Testbuild-Nummer in $counterFile. Datei pruefen."
     }
+    $testBuild = $previousBuild + 1
 }
-Set-Content -LiteralPath $counterFile -Value $testBuild -NoNewline
 
-Write-Host "Starte lokalen Testbuild $testBuild ..."
-$runArguments = @("--dart-define=LOCAL_TEST_BUILD=$testBuild")
+$utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+$defines = @{ LOCAL_TEST_BUILD = [string]$testBuild } | ConvertTo-Json
+[System.IO.File]::WriteAllText($definesFile, $defines, $utf8WithoutBom)
+[System.IO.File]::WriteAllText($counterFile, [string]$testBuild, $utf8WithoutBom)
+
+Write-Host "Lokaler Testbuild $testBuild vorbereitet."
+if ($PrepareOnly) { return }
+
+$pinnedFlutterVersion = (Get-Content -LiteralPath (Join-Path $workspace '.fvmrc') -Raw |
+    ConvertFrom-Json).flutter
+$flutter = Join-Path $workspace ".fvm/versions/$pinnedFlutterVersion/bin/flutter.bat"
+if (-not (Test-Path -LiteralPath $flutter)) {
+    throw "Gepinntes Flutter $pinnedFlutterVersion wurde unter .fvm nicht gefunden."
+}
+
+$runArguments = @("--dart-define-from-file=$definesFile")
 if ($env:GEOAPIFY_API_KEY) {
     $runArguments += "--dart-define=GEOAPIFY_API_KEY=$($env:GEOAPIFY_API_KEY)"
 }
 $runArguments += $FlutterArguments
 
-& flutter run @runArguments
-exit $LASTEXITCODE
+Push-Location $workspace
+try {
+    & $flutter run @runArguments
+    $runExitCode = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
+exit $runExitCode

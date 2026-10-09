@@ -80,12 +80,18 @@ See detailed fastlane docs for setup, lanes, credentials, and troubleshooting: [
 
 #### Local
 
+Für lokale Handytests ist kein offizieller Release-Keystore erforderlich.
+Ohne vollständige Release-Signierung verwendet das Projekt den lokalen
+Debug-Schlüssel; ein gewählter Release-Build bleibt im Release-Modus.
+Die folgenden Schritte gelten für die offizielle Signierung zur Veröffentlichung.
+
 1. Get release.keystore from Sven and place it in `android/app/`
 2. Get Credentials for keystore from Sven and add them to `android/release_keystore.properties`:
 ```
 # Do not add to version control!
 # This contains the credentials to sign the android app and should only be on your local machine
 # or the build server
+storeFile=release.keystore
 storePassword=<Password>
 alias=<Alias>
 aliasPassword=<Password>
@@ -93,16 +99,23 @@ aliasPassword=<Password>
 3. Run `flutter build apk` or see the other output options
 
 #### How to test
-- Handy per USB Kabel anschließen
-- Voraussetzung Handy einrichten: Einstellungen > Entwickleroptionen > USB-Debugging aktivieren
-- Für einen eindeutig erkennbaren lokalen Stand in VS Code `Terminal` >
-  `Run Task...` > `Handy: Neuen lokalen Testbuild starten` auswählen. Im
-  Info-Bereich der App steht dann neben der Appversion eine bei jedem Start
-  erhöhte Kennung, zum Beispiel `Testbuild 3`. Ein lokal benötigter
-  `GEOAPIFY_API_KEY` kann zuvor als Umgebungsvariable gesetzt werden.
-- im Android Studion erscheint das USB Symbol bei physical device- z.B Samsung Sm F711B
-- im Visual Studio code App starten: Button run (grüner Pfeil) oder flutter run -v
-  C:\Users\Thomas\dev\flutter\munich-ways-app> flutter run -v  
+
+- Handy per USB anschließen; unter Entwickleroptionen USB-Debugging aktivieren.
+- In VS Code unter `Run and Debug` die Konfiguration
+  `munich-ways-app (release mode)` auswählen und mit
+  `Run Without Debugging` starten. Für Performance-Untersuchungen steht
+  `profile mode` zur Verfügung.
+- Alle lokalen Startkonfigurationen benötigen denselben Geoapify-Schlüssel.
+  Der Vorbereitungstask erhöht automatisch `LOCAL_TEST_BUILD`; im
+  Info-Bereich der App erscheint die Kennung als `Testbuild N`.
+- Installation vollständig abwarten, den VS-Code-Lauf beenden und die App am
+  Handy über `Stopp erzwingen` schließen. USB abziehen und die App über
+  ihr Symbol frisch starten. App-Daten für normale Update-Tests behalten.
+- Bei Fehlern USB wieder anschließen und vor einem App-Neustart die Logs
+  mit `Straßentest: Logs einsammeln` sichern. App-Diagnoselogging in
+  Profile/Release benötigt eine gesonderte Konfiguration.
+- Details zum lokalen Setup und zum bestehenden Skriptstart stehen in
+  [CONTRIBUTING.md](CONTRIBUTING.md#local-phone-tests-in-vs-code).
 -----------
 #### How to change code 
  Code Änderung mit Android Studio

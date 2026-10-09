@@ -1,0 +1,63 @@
+{
+  "results": [
+    {
+      "datasource": {
+        "sourcename": "openstreetmap",
+        "attribution": "© OpenStreetMap contributors",
+        "license": "Open Database License",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      "name": "Am Markt",
+      "country": "Deutschland",
+      "country_code": "de",
+      "state": "Baden-Württemberg",
+      "county": "Landkreis Tübingen",
+      "city": "Tübingen",
+      "postcode": "72070",
+      "district": "Altstadt",
+      "street": "Am Markt",
+      "iso3166_2": "DE-BW",
+      "lon": 9.0536562,
+      "lat": 48.5202712,
+      "state_code": "BW",
+      "result_type": "street",
+      "NUTS_3": "DE142",
+      "formatted": "Am Markt, 72070 Tübingen, Deutschland",
+      "address_line1": "Am Markt",
+      "address_line2": "72070 Tübingen, Deutschland",
+      "timezone": {
+        "name": "Europe/Berlin",
+        "offset_STD": "+01:00",
+        "offset_DST": "+02:00",
+        "offset_STD_seconds": 3600,
+        "offset_DST_seconds": 7200,
+        "abbreviation_STD": "CET",
+        "abbreviation_DST": "CEST"
+      },
+      "plus_code": "8FWFG3C3+4F",
+      "plus_code_short": "C3+4F Tübingen, Landkreis Tübingen, Deutschland",
+      "rank": {
+        "importance": 0.053402283512626804,
+        "confidence": 1,
+        "confidence_city_level": 1,
+        "confidence_street_level": 1,
+        "match_type": "full_match"
+      },
+      "place_id": "518d7450d3781b2240597d86263f98424840f00102f901170f4a2400000000c00204920308416d204d61726b74",
+      "bbox": {
+        "lon1": 9.0534998,
+        "lat1": 48.5201888,
+        "lon2": 9.05377,
+        "lat2": 48.5203981
+      }
+    }
+  ],
+  "query": {
+    "text": "Am Markt Tübingen",
+    "parsed": {
+      "street": "am markt",
+      "city": "tübingen",
+      "expected_type": "street"
+    }
+  }
+}

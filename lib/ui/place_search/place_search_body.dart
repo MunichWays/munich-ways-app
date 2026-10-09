@@ -103,6 +103,12 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                     fontWeight: FontWeight.w500,
                   ),
             ),
+            subtitle: place.alternativeNames.isEmpty
+                ? null
+                : Text(
+                    '${context.l10n.isEnglish ? 'Also known as' : 'Auch bekannt als'}: '
+                    '${place.alternativeNames.join(', ')}',
+                  ),
             trailing: Icon(
               Icons.chevron_right,
               color: Colors.black45,

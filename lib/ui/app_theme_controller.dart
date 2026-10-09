@@ -28,10 +28,12 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
       switch (_preference) {
         AppThemePreference.light => false,
         AppThemePreference.dark => true,
-        AppThemePreference.automatic => _latitude == null || _longitude == null
-            ? WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-                Brightness.dark
-            : !_isDaylightAt(_now(), _latitude!, _longitude!),
+        AppThemePreference.automatic =>
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+                  Brightness.dark ||
+              (_latitude != null &&
+                  _longitude != null &&
+                  !_isDaylightAt(_now(), _latitude!, _longitude!)),
       };
   ThemeMode get themeMode => isDark ? ThemeMode.dark : ThemeMode.light;
 

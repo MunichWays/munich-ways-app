@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
@@ -271,5 +274,137 @@ void main() {
     expect(places, hasLength(2));
     expect(places.first.displayName, 'Erika-Mann-Straße, 80636 München');
     expect(places.last.displayName, 'Erika-Mann-Straße 47, 80636 München');
+  });
+
+  test('recorded autocomplete suggestions with other postcodes allow fallback',
+      () async {
+    final body = File('test/fixtures/geoapify/marktplatz_tuebingen.json')
+        .readAsStringSync();
+    final api = GeoapifyApi(
+      apiKey: 'test-key',
+      client: MockClient((request) async => Response(body, 200,
+          headers: {'content-type': 'application/json; charset=utf-8'})),
+    );
+    expect(await api.search('Marktplatz, 72070 Tübingen'), isEmpty);
+  });
+
+  test('explicit postcode retains matching and missing postcodes', () async {
+    final api = GeoapifyApi(
+      apiKey: 'test-key',
+      client: MockClient((request) async => Response(
+            jsonEncode({
+              'query': {
+                'parsed': {'postcode': '72070'}
+              },
+              'results': [
+                {
+                  'address_line1': 'Am Markt',
+                  'street': 'Am Markt',
+                  'postcode': '72070',
+                  'city': 'Tübingen',
+                  'lat': 48.52,
+                  'lon': 9.05
+                },
+                {
+                  'address_line1': 'Holzmarkt',
+                  'street': 'Holzmarkt',
+                  'city': 'Tübingen',
+                  'lat': 48.521,
+                  'lon': 9.054
+                },
+                {
+                  'address_line1': 'Marktplatz',
+                  'street': 'Marktplatz',
+                  'postcode': '72764',
+                  'city': 'Reutlingen',
+                  'lat': 48.49,
+                  'lon': 9.21
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          )),
+    );
+    final places = await api.search('Marktplatz, 72070 Tübingen');
+    expect(places.map((place) => place.displayName),
+        ['Am Markt, 72070 Tübingen', 'Holzmarkt, Tübingen']);
+    expect(await api.search('Marktplatz, 72070 Tübingen'), same(places));
+  });
+
+  test('recorded city query without postcode discards other cities', () async {
+    final body =
+        File('test/fixtures/geoapify/marktplatz_tuebingen_ohne_plz.json')
+            .readAsStringSync();
+    final api = GeoapifyApi(
+        apiKey: 'test',
+        client: MockClient((request) async => Response(body, 200,
+            headers: {'content-type': 'application/json; charset=utf-8'})));
+    expect(await api.search('marktplatz tübingen'), isEmpty);
+  });
+
+  test('recorded canonical street and city remain a primary result', () async {
+    final body = File('test/fixtures/geoapify/am_markt_tuebingen.json')
+        .readAsStringSync();
+    final api = GeoapifyApi(
+        apiKey: 'test',
+        client: MockClient((request) async => Response(body, 200,
+            headers: {'content-type': 'application/json; charset=utf-8'})));
+    final places = await api.search('Am Markt Tübingen');
+    expect(places.single.displayName, 'Am Markt, 72070 Tübingen');
+  });
+
+  test('recorded translated city name keeps the recognized primary result',
+      () async {
+    final body = File('test/fixtures/geoapify/marienplatz_munich.json')
+        .readAsStringSync();
+    final api = GeoapifyApi(
+        apiKey: 'test',
+        client: MockClient((request) async => Response(body, 200,
+            headers: {'content-type': 'application/json; charset=utf-8'})));
+    final places = await api.search('Marienplatz Munich');
+    expect(places.single.displayName, 'Marienplatz, 80331 München');
+  });
+
+  test('city matching preserves umlauts, partial input and missing city fields',
+      () async {
+    for (final city in ['Tübingen', 'Tuebingen', 'Tübi']) {
+      final api = GeoapifyApi(
+          apiKey: 'test',
+          client: MockClient((request) async => Response(
+              jsonEncode({
+                'query': {
+                  'parsed': {'street': 'Am Markt', 'city': city}
+                },
+                'results': [
+                  {
+                    'address_line1': 'Am Markt',
+                    'street': 'Am Markt',
+                    'city': 'Tübingen',
+                    'lat': 48.52,
+                    'lon': 9.05
+                  },
+                  {
+                    'address_line1': 'Park',
+                    'street': 'Park',
+                    'lat': 48.521,
+                    'lon': 9.054
+                  },
+                  {
+                    'address_line1': 'Marktplatz',
+                    'street': 'Marktplatz',
+                    'city': 'Reutlingen',
+                    'lat': 48.49,
+                    'lon': 9.21
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'})));
+      final places = await api.search('Am Markt $city');
+      expect(places.map((place) => place.displayName),
+          ['Am Markt, Tübingen', 'Park'],
+          reason: city);
+    }
   });
 }

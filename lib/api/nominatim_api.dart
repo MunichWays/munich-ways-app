@@ -39,7 +39,9 @@ class NominatimApi {
   }) async {
     final queryParameters = {
       'q': query,
-      'format': 'geocodejson',
+      // GeoCodeJSON omits namedetails even when requested. JSONv2 retains aliases.
+      'format': 'jsonv2',
+      'namedetails': '1',
       'addressdetails': '1',
       'limit': '15',
       if (localOnly) ...{
@@ -62,6 +64,34 @@ class NominatimApi {
     }
   }
 
+  static List<String> _alternativeNames(Map<String, dynamic> result) {
+    final details = result['namedetails'];
+    if (details is! Map) return const [];
+    final primary = (result['name'] ?? details['name'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final names = <String, String>{};
+    for (final key in [
+      'alt_name',
+      'loc_name',
+      'short_name',
+      'official_name',
+      'old_name'
+    ]) {
+      final value = details[key];
+      if (value is! String) continue;
+      for (final part in value.split(';')) {
+        final name = part.trim();
+        final normalized = name.toLowerCase();
+        if (name.isNotEmpty && normalized != primary) {
+          names.putIfAbsent(normalized, () => name);
+        }
+      }
+    }
+    return names.values.toList(growable: false);
+  }
+
   static String _viewBox(LatLng center) =>
       '${center.longitude - 0.35},${center.latitude + 0.25},'
       '${center.longitude + 0.35},${center.latitude - 0.25}';
@@ -77,8 +107,7 @@ class NominatimApi {
           .toList();
     }
 
-    // Keep compatibility with proxies that still return JSONv2 despite the
-    // requested format.
+    // JSONv2 preserves the full name details requested above.
     if (json is List) {
       return json.whereType<Map<String, dynamic>>().map((result) {
         return Place(
@@ -87,6 +116,7 @@ class NominatimApi {
             double.parse(result['lat'].toString()),
             double.parse(result['lon'].toString()),
           ),
+          alternativeNames: _alternativeNames(result),
         );
       }).toList();
     }
@@ -175,7 +205,12 @@ class NominatimApi {
             ? value('amenity')
             : value('shop');
 
-    final compact = [name, streetPart, cityPart]
+    final localArea = [
+      value('neighbourhood'),
+      value('quarter'),
+      value('suburb'),
+    ].firstWhere((part) => part.isNotEmpty, orElse: () => '');
+    final compact = [name, streetPart, localArea, cityPart]
         .where((part) => part.isNotEmpty)
         .toSet()
         .join(', ');
