@@ -147,7 +147,7 @@ class _CompactColorLegend extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 5),
-              Text(item.$2),
+              Flexible(child: Text(item.$2)),
             ],
           ),
       ],

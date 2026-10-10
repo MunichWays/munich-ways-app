@@ -10,6 +10,7 @@ import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
+import 'package:munich_ways/ui/map/route_point_badge.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 
@@ -26,6 +27,166 @@ class _RoutesStore extends SavedRoutesStore {
 }
 
 void main() {
+  for (final keyboard in [false, true]) {
+    testWidgets(
+        'map selection exits search and planner without overlapping transitions (keyboard: $keyboard)',
+        (tester) async {
+      final model = MapScreenViewModel(store: _SettingsStore())
+        ..destination = Place('Ende', const LatLng(48.3, 11.7));
+      addTearDown(model.dispose);
+      RoutePlannerMapSelection? selection;
+      await tester.pumpWidget(MaterialApp(
+          home: Builder(
+              builder: (context) => Scaffold(
+                    body: TextButton(
+                        onPressed: () async {
+                          selection = await showRoutePlannerSheet(context,
+                              model: model);
+                        },
+                        child: const Text('Open')),
+                  ))));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Zwischenziel hinzufügen'));
+      await tester.pumpAndSettle();
+      if (keyboard) {
+        await tester.showKeyboard(find.byType(TextField).last);
+        await tester.pumpAndSettle();
+        expect(tester.testTextInput.isVisible, isTrue);
+        // Cancelling search must return to the draft, then allow a fresh attempt.
+        await tester.tap(find.byTooltip('Schließen').last);
+        await tester.pumpAndSettle();
+        expect(selection, isNull);
+        expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+        await tester.tap(find.text('Zwischenziel auswählen'));
+        await tester.pumpAndSettle();
+        await tester.showKeyboard(find.byType(TextField).last);
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text('Auf Karte wählen'));
+      for (var frame = 0; frame < 30; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(tester.takeException(), isNull);
+        // Reveal the map only after both modal surfaces have been removed.
+        if (selection != null) {
+          expect(find.byType(DraggableScrollableSheet), findsNothing);
+        }
+      }
+      expect(selection?.type, RoutePlannerPointType.stop);
+      expect(selection?.stopIndex, 0);
+      expect(selection?.destination, model.destination);
+      expect(tester.testTextInput.isVisible, isFalse);
+    });
+  }
+
+  Future<void> openPlanner(
+      WidgetTester tester, MapScreenViewModel model, _RoutesStore store) async {
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => Scaffold(
+                  body: TextButton(
+                      onPressed: () => showRoutePlannerSheet(context,
+                          model: model, routesStore: store),
+                      child: const Text('Open')),
+                ))));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+      'move menus preserve all selected places and closing discards edits',
+      (tester) async {
+    final start = Place('Anfang', const LatLng(48.1, 11.5));
+    final stop1 = Place('Stopp A', const LatLng(48.2, 11.6));
+    final stop2 = Place('Stopp B', const LatLng(48.25, 11.65));
+    final end = Place('Ende', const LatLng(48.3, 11.7));
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..routeStart = start
+      ..waypoints.addAll([stop1, stop2])
+      ..destination = end;
+    addTearDown(model.dispose);
+    final store = _RoutesStore();
+    await openPlanner(tester, model, store);
+
+    Future<void> move(String place, String action) async {
+      final row =
+          find.ancestor(of: find.text(place), matching: find.byType(ListTile));
+      final menu =
+          find.descendant(of: row, matching: find.byTooltip('Mehr Optionen'));
+      await tester.ensureVisible(menu);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(action));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> save() async {
+      await tester.tap(find.byTooltip('Route speichern'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Speichern'));
+      await tester.pumpAndSettle();
+    }
+
+    await move('Stopp A', 'Als Ziel');
+    await save();
+    expect(store.saved?.start, start);
+    expect(store.saved?.stops, [stop2, end]);
+    expect(store.saved?.destination, stop1);
+    await move('Stopp B', 'Als Start');
+    await save();
+    expect(store.saved?.start, stop2);
+    expect(store.saved?.stops, [start, end]);
+    expect(store.saved?.destination, stop1);
+    expect(model.routeStart, start);
+    expect(model.waypoints, [stop1, stop2]);
+    expect(model.destination, end);
+    await tester.tap(find.byTooltip('Schließen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final rows = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
+    expect(rows.map((row) => (row.title! as Text).data),
+        ['Anfang', 'Stopp A', 'Stopp B', 'Ende']);
+    expect(rows.map((row) => (row.subtitle! as Text).data),
+        ['Start', 'Zwischenziel 1', 'Zwischenziel 2', 'Ziel']);
+  });
+
+  testWidgets(
+      'implicit GPS start survives stop movement and empty destination can recover',
+      (tester) async {
+    final stop = Place('Stopp', const LatLng(48.2, 11.6));
+    final end = Place('Ende', const LatLng(48.3, 11.7));
+    final model = MapScreenViewModel(store: _SettingsStore())
+      ..waypoints.add(stop)
+      ..destination = end;
+    addTearDown(model.dispose);
+    final store = _RoutesStore();
+    await openPlanner(tester, model, store);
+    await tester.tap(find.byTooltip('Mehr Optionen').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Löschen'));
+    await tester.pumpAndSettle();
+    final calculate = find.widgetWithText(FilledButton, 'Route berechnen');
+    expect(tester.widget<FilledButton>(calculate).onPressed, isNull);
+    final stopRow =
+        find.ancestor(of: find.text('Stopp'), matching: find.byType(ListTile));
+    await tester.tap(find.descendant(
+        of: stopRow, matching: find.byTooltip('Mehr Optionen')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Als Ziel'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(calculate).onPressed, isNotNull);
+    expect(find.text('Aktueller Standort'), findsOneWidget);
+    await tester.tap(find.byTooltip('Route speichern'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+    expect(store.saved?.start, isNull);
+    expect(store.saved?.destination, stop);
+    expect(store.saved?.stops, isEmpty);
+    expect(model.destination, end);
+  });
+
   testWidgets('shows current comfort while navigating and hides it after edit',
       (tester) async {
     final model = MapScreenViewModel(store: _SettingsStore())
@@ -277,12 +438,20 @@ void main() {
     expect(closeRect.right,
         lessThan(tester.getTopLeft(find.text('Route berechnen')).dx));
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.navigation)).color,
-      AppColors.mapAccentColor,
+      tester
+          .widget<CircleAvatar>(find.descendant(
+              of: find.byType(RoutePointBadge).first,
+              matching: find.byType(CircleAvatar)))
+          .backgroundColor,
+      AppColors.munichWaysOrange,
     );
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.sports_score)).color,
-      AppColors.mapRed,
+      tester
+          .widget<CircleAvatar>(find.descendant(
+              of: find.byType(RoutePointBadge).last,
+              matching: find.byType(CircleAvatar)))
+          .foregroundColor,
+      AppColors.heroForeground,
     );
     expect(find.text('1'), findsOneWidget);
     final destinationRow = tester.widget<ListTile>(
@@ -389,8 +558,8 @@ void main() {
         matching: find.byType(ListTile),
       ),
     );
-    expect(destinationRow.tileColor, AppColors.uiPrimary);
-    expect(destinationRow.textColor, Colors.white);
+    expect(destinationRow.tileColor, AppColors.munichWaysOrange);
+    expect(destinationRow.textColor, AppColors.heroForeground);
 
     final calculateButton = tester.widget<FilledButton>(
       find.ancestor(
@@ -441,7 +610,7 @@ void main() {
         .backgroundColor;
     expect(
       startBackground,
-      darkThemeData.colorScheme.surfaceContainerHighest,
+      AppColors.munichWaysOrange,
     );
     final calculateButton = tester.widget<FilledButton>(
       find.ancestor(
@@ -473,12 +642,12 @@ void main() {
 
     await tester.tap(find.byTooltip('Schließen'));
     await tester.pumpAndSettle();
-    model.destination = Place('Ziel', const LatLng(48.3, 11.7));
+    model.destination = Place('Zielort', const LatLng(48.3, 11.7));
     await tester.tap(find.text('Öffnen'));
     await tester.pumpAndSettle();
 
     final destinationRow = tester.widget<ListTile>(
-      find.ancestor(of: find.text('Ziel'), matching: find.byType(ListTile)),
+      find.ancestor(of: find.text('Zielort'), matching: find.byType(ListTile)),
     );
     expect(
       destinationRow.tileColor,
@@ -600,8 +769,11 @@ void main() {
 
     expect(find.text('Aktueller Standort'), findsOneWidget);
     expect(find.byTooltip('Aktuellen Standort verwenden'), findsNothing);
-    final startIcon = tester.widget<Icon>(find.byIcon(Icons.navigation));
-    expect(startIcon.color, AppColors.mapAccentColor);
+    final startBadge = tester.widget<CircleAvatar>(find.ancestor(
+      of: find.byIcon(Icons.navigation),
+      matching: find.byType(CircleAvatar),
+    ));
+    expect(startBadge.foregroundColor, AppColors.heroForeground);
     expect(
       tester
           .widget<CircleAvatar>(
@@ -611,7 +783,7 @@ void main() {
             ),
           )
           .backgroundColor,
-      Colors.white,
+      AppColors.munichWaysOrange,
     );
   });
 

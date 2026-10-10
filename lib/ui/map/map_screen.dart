@@ -20,6 +20,7 @@ import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/poi_details.dart';
+import 'package:munich_ways/model/example_places.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
@@ -48,6 +49,7 @@ import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
 import 'package:munich_ways/ui/map/poi_geojson.dart';
+import 'package:munich_ways/ui/map/example_places_map_style.dart';
 import 'package:munich_ways/ui/map/route_position_snapper.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 import 'package:munich_ways/ui/map/route_display.dart';
@@ -63,6 +65,12 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
 class MapScreen extends StatefulWidget {
+  const MapScreen({super.key, this.startupInteractionsEnabled = true});
+
+  /// Map/style/ratings may load behind the first-run notice. Location prompts
+  /// and startup messages wait until that notice is closed.
+  final bool startupInteractionsEnabled;
+
   @override
   _MapScreenState createState() => _MapScreenState();
 }
@@ -194,6 +202,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const _kRepairStationsSourceId = 'munichways_repair_stations';
   static const _kRepairStationsLayerId = 'munichways_repair_stations_symbols';
   static const _kRepairStationsImageId = 'munichways_repair_stations_icon';
+  static const _kExamplePlacesSourceId = 'munichways_example_places';
+  static const _kExamplePlacesLayerId = 'munichways_example_places_symbols';
+  static const _kExamplePlacesLabelLayerId = 'munichways_example_places_labels';
+  static const _kExamplePlacesImageId = 'munichways_example_places_icon';
 
   /// Cycling route as GeoJSON (not [Line] annotation). Layer order: route, then
   /// Radl-Netz lines (gesamt, radl, hit), then basemap labels (water, streets, …)
@@ -256,6 +268,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Completer<Map<String, dynamic>> _firstPublicToiletsData = Completer();
   StreamSubscription<Map<String, dynamic>>? _publicToiletsSubscription;
   bool _repairStationsGeoJsonReady = false;
+  bool _examplePlacesGeoJsonReady = false;
+  bool _examplePlacesSyncRunning = false;
   bool _repairStationsLoadStarted = false;
   bool _repairStationsSyncRunning = false;
   bool _repairStationsSyncQueued = false;
@@ -452,6 +466,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _drinkingWaterGeoJsonReady = false;
       _publicToiletsGeoJsonReady = false;
       _repairStationsGeoJsonReady = false;
+      _examplePlacesGeoJsonReady = false;
       _lastSyncedNetworkFingerprint = null;
       _lastRouteFingerprint = null;
       _mapStyleString = style;
@@ -467,7 +482,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       unawaited(_persistCameraPosition());
       return;
     }
-    if (state != AppLifecycleState.resumed) return;
+    if (state != AppLifecycleState.resumed ||
+        !widget.startupInteractionsEnabled) return;
 
     if (displayCurrentLocationOnResume) {
       displayCurrentLocationOnResume = false;
@@ -804,17 +820,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
           ));
         });
-        if (!kStoreScreenshots && !_locationPrimeStarted) {
-          _locationPrimeStarted = true;
-          // Location acquisition is independent of map/style loading. Starting
-          // it here lets the first cached or live fix wait for the map instead
-          // of making the user wait at the Stachus while both run serially.
-          unawaited(_primeLocationOnStart(model));
-        }
         return model;
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          if (widget.startupInteractionsEnabled &&
+              !kStoreScreenshots &&
+              !_locationPrimeStarted) {
+            _locationPrimeStarted = true;
+            // Start only once the notice is closed, independently of style/data.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && widget.startupInteractionsEnabled) {
+                unawaited(_primeLocationOnStart(model));
+              }
+            });
+          }
           final energySaving =
               context.watch<EnergySavingController?>()?.effectiveEnabled ??
                   false;
@@ -846,7 +866,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           }
           _scheduleOverlaySync(model);
 
-          if (model.initialRatingsLoadFailed && !_initialRatingsRetryOffered) {
+          if (widget.startupInteractionsEnabled &&
+              model.initialRatingsLoadFailed &&
+              !_initialRatingsRetryOffered) {
             _initialRatingsRetryOffered = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _offerInitialRatingsReload(model);
@@ -887,6 +909,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             key: scaffoldMessengerKey,
             child: Scaffold(
               key: scaffoldKey,
+              // Keep the native map surface stable while the keyboard animates.
+              // Only the Flutter controls above it avoid the keyboard.
+              resizeToAvoidBottomInset: false,
               body: Stack(
                 children: [
                   const StreetDetailsModalListener(),
@@ -972,6 +997,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _drinkingWaterGeoJsonReady = false;
                               _publicToiletsGeoJsonReady = false;
                               _repairStationsGeoJsonReady = false;
+                              _examplePlacesGeoJsonReady = false;
                               if (!mounted ||
                                   mapStyleGeneration != _mapStyleGeneration ||
                                   !identical(c, _mapController)) {
@@ -1003,6 +1029,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _scheduleDrinkingWaterSync();
                               _schedulePublicToiletsSync();
                               _scheduleRepairStationsSync();
+                              unawaited(_syncExamplePlaces());
                               _startDrinkingWaterLoad();
                               _startPublicToiletsLoad();
                               _startRepairStationsLoad();
@@ -1082,6 +1109,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: ColoredBox(color: statusBarBackground),
                     ),
                   Positioned.fill(
+                    bottom: MediaQuery.viewInsetsOf(context).bottom,
                     child: SafeArea(
                       child: Stack(
                         clipBehavior: Clip.none,
@@ -2269,9 +2297,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         SnackBar(
           duration: const Duration(seconds: 12),
           content: Text(
-            strings.isEnglish
-                ? 'Ratings could not be loaded.'
-                : 'Bewertungen konnten nicht geladen werden.',
+            model.hasRatings
+                ? (strings.isEnglish
+                    ? 'Online ratings could not be updated. Local ratings remain available.'
+                    : 'Online-Bewertungen konnten nicht aktualisiert werden. Lokale Bewertungen sind verfügbar.')
+                : (strings.isEnglish
+                    ? 'Ratings could not be loaded.'
+                    : 'Bewertungen konnten nicht geladen werden.'),
           ),
           action: SnackBarAction(
             label: strings.reloadNetwork,
@@ -2387,6 +2419,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     if (!mounted || selection == null) return;
 
+    // Picking a point requires a stationary camera, just like touching the map.
+    // Keep GPS/route data alive; reuse the existing tracking pause state.
+    _pauseNavigation(model);
+    model.onUserStoppedFollowingLocation();
     setState(() => _pendingRouteMapSelection = selection);
     final pointName = switch (selection.type) {
       RoutePlannerPointType.start =>
@@ -2396,7 +2432,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       RoutePlannerPointType.destination =>
         context.l10n.isEnglish ? 'destination' : 'Ziel',
     };
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
           context.l10n.isEnglish
@@ -2733,7 +2769,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (controller == null ||
         (!_drinkingWaterGeoJsonReady &&
             !_publicToiletsGeoJsonReady &&
-            !_repairStationsGeoJsonReady)) {
+            !_repairStationsGeoJsonReady &&
+            !_examplePlacesGeoJsonReady)) {
       return null;
     }
     try {
@@ -2741,6 +2778,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         if (_drinkingWaterGeoJsonReady) _kDrinkingWaterLayerId,
         if (_publicToiletsGeoJsonReady) _kPublicToiletsLayerId,
         if (_repairStationsGeoJsonReady) _kRepairStationsLayerId,
+        if (_examplePlacesGeoJsonReady) _kExamplePlacesLayerId,
+        if (_examplePlacesGeoJsonReady) _kExamplePlacesLabelLayerId,
       ];
       final features = await controller.queryRenderedFeatures(
         screenPoint,
@@ -2803,6 +2842,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 PoiType.bicycleRepairStation => context.l10n.isEnglish
                     ? 'Bicycle repair station'
                     : 'Fahrrad-Servicestation',
+                PoiType.place => context.l10n.isEnglish ? 'Place' : 'Ort',
               }
             : details.title,
         position,
@@ -3321,6 +3361,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _syncOverlays(MapScreenViewModel model) async {
     final controller = _mapController;
     if (!_styleLoaded || controller == null) return;
+    // Optional local POIs must never hold up route or network rendering.
+    unawaited(_syncExamplePlaces());
 
     if (_overlaySyncRunning) {
       _overlaySyncQueued = true;
@@ -4512,6 +4554,74 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     } finally {
       _repairStationsSyncRunning = false;
       if (_repairStationsSyncQueued) _scheduleRepairStationsSync();
+    }
+  }
+
+  Future<void> _syncExamplePlaces() async {
+    final controller = _mapController;
+    if (controller == null ||
+        !_styleLoaded ||
+        _examplePlacesGeoJsonReady ||
+        _examplePlacesSyncRunning) return;
+    _examplePlacesSyncRunning = true;
+    bool isCurrent() =>
+        mounted && _styleLoaded && identical(controller, _mapController);
+    try {
+      await _serializePoiStyleOperation(() async {
+        if (!isCurrent() || _examplePlacesGeoJsonReady) return;
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final style = ExamplePlacesMapStyle(dark: dark);
+        // Check native state so a partially failed setup can recover on the
+        // next overlay update instead of repeatedly adding a duplicate source.
+        final sources = await controller.getSourceIds();
+        if (!isCurrent()) return;
+        if (!sources.contains(_kExamplePlacesSourceId)) {
+          await controller.addGeoJsonSource(
+            _kExamplePlacesSourceId,
+            examplePlacesGeoJson(),
+          );
+        }
+        if (!isCurrent()) return;
+        final layers = await controller.getLayerIds();
+        if (!isCurrent()) return;
+        if (!layers.contains(_kExamplePlacesLayerId)) {
+          final image = await _createPoiIconImage(Icons.star);
+          if (!isCurrent()) return;
+          await controller.addImage(
+            _kExamplePlacesImageId,
+            image,
+          );
+          if (!isCurrent()) return;
+          await controller.addSymbolLayer(
+            _kExamplePlacesSourceId,
+            _kExamplePlacesLayerId,
+            style.markers(_kExamplePlacesImageId),
+            minzoom: 12,
+            enableInteraction: false,
+          );
+        }
+        if (!isCurrent()) return;
+        if (!layers.contains(_kExamplePlacesLabelLayerId)) {
+          await controller.addSymbolLayer(
+            _kExamplePlacesSourceId,
+            _kExamplePlacesLabelLayerId,
+            style.labels,
+            minzoom: 12,
+            enableInteraction: false,
+          );
+        }
+        if (mounted && identical(controller, _mapController)) {
+          _examplePlacesGeoJsonReady = true;
+        }
+      });
+    } catch (error, stackTrace) {
+      log.w('Displaying example POIs failed',
+          error: error, stackTrace: stackTrace);
+    } finally {
+      _examplePlacesSyncRunning = false;
+      if (mounted && !identical(controller, _mapController)) {
+        unawaited(_syncExamplePlaces());
+      }
     }
   }
 

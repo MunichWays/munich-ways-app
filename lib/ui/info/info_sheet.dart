@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/info/app_tip.dart';
 import 'package:munich_ways/ui/info/app_version_label.dart';
 import 'package:munich_ways/ui/info/imprint_screen.dart';
 import 'package:munich_ways/ui/info/info_sheet_about_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_main_content.dart';
+import 'package:munich_ways/ui/info/info_sheet_tips_content.dart';
+import 'package:munich_ways/ui/info/tip_viewer.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 
 void showMapInfoSheet(BuildContext context) {
@@ -24,12 +27,24 @@ class InfoSheet extends StatefulWidget {
   State<InfoSheet> createState() => _InfoSheetState();
 }
 
+enum _InfoPage { main, mapHelp, about, tips }
+
 class _InfoSheetState extends State<InfoSheet> {
   String _versionLabel = '…';
 
-  /// Drill-in help page.
-  bool _showMapHelp = false;
-  bool _showAbout = false;
+  ({_InfoPage page, AppTip? tip}) _location = (page: _InfoPage.main, tip: null);
+
+  void _open(_InfoPage page, {AppTip? tip}) {
+    setState(() => _location = (page: page, tip: tip));
+  }
+
+  void _back() {
+    _open(_location.tip != null
+        ? _InfoPage.tips
+        : _location.page == _InfoPage.tips
+            ? _InfoPage.mapHelp
+            : _InfoPage.main);
+  }
 
   @override
   void initState() {
@@ -43,10 +58,13 @@ class _InfoSheetState extends State<InfoSheet> {
   }
 
   Widget _buildTitle(BuildContext context) {
-    if (_showMapHelp) {
+    if (_location.page == _InfoPage.tips) {
+      return BottomSheetTitle(title: context.l10n.isEnglish ? 'Tips' : 'Tipps');
+    }
+    if (_location.page == _InfoPage.mapHelp) {
       return BottomSheetTitle(title: context.l10n.tr('Legende & Tipps'));
     }
-    if (_showAbout) {
+    if (_location.page == _InfoPage.about) {
       return BottomSheetTitle(
         title: context.l10n.isEnglish
             ? 'About & attributions'
@@ -109,33 +127,49 @@ class _InfoSheetState extends State<InfoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return BottomSheetFrame(
-      startingElement: _showMapHelp || _showAbout
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              tooltip: context.l10n.tr('Zurück'),
-              onPressed: () => setState(() {
-                _showMapHelp = false;
-                _showAbout = false;
-              }),
+    return PopScope(
+      canPop: _location.page == _InfoPage.main,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _back();
+      },
+      child: _location.tip != null
+          ? TipViewer(
+              tips: orderedAppTips,
+              index: orderedAppTips.indexOf(_location.tip!),
+              onChanged: (index) =>
+                  _open(_InfoPage.tips, tip: orderedAppTips[index]),
+              onBack: _back,
+              onClose: () => Navigator.of(context).pop(),
             )
-          : null,
-      title: _buildTitle(context),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: _showMapHelp
-            ? const InfoSheetHelpContent()
-            : _showAbout
-                ? InfoSheetAboutContent(
-                    versionLabel: _versionLabel,
-                    onOpenImprint: _openImprint,
-                  )
-                : InfoSheetMainContent(
-                    versionLabel: _versionLabel,
-                    onOpenMapHelp: () => setState(() => _showMapHelp = true),
-                    onOpenAbout: () => setState(() => _showAbout = true),
-                  ),
-      ),
+          : BottomSheetFrame(
+              key: ValueKey(_location),
+              startingElement: _location.page != _InfoPage.main
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      tooltip: context.l10n.tr('Zurück'),
+                      onPressed: _back,
+                    )
+                  : null,
+              title: _buildTitle(context),
+              body: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: switch (_location.page) {
+                  _InfoPage.mapHelp => InfoSheetHelpContent(
+                      onOpenTips: () => _open(_InfoPage.tips)),
+                  _InfoPage.tips => InfoSheetTipsContent(
+                      onOpenTip: (tip) => _open(_InfoPage.tips, tip: tip)),
+                  _InfoPage.about => InfoSheetAboutContent(
+                      versionLabel: _versionLabel,
+                      onOpenImprint: _openImprint,
+                    ),
+                  _InfoPage.main => InfoSheetMainContent(
+                      versionLabel: _versionLabel,
+                      onOpenMapHelp: () => _open(_InfoPage.mapHelp),
+                      onOpenAbout: () => _open(_InfoPage.about),
+                    ),
+                },
+              ),
+            ),
     );
   }
 

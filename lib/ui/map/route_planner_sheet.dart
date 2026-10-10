@@ -9,6 +9,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/route_variant_comparison.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/route_point_badge.dart';
 import 'package:munich_ways/ui/place_search/place_search_result.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
 import 'package:munich_ways/ui/theme.dart';
@@ -65,37 +66,48 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
   LatLng? searchCenter,
   RoutePlannerMapSelection? initialPlan,
   SavedRoutesStore? routesStore,
-}) {
+}) async {
   final sheetController = DraggableScrollableController();
+  ModalRoute<RoutePlannerMapSelection>? sheetRoute;
   final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
   final initialChildSize =
       initialStopCount >= 1 || model.hasRouteComparison ? 1.0 : 0.55;
-  return showModalBottomSheet<RoutePlannerMapSelection>(
-    context: context,
-    isScrollControlled: true,
-    enableDrag: false,
-    useSafeArea: true,
-    builder: (_) => DraggableScrollableSheet(
-      controller: sheetController,
-      expand: false,
-      initialChildSize: initialChildSize,
-      minChildSize: 0.55,
-      maxChildSize: 1,
-      shouldCloseOnMinExtent: false,
-      snap: true,
-      snapSizes: const [0.55, 1],
-      builder: (context, scrollController) => SizedBox.expand(
-        child: _RoutePlannerSheet(
-          model: model,
-          searchCenter: searchCenter,
-          initialPlan: initialPlan,
-          scrollController: scrollController,
-          sheetController: sheetController,
-          routesStore: routesStore ?? savedRoutesStore,
-        ),
-      ),
-    ),
-  ).whenComplete(sheetController.dispose);
+  try {
+    final result = await showModalBottomSheet<RoutePlannerMapSelection>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: false,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        sheetRoute = ModalRoute.of<RoutePlannerMapSelection>(sheetContext);
+        return DraggableScrollableSheet(
+          controller: sheetController,
+          expand: false,
+          initialChildSize: initialChildSize,
+          minChildSize: 0.55,
+          maxChildSize: 1,
+          shouldCloseOnMinExtent: false,
+          snap: true,
+          snapSizes: const [0.55, 1],
+          builder: (context, scrollController) => SizedBox.expand(
+            child: _RoutePlannerSheet(
+              model: model,
+              searchCenter: searchCenter,
+              initialPlan: initialPlan,
+              scrollController: scrollController,
+              sheetController: sheetController,
+              routesStore: routesStore ?? savedRoutesStore,
+            ),
+          ),
+        );
+      },
+    );
+    // The map-selection UI must not appear while this sheet is still animating.
+    await sheetRoute?.completed;
+    return result;
+  } finally {
+    sheetController.dispose();
+  }
 }
 
 class _RoutePlannerSheet extends StatefulWidget {
@@ -158,6 +170,12 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   void _scrollToEndAfterLayout() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.scrollController.hasClients) return;
+      // Selecting on the map closes this sheet. Do not start a competing
+      // scroll animation while its exit animation is running.
+      if (ModalRoute.of(context)?.animation?.status ==
+          AnimationStatus.reverse) {
+        return;
+      }
       final end = widget.scrollController.position.maxScrollExtent;
       if (end <= 0) return;
       widget.scrollController.animateTo(end,
@@ -260,37 +278,14 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     return _english ? 'Select intermediate stop' : 'Zwischenziel auswählen';
   }
 
-  Widget _pointLeading(int index) {
+  String _pointLabel(int index) {
     if (index == 0) {
-      final theme = Theme.of(context);
-      final dark = theme.brightness == Brightness.dark;
-      return CircleAvatar(
-        radius: 18,
-        backgroundColor:
-            dark ? theme.colorScheme.surfaceContainerHighest : Colors.white,
-        child: const Icon(
-          Icons.navigation,
-          color: AppColors.mapAccentColor,
-          size: 27,
-        ),
-      );
+      return 'Start';
     }
     if (index == _points.length - 1) {
-      return const Icon(
-        Icons.sports_score,
-        color: AppColors.mapRed,
-        size: 30,
-      );
+      return _english ? 'Destination' : 'Ziel';
     }
-    return CircleAvatar(
-      radius: 14,
-      backgroundColor: AppColors.munichWaysOrange,
-      foregroundColor: Colors.white,
-      child: Text(
-        '$index',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
+    return _english ? 'Intermediate stop $index' : 'Zwischenziel $index';
   }
 
   Future<void> _saveRoute() async {
@@ -425,29 +420,30 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                     onReorderItem: _reorderPoint,
                     itemBuilder: (context, index) {
                       final point = _points[index];
-                      return ReorderableDelayedDragStartListener(
+                      return Column(
                         key: point.key,
-                        index: index,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (index == _points.length - 1)
-                              TextButton.icon(
-                                onPressed: _addStop,
-                                icon:
-                                    const Icon(Icons.add_location_alt_outlined),
-                                label: Text(
-                                  _english
-                                      ? 'Add intermediate stop'
-                                      : 'Zwischenziel hinzufügen',
-                                ),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (index == _points.length - 1)
+                            TextButton.icon(
+                              onPressed: _addStop,
+                              icon: const Icon(Icons.add_location_alt_outlined),
+                              label: Text(
+                                _english
+                                    ? 'Add intermediate stop'
+                                    : 'Zwischenziel hinzufügen',
                               ),
-                            _PlaceRow(
-                              leading: _pointLeading(index),
+                            ),
+                          ReorderableDelayedDragStartListener(
+                            index: index,
+                            child: _PlaceRow(
+                              leading: RoutePointBadge(
+                                  index: index, count: _points.length),
+                              label: _pointLabel(index),
                               value: _pointValue(index),
                               backgroundColor: index == _points.length - 1
                                   ? point.place == null
-                                      ? AppColors.uiPrimary
+                                      ? AppColors.munichWaysOrange
                                       : Theme.of(context).brightness ==
                                               Brightness.dark
                                           ? Theme.of(context)
@@ -457,7 +453,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                                   : null,
                               foregroundColor: index == _points.length - 1
                                   ? point.place == null
-                                      ? Colors.white
+                                      ? AppColors.heroForeground
                                       : Theme.of(context).brightness ==
                                               Brightness.dark
                                           ? Theme.of(context)
@@ -467,6 +463,15 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                                   : null,
                               onTap: () => _selectPlace(index),
                               onEdit: () => _selectPlace(index),
+                              onMoveToStart: index != 0 && point.place != null
+                                  ? () => _reorderPoint(index, 0)
+                                  : null,
+                              onMoveToDestination: index !=
+                                          _points.length - 1 &&
+                                      point.place != null
+                                  ? () =>
+                                      _reorderPoint(index, _points.length - 1)
+                                  : null,
                               onClear: index == 0 && point.place != null
                                   ? () => _deletePoint(index)
                                   : null,
@@ -476,8 +481,8 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                                   ? null
                                   : () => _deletePoint(index),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -549,28 +554,34 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   }
 }
 
-enum _PlaceRowAction { edit, delete }
+enum _PlaceRowAction { edit, delete, moveToStart, moveToDestination }
 
 class _PlaceRow extends StatelessWidget {
   const _PlaceRow({
     required this.leading,
     required this.value,
+    required this.label,
     required this.onTap,
     required this.onEdit,
     this.backgroundColor,
     this.foregroundColor,
     this.onClear,
     this.onDelete,
+    this.onMoveToStart,
+    this.onMoveToDestination,
   });
 
   final Widget leading;
   final String value;
+  final String label;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final Color? backgroundColor;
   final Color? foregroundColor;
   final VoidCallback? onClear;
   final VoidCallback? onDelete;
+  final VoidCallback? onMoveToStart;
+  final VoidCallback? onMoveToDestination;
 
   @override
   Widget build(BuildContext context) {
@@ -591,7 +602,8 @@ class _PlaceRow extends StatelessWidget {
         dimension: 40,
         child: Center(child: leading),
       ),
-      title: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Text(label),
       onTap: onTap,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -614,6 +626,12 @@ class _PlaceRow extends StatelessWidget {
                 case _PlaceRowAction.delete:
                   onDelete?.call();
                   break;
+                case _PlaceRowAction.moveToStart:
+                  onMoveToStart?.call();
+                  break;
+                case _PlaceRowAction.moveToDestination:
+                  onMoveToDestination?.call();
+                  break;
               }
             },
             itemBuilder: (context) => [
@@ -627,6 +645,19 @@ class _PlaceRow extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onMoveToStart != null)
+                PopupMenuItem(
+                  value: _PlaceRowAction.moveToStart,
+                  child: Text(
+                      context.l10n.isEnglish ? 'Use as start' : 'Als Start'),
+                ),
+              if (onMoveToDestination != null)
+                PopupMenuItem(
+                  value: _PlaceRowAction.moveToDestination,
+                  child: Text(context.l10n.isEnglish
+                      ? 'Use as destination'
+                      : 'Als Ziel'),
+                ),
               if (onDelete != null)
                 PopupMenuItem(
                   value: _PlaceRowAction.delete,

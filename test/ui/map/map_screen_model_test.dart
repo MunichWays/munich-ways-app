@@ -158,7 +158,7 @@ void main() {
     );
   });
 
-  test('allows the optional initial network load longer in background',
+  test('allows slow initial and manual downloads the same inactivity deadline',
       () async {
     final api = _RecordingMunichwaysApi();
     final model = MapScreenViewModel(
@@ -169,7 +169,7 @@ void main() {
     model.startInitialLoad();
     await Future<void>.delayed(Duration.zero);
 
-    expect(api.responseTimeout, const Duration(seconds: 30));
+    expect(api.responseTimeout, const Duration(seconds: 90));
   });
 
   test('finishes initial loading when ratings stream stalls offline', () async {
@@ -201,6 +201,8 @@ void main() {
     expect(result, isFalse);
     expect(model.loading, isFalse);
     expect(model.initialRatingsLoadFailed, isTrue);
+    expect(model.hasRatings, isTrue);
+    expect(model.polylines, _localRatings);
   });
 
   test('keeps retry available when reloading the full network fails', () async {
@@ -214,6 +216,60 @@ void main() {
     expect(result, isFalse);
     expect(model.loading, isFalse);
     expect(model.initialRatingsLoadFailed, isTrue);
+  });
+
+  test('reload joins initial enrichment and revalidates without deleting cache',
+      () async {
+    final api = _ControlledMunichwaysApi();
+    final model =
+        MapScreenViewModel(store: _MemorySettingsStore(), munichwaysApi: api);
+    addTearDown(model.dispose);
+    final initial = model.refreshRadlnetze();
+    await Future<void>.delayed(Duration.zero);
+    api.responses.add(_localRatings);
+    await Future<void>.delayed(Duration.zero);
+    expect(model.loading, isFalse);
+    expect(model.hasRatings, isTrue);
+    final reload = model.reloadRadnetz();
+    expect(identical(initial, reload), isTrue);
+    expect(api.requests, 1);
+    await api.responses.close();
+    expect(await initial, isTrue);
+    api.responses = StreamController<Set<MPolyline>>();
+    final revalidation = model.reloadRadnetz();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.requests, 2);
+    expect(api.forceRefresh, isTrue);
+    expect(api.responseTimeout, const Duration(seconds: 90));
+    expect(api.cacheRemovals, 0);
+    api.responses.add(_localRatings);
+    api.responses.addError(TimeoutException('offline'));
+    await api.responses.close();
+    expect(await revalidation, isFalse);
+    expect(model.hasRatings, isTrue);
+    expect(model.loading, isFalse);
+    expect(model.initialRatingsLoadFailed, isTrue);
+    api.responses = StreamController<Set<MPolyline>>();
+    final recovery = model.refreshRadlnetze(forceRefresh: true);
+    await Future<void>.delayed(Duration.zero);
+    api.responses.add(_localRatings);
+    await api.responses.close();
+    expect(await recovery, isTrue);
+    expect(model.initialRatingsLoadFailed, isFalse);
+  });
+
+  test('disposing during enrichment ignores late results and ends loading',
+      () async {
+    final api = _ControlledMunichwaysApi();
+    final model =
+        MapScreenViewModel(store: _MemorySettingsStore(), munichwaysApi: api);
+    final pending = model.refreshRadlnetze();
+    await Future<void>.delayed(Duration.zero);
+    model.dispose();
+    api.responses.add(_localRatings);
+    await api.responses.close();
+    expect(await pending, isFalse);
+    expect(model.loading, isFalse);
   });
 
   test('temporary shortest route survives refresh and restores settings',
@@ -277,13 +333,16 @@ class _StalledMunichwaysApi extends MunichwaysApi {
   @override
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
+    bool forceRefresh = false,
   }) =>
       StreamController<Set<MPolyline>>()
           .stream
           .timeout(responseTimeout ?? const Duration(seconds: 6));
 
   @override
-  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
 }
 
 class _RecordingMunichwaysApi extends MunichwaysApi {
@@ -292,27 +351,33 @@ class _RecordingMunichwaysApi extends MunichwaysApi {
   @override
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
+    bool forceRefresh = false,
   }) async* {
     this.responseTimeout = responseTimeout;
   }
 
   @override
-  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
 }
 
 class _FallbackOnlyMunichwaysApi extends MunichwaysApi {
   @override
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
+    bool forceRefresh = false,
   }) async* {
-    yield <MPolyline>{};
+    yield _localRatings;
     await Completer<void>().future.timeout(
           responseTimeout ?? const Duration(seconds: 6),
         );
   }
 
   @override
-  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
 }
 
 class _ReloadFailureMunichwaysApi extends MunichwaysApi {
@@ -322,13 +387,16 @@ class _ReloadFailureMunichwaysApi extends MunichwaysApi {
   @override
   Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
     Duration? responseTimeout,
+    bool forceRefresh = false,
   }) async* {
-    yield <MPolyline>{};
+    yield _localRatings;
     throw TimeoutException('offline');
   }
 
   @override
-  Future<Map<String, StreetDetails>> getStreetDetails() async => {};
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
 }
 
 class _MemorySettingsStore extends SettingsStore {
@@ -374,4 +442,36 @@ class _RecordingRoutingProvider implements RoutingProvider {
     profiles.add(profile);
     return CycleRoute(coordinates, 1000, 300);
   }
+}
+
+final _localRatings = {
+  MPolyline(
+      points: const [LatLng(48.1, 11.5), LatLng(48.2, 11.6)],
+      details: StreetDetails(farbe: 'grün', isMunichWaysRadlVorrangNetz: true)),
+};
+
+class _ControlledMunichwaysApi extends MunichwaysApi {
+  var responses = StreamController<Set<MPolyline>>();
+  var requests = 0;
+  var cacheRemovals = 0;
+  bool? forceRefresh;
+  Duration? responseTimeout;
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates(
+      {Duration? responseTimeout, bool forceRefresh = false}) {
+    requests++;
+    this.forceRefresh = forceRefresh;
+    this.responseTimeout = responseTimeout;
+    return responses.stream;
+  }
+
+  @override
+  Future<void> removeRatingsCache() async {
+    cacheRemovals++;
+  }
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
 }

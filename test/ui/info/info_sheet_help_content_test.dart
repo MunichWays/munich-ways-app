@@ -17,8 +17,9 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(
-          body: SingleChildScrollView(child: InfoSheetHelpContent()),
+        home: Scaffold(
+          body: SingleChildScrollView(
+              child: InfoSheetHelpContent(onOpenTips: () {})),
         ),
       ),
     );
@@ -41,7 +42,10 @@ void main() {
     expect(find.textContaining('Wohn- oder Nebenstraße'), findsOneWidget);
     expect(find.textContaining('dezent gelbe Linie'), findsOneWidget);
     expect(find.textContaining('ohne MunichWays-Bewertung'), findsNWidgets(2));
-    expect(find.textContaining('Halte eine bewertete Linie'), findsOneWidget);
+    expect(find.textContaining('Halte eine bewertete Linie'), findsNothing);
+    expect(find.text('Ziel auswählen'), findsNothing);
+    expect(find.text('Details zu Streckenabschnitten'), findsNothing);
+    expect(find.text('Tipps & Bedienung'), findsOneWidget);
     expect(find.textContaining('Halte eine farbige Linie'), findsNothing);
   });
 }

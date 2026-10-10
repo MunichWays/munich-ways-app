@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Map usage copy + color legend for [InfoSheet].
 class InfoSheetHelpContent extends StatelessWidget {
-  const InfoSheetHelpContent({super.key});
+  const InfoSheetHelpContent({super.key, required this.onOpenTips});
+
+  final VoidCallback onOpenTips;
 
   @override
   Widget build(BuildContext context) {
@@ -177,21 +179,12 @@ class InfoSheetHelpContent extends StatelessWidget {
               : 'Schiebestücke, z. B. die letzten Meter zum Zielpunkt.',
         ),
         const SizedBox(height: 24),
-        Text(context.l10n.tr('Ziel auswählen'),
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text(context.l10n.isEnglish
-            ? 'Touch and hold a place on the map and select “Start route here”. The route is calculated and navigation starts immediately.'
-            : 'Halte einen Ort auf der Karte gedrückt und wähle „Route hierhin“. Die Route wird berechnet und die Navigation startet direkt.'),
-        const SizedBox(height: 24),
-        Text(context.l10n.tr('Details zu Streckenabschnitten'),
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text(context.l10n.isEnglish
-            ? 'Touch and hold a rated line and select “Show details” to see its rating, measures and links.'
-            : 'Halte eine bewertete Linie gedrückt und wähle „Details anzeigen“, um Bewertung, Maßnahmen und Links zu sehen.'),
+        FilledButton.tonalIcon(
+          onPressed: onOpenTips,
+          icon: const Icon(Icons.lightbulb_outline),
+          label: Text(
+              context.l10n.isEnglish ? 'Tips & controls' : 'Tipps & Bedienung'),
+        ),
       ],
     );
   }

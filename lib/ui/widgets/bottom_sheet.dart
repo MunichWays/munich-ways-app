@@ -317,14 +317,18 @@ class _BottomSheetFrameState extends State<BottomSheetFrame> {
                         ],
                       ),
                     ),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: bodyMax),
-                      child: SingleChildScrollView(
-                        physics: const ClampingScrollPhysics(),
-                        padding: EdgeInsets.only(
-                          bottom: bottomSheetBottomScrollPadding(context),
+                    // The measured header height can lag by one frame. Limit
+                    // the body to the actual remaining height in that frame too.
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: bodyMax),
+                        child: SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          padding: EdgeInsets.only(
+                            bottom: bottomSheetBottomScrollPadding(context),
+                          ),
+                          child: widget.body,
                         ),
-                        child: widget.body,
                       ),
                     ),
                   ],

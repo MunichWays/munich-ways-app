@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
 
-enum PoiType { drinkingWater, publicToilet, bicycleRepairStation }
+enum PoiType { drinkingWater, publicToilet, bicycleRepairStation, place }
 
 class PoiDetails {
   const PoiDetails({
@@ -45,8 +45,11 @@ class PoiDetails {
   final LatLng? location;
 
   PoiType get type => switch (tags['amenity']) {
+        'drinking_water' => PoiType.drinkingWater,
         'toilets' => PoiType.publicToilet,
         'bicycle_repair_station' => PoiType.bicycleRepairStation,
+        _ when tags.containsKey('office') || tags.containsKey('leisure') =>
+          PoiType.place,
         _ => PoiType.drinkingWater,
       };
 

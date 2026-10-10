@@ -16,39 +16,51 @@ Future<Object?> showPlaceSearchSheet(
   LatLng? searchCenter,
   bool showRoutePlannerOption = true,
   bool enableSpeechInput = true,
-}) {
+}) async {
   final sheetController = DraggableScrollableController();
-  return showModalBottomSheet<Object?>(
-    context: context,
-    isScrollControlled: true,
-    enableDrag: false,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => ChangeNotifierProvider<PlaceSearchScreenViewModel>(
-      create: (_) => PlaceSearchScreenViewModel(
-        recentSearchesRepo: recentSearchesRepo,
-        searchCenter: searchCenter,
-      ),
-      child: DraggableScrollableSheet(
-        controller: sheetController,
-        expand: false,
-        initialChildSize: 0.55,
-        minChildSize: 0.28,
-        maxChildSize: 1,
-        shouldCloseOnMinExtent: false,
-        snap: true,
-        snapSizes: const [0.28, 0.55, 1],
-        builder: (context, scrollController) => SizedBox.expand(
-          child: _PlaceSearchSheet(
-            showRoutePlannerOption: showRoutePlannerOption,
-            enableSpeechInput: enableSpeechInput,
-            scrollController: scrollController,
-            sheetController: sheetController,
+  ModalRoute<Object?>? sheetRoute;
+  try {
+    final result = await showModalBottomSheet<Object?>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: false,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        sheetRoute = ModalRoute.of<Object?>(ctx);
+        return ChangeNotifierProvider<PlaceSearchScreenViewModel>(
+          create: (_) => PlaceSearchScreenViewModel(
+            recentSearchesRepo: recentSearchesRepo,
+            searchCenter: searchCenter,
           ),
-        ),
-      ),
-    ),
-  ).whenComplete(sheetController.dispose);
+          child: DraggableScrollableSheet(
+            controller: sheetController,
+            expand: false,
+            initialChildSize: 0.55,
+            minChildSize: 0.28,
+            maxChildSize: 1,
+            shouldCloseOnMinExtent: false,
+            snap: true,
+            snapSizes: const [0.28, 0.55, 1],
+            builder: (context, scrollController) => SizedBox.expand(
+              child: _PlaceSearchSheet(
+                showRoutePlannerOption: showRoutePlannerOption,
+                enableSpeechInput: enableSpeechInput,
+                scrollController: scrollController,
+                sheetController: sheetController,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    // A pop result arrives before the closing animation. Keep the controller
+    // alive and do not open/close the next sheet until this overlay is removed.
+    await sheetRoute?.completed;
+    return result;
+  } finally {
+    sheetController.dispose();
+  }
 }
 
 class _PlaceSearchSheet extends StatefulWidget {
@@ -258,9 +270,12 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                         ],
                         Expanded(
                           child: TextButton.icon(
-                            onPressed: () => Navigator.of(context).pop(
-                              PlaceSearchSheetResult.selectOnMap,
-                            ),
+                            onPressed: () {
+                              FocusScope.of(context).unfocus();
+                              Navigator.of(context).pop(
+                                PlaceSearchSheetResult.selectOnMap,
+                              );
+                            },
                             icon: const Icon(
                               Icons.add_location_alt_outlined,
                               size: 20,
