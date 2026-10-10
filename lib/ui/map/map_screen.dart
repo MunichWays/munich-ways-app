@@ -909,6 +909,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             key: scaffoldMessengerKey,
             child: Scaffold(
               key: scaffoldKey,
+              // Keep the native map surface stable while the keyboard animates.
+              // Only the Flutter controls above it avoid the keyboard.
+              resizeToAvoidBottomInset: false,
               body: Stack(
                 children: [
                   const StreetDetailsModalListener(),
@@ -1106,6 +1109,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: ColoredBox(color: statusBarBackground),
                     ),
                   Positioned.fill(
+                    bottom: MediaQuery.viewInsetsOf(context).bottom,
                     child: SafeArea(
                       child: Stack(
                         clipBehavior: Clip.none,
@@ -2415,6 +2419,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     if (!mounted || selection == null) return;
 
+    // Picking a point requires a stationary camera, just like touching the map.
+    // Keep GPS/route data alive; reuse the existing tracking pause state.
+    _pauseNavigation(model);
+    model.onUserStoppedFollowingLocation();
     setState(() => _pendingRouteMapSelection = selection);
     final pointName = switch (selection.type) {
       RoutePlannerPointType.start =>
@@ -2424,7 +2432,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       RoutePlannerPointType.destination =>
         context.l10n.isEnglish ? 'destination' : 'Ziel',
     };
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
           context.l10n.isEnglish

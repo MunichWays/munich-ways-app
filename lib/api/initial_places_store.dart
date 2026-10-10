@@ -55,7 +55,11 @@ class InitialPlacesStore {
         }
         // Persist the decision before creating either list. A failed write or
         // interrupted first start can then resume without overwriting user data.
-        state = {'pending': true, 'safetyNoticePending': true};
+        state = {
+          'pending': true,
+          'safetyNoticePending': true,
+          'tutorialPending': true
+        };
         await _writeJson(marker, state);
       }
 
@@ -78,29 +82,36 @@ class InitialPlacesStore {
     }
   }
 
-  Future<bool> shouldShowSafetyNotice() async {
+  Future<bool> shouldShowSafetyNotice() => _shouldShow('safetyNoticePending');
+
+  Future<bool> shouldShowTutorial() => _shouldShow('tutorialPending');
+
+  Future<bool> _shouldShow(String flag) async {
     await ensureInitialized();
     final directory = await directoryProvider();
     try {
       final state = jsonDecode(
         await File('${directory.path}/$markerName').readAsString(),
       );
-      // Older installations have no notice flag; do not treat an update as new.
-      return state is Map && state['safetyNoticePending'] == true;
+      // Missing flags belong to previous installs; never retrofit on updates.
+      return state is Map && state[flag] == true;
     } on FormatException {
       return false;
     }
   }
 
-  Future<void> dismissSafetyNotice() {
+  Future<void> dismissSafetyNotice() => _dismiss('safetyNoticePending');
+
+  Future<void> dismissTutorial() => _dismiss('tutorialPending');
+
+  Future<void> _dismiss(String flag) {
     final operation = _markerUpdates.then((_) async {
       await ensureInitialized();
       final directory = await directoryProvider();
       final marker = File('${directory.path}/$markerName');
       final state = jsonDecode(await marker.readAsString());
-      if (state is! Map<String, dynamic> ||
-          state['safetyNoticePending'] != true) return;
-      await _writeJson(marker, {...state, 'safetyNoticePending': false});
+      if (state is! Map<String, dynamic> || state[flag] != true) return;
+      await _writeJson(marker, {...state, flag: false});
     });
     _markerUpdates = operation.catchError((Object _) {});
     return operation;

@@ -39,8 +39,12 @@ void main() {
     expect(favorites, places);
     expect(favorites.map((place) => place.favoriteOrder), [0, 1]);
     expect(await readPlaces('recentSearches.json'), places);
-    expect(jsonDecode(await file(InitialPlacesStore.markerName).readAsString()),
-        {'pending': false, 'safetyNoticePending': true});
+    expect(
+        jsonDecode(await file(InitialPlacesStore.markerName).readAsString()), {
+      'pending': false,
+      'safetyNoticePending': true,
+      'tutorialPending': true
+    });
 
     await newStore().ensureInitialized();
     expect(await readPlaces('recentSearches.json'), places);
@@ -150,6 +154,7 @@ void main() {
     expect(jsonDecode(await marker.readAsString()), {
       'pending': false,
       'safetyNoticePending': false,
+      'tutorialPending': true,
       'futureTutorialPending': true,
     });
   });
@@ -162,6 +167,7 @@ void main() {
     ]) {
       await file(InitialPlacesStore.markerName).writeAsString(contents);
       expect(await newStore().shouldShowSafetyNotice(), isFalse);
+      expect(await newStore().shouldShowTutorial(), isFalse);
     }
   });
 
@@ -169,6 +175,7 @@ void main() {
     test('existing $name prevents first-installation notice', () async {
       await file(name).writeAsString('existing data');
       expect(await store.shouldShowSafetyNotice(), isFalse);
+      expect(await store.shouldShowTutorial(), isFalse);
     });
   }
 
@@ -190,6 +197,63 @@ void main() {
     expect(await newStore().shouldShowSafetyNotice(), isTrue);
     await obstruction.delete();
     await store.dismissSafetyNotice();
+    expect(await newStore().shouldShowSafetyNotice(), isFalse);
+  });
+
+  test(
+      'tutorial stays pending independently and concurrent completion preserves both flags',
+      () async {
+    expect(await store.shouldShowTutorial(), isTrue);
+    await store.dismissSafetyNotice();
+    expect(await newStore().shouldShowTutorial(), isTrue);
+    expect(await newStore().shouldShowSafetyNotice(), isFalse);
+    await Future.wait([
+      store.dismissTutorial(),
+      store.dismissSafetyNotice(),
+      store.dismissTutorial()
+    ]);
+    expect(await newStore().shouldShowTutorial(), isFalse);
+    expect(await newStore().shouldShowSafetyNotice(), isFalse);
+    expect(await readPlaces('favoritePlaces.json'), places);
+    expect(await readPlaces('recentSearches.json'), places);
+  });
+
+  test(
+      'old and interrupted installations never acquire a missing tutorial flag',
+      () async {
+    for (final contents in [
+      '{"pending":false,"safetyNoticePending":true}',
+      '{"pending":true,"safetyNoticePending":true}',
+    ]) {
+      await file(InitialPlacesStore.markerName).writeAsString(contents);
+      expect(await newStore().shouldShowTutorial(), isFalse);
+    }
+  });
+
+  test('interrupted fresh initialization retains tutorial and notice flags',
+      () async {
+    await file(InitialPlacesStore.markerName).writeAsString(
+      '{"pending":true,"safetyNoticePending":true,"tutorialPending":true}',
+    );
+    expect(await store.shouldShowTutorial(), isTrue);
+    expect(await store.shouldShowSafetyNotice(), isTrue);
+    await Future.wait([store.dismissSafetyNotice(), store.dismissTutorial()]);
+    expect(await newStore().shouldShowTutorial(), isFalse);
+    expect(await newStore().shouldShowSafetyNotice(), isFalse);
+  });
+
+  test('failed tutorial write can recover without blocking notice completion',
+      () async {
+    expect(await store.shouldShowTutorial(), isTrue);
+    final obstruction =
+        Directory('${file(InitialPlacesStore.markerName).path}.tmp');
+    await obstruction.create();
+    await expectLater(
+        store.dismissTutorial(), throwsA(isA<FileSystemException>()));
+    expect(await newStore().shouldShowTutorial(), isTrue);
+    await obstruction.delete();
+    await Future.wait([store.dismissTutorial(), store.dismissSafetyNotice()]);
+    expect(await newStore().shouldShowTutorial(), isFalse);
     expect(await newStore().shouldShowSafetyNotice(), isFalse);
   });
 }

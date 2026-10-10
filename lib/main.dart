@@ -19,9 +19,11 @@ Future<void> main() async {
   // Decide before settings/camera writes can make a fresh install look like an
   // update. Only small local files are touched; network POIs stay independent.
   var showSafetyNotice = false;
+  var showTutorial = false;
   try {
     await initialPlacesStore.ensureInitialized();
     showSafetyNotice = await initialPlacesStore.shouldShowSafetyNotice();
+    showTutorial = await initialPlacesStore.shouldShowTutorial();
   } catch (error, stackTrace) {
     log.w('Initializing first-run data failed',
         error: error, stackTrace: stackTrace);
@@ -42,6 +44,7 @@ Future<void> main() async {
   themeController.startAutomaticUpdates();
   runApp(MunichWaysApp(
     showSafetyNotice: showSafetyNotice,
+    showTutorial: showTutorial,
     localeController: localeController,
     themeController: themeController,
     energySavingController: energySavingController,
@@ -53,6 +56,7 @@ class MunichWaysApp extends StatelessWidget {
   MunichWaysApp({
     super.key,
     this.showSafetyNotice = false,
+    this.showTutorial = false,
     AppLocaleController? localeController,
     AppThemeController? themeController,
     EnergySavingController? energySavingController,
@@ -63,6 +67,7 @@ class MunichWaysApp extends StatelessWidget {
 
   final AppLocaleController localeController;
   final bool showSafetyNotice;
+  final bool showTutorial;
   final AppThemeController themeController;
   final EnergySavingController energySavingController;
 
@@ -115,6 +120,8 @@ class MunichWaysApp extends StatelessWidget {
               builder: (context) => FirstRunSafetyGate(
                 showNotice: showSafetyNotice,
                 onDismiss: initialPlacesStore.dismissSafetyNotice,
+                showTutorial: showTutorial,
+                onDismissTutorial: initialPlacesStore.dismissTutorial,
                 builder: (_, interactionsEnabled) => MapScreen(
                   startupInteractionsEnabled: interactionsEnabled,
                 ),

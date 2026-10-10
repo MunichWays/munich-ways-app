@@ -3,50 +3,76 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/ui/first_run/first_run_tutorial.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const appTermsUrl = 'https://www.munichways.de/nutzungbedingungen-app/';
 
-/// Keeps the map mounted behind the notice so data can load while it is read.
+/// Keeps the map mounted behind the notice and optional tutorial so data loads.
 /// The builder receives whether startup interactions (including permissions)
-/// are allowed. Closing the notice preserves the existing map state.
+/// are allowed. Finishing first-run UI preserves the existing map state.
 class FirstRunSafetyGate extends StatefulWidget {
   const FirstRunSafetyGate({
     super.key,
     required this.showNotice,
     required this.onDismiss,
     required this.builder,
+    this.showTutorial = false,
+    this.onDismissTutorial,
     this.openTerms,
-  });
+  }) : assert(!showTutorial || onDismissTutorial != null);
 
   final bool showNotice;
   final Future<void> Function() onDismiss;
   final Widget Function(BuildContext context, bool interactionsEnabled) builder;
   final Future<bool> Function(Uri)? openTerms;
+  final bool showTutorial;
+  final Future<void> Function()? onDismissTutorial;
 
   @override
   State<FirstRunSafetyGate> createState() => _FirstRunSafetyGateState();
 }
 
+enum _FirstRunPhase { notice, tutorial, done }
+
 class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
   final _noticeMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  bool _dismissed = false;
+  late _FirstRunPhase _phase;
 
-  void _dismiss() {
-    if (_dismissed) return;
-    setState(() => _dismissed = true);
-    // Storage must not hold up access to the app. If saving fails, the pending
-    // flag remains on disk and the notice can be shown again on the next start.
-    unawaited(_persistDismissal());
+  @override
+  void initState() {
+    super.initState();
+    _phase = widget.showNotice
+        ? _FirstRunPhase.notice
+        : widget.showTutorial
+            ? _FirstRunPhase.tutorial
+            : _FirstRunPhase.done;
   }
 
-  Future<void> _persistDismissal() async {
+  void _dismiss(_FirstRunPhase phase) {
+    if (_phase != phase || phase == _FirstRunPhase.done) return;
+    final tutorial = phase == _FirstRunPhase.tutorial;
+    setState(() => _phase = !tutorial && widget.showTutorial
+        ? _FirstRunPhase.tutorial
+        : _FirstRunPhase.done);
+    // Storage must not hold up access to the app. If saving fails, the pending
+    // flag remains on disk and the notice can be shown again on the next start.
+    unawaited(_persistDismissal(tutorial));
+  }
+
+  Future<void> _persistDismissal(bool tutorial) async {
     try {
-      await widget.onDismiss();
+      if (tutorial) {
+        await widget.onDismissTutorial!();
+      } else {
+        await widget.onDismiss();
+      }
     } catch (error, stackTrace) {
-      log.w('Saving first-run safety notice dismissal failed',
-          error: error, stackTrace: stackTrace);
+      log.w(
+          'Saving first-run ${tutorial ? 'tutorial' : 'safety notice'} dismissal failed',
+          error: error,
+          stackTrace: stackTrace);
     }
   }
 
@@ -61,7 +87,7 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
     } catch (error, stackTrace) {
       log.w('Opening app terms failed', error: error, stackTrace: stackTrace);
     }
-    if (!mounted || _dismissed || opened) return;
+    if (!mounted || _phase != _FirstRunPhase.notice || opened) return;
     messenger.showSnackBar(SnackBar(
       content: Text(english
           ? 'The link could not be opened. Please try again.'
@@ -71,11 +97,11 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = widget.showNotice && !_dismissed;
+    final visible = _phase != _FirstRunPhase.done;
     return PopScope<void>(
       canPop: !visible,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && visible) _dismiss();
+        if (!didPop && visible) _dismiss(_phase);
       },
       child: Stack(
         fit: StackFit.expand,
@@ -93,7 +119,10 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
           if (visible)
             ScaffoldMessenger(
               key: _noticeMessengerKey,
-              child: _buildNotice(context),
+              child: _phase == _FirstRunPhase.notice
+                  ? _buildNotice(context)
+                  : FirstRunTutorial(
+                      onFinish: () => _dismiss(_FirstRunPhase.tutorial)),
             ),
         ],
       ),
@@ -141,16 +170,17 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 640),
+              constraints: const BoxConstraints(maxWidth: 640, maxHeight: 720),
               child: Card(
+                margin: EdgeInsets.zero,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 8, 12),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
                       child: Row(
                         children: [
                           Expanded(
@@ -161,7 +191,7 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
                           ),
                           IconButton(
                             tooltip: context.l10n.close,
-                            onPressed: _dismiss,
+                            onPressed: () => _dismiss(_FirstRunPhase.notice),
                             icon: const Icon(Icons.close),
                           ),
                         ],
@@ -169,7 +199,7 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
                     ),
                     Flexible(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -177,25 +207,60 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
                               header: true,
                               child: Text(
                                 english
-                                    ? 'Ride relaxed – with your eyes open'
-                                    : 'Entspannt unterwegs – mit offenen Augen',
+                                    ? 'As easy as riding a bike!'
+                                    : 'So einfach wie Radfahren!',
                                 style: Theme.of(context)
                                     .textTheme
                                     .headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
+                                    ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            Text(
+                              english
+                                  ? 'Relaxed everyday cycling.'
+                                  : 'Entspannt Rad fahren im Alltag.',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const SizedBox(height: 12),
+                            _welcomeStep(
+                                context,
+                                1,
+                                Icons.touch_app_outlined,
+                                english
+                                    ? 'Long press your destination on the map'
+                                    : 'Ziel auf der Karte länger drücken'),
+                            _welcomeStep(
+                                context,
+                                2,
+                                Icons.play_arrow_rounded,
+                                english
+                                    ? 'Choose “Start route here”, then tap “Start”'
+                                    : '„Route hierhin“ wählen, dann „Starten“ antippen'),
+                            _welcomeStep(
+                                context,
+                                3,
+                                Icons.navigation_outlined,
+                                english
+                                    ? 'Follow the navigation instructions'
+                                    : 'Navigationshinweisen folgen'),
                             const SizedBox(height: 20),
+                            const Divider(),
+                            const SizedBox(height: 8),
                             Text(
                               english
                                   ? 'Take care of yourself and pay attention to '
-                                      'traffic. Our navigation may contain errors. '
-                                      'Follow the conditions around you and '
-                                      'the traffic rules.'
-                                  : 'Achte auf dich und den Verkehr. Unsere '
-                                      'Navigation kann Fehler enthalten. Beachte '
-                                      'die Situation vor Ort und die Verkehrsregeln.',
-                              style: Theme.of(context).textTheme.bodyLarge,
+                                      'traffic. The navigation or underlying map '
+                                      'data may contain errors. Pay attention to '
+                                      'the conditions around you.'
+                                  : 'Achte auf dich und den Verkehr. Die Navigation '
+                                      'oder die Kartenbasis können Fehler enthalten. '
+                                      'Beachte die Situation vor Ort.',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: 12),
                             TextButton(
@@ -212,9 +277,9 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      padding: const EdgeInsets.all(12),
                       child: FilledButton(
-                        onPressed: _dismiss,
+                        onPressed: () => _dismiss(_FirstRunPhase.notice),
                         style: AppButtonStyles.primary(context),
                         child: Text(english ? 'Let’s go' : 'Los geht’s'),
                       ),
@@ -225,6 +290,34 @@ class _FirstRunSafetyGateState extends State<FirstRunSafetyGate> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _welcomeStep(
+      BuildContext context, int number, IconData icon, String text) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: colors.surfaceContainer,
+            borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          CircleAvatar(
+              radius: 16,
+              backgroundColor: colors.primary,
+              child: Text('$number',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                      color: colors.onPrimary, fontWeight: FontWeight.bold))),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(text, style: Theme.of(context).textTheme.bodyLarge)),
+          const SizedBox(width: 8),
+          ExcludeSemantics(child: Icon(icon, color: colors.primary)),
+        ]),
       ),
     );
   }
