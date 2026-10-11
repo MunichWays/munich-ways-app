@@ -14,3 +14,9 @@ const double kMapOverlayControlSize = 48;
 /// Vertical gap between the bottom of the side control column and the top of
 /// the bottom action row.
 const double kMapGapSideColumnAboveBottomBar = 64;
+
+/// Keeps the whole side control column above the measured navigation panel.
+double navigationPanelSideControlsOffset(double panelHeight) =>
+    (panelHeight - kMapGapSideColumnAboveBottomBar + 8)
+        .clamp(0.0, double.infinity)
+        .toDouble();

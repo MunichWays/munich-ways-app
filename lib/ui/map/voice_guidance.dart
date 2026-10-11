@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
+import 'package:munich_ways/ui/map/navigation_remaining.dart';
 import 'package:munich_ways/ui/map/route_overlap.dart';
 
 /// Defers initial guidance until the rider has left a small start area.
@@ -351,6 +352,10 @@ class VoiceGuidance {
   bool _overlappingRouteWarningSpoken = false;
   bool _finalDestinationReached = false;
   bool _routeRecoveryPending = false;
+  NavigationRemaining? _remainingEstimate;
+
+  /// Snapshot from the regular display pass, without another projection.
+  NavigationRemaining? get remainingEstimate => _remainingEstimate;
 
   bool get finalDestinationReached => _finalDestinationReached;
 
@@ -405,6 +410,7 @@ class VoiceGuidance {
     _overlappingRouteWarningSpoken = false;
     _finalDestinationReached = false;
     _routeRecoveryPending = false;
+    _remainingEstimate = null;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
     if (guidanceRoute == null || guidanceRoute.points.length < 2) {
@@ -491,6 +497,7 @@ class VoiceGuidance {
     LatLng position, {
     double horizontalAccuracyMeters = 0,
   }) {
+    _remainingEstimate = null;
     final route = _route;
     if (route == null) return false;
     final projection = _projectOntoRoute(route.points, position);
@@ -519,15 +526,37 @@ class VoiceGuidance {
     double speedMetersPerSecond = 0,
   }) {
     final route = _route;
-    if (route == null) return null;
+    if (route == null) {
+      // Valid geometry is sufficient for map-only routes without voice hints.
+      _remainingEstimate = null;
+      if (_trackingRoute == null || _trackingRoute!.points.length < 2)
+        return null;
+      final projection = _projectionAtCurrentProgress(position);
+      _remainingEstimate = _estimateRemaining(projection);
+      if (projection.distanceFromRoute <= maximumRouteDistanceMeters) {
+        _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+      }
+      return null;
+    }
     if (_finalDestinationReached) {
+      // Guidance arrival can precede the actual end (access or a closed loop).
+      // Only latch a statistic that has also reached the matched route end.
+      if (_remainingEstimate?.hundredsOfMeters != 0) {
+        final projection = _projectionAtCurrentProgress(position);
+        _remainingEstimate = _estimateRemaining(projection);
+        if (projection.distanceFromRoute <= maximumRouteDistanceMeters) {
+          _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
+        }
+      }
       return VoiceGuidanceDisplay(
         text: english ? 'Destination reached' : 'Ziel erreicht',
         type: 'arrive',
         isFinalDestination: true,
       );
     }
+    _remainingEstimate = null;
     final projection = _projectionAtCurrentProgress(position);
+    _remainingEstimate = _estimateRemaining(projection);
     if (projection.isAmbiguous &&
         !_isOverlappingProgress(projection.distanceAlongRoute)) {
       _recordAmbiguousProgress(projection);
@@ -539,12 +568,15 @@ class VoiceGuidance {
         mapReason: VoiceGuidanceMapReason.ambiguousPosition,
       );
     }
-    final arrivalIndex = _arrivalIndexAt(position);
+    final arrivalIndex = _arrivalIndexAt(position, projection);
     if (arrivalIndex != null) {
       final isFinalDestination = !_isIntermediateArrival(arrivalIndex);
       if (isFinalDestination) _finalDestinationReached = true;
-      _routeProgress =
-          max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeProgress = max(
+          _routeProgress,
+          isFinalDestination
+              ? projection.distanceAlongRoute
+              : _arrivals[arrivalIndex].routeDistance);
       _routeRecoveryPending = false;
       return VoiceGuidanceDisplay(
         text: _arrivalDisplay(arrivalIndex, english),
@@ -586,6 +618,20 @@ class VoiceGuidance {
       type: target.maneuver.type,
       modifier: target.maneuver.modifier,
     );
+  }
+
+  NavigationRemaining? _estimateRemaining(_RouteProjection projection) {
+    final route = _trackingRoute;
+    if (route == null ||
+        projection.isAmbiguous ||
+        projection.distanceFromRoute > maximumRouteDistanceMeters ||
+        !projection.totalDistance.isFinite ||
+        projection.totalDistance <= 0) return null;
+    final remaining = projection.totalDistance - projection.distanceAlongRoute;
+    return NavigationRemaining.estimate(
+        route, remaining / projection.totalDistance,
+        // A route endpoint is distinct from the final destination/access.
+        destinationReached: remaining <= 1);
   }
 
   /// Announces the currently relevant maneuver regardless of its distance.
@@ -663,13 +709,16 @@ class VoiceGuidance {
       _recordAmbiguousProgress(projection);
       return null;
     }
-    final arrivalIndex = _arrivalIndexAt(position);
+    final arrivalIndex = _arrivalIndexAt(position, projection);
     if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
       if (!_isIntermediateArrival(arrivalIndex)) {
         _finalDestinationReached = true;
       }
-      _routeProgress =
-          max(_routeProgress, _arrivals[arrivalIndex].routeDistance);
+      _routeProgress = max(
+          _routeProgress,
+          _isIntermediateArrival(arrivalIndex)
+              ? _arrivals[arrivalIndex].routeDistance
+              : projection.distanceAlongRoute);
       _routeRecoveryPending = false;
       return _arrivalAnnouncement(arrivalIndex, english);
     }
@@ -816,7 +865,7 @@ class VoiceGuidance {
   }
 
   _RouteProjection _projectionAtCurrentProgress(LatLng position) {
-    final route = _route;
+    final route = _trackingRoute;
     if (route == null) {
       return const _RouteProjection(0, double.infinity);
     }
@@ -858,7 +907,7 @@ class VoiceGuidance {
     return projection;
   }
 
-  int? _arrivalIndexAt(LatLng position) {
+  int? _arrivalIndexAt(LatLng position, _RouteProjection projection) {
     for (var index = 0; index < _arrivals.length; index++) {
       if (_spokenArrivals.contains(index)) continue;
       if (const Distance().as(
@@ -867,6 +916,17 @@ class VoiceGuidance {
             _arrivals[index].maneuver.location,
           ) <=
           arrivalDistanceMeters) {
+        // Preserve arrival after a GPS gap that skipped the progress window.
+        // A global match still rejects an earlier occurrence on a loop.
+        if (!_isIntermediateArrival(index) &&
+            projection.totalDistance - projection.distanceAlongRoute >
+                arrivalDistanceMeters) {
+          final arrivalProjection =
+              _projectOntoRoute(_trackingRoute!.points, position);
+          if (arrivalProjection.totalDistance -
+                  arrivalProjection.distanceAlongRoute >
+              arrivalDistanceMeters) return null;
+        }
         return index;
       }
       // Intermediate destinations must be reached in their planned order.
@@ -1417,6 +1477,7 @@ class VoiceGuidance {
       selected.distanceAlongRoute,
       selected.distanceFromRoute,
       isAmbiguous: isAmbiguous,
+      totalDistance: cumulative,
     );
   }
 }
@@ -1433,11 +1494,13 @@ class _RouteProjection {
     this.distanceAlongRoute,
     this.distanceFromRoute, {
     this.isAmbiguous = false,
+    this.totalDistance = 0,
   });
 
   final double distanceAlongRoute;
   final double distanceFromRoute;
   final bool isAmbiguous;
+  final double totalDistance;
 }
 
 class _RouteInterval {

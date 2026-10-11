@@ -43,6 +43,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
 import 'package:munich_ways/ui/map/navigation_audio.dart';
+import 'package:munich_ways/ui/map/navigation_remaining.dart';
 import 'package:munich_ways/ui/map/navigation_notification_permission.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
@@ -327,6 +328,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       StalledGuidanceRecoveryGate();
   VoiceGuidanceStallReason? _activeGuidanceStallReason;
   VoiceGuidanceDisplay? _nextManeuver;
+  final _navigationRemaining = NavigationRemainingController();
+  double? _navigationPanelHeight;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   _RouteEndpointMove? _pendingRouteEndpointMove;
@@ -504,6 +507,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed ||
         !widget.startupInteractionsEnabled) return;
 
+    // A suspended timer must not leave a stale statistic on the first frame.
+    if (!mapViewModel.navigationPaused) _navigationRemaining.clear();
+
     if (displayCurrentLocationOnResume) {
       displayCurrentLocationOnResume = false;
       unawaited(_primeLocationOnStart(mapViewModel, permissionCheck: false));
@@ -514,6 +520,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _navigationRemaining.dispose();
     _appReviewPrompt.dispose();
     _locationSubscription?.cancel();
     _drinkingWaterSubscription?.cancel();
@@ -672,6 +679,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _endRoute(MapScreenViewModel model) {
+    _navigationRemaining.clear();
     _appReviewPrompt.cancel();
     _navigationMotion.reset();
     _voiceGuidance.reset();
@@ -782,6 +790,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       return;
     }
     model.onUserStoppedFollowingLocation();
+    _navigationRemaining.setPaused(true);
     _voiceSignalTimer?.cancel();
     _stopVoiceGuidance();
   }
@@ -851,6 +860,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ));
         });
         model.destinationStream.listen((Place place) {
+          if (!mounted) return;
+          _navigationRemaining.clear();
           _navigationMotion.reset();
           _voiceGuidance.reset();
           _navigationStartGate.reset();
@@ -876,6 +887,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ));
         });
         model.routeStream.listen((MapRoute route) {
+          if (!mounted) return;
+          _navigationRemaining.clear();
           final position = _latestPosition;
           if (model.navigationStarted) {
             if (!_automaticRerouteInFlight &&
@@ -926,6 +939,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       },
       child: Consumer<MapScreenViewModel>(
         builder: (context, model, child) {
+          _navigationRemaining.setPaused(model.navigationPaused);
           if (widget.startupInteractionsEnabled &&
               !kStoreScreenshots &&
               !_locationPrimeStarted) {
@@ -1348,6 +1362,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               onReloadNetwork: () =>
                                   _reloadRadnetzAfterInitialFailure(model),
                               attributionExpanded: _mapAttributionExpanded,
+                              onNavigationBarHeightChanged: (height) {
+                                if (!mounted ||
+                                    _navigationPanelHeight == height) return;
+                                setState(() => _navigationPanelHeight = height);
+                              },
                               onToggleAttribution: () => setState(() {
                                 _mapAttributionExpanded =
                                     !_mapAttributionExpanded;
@@ -1357,31 +1376,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   : MapRouteStartPanel(
                                       model: model,
                                       builder: (collapsed, toggle) =>
-                                          MapNavigationHeaderBar(
-                                        collapsed: collapsed,
-                                        onToggleCollapsed: toggle,
-                                        model: model,
-                                        onRefreshRoute: () =>
-                                            _refreshRouteAndResumeNavigation(
-                                                model),
-                                        onEditRoute: () =>
-                                            _openRoutePlanner(model),
-                                        onStartNavigation: () =>
-                                            _startNavigation(model),
-                                        onToggleVoiceGuidance: () =>
-                                            _toggleVoiceGuidance(
-                                          model,
-                                          english: context.l10n.isEnglish,
+                                          ValueListenableBuilder<
+                                              NavigationRemaining?>(
+                                        valueListenable: _navigationRemaining,
+                                        builder: (context, remaining, child) =>
+                                            MapNavigationHeaderBar(
+                                          remaining: remaining,
+                                          collapsed: collapsed,
+                                          onToggleCollapsed: toggle,
+                                          model: model,
+                                          onRefreshRoute: () =>
+                                              _refreshRouteAndResumeNavigation(
+                                                  model),
+                                          onEditRoute: () =>
+                                              _openRoutePlanner(model),
+                                          onStartNavigation: () =>
+                                              _startNavigation(model),
+                                          onToggleVoiceGuidance: () =>
+                                              _toggleVoiceGuidance(
+                                            model,
+                                            english: context.l10n.isEnglish,
+                                          ),
+                                          onPauseNavigation: () =>
+                                              _pauseNavigation(model),
+                                          onShowInfo: () => _showInfo(context),
+                                          onShowSettings: () =>
+                                              _showSettings(context, model),
+                                          onEndRoute: () => _endRoute(model),
+                                          onFinishRoute: () =>
+                                              _finishRoute(model),
+                                          nextManeuver: _nextManeuver,
                                         ),
-                                        onPauseNavigation: () =>
-                                            _pauseNavigation(model),
-                                        onShowInfo: () => _showInfo(context),
-                                        onShowSettings: () =>
-                                            _showSettings(context, model),
-                                        onEndRoute: () => _endRoute(model),
-                                        onFinishRoute: () =>
-                                            _finishRoute(model),
-                                        nextManeuver: _nextManeuver,
                                       ),
                                     ),
                             ),
@@ -1665,6 +1690,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
     final reliableForNavigation = position.accuracy <= 50;
+    if (!reliableForNavigation && !model.navigationPaused) {
+      _navigationRemaining.clear();
+    }
     if (!reliableForNavigation) _navigationMotion.reset();
     if (reliableForNavigation) {
       model.updateWaypointProgress(rawPosition);
@@ -1867,6 +1895,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             speedMetersPerSecond: position.speed,
           )
         : null;
+    // Capture the first match for this fix. Recovery may make additional
+    // display passes; they must not make an ambiguous first match look certain.
+    final remaining = _voiceGuidance.remainingEstimate;
     final startGateWasWaiting = model.navigationStarted &&
         !_voiceGuidance.finalDestinationReached &&
         !_navigationStartGate.released;
@@ -1915,6 +1946,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (nextManeuver != _nextManeuver) {
       setState(() => _nextManeuver = nextManeuver);
     }
+    _navigationRemaining.update(
+      model.navigationStarted &&
+              !model.navigationPaused &&
+              !_offRouteEpisodeActive &&
+              !_automaticRerouteInFlight &&
+              model.route.state == MapRouteState.SHOWN
+          ? remaining
+          : null,
+      fixTime: position.timestamp,
+    );
     if (model.navigationStarted &&
         model.voiceGuidanceEnabled &&
         !_automaticRerouteCommitted &&
@@ -2449,6 +2490,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
+    _navigationRemaining.clear();
     _appReviewPrompt.cancel();
     final started = await model.startNavigation();
     if (!mounted || !started) return;
@@ -3263,6 +3305,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       // and compass controls on-screen while the width-limited route panel
       // remains clear below them.
       return min(desiredOffset, 80.0 + comfortSummaryOffset);
+    }
+    if (model.destination != null && _navigationPanelHeight != null) {
+      // The panel grows with access text, large fonts and expanded sections.
+      // Position the entire control column above its actual top edge.
+      return navigationPanelSideControlsOffset(_navigationPanelHeight!);
     }
     return desiredOffset;
   }

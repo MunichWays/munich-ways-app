@@ -236,6 +236,10 @@ class RadlNaviApi
           duration.toDouble(),
           maneuvers: spokenManeuvers,
           destinationConnector: access.connector,
+          navigationDistance: _navigationMetric(
+              distance.toDouble(), 'distance', points, steps, access),
+          navigationDuration: _navigationMetric(
+              duration.toDouble(), 'duration', points, steps, access),
           displaySections: displaySections,
           comfort: _parseComfort(firstRoute['comfort']),
           analysisContext:
@@ -469,6 +473,39 @@ class RadlNaviApi
       // Incomplete optional geometry must not break a usable navigation route.
       return const [];
     }
+  }
+
+  // Totals remain unchanged for planning. Navigation stops before final walking
+  // access; use its step metrics, or a geometric proportion if those are absent.
+  double? _navigationMetric(double total, String key, List<LatLng> points,
+      List<Map<String, dynamic>> steps, _DestinationAccess access) {
+    if (access.walkingStart == null || access.route.length == points.length) {
+      return null;
+    }
+    var excluded = 0.0;
+    var complete = true;
+    for (final step in steps.reversed) {
+      if ((step['maneuver'] as Map?)?['type'] == 'arrive') continue;
+      if (!_isUnriddenMode(step['mode'])) break;
+      final value = step[key];
+      if (value is num && value.isFinite && value >= 0) {
+        excluded += value;
+      } else {
+        complete = false;
+      }
+    }
+    if (complete && excluded < total) return total - excluded;
+    double length(List<LatLng> geometry) {
+      var result = 0.0;
+      for (var i = 1; i < geometry.length; i++) {
+        result +=
+            const Distance().as(LengthUnit.Meter, geometry[i - 1], geometry[i]);
+      }
+      return result;
+    }
+
+    final fullLength = length(points);
+    return fullLength > 0 ? total * length(access.route) / fullLength : null;
   }
 
   _DestinationAccess _splitDestinationAccess(
