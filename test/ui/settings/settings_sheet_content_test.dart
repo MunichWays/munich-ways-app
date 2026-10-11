@@ -52,6 +52,7 @@ void main() {
                 onToggleVoiceGuidance: () {},
                 onPauseNavigation: () {},
                 onEndRoute: () {},
+                onFinishRoute: () {},
               ),
             ),
           ),

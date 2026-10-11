@@ -51,6 +51,7 @@ void main() {
                                       onEditRoute: () {},
                                       onToggleVoiceGuidance: () {},
                                       onPauseNavigation: () {},
+                                      onFinishRoute: () {},
                                       onEndRoute: () {},
                                       onStartNavigation: () async {
                                         starts++;
@@ -152,6 +153,7 @@ void main() {
                     onEditRoute: () {},
                     onToggleVoiceGuidance: () {},
                     onPauseNavigation: model.onUserStoppedFollowingLocation,
+                    onFinishRoute: () {},
                     onEndRoute: () => ended++,
                     onStartNavigation: () async {},
                   ),

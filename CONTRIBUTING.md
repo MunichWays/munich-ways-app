@@ -80,6 +80,43 @@ is not evidence that the device has no recognition service.
 - See `docs/analysis/245-adresssuche-pois-alternativnamen.md` for current scope,
   remaining work and concrete phone tests.
 
+## App reviews (issue #257)
+
+The info menu exposes a localized Feedback subpage in the same sheet frame as Legend & tips with a store button
+and clickable email and MunichWays website links. Email keeps the subject and app version;
+test both external launches, closing, large text and missing email apps.
+Automatic native review
+requests are optional and never run at startup or during navigation. A trip
+counts only when the orange Finish button shown after final arrival is pressed.
+The close/cancel button never counts. Planning, aborts, intermediate stops, pause/resume and rerouting
+do not add completions. Map-only routes without an arrival signal are excluded.
+
+After the third qualifying completion, a two-second idle window may request a
+native review. User interaction, backgrounding or a new task cancels this window.
+Existing installations start at zero on update when review state is absent,
+just like new installations; no first-run flag is used. One attempt per retained
+installation is persisted before native handoff;
+silent suppression or native failure still consumes it. Manual store launches
+leave the counter and automatic request state unchanged. No review result is inferred.
+Counts and flags live only in `app_review.json`; no route or account data is saved.
+
+Run the focused tests in `test/reviews/` and
+`test/ui/info/info_sheet_review_test.dart`. For native Android UI testing use an
+internal Play test track with the app in the test account's Play library. iOS
+development builds can show the prompt; TestFlight cannot. An absent production
+prompt is not by itself a failure. Test the manual link, store return, muted
+guidance, aborts, background/resume and recovery after unavailable networking.
+Test an update of an existing installation without deleting personal data.
+Use a separate installation only when repeating a consumed native request. See the [analysis and acceptance steps](docs/analysis/257-app-store-bewertungen.md).
+
+Diagnostics are available under About & attributions, between Terms and the
+version. They read persisted review state without changing it and show a bounded
+in-memory review event history. API completion never proves that a dialog was
+shown. Use Refresh and Copy to inspect counters, handoff, cancellation and store
+availability. No coordinates, destinations, favorites or credentials are included;
+no data is transmitted automatically. Wait ten seconds after the third Finish
+before opening Info, which otherwise cancels a pending automatic prompt.
+
 ## Local phone tests in VS Code
 
 Select the local launch configuration `munich-ways-app (release mode)` for

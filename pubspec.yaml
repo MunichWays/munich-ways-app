@@ -33,6 +33,7 @@ dependencies:
   logger: ^2.8.0
   geolocator: ^14.1.1
   url_launcher: ^6.3.3
+  in_app_review: ^2.0.12
   equatable: ^2.0.2
   package_info_plus: ^10.2.2
   html: ^0.15.7

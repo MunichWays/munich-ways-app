@@ -10,10 +10,12 @@ class InfoSheetAboutContent extends StatelessWidget {
     super.key,
     required this.versionLabel,
     required this.onOpenImprint,
+    required this.onOpenDiagnostics,
   });
 
   final String versionLabel;
   final VoidCallback onOpenImprint;
+  final VoidCallback onOpenDiagnostics;
 
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -60,58 +62,62 @@ class InfoSheetAboutContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: const EdgeInsets.only(top: 8),
-          title: Text(
-            sourceTitle,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          children: [
-            MenuGroup(
-              children: [
-                MenuGroupItem(
-                  icon: Icons.open_in_new,
-                  label: context.l10n.isEnglish
-                      ? 'About RadlNavi'
-                      : 'Über RadlNavi',
-                  onTap: () =>
-                      _openUrl(context, 'https://radlnavi.munichways.de/'),
-                ),
-                const MenuGroupDivider(),
-                MenuGroupItem(
-                  icon: Icons.open_in_new,
-                  label: 'BRouter',
-                  onTap: () => _openUrl(context, 'https://brouter.de/brouter/'),
-                ),
-                const MenuGroupDivider(),
-                MenuGroupItem(
-                  icon: Icons.open_in_new,
-                  label: 'OpenStreetMap',
-                  onTap: () => _openUrl(
-                    context,
-                    'https://www.openstreetmap.org/copyright',
+        Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            initiallyExpanded: false,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(top: 8),
+            title: Text(
+              sourceTitle,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                ),
-                const MenuGroupDivider(),
-                MenuGroupItem(
-                  icon: Icons.open_in_new,
-                  label: 'OpenMapTiles',
-                  onTap: () =>
-                      _openUrl(context, 'https://www.openmaptiles.org/'),
-                ),
-                const MenuGroupDivider(),
-                MenuGroupItem(
-                  icon: Icons.open_in_new,
-                  label: 'OpenFreeMap',
-                  onTap: () => _openUrl(context, 'https://openfreemap.org/'),
-                ),
-              ],
             ),
-          ],
+            children: [
+              MenuGroup(
+                children: [
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: context.l10n.isEnglish
+                        ? 'About RadlNavi'
+                        : 'Über RadlNavi',
+                    onTap: () =>
+                        _openUrl(context, 'https://radlnavi.munichways.de/'),
+                  ),
+                  const MenuGroupDivider(),
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: 'BRouter',
+                    onTap: () =>
+                        _openUrl(context, 'https://brouter.de/brouter/'),
+                  ),
+                  const MenuGroupDivider(),
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: 'OpenStreetMap',
+                    onTap: () => _openUrl(
+                      context,
+                      'https://www.openstreetmap.org/copyright',
+                    ),
+                  ),
+                  const MenuGroupDivider(),
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: 'OpenMapTiles',
+                    onTap: () =>
+                        _openUrl(context, 'https://www.openmaptiles.org/'),
+                  ),
+                  const MenuGroupDivider(),
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: 'OpenFreeMap',
+                    onTap: () => _openUrl(context, 'https://openfreemap.org/'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
         Column(
@@ -127,6 +133,11 @@ class InfoSheetAboutContent extends StatelessWidget {
                 context,
                 'https://munichways.de/nutzungbedingungen-app',
               ),
+            ),
+            _LegalLink(
+              label: context.l10n.isEnglish ? 'Diagnostics' : 'Diagnosedaten',
+              onPressed: onOpenDiagnostics,
+              subtle: true,
             ),
           ],
         ),
@@ -147,17 +158,21 @@ class InfoSheetAboutContent extends StatelessWidget {
 }
 
 class _LegalLink extends StatelessWidget {
-  const _LegalLink({required this.label, required this.onPressed});
+  const _LegalLink(
+      {required this.label, required this.onPressed, this.subtle = false});
 
   final String label;
   final VoidCallback onPressed;
+  final bool subtle;
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.uiPrimary,
+        foregroundColor: subtle
+            ? Theme.of(context).colorScheme.onSurfaceVariant
+            : AppColors.uiPrimary,
         textStyle: Theme.of(context).textTheme.bodyMedium,
         padding: EdgeInsets.zero,
         alignment: Alignment.centerLeft,

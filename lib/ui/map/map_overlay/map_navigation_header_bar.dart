@@ -17,6 +17,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     required this.onToggleVoiceGuidance,
     required this.onPauseNavigation,
     required this.onEndRoute,
+    required this.onFinishRoute,
     this.onShowInfo,
     this.onShowSettings,
     this.nextManeuver,
@@ -33,6 +34,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
   final VoidCallback onToggleVoiceGuidance;
   final VoidCallback onPauseNavigation;
   final VoidCallback onEndRoute;
+  final VoidCallback onFinishRoute;
   final VoidCallback? onShowInfo;
   final VoidCallback? onShowSettings;
   final VoiceGuidanceDisplay? nextManeuver;
@@ -522,7 +524,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   context,
                   label: context.l10n.isEnglish ? 'Finish' : 'Beenden',
                   icon: Icons.sports_score,
-                  onPressed: onEndRoute,
+                  onPressed: onFinishRoute,
                 ),
               ),
             ],
