@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_search_bar.dart';
@@ -17,6 +18,7 @@ class MapBottomActionButtons extends StatelessWidget {
     this.onReloadNetwork,
     this.showSearch = true,
     this.navigationBar,
+    this.onNavigationBarHeightChanged,
     this.attributionExpanded = false,
     this.onToggleAttribution,
   });
@@ -29,6 +31,7 @@ class MapBottomActionButtons extends StatelessWidget {
   final Future<void> Function()? onReloadNetwork;
   final bool showSearch;
   final Widget? navigationBar;
+  final ValueChanged<double>? onNavigationBarHeightChanged;
   final bool attributionExpanded;
   final VoidCallback? onToggleAttribution;
 
@@ -76,7 +79,16 @@ class MapBottomActionButtons extends StatelessWidget {
           if (navigationBar case final bar?) ...[
             Padding(
               padding: EdgeInsets.only(
-                left: landscapePhone ? kMapHorizontalHolderClearance : 0,
+                left: landscapePhone
+                    ? kMapHorizontalHolderClearance +
+                        (model.sidePanelEdge == MapSidePanelEdge.left ? 64 : 0)
+                    : 0,
+                // In landscape the controls sit beside the panel. Reserve their
+                // 56-pixel tap targets plus a gap instead of pushing them up.
+                right: landscapePhone &&
+                        model.sidePanelEdge == MapSidePanelEdge.right
+                    ? kMapHorizontalHolderClearance + 64
+                    : 0,
               ),
               child: Align(
                 alignment:
@@ -85,7 +97,10 @@ class MapBottomActionButtons extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxWidth: landscapePhone ? 360 : double.infinity,
                   ),
-                  child: SizedBox(width: double.infinity, child: bar),
+                  child: _NavigationBarSizeObserver(
+                    onHeightChanged: onNavigationBarHeightChanged,
+                    child: SizedBox(width: double.infinity, child: bar),
+                  ),
                 ),
               ),
             ),
@@ -111,6 +126,41 @@ class MapBottomActionButtons extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Measures the whole panel, including folding and accessibility text wrapping.
+class _NavigationBarSizeObserver extends SingleChildRenderObjectWidget {
+  const _NavigationBarSizeObserver(
+      {required super.child, this.onHeightChanged});
+
+  final ValueChanged<double>? onHeightChanged;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _NavigationBarSizeRenderObject(onHeightChanged);
+
+  @override
+  void updateRenderObject(BuildContext context,
+          covariant _NavigationBarSizeRenderObject renderObject) =>
+      renderObject.onHeightChanged = onHeightChanged;
+}
+
+class _NavigationBarSizeRenderObject extends RenderProxyBox {
+  _NavigationBarSizeRenderObject(this.onHeightChanged);
+
+  ValueChanged<double>? onHeightChanged;
+  double? _lastHeight;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final height = size.height;
+    if (height == _lastHeight) return;
+    _lastHeight = height;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (attached) onHeightChanged?.call(height);
+    });
   }
 }
 

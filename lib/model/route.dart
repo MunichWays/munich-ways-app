@@ -11,6 +11,11 @@ class CycleRoute {
   RouteComfort? comfort;
   final RouteAnalysisContext? analysisContext;
 
+  /// Metrics up to [points.last], excluding a separately rendered final access.
+  /// Null means the provider totals already describe the navigable geometry.
+  final double? navigationDistance;
+  final double? navigationDuration;
+
   CycleRoute(
     this.points,
     this.distance,
@@ -21,6 +26,8 @@ class CycleRoute {
     this.displaySections = const [],
     this.comfort,
     this.analysisContext,
+    this.navigationDistance,
+    this.navigationDuration,
   });
 }
 

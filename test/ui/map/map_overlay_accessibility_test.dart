@@ -16,7 +16,7 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 void main() {
-  testWidgets('limits and right-aligns navigation panel in phone landscape',
+  testWidgets('limits landscape panel width and reserves the side control lane',
       (tester) async {
     tester.view.physicalSize = const Size(800, 360);
     tester.view.devicePixelRatio = 1;
@@ -51,7 +51,8 @@ void main() {
 
     final rect = tester.getRect(find.byKey(panelKey));
     expect(rect.width, 360);
-    expect(rect.right, 800);
+    // Right alignment leaves 28 px holder clearance, a 56 px tap target and gap.
+    expect(rect.right, 800 - 28 - 56 - 8);
     expect(tester.takeException(), isNull);
   });
 
@@ -255,7 +256,16 @@ void main() {
     );
 
     expect(find.byIcon(Icons.close), findsNothing);
-    expect(find.byIcon(Icons.sports_score), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Beenden'),
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        ),
+        matching: find.byIcon(Icons.sports_score),
+      ),
+      findsOneWidget,
+    );
     expect(
       tester.getSize(find.bySemanticsLabel('Beenden')).width,
       greaterThan(180),

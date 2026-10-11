@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
@@ -111,7 +113,100 @@ void main() {
     ]);
     expect(route.maneuvers, hasLength(1));
     expect(route.maneuvers.single.type, 'depart');
+    // Missing step metrics use a geometric share, leaving planning unchanged.
+    expect(route.distance, 200);
+    expect(route.duration, 60);
+    expect(route.navigationDistance, closeTo(200 * 2 / 3, 0.01));
+    expect(route.navigationDuration, closeTo(60 * 2 / 3, 0.01));
   });
+
+  for (final mode in ['walking', 'pushing bike']) {
+    test(
+        'navigation excludes all final $mode step metrics, not intermediate pushing',
+        () async {
+      final api = RadlNaviApi(
+          client: MockClient((_) async => Response(
+              jsonEncode({
+                'code': 'Ok',
+                'routes': [
+                  {
+                    'geometry': {
+                      'type': 'LineString',
+                      'coordinates': [
+                        [11.57, 48.14],
+                        [11.57, 48.142],
+                        [11.57, 48.144],
+                        [11.57, 48.145],
+                        [11.57, 48.146]
+                      ]
+                    },
+                    'distance': 1200,
+                    'duration': 900,
+                    'legs': [
+                      {
+                        'steps': [
+                          {
+                            'mode': 'pushing bike',
+                            'distance': 100,
+                            'duration': 80,
+                            'maneuver': {
+                              'type': 'depart',
+                              'location': [11.57, 48.14]
+                            }
+                          },
+                          {
+                            'mode': 'cycling',
+                            'distance': 900,
+                            'duration': 520,
+                            'maneuver': {
+                              'type': 'turn',
+                              'location': [11.57, 48.142]
+                            }
+                          },
+                          {
+                            'mode': mode,
+                            'distance': 120,
+                            'duration': 200,
+                            'maneuver': {
+                              'type': 'turn',
+                              'location': [11.57, 48.144]
+                            }
+                          },
+                          {
+                            'mode': mode,
+                            'distance': 80,
+                            'duration': 100,
+                            'maneuver': {
+                              'type': 'turn',
+                              'location': [11.57, 48.145]
+                            }
+                          },
+                          {
+                            'mode': mode,
+                            'distance': 0,
+                            'duration': 0,
+                            'maneuver': {
+                              'type': 'arrive',
+                              'location': [11.57, 48.146]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=UTF-8'})));
+      final route =
+          await api.route(const [LatLng(48.14, 11.57), LatLng(48.146, 11.57)]);
+      expect(route.points.last, const LatLng(48.144, 11.57));
+      expect(route.navigationDistance, 1000);
+      expect(route.navigationDuration, 600);
+      expect(route.distance, 1200);
+      expect(route.duration, 900);
+    });
+  }
 
   test('response with error message, route should throw ApiException',
       () async {

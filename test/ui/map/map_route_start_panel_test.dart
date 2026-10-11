@@ -98,7 +98,7 @@ void main() {
       expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);
       expect(find.bySemanticsLabel('Navigation pausieren'), findsOneWidget);
       expect(find.bySemanticsLabel('Route neu berechnen'), findsOneWidget);
-      expect(find.text('4,2 km'), findsNothing);
+      expect(find.text('— km'), findsNothing);
       final collapsedNavigationHeight =
           tester.getSize(find.byType(MapRouteStartPanel)).height;
       model.route = MapRoute(null, MapRouteState.LOADING);
@@ -111,10 +111,12 @@ void main() {
         MapRouteState.SHOWN,
       );
       await tester.pumpWidget(app());
-      expect(find.text('4,2 km'), findsNothing);
+      expect(find.text('— km'), findsNothing);
       await tester.drag(handle, const Offset(0, -80));
       await tester.pumpAndSettle();
-      expect(find.text('4,2 km'), findsOneWidget);
+      // Navigation has no reliable position in this fixture. Expanding still
+      // reveals the statistics row, with unavailable remaining values.
+      expect(find.text('— km'), findsOneWidget);
       expect(tester.getSize(find.byType(MapRouteStartPanel)).height,
           greaterThan(collapsedNavigationHeight));
       expect(tester.takeException(), isNull);

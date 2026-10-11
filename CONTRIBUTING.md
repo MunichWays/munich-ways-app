@@ -418,6 +418,40 @@ The complete expected behavior is:
   route, or starting navigation again resets pending stalled-guidance recovery
   along with the other navigation timers and speech state.
 
+## Remaining distance and time (issue #189)
+
+Before navigation the header shows route totals. During navigation it uses the
+existing reliable route match for remaining distance and proportional travel
+time, marked with `≈`. It never requests a route to update statistics. Values
+expire 15 seconds after the location timestamp, independently of speech;
+the matched route endpoint yields zero. The distance uses a finish flag icon.
+Unknown and rerouting states show unavailable values until a reliable
+fix restores them. Pausing retains the last displayed distance and time without
+updates or expiry; resuming reinstates GPS freshness checks. Route replacement
+and navigation end still clear retained values. Destination proximity alone
+cannot manufacture zero or end guidance at an earlier occurrence on a loop.
+
+Final destination access does not suppress statistics: distance and time refer
+to the end of the calculated navigable route, with access length shown separately.
+OSRM final access step metrics are removed from navigation totals; incomplete
+step metrics use a geometric proportion as an estimate. Planning totals stay
+unchanged. BRouter totals already stop at its route endpoint. Missing voice
+hints, loops and repeated segments do not by themselves suppress statistics;
+an actually ambiguous match still does. No extra routing requests are made.
+In portrait, side controls follow the measured panel height so final access,
+large text and folding cannot leave the compass behind the panel.
+Landscape panels reserve a horizontal lane for the side controls on their
+selected side, preserving the limited vertical space.
+See [scope and acceptance scenarios](docs/analysis/189-reststrecke-restzeit.md).
+
+For phone/beta testing, ride a normal route with speech and automatic rerouting
+each enabled/disabled, stop, briefly leave/rejoin, then trigger a real reroute.
+Interrupt GPS/tracking and networking, restore them and verify recovery.
+Check intermediate stops, out-and-back/loop/access routes, app return
+after screen lock, energy saving, large text and English. Remaining values must
+not trigger routing, speech or camera movement. Battery/performance comparisons
+still require matched physical-device runs.
+
 ## Regression checklist
 
 Road-test reference: riding through the Laimer Unterführung at Wotanstraße
