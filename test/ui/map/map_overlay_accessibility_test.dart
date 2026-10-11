@@ -207,6 +207,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () {},
             onEndRoute: () {},
           ),
         ),
@@ -221,6 +222,7 @@ void main() {
   testWidgets('destination arrival offers a hero finish action',
       (tester) async {
     var ended = false;
+    var finished = 0;
     final model = MapScreenViewModel(store: _MemorySettingsStore())
       ..destination = Place('Ziel', const LatLng(48.15, 11.6))
       ..route = MapRoute(
@@ -245,6 +247,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () => finished++,
             onEndRoute: () => ended = true,
           ),
         ),
@@ -273,7 +276,8 @@ void main() {
     );
 
     await tester.tap(find.bySemanticsLabel('Beenden'));
-    expect(ended, isTrue);
+    expect(finished, 1);
+    expect(ended, isFalse);
   });
 
   testWidgets('route edit and refresh buttons have explicit labels',
@@ -295,6 +299,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () {},
             onEndRoute: () {},
           ),
         ),
@@ -321,6 +326,7 @@ void main() {
                     onStartNavigation: () async {},
                     onToggleVoiceGuidance: () {},
                     onPauseNavigation: () {},
+                    onFinishRoute: () {},
                     onEndRoute: () {})))));
     expect(find.text('Starten'), findsOneWidget);
     expect(find.byIcon(Icons.straighten), findsNothing);
@@ -356,6 +362,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () {},
             onEndRoute: () {},
           ),
         ),
@@ -391,6 +398,7 @@ void main() {
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
               onPauseNavigation: () => paused = true,
+              onFinishRoute: () {},
               onEndRoute: () => ended = true,
             ),
           ),
@@ -452,6 +460,7 @@ void main() {
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
               onPauseNavigation: () {},
+              onFinishRoute: () {},
               onEndRoute: () => ended = true,
               onShowInfo: () => infoShown = true,
               onShowSettings: () => settingsShown = true,
@@ -538,6 +547,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () {},
             onEndRoute: () {},
           ),
         ),
@@ -570,6 +580,7 @@ void main() {
               onStartNavigation: () async {},
               onToggleVoiceGuidance: () {},
               onPauseNavigation: () {},
+              onFinishRoute: () {},
               onEndRoute: () {},
             ),
           ),
@@ -792,6 +803,7 @@ void main() {
                       onStartNavigation: () async {},
                       onToggleVoiceGuidance: () {},
                       onPauseNavigation: () {},
+                      onFinishRoute: () {},
                       onEndRoute: () {},
                     ),
                   ],
@@ -836,6 +848,7 @@ void main() {
             onStartNavigation: () async {},
             onToggleVoiceGuidance: () {},
             onPauseNavigation: () {},
+            onFinishRoute: () {},
             onEndRoute: () {},
           ),
         ),

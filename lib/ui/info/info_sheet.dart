@@ -1,33 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
+import 'package:munich_ways/reviews/app_review_service.dart';
 import 'package:munich_ways/ui/info/app_tip.dart';
 import 'package:munich_ways/ui/info/app_version_label.dart';
 import 'package:munich_ways/ui/info/imprint_screen.dart';
 import 'package:munich_ways/ui/info/info_sheet_about_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
+import 'package:munich_ways/ui/info/info_sheet_feedback_content.dart';
+import 'package:munich_ways/ui/info/info_sheet_diagnostics_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_main_content.dart';
 import 'package:munich_ways/ui/info/info_sheet_tips_content.dart';
 import 'package:munich_ways/ui/info/tip_viewer.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 
-void showMapInfoSheet(BuildContext context) {
+void showMapInfoSheet(BuildContext context,
+    {Map<String, String> Function()? runtimeDiagnostics,
+    Map<String, String> Function()? settingsDiagnostics}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => const InfoSheet(),
+    builder: (ctx) => InfoSheet(
+        runtimeDiagnostics: runtimeDiagnostics,
+        settingsDiagnostics: settingsDiagnostics),
   );
 }
 
 class InfoSheet extends StatefulWidget {
-  const InfoSheet({super.key});
+  const InfoSheet(
+      {super.key,
+      this.reviewService,
+      this.launchExternal,
+      this.runtimeDiagnostics,
+      this.settingsDiagnostics});
+
+  final AppReviewService? reviewService;
+  final Future<bool> Function(Uri)? launchExternal;
+  final Map<String, String> Function()? runtimeDiagnostics;
+  final Map<String, String> Function()? settingsDiagnostics;
 
   @override
   State<InfoSheet> createState() => _InfoSheetState();
 }
 
-enum _InfoPage { main, mapHelp, about, tips }
+enum _InfoPage { main, mapHelp, about, tips, feedback, diagnostics }
 
 class _InfoSheetState extends State<InfoSheet> {
   String _versionLabel = '…';
@@ -43,7 +60,9 @@ class _InfoSheetState extends State<InfoSheet> {
         ? _InfoPage.tips
         : _location.page == _InfoPage.tips
             ? _InfoPage.mapHelp
-            : _InfoPage.main);
+            : _location.page == _InfoPage.diagnostics
+                ? _InfoPage.about
+                : _InfoPage.main);
   }
 
   @override
@@ -58,6 +77,13 @@ class _InfoSheetState extends State<InfoSheet> {
   }
 
   Widget _buildTitle(BuildContext context) {
+    if (_location.page == _InfoPage.diagnostics) {
+      return BottomSheetTitle(
+          title: context.l10n.isEnglish ? 'Diagnostics' : 'Diagnosedaten');
+    }
+    if (_location.page == _InfoPage.feedback) {
+      return const BottomSheetTitle(title: 'Feedback');
+    }
     if (_location.page == _InfoPage.tips) {
       return BottomSheetTitle(title: context.l10n.isEnglish ? 'Tips' : 'Tipps');
     }
@@ -161,11 +187,23 @@ class _InfoSheetState extends State<InfoSheet> {
                   _InfoPage.about => InfoSheetAboutContent(
                       versionLabel: _versionLabel,
                       onOpenImprint: _openImprint,
+                      onOpenDiagnostics: () => _open(_InfoPage.diagnostics),
                     ),
                   _InfoPage.main => InfoSheetMainContent(
-                      versionLabel: _versionLabel,
                       onOpenMapHelp: () => _open(_InfoPage.mapHelp),
                       onOpenAbout: () => _open(_InfoPage.about),
+                      onOpenFeedback: () => _open(_InfoPage.feedback),
+                    ),
+                  _InfoPage.feedback => InfoSheetFeedbackContent(
+                      versionLabel: _versionLabel,
+                      reviewService: widget.reviewService,
+                      launchExternal: widget.launchExternal,
+                    ),
+                  _InfoPage.diagnostics => InfoSheetDiagnosticsContent(
+                      versionLabel: _versionLabel,
+                      reviewService: widget.reviewService,
+                      runtimeDiagnostics: widget.runtimeDiagnostics,
+                      settingsDiagnostics: widget.settingsDiagnostics,
                     ),
                 },
               ),

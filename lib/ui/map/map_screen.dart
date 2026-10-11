@@ -22,6 +22,8 @@ import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/poi_details.dart';
 import 'package:munich_ways/model/example_places.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
+import 'package:munich_ways/reviews/app_review_prompt_controller.dart';
+import 'package:munich_ways/reviews/app_review_service.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/dark_map_style.dart';
@@ -58,6 +60,7 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 import 'package:munich_ways/ui/info/info_sheet.dart';
 import 'package:munich_ways/ui/poi_details/poi_details_sheet.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
+import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/ui/energy_saving_controller.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_settings_sheet.dart';
 import 'package:munich_ways/model/saved_route.dart';
@@ -158,6 +161,21 @@ String offRouteSpokenMessage({
 }
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
+  late final _appReviewPrompt = AppReviewPromptController(
+    service: appReviewService,
+    canPrompt: () =>
+        mounted &&
+        widget.startupInteractionsEnabled &&
+        !kStoreScreenshots &&
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+        ModalRoute.of(context)?.isCurrent == true &&
+        MediaQuery.viewInsetsOf(context).bottom == 0 &&
+        !mapViewModel.navigationStarted &&
+        mapViewModel.destination == null &&
+        !mapViewModel.loading &&
+        !_nameNextMapSelection &&
+        _pendingRouteMapSelection == null,
+  );
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
   static const _offRouteDisplayDelay = Duration(seconds: 2);
@@ -475,6 +493,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _appReviewPrompt.cancel();
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
@@ -495,6 +514,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _appReviewPrompt.dispose();
     _locationSubscription?.cancel();
     _drinkingWaterSubscription?.cancel();
     _publicToiletsSubscription?.cancel();
@@ -652,6 +672,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _endRoute(MapScreenViewModel model) {
+    _appReviewPrompt.cancel();
     _navigationMotion.reset();
     _voiceGuidance.reset();
     _navigationStartGate.reset();
@@ -673,6 +694,86 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       unawaited(_syncCompassBearingFromMap());
       _compassIdleTick.value++;
     });
+  }
+
+  // Only the orange arrival button calls this; the close/cancel action does not.
+  void _finishRoute(MapScreenViewModel model) {
+    if (!model.navigationStarted || model.destination == null) return;
+    _endRoute(model);
+    unawaited(_appReviewPrompt.destinationFinished());
+  }
+
+  void _showInfo(BuildContext context) {
+    _appReviewPrompt.cancel();
+    showMapInfoSheet(context, settingsDiagnostics: () {
+      final model = mapViewModel;
+      final english = context.l10n.isEnglish;
+      String label(String de, String en) => english ? en : de;
+      String flag(bool value) =>
+          value ? (english ? 'Yes' : 'Ja') : (english ? 'No' : 'Nein');
+      final energy = context.read<EnergySavingController>();
+      return {
+        label('Routenempfehlung', 'Route recommendation'):
+            model.routeRecommendation?.name ?? '—',
+        label('Zoomtasten anzeigen', 'Show zoom buttons'):
+            flag(model.showZoomButtons),
+        label('Energie sparen', 'Save energy'): flag(energy.effectiveEnabled),
+        label('Darstellung gewählt', 'Selected appearance'):
+            context.read<AppThemeController>().preference.name,
+        label('Automatische Neuberechnung', 'Automatic rerouting'):
+            flag(model.automaticReroutingEnabled),
+        label('Position der Kartentasten', 'Map button position'):
+            model.sidePanelEdge.name,
+        label('Sprache gewählt', 'Selected language'):
+            context.read<AppLocaleController>().language.name,
+        label('Radl-Vorrang-Netz', 'Priority cycle network'):
+            flag(model.isRadlvorrangnetzVisible),
+        label('Weitere Strecken', 'Other routes'):
+            flag(model.isGesamtnetzVisible),
+        label('Sprachansagen aktiviert', 'Voice guidance enabled'):
+            flag(model.voiceGuidanceEnabled),
+      };
+    }, runtimeDiagnostics: () {
+      final model = mapViewModel;
+      final english = context.l10n.isEnglish;
+      String label(String de, String en) => english ? en : de;
+      String flag(bool value) =>
+          value ? (english ? 'Yes' : 'Ja') : (english ? 'No' : 'Nein');
+      return {
+        label('Initialdaten geladen', 'Initial data loaded'):
+            flag(model.initialLoadComplete),
+        label('Ladevorgang aktiv', 'Loading'): flag(model.loading),
+        label('Radwegbewertungen vorhanden', 'Cycle network ratings present'):
+            flag(model.hasRatings),
+        label('Routenmodus', 'Routing mode'): model.routingMode.name,
+        label('BRouter-Profil', 'BRouter profile'): model.bRouterProfile.name,
+        label('Routenstatus', 'Route state'): model.route.state.name,
+        label('Komfortdatenstatus', 'Comfort data state'):
+            model.route.comfortState.name,
+        label('Navigation gestartet', 'Navigation started'):
+            flag(model.navigationStarted),
+        label('Navigation pausiert', 'Navigation paused'):
+            flag(model.navigationPaused),
+        label('Sprachführung verfügbar', 'Voice guidance available'):
+            flag(model.voiceGuidanceAvailable),
+        label('Standortmodus', 'Location mode'): model.locationState.name,
+        label('Frisches nutzbares GPS-Signal', 'Fresh usable GPS fix'):
+            flag(_hasFreshNavigationFix),
+        label('GPS-Genauigkeit (m)', 'GPS accuracy (m)'):
+            _latestPosition?.accuracy.toStringAsFixed(1) ?? '—',
+        label('Letztes angenommenes GPS-Update (UTC)',
+                'Last accepted GPS update (UTC)'):
+            _lastAcceptedLocationUpdate?.toUtc().toIso8601String() ?? '—',
+        label('Neuberechnung läuft', 'Rerouting in progress'):
+            flag(_automaticRerouteInFlight),
+      };
+    });
+  }
+
+  void _showSettings(BuildContext context, MapScreenViewModel model) {
+    _appReviewPrompt.cancel();
+    showMapSettingsSheet(context, model,
+        onReloadMapData: () => _reloadMapData(model));
   }
 
   void _pauseNavigation(MapScreenViewModel model) {
@@ -707,6 +808,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         model.startInitialLoad();
 
         model.errorMsgs.listen((errorMsg) {
+          _appReviewPrompt.cancel();
           scaffoldMessengerKey.currentState!.hideCurrentSnackBar();
           scaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
             content: Text(errorMsg),
@@ -905,7 +1007,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ? kMapBottomActionRowExpandedPadding
               : kMapBottomActionRowCollapsedPadding;
 
-          return ScaffoldMessenger(
+          final content = ScaffoldMessenger(
             key: scaffoldMessengerKey,
             child: Scaffold(
               key: scaffoldKey,
@@ -1273,16 +1375,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                         ),
                                         onPauseNavigation: () =>
                                             _pauseNavigation(model),
-                                        onShowInfo: () =>
-                                            showMapInfoSheet(context),
+                                        onShowInfo: () => _showInfo(context),
                                         onShowSettings: () =>
-                                            showMapSettingsSheet(
-                                          context,
-                                          model,
-                                          onReloadMapData: () =>
-                                              _reloadMapData(model),
-                                        ),
+                                            _showSettings(context, model),
                                         onEndRoute: () => _endRoute(model),
+                                        onFinishRoute: () =>
+                                            _finishRoute(model),
                                         nextManeuver: _nextManeuver,
                                       ),
                                     ),
@@ -1321,16 +1419,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   ),
                                 );
                               },
-                              onShowInfo: () => showMapInfoSheet(context),
+                              onShowInfo: () => _showInfo(context),
                               onToggleAttribution: () => setState(() {
                                 _mapAttributionExpanded =
                                     !_mapAttributionExpanded;
                               }),
-                              onShowSettings: () => showMapSettingsSheet(
-                                context,
-                                model,
-                                onReloadMapData: () => _reloadMapData(model),
-                              ),
+                              onShowSettings: () =>
+                                  _showSettings(context, model),
                               attributionExpanded: _mapAttributionExpanded,
                             ),
                           if (_pendingRouteMapSelection case final selection?)
@@ -1364,6 +1459,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     ),
                 ],
               ),
+            ),
+          );
+          return Focus(
+            skipTraversal: true,
+            includeSemantics: false,
+            onKeyEvent: (_, __) {
+              _appReviewPrompt.cancel();
+              return KeyEventResult.ignored;
+            },
+            child: Listener(
+              onPointerDown: (_) => _appReviewPrompt.cancel(),
+              onPointerSignal: (_) => _appReviewPrompt.cancel(),
+              child: content,
             ),
           );
         },
@@ -2341,6 +2449,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
+    _appReviewPrompt.cancel();
     final started = await model.startNavigation();
     if (!mounted || !started) return;
     _navigationMotion.reset();
@@ -2402,6 +2511,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model, {
     RoutePlannerMapSelection? initialPlan,
   }) async {
+    _appReviewPrompt.cancel();
     if (!mounted) return;
     if (initialPlan == null) {
       _pendingRouteMapSelection = null;
@@ -4265,6 +4375,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model,
     NearbyPoiType type,
   ) async {
+    _appReviewPrompt.cancel();
     switch (type) {
       case NearbyPoiType.drinkingWater:
         _startDrinkingWaterLoad();

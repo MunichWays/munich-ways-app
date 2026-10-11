@@ -3,23 +3,21 @@ import 'package:flutter/semantics.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/theme.dart';
 import 'package:munich_ways/ui/widgets/menu_list.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 /// Main list + legal links for [InfoSheet].
 class InfoSheetMainContent extends StatelessWidget {
   const InfoSheetMainContent({
     super.key,
-    required this.versionLabel,
     required this.onOpenMapHelp,
     required this.onOpenAbout,
+    required this.onOpenFeedback,
   });
-
-  final String versionLabel;
 
   final VoidCallback onOpenMapHelp;
 
   final VoidCallback onOpenAbout;
+  final VoidCallback onOpenFeedback;
 
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -42,16 +40,6 @@ class InfoSheetMainContent extends StatelessWidget {
     }
   }
 
-  Future<void> _openFeedback(BuildContext context) async {
-    final body = Uri.encodeComponent('Appversion: $versionLabel\n\n');
-    final uri = Uri.parse(
-      'mailto:mail@munichways.de?subject=${Uri.encodeComponent('Feedback Munichways App')}&body=$body',
-    );
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (context.mounted) _snack(context, 'Keine E-Mail-App gefunden');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -70,9 +58,10 @@ class InfoSheetMainContent extends StatelessWidget {
             ),
             const MenuGroupDivider(),
             MenuGroupItem(
-              icon: Icons.mail_outline,
+              icon: Icons.star_outline,
               label: 'Feedback',
-              onTap: () => _openFeedback(context),
+              trailingElement: const Icon(Icons.chevron_right),
+              onTap: onOpenFeedback,
             ),
             const MenuGroupDivider(),
             MenuGroupItem(
