@@ -360,6 +360,14 @@ The complete expected behavior is:
   delayed visual status, delayed spoken warning, and automatic recalculation
   after 30 seconds when enabled. Stationary riders and isolated inaccurate fixes
   must not trigger this flow.
+  A stop or a gap between confirmed movements preserves an existing off-route
+  episode. If the spoken-warning timer expires without fresh moving GPS, the
+  next confirmed off-route movement delivers the pending warning once, without
+  restarting its delay. Rejoining the route or ending navigation cancels it.
+  On iOS and Android, test leaving the route, briefly stopping before the
+  warning, then continuing off route: the warning should resume, followed by
+  recalculation and spoken guidance on the new route. Also rejoin the old route
+  before continuing and verify that no pending warning is spoken.
 - Nearby route levels, ramps, loops, or parallel segments can make the current
   route position ambiguous. The app shows `Position unclear - watch map`,
   suppresses unsafe spoken turns, and continues conservative progress on the

@@ -43,6 +43,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
 import 'package:munich_ways/ui/map/navigation_audio.dart';
+import 'package:munich_ways/ui/map/off_route_announcement.dart';
 import 'package:munich_ways/ui/map/navigation_remaining.dart';
 import 'package:munich_ways/ui/map/navigation_notification_permission.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
@@ -336,7 +337,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _nameNextMapSelection = false;
   Timer? _voiceSignalTimer;
   Timer? _offRouteDisplayTimer;
-  Timer? _offRouteAnnouncementTimer;
+  final _offRouteAnnouncement = OffRouteAnnouncement();
   Timer? _automaticRerouteTimer;
   bool _offRouteEpisodeActive = false;
   bool _automaticRerouteCommitted = false;
@@ -2088,6 +2089,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     Position gpsPosition,
   ) {
     if (_automaticRerouteInFlight) return;
+    // Deliver an elapsed warning before considering a resumed recalculation.
+    _offRouteAnnouncement.retryIfDue();
     // A committed off-route timer may expire during a stop or GPS outage.
     // Resume it on the next confirmed movement, rather than leaving a spent
     // timer and a committed flag that permanently block every recovery path.
@@ -2117,7 +2120,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       routePosition,
       horizontalAccuracyMeters: gpsPosition.accuracy,
     );
-    if (!model.navigationStarted || _gpsStationary || !isOffRoute) {
+    if (!model.navigationStarted || !isOffRoute) {
       if (model.navigationStarted) {
         if (!isOffRoute &&
             !_gpsStationary &&
@@ -2142,6 +2145,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       }
       return;
     }
+    // A stop or a gap between confirmed movements pauses the episode. It
+    // must not repeatedly restart the warning and recalculation delays.
+    if (_gpsStationary) return;
     _lastOnRoutePosition = null;
     _onRouteSinceReroute = null;
     if (_offRouteEpisodeActive) return;
@@ -2168,8 +2174,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       return;
     }
 
-    _offRouteAnnouncementTimer = Timer(_offRouteAnnouncementDelay, () {
-      if (!_stillOffRoute(model)) return;
+    _offRouteAnnouncement.schedule(_offRouteAnnouncementDelay, () {
+      if (!_stillOffRoute(model)) return false;
       final automatic =
           model.automaticReroutingEnabled && !_automaticReroutingSuspended;
       _automaticRerouteCommitted = automatic;
@@ -2191,6 +2197,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       'Neuberechnung in Kürze.'
               : 'Route verlassen oder kein GPS-Signal.';
       _setReroutingDisplay(message);
+      log.i('Off-route warning ready: automatic $automatic, '
+          'voice ${model.voiceGuidanceEnabled}, '
+          'turn guidance ${model.voiceGuidanceAvailable}');
       if (model.voiceGuidanceEnabled && model.voiceGuidanceAvailable) {
         final english = context.l10n.isEnglish;
         final spokenMessage = offRouteSpokenMessage(
@@ -2202,6 +2211,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         _offRouteAnnouncementCount++;
         unawaited(_speak(spokenMessage, english: english));
       }
+      return true;
     });
 
     if (model.automaticReroutingEnabled && !_automaticReroutingSuspended) {
@@ -2270,7 +2280,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _automaticRerouteCommitted = true;
     _automaticRerouteRetryAt = null;
     _offRouteDisplayTimer?.cancel();
-    _offRouteAnnouncementTimer?.cancel();
+    _offRouteAnnouncement.cancel();
     _automaticRerouteTimer?.cancel();
     final generation = ++_automaticRerouteGeneration;
     final destination = model.destination;
@@ -2391,10 +2401,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _automaticRerouteInFlight = false;
     _automaticRerouteRetryAt = null;
     _offRouteDisplayTimer?.cancel();
-    _offRouteAnnouncementTimer?.cancel();
+    _offRouteAnnouncement.cancel();
     _automaticRerouteTimer?.cancel();
     _offRouteDisplayTimer = null;
-    _offRouteAnnouncementTimer = null;
     _automaticRerouteTimer = null;
     _offRouteEpisodeActive = false;
     _automaticRerouteCommitted = false;
