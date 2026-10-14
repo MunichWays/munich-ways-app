@@ -1,0 +1,317 @@
+{
+  "version": 1,
+  "name": "Isar & Brücke – Testroute",
+  "createdAt": "2026-10-14T10:00:00Z",
+  "provider": "radlnavi",
+  "variant": "standard",
+  "plan": [
+    {
+      "name": "Ort 1",
+      "coordinates": [
+        11.54,
+        48.15
+      ]
+    },
+    {
+      "name": "Ort 2",
+      "coordinates": [
+        11.55,
+        48.16
+      ]
+    },
+    {
+      "name": "Ort 3",
+      "coordinates": [
+        11.56,
+        48.17
+      ]
+    },
+    {
+      "name": "Ort 4",
+      "coordinates": [
+        11.57,
+        48.18
+      ]
+    }
+  ],
+  "response": {
+    "code": "Ok",
+    "waypoints": [
+      {
+        "location": [
+          11.54,
+          48.15
+        ]
+      },
+      {
+        "location": [
+          11.55,
+          48.16
+        ]
+      },
+      {
+        "location": [
+          11.56,
+          48.17
+        ]
+      },
+      {
+        "location": [
+          11.57,
+          48.18
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "distance": 4020,
+        "duration": 990,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              11.54,
+              48.15
+            ],
+            [
+              11.55,
+              48.16
+            ],
+            [
+              11.56,
+              48.17
+            ],
+            [
+              11.57,
+              48.18
+            ]
+          ]
+        },
+        "legs": [
+          {
+            "distance": 1340,
+            "duration": 330,
+            "steps": [
+              {
+                "distance": 1340,
+                "duration": 330,
+                "name": "Isar & Brücke",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "depart",
+                  "location": [
+                    11.54,
+                    48.15
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.54,
+                      48.15
+                    ],
+                    [
+                      11.55,
+                      48.16
+                    ]
+                  ]
+                },
+                "intersections": [
+                  {
+                    "location": [
+                      11.54,
+                      48.15
+                    ],
+                    "classes": [
+                      "cycleway"
+                    ]
+                  }
+                ]
+              },
+              {
+                "distance": 0,
+                "duration": 0,
+                "name": "",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "arrive",
+                  "location": [
+                    11.55,
+                    48.16
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.55,
+                      48.16
+                    ]
+                  ]
+                }
+              }
+            ],
+            "annotation": {
+              "nodes": [
+                1,
+                2
+              ],
+              "distance": [
+                1340
+              ]
+            }
+          },
+          {
+            "distance": 1340,
+            "duration": 330,
+            "steps": [
+              {
+                "distance": 1340,
+                "duration": 330,
+                "name": "Isar & Brücke",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "depart",
+                  "location": [
+                    11.55,
+                    48.16
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.55,
+                      48.16
+                    ],
+                    [
+                      11.56,
+                      48.17
+                    ]
+                  ]
+                },
+                "intersections": [
+                  {
+                    "location": [
+                      11.55,
+                      48.16
+                    ],
+                    "classes": [
+                      "cycleway"
+                    ]
+                  }
+                ]
+              },
+              {
+                "distance": 0,
+                "duration": 0,
+                "name": "",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "arrive",
+                  "location": [
+                    11.56,
+                    48.17
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.56,
+                      48.17
+                    ]
+                  ]
+                }
+              }
+            ],
+            "annotation": {
+              "nodes": [
+                1,
+                2
+              ],
+              "distance": [
+                1340
+              ]
+            }
+          },
+          {
+            "distance": 1340,
+            "duration": 330,
+            "steps": [
+              {
+                "distance": 1340,
+                "duration": 330,
+                "name": "Isar & Brücke",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "depart",
+                  "location": [
+                    11.56,
+                    48.17
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.56,
+                      48.17
+                    ],
+                    [
+                      11.57,
+                      48.18
+                    ]
+                  ]
+                },
+                "intersections": [
+                  {
+                    "location": [
+                      11.56,
+                      48.17
+                    ],
+                    "classes": [
+                      "cycleway"
+                    ]
+                  }
+                ]
+              },
+              {
+                "distance": 0,
+                "duration": 0,
+                "name": "",
+                "mode": "cycling",
+                "maneuver": {
+                  "type": "arrive",
+                  "location": [
+                    11.57,
+                    48.18
+                  ]
+                },
+                "geometry": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [
+                      11.57,
+                      48.18
+                    ]
+                  ]
+                }
+              }
+            ],
+            "annotation": {
+              "nodes": [
+                1,
+                2
+              ],
+              "distance": [
+                1340
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

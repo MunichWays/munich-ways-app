@@ -10,6 +10,7 @@ class CycleRoute {
   final List<RouteDisplaySection> displaySections;
   RouteComfort? comfort;
   final RouteAnalysisContext? analysisContext;
+  final Map<String, dynamic>? transferResponse;
 
   /// Metrics up to [points.last], excluding a separately rendered final access.
   /// Null means the provider totals already describe the navigable geometry.
@@ -26,6 +27,7 @@ class CycleRoute {
     this.displaySections = const [],
     this.comfort,
     this.analysisContext,
+    this.transferResponse,
     this.navigationDistance,
     this.navigationDuration,
   });

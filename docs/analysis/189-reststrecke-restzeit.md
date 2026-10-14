@@ -298,7 +298,8 @@ Verhalten bestätigt. Die anschließende Verbesserung ersetzt das Routensymbol
 vor den Kilometern durch eine Zielfahne und hebt die pauschalen Ausschlüsse
 oben auf. Reststrecke und geschätzte Restzeit beziehen sich auf das Ende der
 berechneten Route. Ein anschließender Zielverbinder wird separat als
-„Zielzugang: … m“ dargestellt; Tooltip und Screenreader benennen das Routenende.
+„Zielzugang: … m“ im Routenplaner unter dem Zielort dargestellt; Tooltip und
+Screenreader der Reststrecke benennen weiterhin das Routenende.
 Der Zielzugang ist eine geometrische Länge, keine neu berechnete Gehroute.
 
 BRouter-Gesamtwerte beschreiben bereits die berechnete Route. RadlNavi/OSRM

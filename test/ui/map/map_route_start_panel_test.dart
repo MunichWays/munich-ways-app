@@ -18,6 +18,45 @@ const _comfort = RouteComfort(
         black: 0, red: 10, yellow: 20, green: 50, unrated: 20));
 
 void main() {
+  testWidgets('fixed start has a usable start button before and after folding',
+      (tester) async {
+    final model = MapScreenViewModel(store: _Settings())
+      ..routeStart = Place('Start', const LatLng(48.1, 11.5))
+      ..destination = Place('Ziel', const LatLng(48.2, 11.6))
+      ..route = MapRoute(CycleRoute(const [], 4200, 1200), MapRouteState.SHOWN);
+    addTearDown(model.dispose);
+    var starts = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: MapRouteStartPanel(
+          model: model,
+          builder: (collapsed, toggle) => MapNavigationHeaderBar(
+            model: model,
+            collapsed: collapsed,
+            onToggleCollapsed: toggle,
+            onRefreshRoute: () async {},
+            onEditRoute: () {},
+            onStartNavigation: () async {
+              starts++;
+            },
+            onToggleVoiceGuidance: () {},
+            onPauseNavigation: () {},
+            onEndRoute: () {},
+            onFinishRoute: () {},
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.bySemanticsLabel('Starten'));
+    expect(starts, 1);
+    await tester.tap(find.byKey(const ValueKey('route-panel-handle')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Starten'));
+    expect(starts, 2);
+    expect(model.routeStart?.displayName, 'Start');
+    expect(tester.takeException(), isNull);
+  });
+
   for (final textScale in [1.0, 2.0])
     testWidgets(
         'fold by grip or drag, retain folding across metadata, and start navigation ($textScale)',

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
@@ -48,14 +47,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
     return '${km.toStringAsFixed(1).replaceAll('.', english ? '.' : ',')} km';
   }
 
-  static int _destinationAccessMeters(List<LatLng> points) {
-    var meters = 0.0;
-    for (var i = 1; i < points.length; i++) {
-      meters += const Distance().as(LengthUnit.Meter, points[i - 1], points[i]);
-    }
-    return meters.round();
-  }
-
   static String _formatMin(double seconds) {
     final min = (seconds / 60.0).round();
     return '$min Min';
@@ -84,8 +75,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
     BuildContext context, {
     required String label,
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     bool compact = false,
+    bool loading = false,
   }) {
     final theme = Theme.of(context);
     final mediaSize = MediaQuery.sizeOf(context);
@@ -95,6 +87,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
       container: true,
       button: true,
       label: label,
+      enabled: onPressed != null,
       onTap: onPressed,
       excludeSemantics: true,
       child: GestureDetector(
@@ -134,7 +127,12 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   ),
                 ),
                 onPressed: onPressed,
-                icon: Icon(icon, size: compactLandscape ? 21 : 24),
+                icon: loading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(icon, size: compactLandscape ? 21 : 24),
                 label: Text(label),
               ),
             ),
@@ -279,15 +277,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
                             label: durationLabel),
                       ],
                     ),
-              if (model.navigationStarted && hasDestinationAccess) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${context.l10n.isEnglish ? 'Access to destination' : 'Zielzugang'}: '
-                  '${_destinationAccessMeters(r.destinationConnector)} m',
-                  textAlign: TextAlign.center,
-                  style: baseStyle,
-                ),
-              ],
             ],
           ),
         );
@@ -304,8 +293,7 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final refreshEnabled = route.state != MapRouteState.LOADING;
     final routeReadyToStart = route.state == MapRouteState.SHOWN &&
         route.route != null &&
-        !model.navigationStarted &&
-        model.routeStart == null;
+        !model.navigationStarted;
     if (collapsed && routeReadyToStart) {
       return Material(
         color: AppColors.mapRouteColor,
@@ -319,7 +307,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
             label: context.l10n.tr('Starten'),
             icon: Icons.navigation,
             compact: true,
-            onPressed: onStartNavigation,
+            loading: model.navigationStartPending,
+            onPressed: model.navigationStartPending ? null : onStartNavigation,
           ),
         ),
       );
@@ -609,7 +598,9 @@ class MapNavigationHeaderBar extends StatelessWidget {
                   label: context.l10n.tr('Starten'),
                   compact: true,
                   icon: Icons.navigation,
-                  onPressed: onStartNavigation,
+                  loading: model.navigationStartPending,
+                  onPressed:
+                      model.navigationStartPending ? null : onStartNavigation,
                 ),
               ),
             ],

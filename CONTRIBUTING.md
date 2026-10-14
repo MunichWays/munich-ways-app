@@ -440,14 +440,16 @@ and navigation end still clear retained values. Destination proximity alone
 cannot manufacture zero or end guidance at an earlier occurrence on a loop.
 
 Final destination access does not suppress statistics: distance and time refer
-to the end of the calculated navigable route, with access length shown separately.
+to the end of the calculated navigable route. Access length appears in the route
+planner below the destination name, replacing its generic destination label;
+the blue navigation panel keeps remaining distance and time without that row.
 OSRM final access step metrics are removed from navigation totals; incomplete
 step metrics use a geometric proportion as an estimate. Planning totals stay
 unchanged. BRouter totals already stop at its route endpoint. Missing voice
 hints, loops and repeated segments do not by themselves suppress statistics;
 an actually ambiguous match still does. No extra routing requests are made.
-In portrait, side controls follow the measured panel height so final access,
-large text and folding cannot leave the compass behind the panel.
+In portrait, side controls follow the measured panel height so large text and
+folding cannot leave the compass behind the panel.
 Landscape panels reserve a horizontal lane for the side controls on their
 selected side, preserving the limited vertical space.
 See [scope and acceptance scenarios](docs/analysis/189-reststrecke-restzeit.md).

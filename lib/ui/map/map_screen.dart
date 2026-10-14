@@ -1,3 +1,6 @@
+import 'package:munich_ways/api/route_transfer_io.dart';
+import 'package:munich_ways/model/route_transfer.dart';
+import 'package:munich_ways/ui/map/route_import_dialog.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_start_panel.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
@@ -388,10 +391,60 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return _streetDetailsByLineId[id];
   }
 
+  StreamSubscription<Future<RouteTransfer>>? _transferSubscription;
+  bool _transferDialogOpen = false;
+  RouteTransfer? _deferredTransfer;
+  Future<void> _receiveTransfer(Future<RouteTransfer> incoming) async {
+    if (_transferDialogOpen) {
+      try {
+        await incoming;
+      } catch (_) {}
+      return;
+    }
+    _transferDialogOpen = true;
+    try {
+      final transfer = await incoming;
+      if (!mounted) return;
+      if (!widget.startupInteractionsEnabled) {
+        _deferredTransfer = transfer;
+        return;
+      }
+      final accepted =
+          await showRouteImportDialog(context, transfer, mapViewModel);
+      if (accepted && mounted)
+        Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(context.l10n.isEnglish
+                ? 'Route could not be opened. The link may have expired; reopen it to retry. GPX files must have one track and be at most 4 MB.'
+                : 'Route konnte nicht geöffnet werden. Link eventuell abgelaufen; für einen neuen Versuch erneut öffnen. GPX: ein Track, maximal 4 MB.')));
+    } finally {
+      _transferDialogOpen = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.startupInteractionsEnabled && _deferredTransfer != null) {
+      final transfer = _deferredTransfer!;
+      _deferredTransfer = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_receiveTransfer(Future.value(transfer)));
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _transferSubscription = RouteTransferIo.instance.incoming
+        .listen((value) => unawaited(_receiveTransfer(value)));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) RouteTransferIo.instance.start();
+    });
     unawaited(_configureTextToSpeech());
     unawaited(_loadInitialCamera());
     // iOS only: creating MapLibre in the first layout pass can hit Mapbox GL (native map engine) during an unstable
@@ -521,6 +574,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _transferSubscription?.cancel();
     _navigationRemaining.dispose();
     _appReviewPrompt.dispose();
     _locationSubscription?.cancel();

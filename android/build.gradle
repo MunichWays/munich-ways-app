@@ -8,6 +8,11 @@ allprojects {
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+// Set every build directory before evaluating :app. Otherwise AGP captures
+// its default ProGuard file path before :app's output directory is relocated.
+subprojects {
     project.evaluationDependsOn(':app')
 }
 

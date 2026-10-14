@@ -217,6 +217,7 @@ void main() {
     await h.api.waitForDirect(1);
     final standard = h.model.route.route;
     final switching = h.model.setTemporaryShortestRouteEnabled(true);
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     expect(await h.model.startNavigation(), isTrue);
     h.api.direct.single.complete(result(true));
@@ -233,6 +234,7 @@ void main() {
     await h.api.waitForDirect(1);
     h.api.direct.single.complete(result(true));
     await h.model.setTemporaryShortestRouteEnabled(true);
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     h.model.updateWaypointProgress(points[1]);
@@ -255,6 +257,7 @@ void main() {
     await h.model.refreshRoute();
     await h.api.waitForDirect(1);
     final standard = h.model.route.route;
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     h.model.updateWaypointProgress(points[1]);
@@ -289,6 +292,7 @@ void main() {
     await h.model.refreshRoute();
     await h.api.waitForDirect(1);
     final standard = h.model.route.route;
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     h.fallback.fail = true;
@@ -310,6 +314,7 @@ void main() {
     await h.model.refreshRoute();
     await h.api.waitForDirect(1);
     final active = h.model.route;
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     final switching = h.model.setTemporaryShortestRouteEnabled(true);
@@ -329,6 +334,7 @@ void main() {
     final h = Harness();
     await h.model.refreshRoute();
     await h.api.waitForDirect(1);
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     await tester.pumpWidget(MaterialApp(
@@ -390,6 +396,7 @@ void main() {
     for (final pending in h.api.analyses.values.expand((list) => list)) {
       pending.complete(comfort);
     }
+    h.model.routeStart = null; // These tests cover an already GPS-based plan.
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     await tester.pumpWidget(MaterialApp(

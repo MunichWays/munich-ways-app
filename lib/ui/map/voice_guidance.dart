@@ -941,7 +941,21 @@ class VoiceGuidance {
 
   String? _intermediateName(int index) {
     if (index >= _intermediateDestinationNames.length) return null;
-    final name = _intermediateDestinationNames[index]?.trim();
+    // Imported places may still contain a full geocoder address hierarchy.
+    // Speak the landmark/street, while retaining the full name in the planner.
+    final fullName = _intermediateDestinationNames[index]?.trim();
+    final coordinates = fullName != null &&
+        RegExp(r'^\[?\s*[+-]?\d+(?:\.\d+)?\s*,\s*[+-]?\d+(?:\.\d+)?\s*\]?$')
+            .hasMatch(fullName);
+    final parts = fullName?.split(',').map((part) => part.trim()).toList();
+    final houseNumberFirst = parts != null &&
+        parts.length > 1 &&
+        RegExp(r'^\d+[a-zA-Z]?$').hasMatch(parts.first);
+    final name = coordinates
+        ? fullName
+        : houseNumberFirst
+            ? '${parts[1]} ${parts.first}'
+            : parts?.first;
     return name == null || name.isEmpty ? null : name;
   }
 

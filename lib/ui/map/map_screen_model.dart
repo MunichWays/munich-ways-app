@@ -1,3 +1,4 @@
+import 'package:munich_ways/api/saved_routes_store.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -187,6 +188,8 @@ class MapScreenViewModel extends ChangeNotifier {
   Place? routeStart;
   final List<Place> waypoints = [];
   SavedRoute? selectedSavedRoute;
+  bool _originalRoute = false;
+  bool get isOriginalRoute => _originalRoute;
   int _routePlanRevision = 0;
   int _lastPassedWaypointIndex = -1;
 
@@ -206,13 +209,16 @@ class MapScreenViewModel extends ChangeNotifier {
   LocationState locationState = LocationState.NOT_AVAILABLE;
   bool _navigationStarted = false;
   bool get navigationStarted => _navigationStarted;
+  Future<bool>? _navigationStartRequest;
+  bool get navigationStartPending => _navigationStartRequest != null;
   bool get navigationPaused =>
       _navigationStarted &&
       locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
   bool _voiceGuidanceEnabled = false;
   bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
   bool _automaticReroutingEnabled = true;
-  bool get automaticReroutingEnabled => _automaticReroutingEnabled;
+  bool get automaticReroutingEnabled =>
+      _automaticReroutingEnabled && !_originalRoute;
   bool get voiceGuidanceAvailable =>
       route.route?.supportsVoiceGuidance ?? false;
   RoutingMode _routingMode = RoutingMode.automatic;
@@ -256,6 +262,7 @@ class MapScreenViewModel extends ChangeNotifier {
   late final RoutingService _routingService;
   bool _disposed = false;
   late final SettingsStore _settingsStore;
+  late final SavedRoutesStore _snapshotStore;
 
   late Stream<String> errorMsgs;
   late StreamController<String> _errorMsgsController;
@@ -281,6 +288,7 @@ class MapScreenViewModel extends ChangeNotifier {
   MapScreenViewModel({
     RoutingService? routingService,
     SettingsStore? store,
+    SavedRoutesStore? snapshotStore,
     MunichwaysApi? munichwaysApi,
   }) {
     _routingService = routingService ??
@@ -290,6 +298,7 @@ class MapScreenViewModel extends ChangeNotifier {
           radlNaviCoverage: OberbayernCoverage(),
         );
     _settingsStore = store ?? settingsStore;
+    _snapshotStore = snapshotStore ?? savedRoutesStore;
     _munichwaysApi = munichwaysApi ?? MunichwaysApi();
     _errorMsgsController = StreamController();
     errorMsgs = _errorMsgsController.stream;
@@ -516,7 +525,86 @@ class MapScreenViewModel extends ChangeNotifier {
   /// The regular location button deliberately cycles through follow modes.
   /// Navigation start instead advances directly to follow-and-rotate, while
   /// reusing the same location-service and permission handling.
-  Future<bool> startNavigation() async {
+  Future<bool> startNavigation() {
+    final pending = _navigationStartRequest;
+    if (pending != null) return pending;
+    final revision = _routePlanRevision;
+    _selectionRevision++;
+    _pendingVariant = null;
+    final completion = Completer<bool>();
+    final request = completion.future.whenComplete(() {
+      _navigationStartRequest = null;
+      if (!_disposed) notifyListeners();
+    });
+    _navigationStartRequest = request;
+    notifyListeners();
+    unawaited(_startNavigation(revision).then<void>(completion.complete,
+        onError: (Object error, StackTrace stackTrace) =>
+            completion.completeError(error, stackTrace)));
+    return request;
+  }
+
+  Future<bool> _startNavigation(int revision) async {
+    if (_disposed || revision != _routePlanRevision) return false;
+    if (locationState != LocationState.FOLLOW &&
+        locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
+      await onPressLocationBtn();
+    }
+    if (_disposed || revision != _routePlanRevision) return false;
+    if (locationState != LocationState.FOLLOW &&
+        locationState != LocationState.FOLLOW_AND_ROTATE_MAP) return false;
+
+    final plannedStart = routeStart;
+    if (!_navigationStarted && plannedStart != null) {
+      Position? from;
+      try {
+        from = await resolveRouteStartPosition()
+            .timeout(const Duration(seconds: 16));
+      } catch (error, stackTrace) {
+        log.w('Resolving navigation start failed',
+            error: error, stackTrace: stackTrace);
+      }
+      if (_disposed || revision != _routePlanRevision) return false;
+      if (from == null || !from.latitude.isFinite || !from.longitude.isFinite) {
+        _displayErrorMsg(
+            'Keine Route, da kein aktueller Standort als Start vorhanden');
+        return false;
+      }
+      final distance = Geolocator.distanceBetween(
+        from.latitude,
+        from.longitude,
+        plannedStart.latLng.latitude,
+        plannedStart.latLng.longitude,
+      );
+      if (distance > 30) {
+        final previousRoute = route;
+        final previousStops = List<Place>.of(waypoints);
+        final wasOriginalRoute = _originalRoute;
+        routeStart = null;
+        waypoints.insert(0, plannedStart);
+        _originalRoute = false;
+        final ready =
+            await _requestRoute(startPosition: from, keepShownRoute: true);
+        if (!ready) {
+          // Restore only our own failed attempt, never a newer user plan.
+          if (!_disposed && _routePlanRevision == revision + 1) {
+            routeStart = plannedStart;
+            waypoints
+              ..clear()
+              ..addAll(previousStops);
+            _originalRoute = wasOriginalRoute;
+            route = previousRoute;
+            _routePlanRevision++;
+            _invalidateVariants();
+            notifyListeners();
+          }
+          return false;
+        }
+      }
+      routeStart = null;
+      _lastPassedWaypointIndex = -1;
+    }
+    if (_disposed) return false;
     if (locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
       // A late planning choice must never replace navigation after departure.
       _selectionRevision++;
@@ -526,9 +614,6 @@ class MapScreenViewModel extends ChangeNotifier {
       return true;
     }
 
-    if (locationState != LocationState.FOLLOW) {
-      await onPressLocationBtn();
-    }
     if (locationState == LocationState.FOLLOW) {
       locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
       // A late planning choice must never replace navigation after departure.
@@ -665,7 +750,8 @@ class MapScreenViewModel extends ChangeNotifier {
   /// current route is ended or replaced with a new destination.
   bool _temporaryShortestRouteEnabled = false;
   bool get temporaryShortestRouteEnabled => _temporaryShortestRouteEnabled;
-  bool get canSelectTemporaryShortestRoute => !shortestRouteEnabled;
+  bool get canSelectTemporaryShortestRoute =>
+      !shortestRouteEnabled && !_originalRoute;
 
   /// Cached alternatives share one plan revision and never replace each other
   /// merely because a background request or comfort analysis completes.
@@ -680,6 +766,7 @@ class MapScreenViewModel extends ChangeNotifier {
       canSelectTemporaryShortestRoute && _variants.isNotEmpty;
 
   Future<bool> setTemporaryShortestRouteEnabled(bool enabled) async {
+    if (_originalRoute) return false;
     if (enabled && shortestRouteEnabled) return false;
     if (_navigationStarted) {
       return _switchRouteVariantDuringNavigation(enabled);
@@ -915,6 +1002,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
+    _originalRoute = false;
     this.destination = place;
     // A new destination prepares a new route. Navigation must be started
     // explicitly so tracking and guidance are initialized for that route.
@@ -941,6 +1029,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
+    _originalRoute = false;
     destination = place;
     _navigationStarted = false;
     notifyListeners();
@@ -958,6 +1047,8 @@ class MapScreenViewModel extends ChangeNotifier {
     required List<Place> stops,
     required Place destination,
   }) {
+    if (_originalRoute) selectedSavedRoute = null;
+    _originalRoute = false;
     final wasNavigating = _navigationStarted;
     if (!wasNavigating &&
         this.destination != null &&
@@ -984,6 +1075,48 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void setSavedRoutePlan(SavedRoute route) {
+    if (route.snapshotId != null && route.snapshot == null) {
+      final revision = _routePlanRevision;
+      final selection = ++_selectionRevision;
+      _pendingVariant = null;
+      unawaited(_snapshotStore.loadSnapshot(route).then((loaded) {
+        if (!_disposed &&
+            revision == _routePlanRevision &&
+            selection == _selectionRevision) setSavedRoutePlan(loaded);
+      }).catchError((Object _) {
+        if (!_disposed &&
+            revision == _routePlanRevision &&
+            selection == _selectionRevision)
+          _displayErrorMsg(
+              'Gespeicherte Originalstrecke konnte nicht geladen werden.');
+      }));
+      return;
+    }
+    final snapshot = route.snapshot;
+    if (snapshot != null) {
+      _clearTemporaryShortestRoute();
+      _routePlanRevision++;
+      _selectionRevision++;
+      _invalidateVariants();
+      _originalRoute = true;
+      _temporaryShortestRouteEnabled = snapshot.native?['variant'] == 'direct';
+      _navigationStarted = false;
+      if (locationState != LocationState.NOT_AVAILABLE)
+        locationState = LocationState.DISPLAY;
+      routeStart = snapshot.plan.first;
+      waypoints
+        ..clear()
+        ..addAll(snapshot.plan.sublist(1, snapshot.plan.length - 1));
+      destination = snapshot.plan.last;
+      _lastPassedWaypointIndex = -1;
+      selectedSavedRoute = route;
+      this.route = MapRoute(snapshot.route, MapRouteState.SHOWN);
+      _destinationStreamController.add(destination!);
+      _routeStreamController.add(this.route);
+      notifyListeners();
+      return;
+    }
+    _originalRoute = false;
     _clearTemporaryShortestRoute();
     selectedSavedRoute = route;
     setRoutePlan(
@@ -999,6 +1132,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void clearDestination() {
     // Drop any in-flight route so a late response cannot repopulate the map.
+    _originalRoute = false;
     this.destination = null;
     routeStart = null;
     waypoints.clear();
@@ -1017,6 +1151,9 @@ class MapScreenViewModel extends ChangeNotifier {
 
   /// Recalculates the route from the current location to the current destination.
   Future<bool> refreshRoute() {
+    // Manual refresh deliberately leaves original-route mode. The stored
+    // snapshot remains immutable and can still be opened again.
+    _originalRoute = false;
     if (destination == null) {
       return Future<bool>.value(false);
     }
@@ -1059,19 +1196,23 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> _requestRoute() async {
+  Future<bool> _requestRoute(
+      {Position? startPosition, bool keepShownRoute = false}) async {
+    if (_originalRoute) return false;
     final to = destination;
     if (to == null || _disposed) return false;
     // Every refresh has a new generation, including two overlapping GPS fixes.
     final revision = ++_routePlanRevision;
     _invalidateVariants();
     final direct = _temporaryShortestRouteEnabled;
-    route = MapRoute(null, MapRouteState.LOADING);
+    // Retain the usable plan and its pending comfort metadata during approach
+    // calculation. The navigation start button already shows the pending work.
+    if (!keepShownRoute) route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
     final customStart = routeStart;
     final plannedStops = List<Place>.of(waypoints);
-    Position? from;
-    if (customStart == null) {
+    Position? from = startPosition;
+    if (customStart == null && from == null) {
       try {
         from = await resolveRouteStartPosition()
             .timeout(const Duration(seconds: 16));
@@ -1096,7 +1237,8 @@ class MapScreenViewModel extends ChangeNotifier {
       ...plannedStops.map((place) => place.latLng),
       to.latLng,
     ]);
-    final ready = await _calculateVariant(direct, revision, activate: true);
+    final ready = await _calculateVariant(direct, revision,
+        activate: true, keepShownRouteOnFailure: keepShownRoute);
     if (_disposed || revision != _routePlanRevision) return false;
     // Start the alternative only after the requested route is already usable.
     if (ready &&
@@ -1108,7 +1250,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   Future<bool> _calculateVariant(bool direct, int revision,
-      {bool activate = false}) {
+      {bool activate = false, bool keepShownRouteOnFailure = false}) {
     final cached = _variants[direct];
     if (cached?.state == MapRouteState.SHOWN) return Future.value(true);
     final pending = _variantRequests[direct];
@@ -1145,7 +1287,7 @@ class MapScreenViewModel extends ChangeNotifier {
         if (!isCurrent()) return false;
         target.state = MapRouteState.ERROR;
         if (activate && _temporaryShortestRouteEnabled == direct) {
-          route = target;
+          if (!keepShownRouteOnFailure) route = target;
           _displayErrorMsg(routeErrorMessage(error));
         } else {
           log.i('Alternative route unavailable',
