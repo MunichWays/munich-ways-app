@@ -940,6 +940,64 @@ void main() {
     );
   });
 
+  for (final english in [false, true]) {
+    test('speaks a short intermediate name from an imported address ($english)',
+        () {
+      const intermediate = LatLng(48.1410, 11.5690);
+      final guidance = VoiceGuidance()
+        ..setRoute(
+          CycleRoute(
+            const [start, intermediate, end],
+            200,
+            50,
+            maneuvers: const [
+              RouteManeuver(location: intermediate, type: 'arrive'),
+              RouteManeuver(location: end, type: 'arrive'),
+            ],
+          ),
+          intermediateDestinationNames: const [
+            'Marienplatz, Angerviertel, Bezirksteil Angerviertel, '
+                'Altstadt-Lehel, München, Bayern, 80331, Deutschland',
+          ],
+        );
+      expect(
+        guidance.update(intermediate, english: english),
+        english
+            ? 'You have reached intermediate destination 1, Marienplatz.'
+            : 'Du hast das Zwischenziel 1, Marienplatz, erreicht.',
+      );
+      expect(guidance.update(intermediate, english: english), isNull);
+    });
+  }
+
+  for (final entry in {
+    '7, Wotanstraße, Nymphenburg, München, Bayern, Deutschland':
+        'Wotanstraße 7',
+    '48, 11': '48, 11',
+    '[48.14, 11.57]': '[48.14, 11.57]',
+  }.entries) {
+    test(
+        'short intermediate names preserve address numbers and coordinates (${entry.key})',
+        () {
+      const intermediate = LatLng(48.1410, 11.5690);
+      final guidance = VoiceGuidance()
+        ..setRoute(
+          CycleRoute(
+            const [start, intermediate, end],
+            200,
+            50,
+            maneuvers: const [
+              RouteManeuver(location: intermediate, type: 'arrive'),
+              RouteManeuver(location: end, type: 'arrive'),
+            ],
+          ),
+          intermediateDestinationNames: [entry.key],
+        );
+      expect(guidance.update(intermediate, english: false),
+          'Du hast das Zwischenziel 1, ${entry.value}, erreicht.');
+    });
+  }
+
   test('announces the map number before a named intermediate destination', () {
     const stop1 = LatLng(48.1405, 11.5700);
     const stop2 = LatLng(48.1410, 11.5700);

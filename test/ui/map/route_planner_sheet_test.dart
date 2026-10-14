@@ -1,9 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/model/saved_route.dart';
@@ -24,6 +26,15 @@ class _RoutesStore extends SavedRoutesStore {
 
   @override
   Future<void> add(SavedRoute route) async => saved = route;
+}
+
+class _AccessModel extends MapScreenViewModel {
+  _AccessModel() : super(store: _SettingsStore());
+
+  void showRoute(MapRoute value) {
+    route = value;
+    notifyListeners();
+  }
 }
 
 void main() {
@@ -80,8 +91,21 @@ void main() {
   }
 
   Future<void> openPlanner(
-      WidgetTester tester, MapScreenViewModel model, _RoutesStore store) async {
+      WidgetTester tester, MapScreenViewModel model, _RoutesStore store,
+      {bool english = false, double textScale = 1}) async {
     await tester.pumpWidget(MaterialApp(
+        locale: Locale(english ? 'en' : 'de'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!),
         home: Builder(
             builder: (context) => Scaffold(
                   body: TextButton(
@@ -89,9 +113,180 @@ void main() {
                           model: model, routesStore: store),
                       child: const Text('Open')),
                 ))));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('compact header orders matching import, export and save actions',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = _AccessModel()
+      ..destination = Place('Ende', const LatLng(48.2, 11.6));
+    addTearDown(model.dispose);
+    await openPlanner(tester, model, _RoutesStore(), textScale: 2);
+    expect(find.text('Route'), findsOneWidget);
+    expect(find.text('Route importieren'), findsNothing);
+    expect(find.text('GPX exportieren'), findsNothing);
+    final icons = [
+      Icons.file_upload_outlined,
+      Icons.file_download_outlined,
+      Icons.save_outlined,
+    ];
+    final buttons = [
+      for (final icon in icons) find.widgetWithIcon(IconButton, icon)
+    ];
+    IconButton button(int index) => tester.widget<IconButton>(buttons[index]);
+    for (var index = 0; index < buttons.length; index++) {
+      expect(tester.getSize(buttons[index]), const Size.square(48));
+      expect(buttons[index].hitTestable(), findsOneWidget);
+      for (final states in [
+        <WidgetState>{},
+        {WidgetState.disabled}
+      ]) {
+        expect(button(index).style?.foregroundColor?.resolve(states),
+            button(2).style?.foregroundColor?.resolve(states));
+        expect(button(index).style?.backgroundColor?.resolve(states),
+            button(2).style?.backgroundColor?.resolve(states));
+      }
+      if (index > 0) {
+        expect(tester.getRect(buttons[index]).left,
+            greaterThan(tester.getRect(buttons[index - 1]).right));
+      }
+    }
+    expect(tester.getRect(find.text('Route')).right,
+        lessThanOrEqualTo(tester.getRect(buttons.first).left));
+    expect(button(0).onPressed, isNotNull);
+    expect(button(1).onPressed, isNull);
+    expect(button(2).onPressed, isNotNull);
+    model.showRoute(MapRoute(
+        CycleRoute(const [LatLng(48.1, 11.5), LatLng(48.2, 11.6)], 1000, 300),
+        MapRouteState.SHOWN));
+    await tester.pumpAndSettle();
+    expect(button(1).onPressed, isNotNull);
+    final menu = find.byTooltip('Mehr Optionen').last;
+    await tester.ensureVisible(menu);
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Löschen'));
+    await tester.pumpAndSettle();
+    expect(button(0).onPressed, isNotNull);
+    expect(button(1).onPressed, isNull);
+    expect(button(2).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final english in [false, true]) {
+    for (final navigating in [false, true]) {
+      testWidgets(
+          'destination access is secondary planner info ($english, $navigating)',
+          (tester) async {
+        final model = _AccessModel()
+          ..destination = Place('Ziel', const LatLng(48.151, 11.57))
+          ..route = MapRoute(
+            CycleRoute(
+                const [LatLng(48.14, 11.57), LatLng(48.15, 11.57)], 4200, 1200,
+                destinationConnector: const [
+                  LatLng(48.15, 11.57),
+                  LatLng(48.151, 11.57)
+                ]),
+            MapRouteState.SHOWN,
+          );
+        addTearDown(model.dispose);
+        final semantics = tester.ensureSemantics();
+        try {
+          if (navigating) {
+            model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+            await model.startNavigation();
+          }
+          final original = model.route.route;
+          await openPlanner(tester, model, _RoutesStore(),
+              english: english, textScale: english ? 2 : 1);
+          final info = find.text(
+              '${english ? 'Access to destination' : 'Zielzugang'}: 111 m');
+          expect(info, findsOneWidget);
+          expect(
+              find.bySemanticsLabel(RegExp(
+                  '${english ? 'Destination' : 'Ziel'}\\. '
+                  '${english ? 'Access to destination' : 'Zielzugang'}: 111 m')),
+              findsOneWidget);
+          final destinationRow =
+              find.ancestor(of: info, matching: find.byType(ListTile));
+          expect(destinationRow, findsOneWidget);
+          final destinationName =
+              find.descendant(of: destinationRow, matching: find.text('Ziel'));
+          expect(destinationName, findsOneWidget);
+          expect(tester.getTopLeft(info).dy,
+              greaterThan(tester.getTopLeft(destinationName).dy));
+          if (english) {
+            expect(
+                find.descendant(
+                    of: destinationRow, matching: find.text('Destination')),
+                findsNothing);
+          }
+          await tester.ensureVisible(info);
+          await tester.pumpAndSettle();
+          expect(info.hitTestable(), findsOneWidget);
+          expect(model.route.route, same(original));
+          expect(model.navigationStarted, navigating);
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
+      });
+    }
+  }
+
+  testWidgets('planner access follows current route and hides after plan edits',
+      (tester) async {
+    final model = _AccessModel()
+      ..destination = Place('Ziel', const LatLng(48.151, 11.57));
+    addTearDown(model.dispose);
+    final route = CycleRoute(
+        const [LatLng(48.14, 11.57), LatLng(48.15, 11.57)], 4200, 1200,
+        destinationConnector: const [
+          LatLng(48.15, 11.57),
+          LatLng(48.151, 11.57)
+        ]);
+    model.showRoute(MapRoute(route, MapRouteState.SHOWN));
+    await openPlanner(tester, model, _RoutesStore());
+    expect(find.text('Zielzugang: 111 m'), findsOneWidget);
+    final info = find.byKey(const ValueKey('planner-destination-access'));
+    for (final state in [MapRouteState.LOADING, MapRouteState.ERROR]) {
+      model.showRoute(MapRoute(route, state));
+      await tester.pump();
+      expect(info, findsNothing);
+    }
+    route.destinationConnector = const [
+      LatLng(48.15, 11.57),
+      LatLng(48.152, 11.57)
+    ];
+    model.showRoute(MapRoute(route, MapRouteState.SHOWN));
+    await tester.pumpAndSettle();
+    expect(find.text('Zielzugang: 222 m'), findsOneWidget);
+    route.destinationConnector = const [];
+    model.showRoute(MapRoute(route, MapRouteState.SHOWN));
+    await tester.pumpAndSettle();
+    expect(info, findsNothing);
+    route.destinationConnector = const [
+      LatLng(48.15, 11.57),
+      LatLng(48.151, 11.57)
+    ];
+    model.showRoute(MapRoute(route, MapRouteState.SHOWN));
+    await tester.pumpAndSettle();
+    expect(find.text('Zielzugang: 111 m'), findsOneWidget);
+    final destinationMenu = find.byTooltip('Mehr Optionen').last;
+    await tester.ensureVisible(destinationMenu);
+    await tester.tap(destinationMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Löschen'));
+    await tester.pumpAndSettle();
+    expect(info, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
       'move menus preserve all selected places and closing discards edits',
@@ -147,8 +342,14 @@ void main() {
     final rows = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
     expect(rows.map((row) => (row.title! as Text).data),
         ['Anfang', 'Stopp A', 'Stopp B', 'Ende']);
-    expect(rows.map((row) => (row.subtitle! as Text).data),
-        ['Start', 'Zwischenziel 1', 'Zwischenziel 2', 'Ziel']);
+    const roles = ['Start', 'Zwischenziel 1', 'Zwischenziel 2', 'Ziel'];
+    for (var index = 0; index < roles.length; index++) {
+      expect(
+          find.descendant(
+              of: find.byType(ListTile).at(index),
+              matching: find.text(roles[index])),
+          findsOneWidget);
+    }
   });
 
   testWidgets(
@@ -313,12 +514,14 @@ void main() {
     final draggable = tester.widget<DraggableScrollableSheet>(
       find.byType(DraggableScrollableSheet),
     );
+    await tester.drag(find.text('Route'), const Offset(0, 250));
+    await tester.pumpAndSettle();
     final viewport = tester.getRect(find.byType(SingleChildScrollView).first);
     final comfortBar = tester.getRect(
       find.byKey(const ValueKey('comfort-segment-green')),
     );
 
-    expect(draggable.initialChildSize, 0.55);
+    expect(draggable.controller!.size, 0.7);
     expect(comfortBar.top, greaterThanOrEqualTo(viewport.top));
     expect(comfortBar.bottom, lessThanOrEqualTo(viewport.bottom));
     expect(tester.takeException(), isNull);
@@ -399,9 +602,9 @@ void main() {
       find.byType(DraggableScrollableSheet),
     );
     expect(draggable.initialChildSize, 1);
-    expect(draggable.minChildSize, 0.55);
+    expect(draggable.minChildSize, 0.7);
     expect(draggable.maxChildSize, 1);
-    expect(draggable.snapSizes, [0.55, 1]);
+    expect(draggable.snapSizes, [0.7, 1]);
     expect(find.byType(BottomSheetDragHandle), findsOneWidget);
 
     expect(find.byIcon(Icons.info_outline), findsNothing);
@@ -426,15 +629,16 @@ void main() {
       AppColors.disabledForeground,
     );
     expect(find.byTooltip('Schließen'), findsOneWidget);
-    final title = tester.widget<Text>(find.text('Route planen'));
+    final title = tester.widget<Text>(find.text('Route'));
     expect(title.maxLines, 2);
     expect(title.overflow, isNull);
-    final titleRight = tester.getTopRight(find.text('Route planen')).dx;
-    final saveLeft = tester.getTopLeft(find.byIcon(Icons.save_outlined)).dx;
+    final titleRight = tester.getTopRight(find.text('Route')).dx;
+    final importLeft =
+        tester.getTopLeft(find.byIcon(Icons.file_upload_outlined)).dx;
     final closeRect = tester.getRect(find.byTooltip('Schließen'));
-    expect(saveLeft - titleRight, lessThan(20));
+    expect(importLeft - titleRight, lessThan(20));
     expect(closeRect.top,
-        greaterThan(tester.getBottomLeft(find.text('Route planen')).dy));
+        greaterThan(tester.getBottomLeft(find.text('Route')).dy));
     expect(closeRect.right,
         lessThan(tester.getTopLeft(find.text('Route berechnen')).dx));
     expect(
@@ -737,7 +941,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(calculate.hitTestable(), findsOneWidget);
     expect(tester.getBottomLeft(calculate).dy, bottom);
-    expect(find.text('Route planen').hitTestable(), findsOneWidget);
+    expect(find.text('Route').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -807,9 +1011,13 @@ void main() {
     await tester.tap(find.text('Öffnen'));
     await tester.pumpAndSettle();
 
-    final header = find.text('Route planen');
+    final header = find.text('Route');
     final sheet = find.byType(DraggableScrollableSheet);
+    final initialTop = tester.getTopLeft(sheet).dy;
+    await tester.drag(header, const Offset(0, 250));
+    await tester.pumpAndSettle();
     final middleTop = tester.getTopLeft(sheet).dy;
+    expect(middleTop, greaterThan(initialTop + 100));
 
     await tester.drag(header, const Offset(0, -300));
     await tester.pumpAndSettle();

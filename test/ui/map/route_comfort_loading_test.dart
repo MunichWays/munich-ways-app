@@ -4,6 +4,7 @@ import '../../support/wakelock_stub.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/place.dart';
@@ -254,7 +255,7 @@ class _Harness {
       bool disposeAtEnd = true}) async {
     final primary = _ComfortProvider();
     final fallback = _FallbackProvider();
-    final model = MapScreenViewModel(
+    final model = _LocatedModel(
         store: _Settings(),
         routingService: RoutingService(
           radlNavi: primary,
@@ -277,6 +278,23 @@ class _Harness {
 class _Settings extends SettingsStore {
   @override
   Future<SettingsData> load() async => SettingsData.defaults;
+}
+
+class _LocatedModel extends MapScreenViewModel {
+  _LocatedModel({required super.store, required super.routingService});
+
+  @override
+  Future<Position?> resolveRouteStartPosition() async => Position(
+      latitude: _start.latitude,
+      longitude: _start.longitude,
+      timestamp: DateTime.now(),
+      accuracy: 5,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0);
 }
 
 class _Coverage implements RoutingCoverage {

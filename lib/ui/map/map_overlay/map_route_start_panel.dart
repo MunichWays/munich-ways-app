@@ -23,8 +23,7 @@ class _MapRouteStartPanelState extends State<MapRouteStartPanel> {
     if (widget.model.navigationStarted) {
       return widget.model.destination != null;
     }
-    return widget.model.routeStart == null &&
-        widget.model.route.route != null &&
+    return widget.model.route.route != null &&
         widget.model.route.state == MapRouteState.SHOWN;
   }
 

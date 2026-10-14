@@ -137,7 +137,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('access is separate from remaining distance to route end',
+  testWidgets('access uses no header space; remaining distance and time stay',
       (tester) async {
     route.destinationConnector = const [
       LatLng(48.15, 11.57),
@@ -149,12 +149,26 @@ void main() {
       await _pumpHeader(
           tester, model, NavigationRemaining.estimate(route, 0.5));
       expect(find.text('2,1 km'), findsOneWidget);
-      expect(find.text('Zielzugang: 111 m'), findsOneWidget);
+      expect(find.text('≈ 10 Min'), findsOneWidget);
+      expect(find.text('Zielzugang: 111 m'), findsNothing);
       expect(find.bySemanticsLabel('Reststrecke bis Routenende: 2,1 km'),
           findsOneWidget);
+      final withAccessHeight =
+          tester.getSize(find.byType(MapNavigationHeaderBar)).height;
+      route.destinationConnector = const [];
+      await _pumpHeader(
+          tester, model, NavigationRemaining.estimate(route, 0.5));
+      expect(tester.getSize(find.byType(MapNavigationHeaderBar)).height,
+          withAccessHeight);
+      route.destinationConnector = const [
+        LatLng(48.15, 11.57),
+        LatLng(48.151, 11.57)
+      ];
       await _pumpHeader(tester, model, NavigationRemaining.estimate(route, 0.5),
           english: true, textScale: 2);
-      expect(find.text('Access to destination: 111 m'), findsOneWidget);
+      expect(find.text('Access to destination: 111 m'), findsNothing);
+      expect(find.text('2.1 km'), findsOneWidget);
+      expect(find.text('≈ 10 min'), findsOneWidget);
       expect(tester.takeException(), isNull);
     } finally {
       semantics.dispose();

@@ -1,3 +1,6 @@
+import 'package:munich_ways/api/route_transfer_io.dart';
+import 'package:munich_ways/model/route_transfer.dart';
+import 'package:munich_ways/ui/map/route_import_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
@@ -69,9 +72,6 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
 }) async {
   final sheetController = DraggableScrollableController();
   ModalRoute<RoutePlannerMapSelection>? sheetRoute;
-  final initialStopCount = (initialPlan?.stops ?? model.waypoints).length;
-  final initialChildSize =
-      initialStopCount >= 1 || model.hasRouteComparison ? 1.0 : 0.55;
   try {
     final result = await showModalBottomSheet<RoutePlannerMapSelection>(
       context: context,
@@ -83,12 +83,12 @@ Future<RoutePlannerMapSelection?> showRoutePlannerSheet(
         return DraggableScrollableSheet(
           controller: sheetController,
           expand: false,
-          initialChildSize: initialChildSize,
-          minChildSize: 0.55,
+          initialChildSize: 1.0,
+          minChildSize: 0.7,
           maxChildSize: 1,
           shouldCloseOnMinExtent: false,
           snap: true,
-          snapSizes: const [0.55, 1],
+          snapSizes: const [0.7, 1],
           builder: (context, scrollController) => SizedBox.expand(
             child: _RoutePlannerSheet(
               model: model,
@@ -150,6 +150,21 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       widget.initialPlan == null &&
       widget.model.route.state == MapRouteState.SHOWN &&
       widget.model.route.comfortState != RouteComfortState.unavailable;
+
+  String? _destinationAccessLabel() {
+    final mapRoute = widget.model.route;
+    final points = mapRoute.route?.destinationConnector;
+    if (_routePlanEdited ||
+        widget.initialPlan != null ||
+        mapRoute.state != MapRouteState.SHOWN ||
+        points == null ||
+        points.length < 2) return null;
+    var meters = 0.0;
+    for (var i = 1; i < points.length; i++) {
+      meters += const Distance().as(LengthUnit.Meter, points[i - 1], points[i]);
+    }
+    return '${_english ? 'Access to destination' : 'Zielzugang'}: ${meters.round()} m';
+  }
 
   @override
   void initState() {
@@ -288,9 +303,64 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     return _english ? 'Intermediate stop $index' : 'Zwischenziel $index';
   }
 
+  Future<void> _importRoute() async {
+    try {
+      final transfer = await RouteTransferIo.pick();
+      if (transfer == null || !mounted) return;
+      final accepted = await showRouteImportDialog(
+          context, transfer, widget.model,
+          store: widget.routesStore);
+      if (accepted && mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_english
+                ? 'Import failed. Choose a valid GPX 1.1 file with one track (maximum 4 MB), or retry saving.'
+                : 'Import fehlgeschlagen. Gültige GPX-1.1-Datei mit einem Track wählen (maximal 4 MB) oder Speichern erneut versuchen.')));
+    }
+  }
+
+  Future<void> _exportRoute() async {
+    try {
+      final current = widget.model.route.route;
+      if (current == null || _routePlanEdited || _destination == null) return;
+      final transfer = (widget.model.isOriginalRoute
+              ? widget.model.selectedSavedRoute?.snapshot
+              : null) ??
+          RouteTransfer.fromRoute(
+              current,
+              [
+                _start ?? Place('Start', current.points.first),
+                ..._stops,
+                _destination!
+              ],
+              widget.model.selectedSavedRoute?.name ?? 'MunichWays-Route',
+              widget.model.temporaryShortestRouteEnabled
+                  ? 'direct'
+                  : 'standard');
+      final box = context.findRenderObject() as RenderBox?;
+      await RouteTransferIo.export(transfer,
+          origin:
+              box == null ? null : box.localToGlobal(Offset.zero) & box.size);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_english
+                ? 'Export failed. Please retry.'
+                : 'Export fehlgeschlagen. Bitte erneut versuchen.')));
+    }
+  }
+
   Future<void> _saveRoute() async {
     final destination = _destination;
     if (destination == null) return;
+    if (widget.model.isOriginalRoute && _routePlanEdited) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_english
+              ? 'Plan the changed route before saving.'
+              : 'Geänderte Route vor dem Speichern neu planen.')));
+      return;
+    }
     final originalRoute = widget.model.selectedSavedRoute;
     var name = originalRoute?.name ?? destination.displayName?.trim() ?? '';
     final selectedName = await showDialog<String>(
@@ -329,8 +399,11 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     final trimmedName = selectedName?.trim();
     if (!mounted || trimmedName == null || trimmedName.isEmpty) return;
     try {
-      final savedRoute = SavedRoute(
+      var savedRoute = SavedRoute(
         name: trimmedName,
+        snapshotId:
+            widget.model.isOriginalRoute ? originalRoute?.snapshotId : null,
+        snapshot: widget.model.isOriginalRoute ? originalRoute?.snapshot : null,
         start: _start,
         stops: _stops,
         destination: destination,
@@ -341,7 +414,11 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
             ? originalRoute!.favoriteOrder
             : null,
       );
-      await widget.routesStore.add(savedRoute);
+      if (savedRoute.snapshot != null && savedRoute.snapshotId == null) {
+        savedRoute = await widget.routesStore.addImported(savedRoute);
+      } else {
+        await widget.routesStore.add(savedRoute);
+      }
       widget.model.markRouteSaved(savedRoute);
     } catch (error, stackTrace) {
       log.e('Saving route failed', error: error, stackTrace: stackTrace);
@@ -363,6 +440,19 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
     );
   }
 
+  Widget _headerAction({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) =>
+      IconButton.filled(
+        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+        style: AppButtonStyles.secondary(context),
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+      );
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -375,32 +465,45 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           DraggableBottomSheetRegion(
             controller: widget.sheetController,
-            snapSizes: const [0.55, 1],
+            snapSizes: const [0.7, 1],
             onDismiss: () => Navigator.of(context).pop(),
             child: const BottomSheetDragHandle(),
           ),
           DraggableBottomSheetRegion(
             controller: widget.sheetController,
-            snapSizes: const [0.55, 1],
+            snapSizes: const [0.7, 1],
             onDismiss: () => Navigator.of(context).pop(),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    _english ? 'Plan route' : 'Route planen',
+                    'Route',
                     maxLines: 2,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                IconButton.filled(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 48,
-                    height: 48,
+                _headerAction(
+                  tooltip: _english ? 'Import route' : 'Route importieren',
+                  icon: Icons.file_upload_outlined,
+                  onPressed: _importRoute,
+                ),
+                const SizedBox(width: 4),
+                ListenableBuilder(
+                  listenable: widget.model,
+                  builder: (context, _) => _headerAction(
+                    tooltip: _english ? 'Export GPX' : 'GPX exportieren',
+                    icon: Icons.file_download_outlined,
+                    onPressed:
+                        widget.model.route.route == null || _routePlanEdited
+                            ? null
+                            : _exportRoute,
                   ),
-                  style: AppButtonStyles.secondary(context),
+                ),
+                const SizedBox(width: 4),
+                _headerAction(
                   tooltip: _english ? 'Save route' : 'Route speichern',
                   onPressed: _destination == null ? null : _saveRoute,
-                  icon: const Icon(Icons.save_outlined),
+                  icon: Icons.save_outlined,
                 ),
               ],
             ),
@@ -411,6 +514,12 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.model.isOriginalRoute)
+                    Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(_english
+                            ? 'Original route: unchanged use keeps the imported track. Editing places and planning creates a new route.'
+                            : 'Originalstrecke: unveränderte Übernahme behält den Track. Orte ändern und planen erzeugt eine neue Route.')),
                   const SizedBox(height: 4),
                   ReorderableListView.builder(
                     shrinkWrap: true,
@@ -426,7 +535,9 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                         children: [
                           if (index == _points.length - 1)
                             TextButton.icon(
-                              onPressed: _addStop,
+                              onPressed: _stops.length >= RouteTransfer.maxStops
+                                  ? null
+                                  : _addStop,
                               icon: const Icon(Icons.add_location_alt_outlined),
                               label: Text(
                                 _english
@@ -439,7 +550,25 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                             child: _PlaceRow(
                               leading: RoutePointBadge(
                                   index: index, count: _points.length),
-                              label: _pointLabel(index),
+                              label: index == _points.length - 1
+                                  ? ListenableBuilder(
+                                      listenable: widget.model,
+                                      builder: (context, _) {
+                                        final access =
+                                            _destinationAccessLabel();
+                                        return Text(
+                                          access ?? _pointLabel(index),
+                                          semanticsLabel: access == null
+                                              ? null
+                                              : '${_pointLabel(index)}. $access',
+                                          key: access == null
+                                              ? null
+                                              : const ValueKey(
+                                                  'planner-destination-access'),
+                                        );
+                                      },
+                                    )
+                                  : Text(_pointLabel(index)),
                               value: _pointValue(index),
                               backgroundColor: index == _points.length - 1
                                   ? point.place == null
@@ -528,14 +657,23 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                   onPressed: _destination == null
                       ? null
                       : () {
+                          if (widget.model.isOriginalRoute &&
+                              !_routePlanEdited &&
+                              widget.initialPlan == null) {
+                            Navigator.pop(context);
+                            return;
+                          }
                           if (widget.model.navigationStarted &&
                               !_routePlanEdited &&
                               widget.initialPlan == null) {
                             // Use current progress, not the planner's opening snapshot.
-                            widget.model.refreshRoute();
+                            if (!widget.model.isOriginalRoute)
+                              widget.model.refreshRoute();
                           } else {
                             widget.model.setRoutePlan(
-                              start: _start,
+                              start: widget.model.navigationStarted
+                                  ? null
+                                  : _start,
                               stops: _stops,
                               destination: _destination!,
                             );
@@ -573,7 +711,7 @@ class _PlaceRow extends StatelessWidget {
 
   final Widget leading;
   final String value;
-  final String label;
+  final Widget label;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final Color? backgroundColor;
@@ -603,7 +741,7 @@ class _PlaceRow extends StatelessWidget {
         child: Center(child: leading),
       ),
       title: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(label),
+      subtitle: label,
       onTap: onTap,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

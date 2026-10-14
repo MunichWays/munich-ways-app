@@ -145,109 +145,118 @@ class RadlNaviApi
     switch (response.statusCode) {
       case 200:
         var json = response.jsonBody();
-        final firstRoute =
-            (json['routes'] as List?)?.firstOrNull as Map<String, dynamic>?;
-        if (firstRoute == null) {
-          throw ApiException('RadlNavi response contains no route');
-        }
-        final points = _parseGeometry(firstRoute['geometry']);
-        var distance = firstRoute['distance'] as num;
-        var duration = firstRoute['duration'] as num;
-        final maneuvers = <RouteManeuver>[];
-        final steps = <Map<String, dynamic>>[];
-        for (final leg in firstRoute['legs'] as List? ?? const []) {
-          RouteWayType? previousWayType;
-          for (final rawStep in leg['steps'] as List? ?? const []) {
-            final step = rawStep as Map<String, dynamic>;
-            steps.add(step);
-            final intersections = step['intersections'];
-            final outgoingWayType =
-                intersections is List && intersections.isNotEmpty
-                    ? _intersectionWayType(intersections.first)
-                    : null;
-            final enteringWayType = previousWayType != null &&
-                    outgoingWayType != null &&
-                    previousWayType != outgoingWayType
-                ? outgoingWayType
-                : null;
-            // The last intersection describes the actual incoming road at the
-            // NEXT maneuver. Unknown/ignored sections deliberately break the chain.
-            previousWayType = step['mode'] == 'cycling' &&
-                    intersections is List &&
-                    intersections.isNotEmpty
-                ? _intersectionWayType(intersections.last)
-                : null;
-            final maneuver =
-                step['maneuver'] as Map<String, dynamic>? ?? const {};
-            final location = maneuver['location'] as List?;
-            if (location == null || location.length < 2) continue;
-            maneuvers.add(RouteManeuver(
-              location: LatLng(
-                (location[1] as num).toDouble(),
-                (location[0] as num).toDouble(),
-              ),
-              type: maneuver['type'] as String? ?? 'turn',
-              modifier: maneuver['modifier'] as String?,
-              roadName: step['name'] as String? ?? '',
-              exit: (maneuver['exit'] as num?)?.toInt(),
-              enteringWayType: step['mode'] == 'cycling' &&
-                      maneuver['type'] != 'depart' &&
-                      maneuver['type'] != 'arrive'
-                  ? enteringWayType
-                  : null,
-            ));
-          }
-        }
-
-        final access = _splitDestinationAccess(
-          points,
-          steps,
-          coordinates.last,
-        );
-        var spokenManeuvers = maneuvers;
-        if (access.walkingStart != null) {
-          final firstWalkingManeuver = maneuvers.indexWhere(
-            (maneuver) =>
-                const Distance().as(
-                  LengthUnit.Meter,
-                  maneuver.location,
-                  access.walkingStart!,
-                ) <=
-                1,
-          );
-          if (firstWalkingManeuver >= 0) {
-            spokenManeuvers = maneuvers.sublist(0, firstWalkingManeuver);
-          }
-        }
-
         _rememberDirectEndpoint(response);
-        final displaySections = _displaySections(points, steps, access.route);
-        final pushingSteps =
-            steps.where((step) => _isUnriddenMode(step['mode'])).length;
-        log.d('Route display: variant=$variant, steps=${steps.length}, '
-            'pushingSteps=$pushingSteps, sections=${displaySections.length}');
-        if (displaySections.isEmpty && pushingSteps > 0) {
-          log.w(
-              'Pushing display unavailable: step geometry does not match route');
-        }
-        return CycleRoute(
-          access.route,
-          distance.toDouble(),
-          duration.toDouble(),
-          maneuvers: spokenManeuvers,
-          destinationConnector: access.connector,
-          navigationDistance: _navigationMetric(
-              distance.toDouble(), 'distance', points, steps, access),
-          navigationDuration: _navigationMetric(
-              duration.toDouble(), 'duration', points, steps, access),
-          displaySections: displaySections,
-          comfort: _parseComfort(firstRoute['comfort']),
-          analysisContext:
-              _parseAnalysisContext(firstRoute['legs'], json['waypoints']),
-        );
+        return parseResponse(json, coordinates);
       default:
         throw ApiException("Error retrieving route: " + response.body);
     }
+  }
+
+  /// Shared pure parsing path for HTTP routing and imported snapshots.
+  CycleRoute parseResponse(
+      Map<String, dynamic> json, List<LatLng> coordinates) {
+    final firstRoute =
+        (json['routes'] as List?)?.firstOrNull as Map<String, dynamic>?;
+    if (firstRoute == null) {
+      throw ApiException('RadlNavi response contains no route');
+    }
+    final points = _parseGeometry(firstRoute['geometry']);
+    var distance = firstRoute['distance'] as num;
+    var duration = firstRoute['duration'] as num;
+    final maneuvers = <RouteManeuver>[];
+    final steps = <Map<String, dynamic>>[];
+    for (final leg in firstRoute['legs'] as List? ?? const []) {
+      RouteWayType? previousWayType;
+      for (final rawStep in leg['steps'] as List? ?? const []) {
+        final step = rawStep as Map<String, dynamic>;
+        steps.add(step);
+        final intersections = step['intersections'];
+        final outgoingWayType =
+            intersections is List && intersections.isNotEmpty
+                ? _intersectionWayType(intersections.first)
+                : null;
+        final enteringWayType = previousWayType != null &&
+                outgoingWayType != null &&
+                previousWayType != outgoingWayType
+            ? outgoingWayType
+            : null;
+        // The last intersection describes the actual incoming road at the
+        // NEXT maneuver. Unknown/ignored sections deliberately break the chain.
+        previousWayType = step['mode'] == 'cycling' &&
+                intersections is List &&
+                intersections.isNotEmpty
+            ? _intersectionWayType(intersections.last)
+            : null;
+        final maneuver = step['maneuver'] as Map<String, dynamic>? ?? const {};
+        final location = maneuver['location'] as List?;
+        if (location == null || location.length < 2) continue;
+        maneuvers.add(RouteManeuver(
+          location: LatLng(
+            (location[1] as num).toDouble(),
+            (location[0] as num).toDouble(),
+          ),
+          type: maneuver['type'] as String? ?? 'turn',
+          modifier: maneuver['modifier'] as String?,
+          roadName: step['name'] as String? ?? '',
+          exit: (maneuver['exit'] as num?)?.toInt(),
+          enteringWayType: step['mode'] == 'cycling' &&
+                  maneuver['type'] != 'depart' &&
+                  maneuver['type'] != 'arrive'
+              ? enteringWayType
+              : null,
+        ));
+      }
+    }
+
+    final access = _splitDestinationAccess(
+      points,
+      steps,
+      coordinates.last,
+    );
+    var spokenManeuvers = maneuvers;
+    if (access.walkingStart != null) {
+      final firstWalkingManeuver = maneuvers.indexWhere(
+        (maneuver) =>
+            const Distance().as(
+              LengthUnit.Meter,
+              maneuver.location,
+              access.walkingStart!,
+            ) <=
+            1,
+      );
+      if (firstWalkingManeuver >= 0) {
+        spokenManeuvers = maneuvers.sublist(0, firstWalkingManeuver);
+      }
+    }
+
+    final displaySections = _displaySections(points, steps, access.route);
+    final pushingSteps =
+        steps.where((step) => _isUnriddenMode(step['mode'])).length;
+    log.d('Route display: variant=$variant, steps=${steps.length}, '
+        'pushingSteps=$pushingSteps, sections=${displaySections.length}');
+    if (displaySections.isEmpty && pushingSteps > 0) {
+      log.w('Pushing display unavailable: step geometry does not match route');
+    }
+    return CycleRoute(
+      access.route,
+      distance.toDouble(),
+      duration.toDouble(),
+      maneuvers: spokenManeuvers,
+      transferResponse: {
+        'code': 'Ok',
+        'routes': [firstRoute],
+        if (json['waypoints'] != null) 'waypoints': json['waypoints']
+      },
+      destinationConnector: access.connector,
+      navigationDistance: _navigationMetric(
+          distance.toDouble(), 'distance', points, steps, access),
+      navigationDuration: _navigationMetric(
+          duration.toDouble(), 'duration', points, steps, access),
+      displaySections: displaySections,
+      comfort: _parseComfort(firstRoute['comfort']),
+      analysisContext:
+          _parseAnalysisContext(firstRoute['legs'], json['waypoints']),
+    );
   }
 
   static RouteWayType? _intersectionWayType(Object? intersection) {
