@@ -55,6 +55,7 @@ dependencies:
   file_picker: ^13.1.0
   app_links: ^7.2.2
   share_plus: ^13.3.1
+  mobile_scanner: 7.4.2
 
 
 dev_dependencies:
