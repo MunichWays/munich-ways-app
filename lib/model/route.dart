@@ -117,6 +117,7 @@ class RouteManeuver {
     this.roadName = '',
     this.exit,
     this.enteringWayType,
+    this.wayType,
   });
 
   final LatLng location;
@@ -127,6 +128,10 @@ class RouteManeuver {
 
   /// Present only for a known road <-> cycleway transition at this maneuver.
   final RouteWayType? enteringWayType;
+
+  /// Known outgoing cycling way, also when its type has not changed.
+  /// Unknown classes and non-cycling steps deliberately remain null.
+  final RouteWayType? wayType;
 }
 
 /// Optional rendering metadata. Navigation continues to use CycleRoute.points.

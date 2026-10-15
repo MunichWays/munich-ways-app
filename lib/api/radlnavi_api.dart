@@ -199,6 +199,7 @@ class RadlNaviApi
           modifier: maneuver['modifier'] as String?,
           roadName: step['name'] as String? ?? '',
           exit: (maneuver['exit'] as num?)?.toInt(),
+          wayType: step['mode'] == 'cycling' ? outgoingWayType : null,
           enteringWayType: step['mode'] == 'cycling' &&
                   maneuver['type'] != 'depart' &&
                   maneuver['type'] != 'arrive'
