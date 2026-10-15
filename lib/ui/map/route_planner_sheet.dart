@@ -1,6 +1,7 @@
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 import 'package:munich_ways/ui/map/route_import_dialog.dart';
+import 'package:munich_ways/ui/map/route_import_source_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
@@ -134,6 +135,7 @@ class _RoutePlannerSheet extends StatefulWidget {
 class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   late List<_RoutePoint> _points;
   bool _routePlanEdited = false;
+  bool _importing = false;
 
   Place? get _start => _points.first.place;
   Place? get _destination => _points.last.place;
@@ -304,8 +306,10 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
   }
 
   Future<void> _importRoute() async {
+    if (_importing) return;
+    setState(() => _importing = true);
     try {
-      final transfer = await RouteTransferIo.pick();
+      final transfer = await showRouteImportSourceDialog(context);
       if (transfer == null || !mounted) return;
       final accepted = await showRouteImportDialog(
           context, transfer, widget.model,
@@ -315,8 +319,10 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(_english
-                ? 'Import failed. Choose a valid GPX 1.1 file with one track (maximum 4 MB), or retry saving.'
-                : 'Import fehlgeschlagen. Gültige GPX-1.1-Datei mit einem Track wählen (maximal 4 MB) oder Speichern erneut versuchen.')));
+                ? 'The route could not be used or saved. Please try again.'
+                : 'Die Route konnte nicht übernommen oder gespeichert werden. Bitte erneut versuchen.')));
+    } finally {
+      if (mounted) setState(() => _importing = false);
     }
   }
 
@@ -485,7 +491,7 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 _headerAction(
                   tooltip: _english ? 'Import route' : 'Route importieren',
                   icon: Icons.file_upload_outlined,
-                  onPressed: _importRoute,
+                  onPressed: _importing ? null : _importRoute,
                 ),
                 const SizedBox(width: 4),
                 ListenableBuilder(

@@ -8,6 +8,11 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 
+class ExpiredRouteLinkException extends FormatException {
+  const ExpiredRouteLinkException()
+      : super('Route link expired or unavailable');
+}
+
 class RouteTransferIo {
   static final instance = RouteTransferIo();
   static const channel = MethodChannel('com.munichways/route_transfer');
@@ -41,9 +46,16 @@ class RouteTransferIo {
     });
   }
 
+  static Uri? parseLink(String text) {
+    if (text.length > 2048) return null;
+    final uri = Uri.tryParse(text.trim());
+    return uri != null && sharedId(uri) != null ? uri : null;
+  }
+
   static String? sharedId(Uri uri) {
     if (uri.scheme != 'https' ||
         uri.host != 'radlnavi.munichways.de' ||
+        (uri.hasPort && uri.port != 443) ||
         uri.userInfo.isNotEmpty ||
         uri.hasQuery ||
         uri.hasFragment) return null;
@@ -95,7 +107,7 @@ class RouteTransferIo {
       final response =
           await connection.send(request).timeout(const Duration(seconds: 20));
       if (response.statusCode == 404 || response.statusCode == 410)
-        throw const FormatException('Route link expired or unavailable');
+        throw const ExpiredRouteLinkException();
       if (response.statusCode != 200)
         throw const HttpException(
             'Route could not be loaded. Open the link again to retry.');

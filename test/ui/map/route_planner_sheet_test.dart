@@ -118,6 +118,32 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets(
+      'import header opens source chooser and cancellation preserves the route draft',
+      (tester) async {
+    final start = Place('Start', const LatLng(48.1, 11.5));
+    final stop = Place('Stopp', const LatLng(48.15, 11.55));
+    final end = Place('Ziel', const LatLng(48.2, 11.6));
+    final model = _AccessModel()
+      ..routeStart = start
+      ..waypoints.add(stop)
+      ..destination = end;
+    addTearDown(model.dispose);
+    await openPlanner(tester, model, _RoutesStore());
+    await tester.tap(find.byTooltip('Route importieren'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link laden'), findsOneWidget);
+    expect(find.text('QR-Code scannen'), findsOneWidget);
+    expect(find.text('GPX-Datei auswählen'), findsOneWidget);
+    await tester.tap(find.byTooltip('Abbrechen'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+    expect(model.routeStart, start);
+    expect(model.waypoints, [stop]);
+    expect(model.destination, end);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact header orders matching import, export and save actions',
       (tester) async {
     tester.view.physicalSize = const Size(320, 700);
