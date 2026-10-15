@@ -2,6 +2,11 @@ name: iOS TestFlight Release
 
 on:
   workflow_dispatch:
+    inputs:
+      upload_to_testflight:
+        description: Upload the signed archive to TestFlight
+        type: boolean
+        default: true
 
 jobs:
   beta:
@@ -32,10 +37,17 @@ jobs:
       - name: flutter pub get
         run: flutter pub get
 
+      - name: Check route-link signing setup
+        working-directory: ios
+        run: |
+          ruby -c fastlane/Fastfile
+          bundle exec ruby fastlane/tests/route_link_signing_test.rb
+
       - name: fastlane beta
         working-directory: ios
         env:
           CI: 'true'
+          UPLOAD_TO_TESTFLIGHT: ${{ inputs.upload_to_testflight }}
           IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
           IOS_DIST_CERT_P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

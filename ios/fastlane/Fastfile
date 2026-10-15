@@ -4,6 +4,7 @@ require "base64"
 require "fileutils"
 require "securerandom"
 require "tmpdir"
+require_relative "route_link_signing"
 
 default_platform(:ios)
 
@@ -95,10 +96,13 @@ platform :ios do
     # and the real on-disk file (confirmed in CI logs) is "ci-signing-db", not "ci-signing".
     cert_params[:keychain_path] = File.expand_path("~/Library/Keychains/ci-signing-db") if ENV["CI"] == "true"
     cert(cert_params)
-    # 2) Create/download App Store provisioning profile
+    # 2) Enable the app's route-link capability before renewing its profile.
+    # A still-valid profile from before the GPX feature does not contain it.
+    bundle_id = Spaceship::ConnectAPI::BundleId.find("com.munichways.app")
+    RouteLinkSigning.ensure_capability(bundle_id)
     sigh(
       app_identifier: "com.munichways.app",
-      force: false
+      force: true
     )
     # 3) Build with explicit export options/profile mapping
     # The Xcode project uses Automatic signing, which needs an Xcode-level Apple ID
@@ -145,7 +149,11 @@ platform :ios do
     # 4) Upload to TestFlight
     upload_options = { skip_waiting_for_build_processing: true }
     upload_options[:api_key] = asc_key if asc_key
-    upload_to_testflight(upload_options)
+    if ENV.fetch("UPLOAD_TO_TESTFLIGHT", "true") == "true"
+      upload_to_testflight(upload_options)
+    else
+      UI.success("Archive and export verified; TestFlight upload explicitly skipped.")
+    end
   end
 
   desc "Upload App Store listing metadata from fastlane/metadata (no IPA, no screenshots). " \
