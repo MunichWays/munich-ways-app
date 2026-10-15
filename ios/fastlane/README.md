@@ -39,6 +39,8 @@ Build outputs and signing exports in `ios/` (`.ipa`, `.mobileprovision`, `.p12`,
 Runs: **`cert`** → **`sigh`** → **`build_app`** (gym) → **`upload_to_testflight`**.
 
 - Ensures a distribution certificate and an App Store provisioning profile for `com.munichways.app`
+- Enables Associated Domains on the existing App ID when missing, then renews
+  the provisioning profile so route-link entitlements are included.
 - Archives `Runner.xcworkspace` / scheme `Runner`, exports an App Store IPA
 - Uploads the build to App Store Connect / TestFlight
 
@@ -48,6 +50,11 @@ bundle exec fastlane ios beta
 ```
 
 Use `bundle exec fastlane ios beta --verbose` if you need full logs.
+
+The GitHub workflow's `upload_to_testflight` input defaults to `true`. Disable it
+to validate signing, archive and export without uploading a build. Locally, use
+`UPLOAD_TO_TESTFLIGHT=false bundle exec fastlane ios beta` for the same check.
+The App Store Connect API key needs access to the app's identifiers and profiles.
 
 ## Lane: `ios metadata` (App Store listing text)
 
