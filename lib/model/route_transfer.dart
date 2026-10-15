@@ -184,6 +184,27 @@ class RouteTransfer {
       }
       return transfer;
     }
+    // Standard GPX waypoints, including Komoot highlights, in file order.
+    final stops = <Place>[];
+    for (final element in root.childElements.where(
+        (e) => e.name.local == 'wpt' && e.namespaceUri == gpxNamespace)) {
+      final lat = double.tryParse(element.getAttribute('lat') ?? '');
+      final lon = double.tryParse(element.getAttribute('lon') ?? '');
+      _require(lat != null && lon != null && _point([lon, lat]));
+      final label = element.childElements
+          .where(
+              (e) => e.name.local == 'name' && e.namespaceUri == gpxNamespace)
+          .firstOrNull
+          ?.innerText
+          .trim();
+      _require(label == null || label.length <= 500);
+      stops.add(Place(
+          label?.isNotEmpty == true
+              ? label!
+              : 'Zwischenziel ${stops.length + 1}',
+          LatLng(lat!, lon!)));
+      _require(stops.length <= maxStops);
+    }
     final name = tracks.single.childElements
         .where((e) => e.name.local == 'name')
         .firstOrNull
@@ -196,7 +217,11 @@ class RouteTransfer {
     }
     return RouteTransfer._(
         name?.isNotEmpty == true ? name! : 'GPX-Track',
-        [Place('Start', points.first), Place('Ziel', points.last)],
+        List.unmodifiable([
+          Place('Start', points.first),
+          ...stops,
+          Place('Ziel', points.last)
+        ]),
         CycleRoute(points, distance, 0, supportsVoiceGuidance: false),
         null);
   }
@@ -229,6 +254,12 @@ class RouteTransfer {
       native ??
       {
         'trackName': name,
+        'trackPlan': plan
+            .map((p) => {
+                  'name': p.displayName ?? '',
+                  'coordinates': [p.latLng.longitude, p.latLng.latitude],
+                })
+            .toList(),
         'trackPoints':
             route.points.map((p) => [p.longitude, p.latitude]).toList(),
       };
@@ -238,16 +269,34 @@ class RouteTransfer {
     _require(
         points.length >= 2 && points.length <= 100000 && points.every(_point));
     final xml = _gpx(value['trackName'] as String, points, null);
-    return fromGpx(xml);
+    final transfer = fromGpx(xml);
+    if (!value.containsKey('trackPlan')) return transfer; // Older saved tracks.
+    final plan = value['trackPlan'];
+    _require(plan is List && plan.length >= 2 && plan.length <= maxStops + 2);
+    final places = <Place>[];
+    for (final p in plan) {
+      _require(p is Map &&
+          p['name'] is String &&
+          (p['name'] as String).length <= 500 &&
+          _point(p['coordinates']));
+      places.add(Place(
+          p['name'],
+          LatLng((p['coordinates'][1] as num).toDouble(),
+              (p['coordinates'][0] as num).toDouble())));
+    }
+    return RouteTransfer._(
+        transfer.name, List.unmodifiable(places), transfer.route, null);
   }
 
   String toGpx() => _gpx(
       name,
       native?['response']['routes'][0]['geometry']['coordinates'] ??
           route.points.map((p) => [p.longitude, p.latitude]).toList(),
-      native);
+      native,
+      plan);
 
-  static String _gpx(String name, List points, Map<String, dynamic>? native) {
+  static String _gpx(String name, List points, Map<String, dynamic>? native,
+      [List<Place> plan = const []]) {
     final builder = XmlBuilder();
     builder.processing('xml', 'version="1.0" encoding="UTF-8"');
     builder.element('gpx', nest: () {
@@ -257,6 +306,15 @@ class RouteTransfer {
       builder.attribute('creator', 'MunichWays');
       builder.element('metadata',
           nest: () => builder.element('name', nest: name));
+      if (native == null && plan.length >= 2) {
+        for (final stop in plan.sublist(1, plan.length - 1)) {
+          builder.element('wpt', nest: () {
+            builder.attribute('lat', stop.latLng.latitude);
+            builder.attribute('lon', stop.latLng.longitude);
+            builder.element('name', nest: stop.displayName ?? '');
+          });
+        }
+      }
       builder.element('trk', nest: () {
         builder.element('name', nest: name);
         builder.element('trkseg', nest: () {

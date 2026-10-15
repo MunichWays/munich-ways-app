@@ -9,6 +9,48 @@ Map<String, dynamic> fixture() => jsonDecode(
         File('test_resources/routing/route-transfer.json').readAsStringSync())
     as Map<String, dynamic>;
 void main() {
+  test(
+      'real Komoot tour retains eight named stops through storage and GPX export',
+      () {
+    final transfer = RouteTransfer.fromGpx(
+        File('test_resources/routing/komoot-discovery.gpx').readAsStringSync());
+    expect(transfer.plan.length, 10);
+    expect(transfer.plan[1].displayName, 'Amsterdamer Straße (Geheimtipp)');
+    expect(transfer.plan[2].displayName, 'Schwabinger See');
+    expect(transfer.plan[8].displayName, 'Nymphenburger Kanal');
+    expect(transfer.route.supportsVoiceGuidance, false);
+    final stored = RouteTransfer.fromStorageJson(transfer.toStorageJson());
+    final exported = RouteTransfer.fromGpx(stored.toGpx());
+    expect(exported.plan.map((p) => p.displayName),
+        transfer.plan.map((p) => p.displayName));
+    expect(
+        exported.plan.map((p) => p.latLng), transfer.plan.map((p) => p.latLng));
+    expect(exported.route.points, transfer.route.points);
+    expect(exported.name, transfer.name);
+  });
+  test(
+      'standard waypoints preserve order, escape names and reject invalid data',
+      () {
+    const prefix =
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1">';
+    const track =
+        '<trk><trkseg><trkpt lat="48" lon="11"/><trkpt lat="49" lon="12"/></trkseg></trk></gpx>';
+    const waypoint = '<wpt lat="48.5" lon="11.5"><name>A &amp; B</name></wpt>';
+    final transfer = RouteTransfer.fromGpx('$prefix$waypoint$track');
+    expect(
+        RouteTransfer.fromGpx(transfer.toGpx()).plan[1].displayName, 'A & B');
+    expect(
+        () => RouteTransfer.fromGpx(
+            '$prefix${waypoint.replaceFirst('48.5', 'NaN')}$track'),
+        throwsFormatException);
+    expect(
+        () => RouteTransfer.fromGpx(
+            '$prefix${List.filled(21, waypoint).join()}$track'),
+        throwsFormatException);
+    final old = RouteTransfer.fromStorageJson(
+        transfer.toStorageJson()..remove('trackPlan'));
+    expect(old.plan.length, 2);
+  });
   test('GPX filenames retain names while rejecting filesystem syntax', () {
     expect(RouteTransfer.gpxFilename('GreenCity-über-Hackerbrücke'),
         'GreenCity-über-Hackerbrücke.gpx');
