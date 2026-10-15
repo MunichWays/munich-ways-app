@@ -1006,7 +1006,7 @@ class VoiceGuidance {
     final gap = next.routeDistance - target.routeDistance;
     if (gap <= 0 || gap > closeManeuverDistanceMeters) return first;
 
-    final nextAction = _action(next.maneuver, english);
+    final nextAction = _action(next.maneuver, english, speakRoadName: true);
     return english
         ? '${first.substring(0, first.length - 1)}, then immediately $nextAction.'
         : '${first.substring(0, first.length - 1)}, danach sofort $nextAction.';
@@ -1223,6 +1223,7 @@ class VoiceGuidance {
       roadName: maneuver.roadName,
       exit: maneuver.exit,
       enteringWayType: maneuver.enteringWayType,
+      wayType: maneuver.wayType,
     );
   }
 
@@ -1327,7 +1328,7 @@ class VoiceGuidance {
           : 'Du hast das Ziel erreicht.';
     }
 
-    final action = _action(maneuver, english);
+    final action = _action(maneuver, english, speakRoadName: true);
     if (now) {
       return english ? '${_sentenceCase(action)} here.' : 'Hier $action.';
     }
@@ -1372,8 +1373,14 @@ class VoiceGuidance {
     };
   }
 
-  static String _action(RouteManeuver maneuver, bool english) {
+  static String _action(RouteManeuver maneuver, bool english,
+      {bool speakRoadName = false}) {
     final action = _actionWithoutWayType(maneuver, english);
+    final roadName = maneuver.roadName.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final wayType = maneuver.wayType ?? maneuver.enteringWayType;
+    if (speakRoadName && wayType == RouteWayType.road && roadName.isNotEmpty) {
+      return '$action, ${english ? 'onto' : 'in'} $roadName';
+    }
     return switch (maneuver.enteringWayType) {
       RouteWayType.cycleway =>
         '$action, ${english ? 'onto the cycle path' : 'auf Radweg'}',
