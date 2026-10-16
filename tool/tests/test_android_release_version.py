@@ -14,8 +14,16 @@ spec.loader.exec_module(module)
 
 
 class ReleaseVersionTest(unittest.TestCase):
-    def test_failed_release_tag_selects_81_instead_of_pubspec_80(self):
-        self.assertEqual(module.release_version("3.2.1+81"), ("3.2.1", "81"))
+    def test_failed_release_tag_81_with_pubspec_80_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "does not match pubspec.yaml"):
+            module.validate_release("3.2.1+81", "version: 3.2.1+80\n")
+
+    def test_matching_tag_and_pubspec_are_accepted(self):
+        module.validate_release("3.2.1+81", "name: munich_ways\nversion: 3.2.1+81\n")
+
+    def test_missing_version_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "does not match pubspec.yaml"):
+            module.validate_release("3.2.1+81", "name: munich_ways\n")
 
     def test_android_version_code_boundaries(self):
         for number in ("1", "2100000000"):
@@ -28,25 +36,39 @@ class ReleaseVersionTest(unittest.TestCase):
             with self.subTest(tag=tag), self.assertRaises(ValueError):
                 module.release_version(tag)
 
-    def test_cli_writes_github_outputs_without_changing_pubspec(self):
+    def test_cli_checks_pubspec_without_overriding_it(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "outputs"
             pubspec = Path(directory) / "pubspec.yaml"
-            pubspec.write_text("version: 3.2.1+80\n", encoding="utf-8")
+            pubspec.write_text("version: 3.2.1+81\n", encoding="utf-8")
             result = subprocess.run(
                 [sys.executable, str(SCRIPT)], cwd=directory,
                 env={**os.environ, "RELEASE_TAG": "3.2.1+81", "GITHUB_OUTPUT": str(output)},
                 capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(output.read_text(encoding="utf-8"), "build_name=3.2.1\nbuild_number=81\n")
+            self.assertFalse(output.exists())
+            self.assertEqual(pubspec.read_text(encoding="utf-8"), "version: 3.2.1+81\n")
+
+    def test_cli_rejects_mismatch_without_changing_pubspec(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pubspec = Path(directory) / "pubspec.yaml"
+            pubspec.write_text("version: 3.2.1+80\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT)], cwd=directory,
+                env={**os.environ, "RELEASE_TAG": "3.2.1+81"},
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not match pubspec.yaml", result.stderr)
             self.assertEqual(pubspec.read_text(encoding="utf-8"), "version: 3.2.1+80\n")
 
     def test_invalid_tag_exits_before_writing_outputs(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "outputs"
+            (Path(directory) / "pubspec.yaml").write_text("version: 3.2.1+81\n", encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(SCRIPT)],
+                [sys.executable, str(SCRIPT)], cwd=directory,
                 env={**os.environ, "RELEASE_TAG": "3.2.1", "GITHUB_OUTPUT": str(output)},
                 capture_output=True, text=True,
             )

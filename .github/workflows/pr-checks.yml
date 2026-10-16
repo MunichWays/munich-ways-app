@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Test Android release version selection
+      - name: Test Android release version validation
         run: python3 -m unittest discover -s tool/tests -p test_android_release_version.py
       - name: Set up Java
         uses: actions/setup-java@v6.0.1

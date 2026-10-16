@@ -1,7 +1,8 @@
-"""Use the Android release tag as the version source for the Play bundle."""
+"""Reject Android release tags that do not match pubspec.yaml."""
 
 import os
 import re
+from pathlib import Path
 
 
 def release_version(tag: str) -> tuple[str, str]:
@@ -14,14 +15,24 @@ def release_version(tag: str) -> tuple[str, str]:
     return match[1], match[2]
 
 
+def validate_release(tag: str, pubspec: str) -> None:
+    release_version(tag)
+    match = re.search(r"^version:\s*(\S+)\s*$", pubspec, re.MULTILINE)
+    version = match[1] if match else None
+    if version != tag:
+        raise ValueError(
+            f"Release tag {tag!r} does not match pubspec.yaml version {version!r}. "
+            "Update and commit pubspec.yaml before creating the release tag."
+        )
+
+
 def main() -> None:
+    tag = os.environ.get("RELEASE_TAG", "")
     try:
-        name, number = release_version(os.environ.get("RELEASE_TAG", ""))
+        validate_release(tag, Path("pubspec.yaml").read_text(encoding="utf-8"))
     except ValueError as error:
         raise SystemExit(str(error)) from error
-    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-        output.write(f"build_name={name}\nbuild_number={number}\n")
-    print(f"Android release: {name}+{number}")
+    print(f"Android release tag matches pubspec.yaml: {tag}")
 
 
 if __name__ == "__main__":
