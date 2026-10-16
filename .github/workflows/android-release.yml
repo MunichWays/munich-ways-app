@@ -11,6 +11,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
+      - name: Validate release version
+        id: release_version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 -m unittest discover -s tool/tests -p test_android_release_version.py
+          python3 tool/android_release_version.py
       - name: Set up Java
         uses: actions/setup-java@v6.0.1
         with:
@@ -29,8 +36,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Create Appbundle
-        run: flutter build appbundle --release --dart-define=GEOAPIFY_API_KEY="${GEOAPIFY_API_KEY}"
+        run: flutter build appbundle --release --build-name="${RELEASE_BUILD_NAME}" --build-number="${RELEASE_BUILD_NUMBER}" --dart-define=GEOAPIFY_API_KEY="${GEOAPIFY_API_KEY}"
         env:
+          RELEASE_BUILD_NAME: ${{ steps.release_version.outputs.build_name }}
+          RELEASE_BUILD_NUMBER: ${{ steps.release_version.outputs.build_number }}
           ANDROID_RELEASE_ALIAS: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS }}
           ANDROID_RELEASE_ALIAS_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_ALIAS_PASSWORD }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_STORE_PASSWORD }}
@@ -60,5 +69,5 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           serviceAccountJson: google_play_service_account.json
           packageName: com.munichways.app
-          track: beta
+          tracks: beta
           status: completed

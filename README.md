@@ -77,6 +77,13 @@ See detailed fastlane docs for setup, lanes, credentials, and troubleshooting: [
     * `git tag -a 3.1.2+39 -m "3.1.2+39 open beta"`
     * `git push origin 3.1.2+39` 
 * this will trigger the workflow, see `workflows/android-release`
+* Android CI takes `versionName` and `versionCode` from the tag (`VERSION+BUILD`),
+  even if `pubspec.yaml` still contains the previous version. Invalid tags fail
+  before building or accessing signing credentials. Every new Play upload needs
+  a previously unused, increasing build number across all tracks.
+* Keep `pubspec.yaml` aligned for local builds and iOS. Retrying a workflow for
+  an old tag uses that tag's existing commit and workflow; merge fixes first and
+  create a new release tag on the corrected commit.
 
 #### Local
 
