@@ -12,6 +12,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Test store release version guard
+        run: |
+          python -m pip install -r tool/store-version-requirements.txt
+          python -m unittest discover -s tool/tests -p 'test_store_release*.py'
       - name: Set up Java
         uses: actions/setup-java@v6.0.1
         with:

@@ -1,12 +1,43 @@
 name: Android Release
 
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch:
+    inputs:
+      upload_to_play:
+        description: Upload the signed bundle to Google Play beta
+        type: boolean
+        default: true
+      version_check_only:
+        description: Only check the version (no build or upload)
+        type: boolean
+        default: false
+
+run-name: Android ${{ inputs.upload_to_play && 'Upload' || 'Build only' }} (${{ github.ref_name }})
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-release-android
+  cancel-in-progress: false
 
 jobs:
+  check_version:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/store-version-check
+        id: version
+        with:
+          platform: android
+          upload: ${{ inputs.upload_to_play }}
+          google_credentials: ${{ secrets.SERVICE_ACCOUNT_JSON_BASE64 }}
+
   assembleRelease:
+    needs: check_version
+    if: ${{ !inputs.version_check_only }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -40,19 +71,13 @@ jobs:
         with:
           name: appbundle
           path: build/app/outputs/bundle/release/app-release.aab
-      - name: Create Release
-        uses: softprops/action-gh-release@v3.0.3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            build/app/outputs/apk/release/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
       - name: Load google_play_service_account.json from secrets
+        if: ${{ inputs.upload_to_play }}
         run: |
           echo "${{ secrets.SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > google_play_service_account.json
       - name: Upload to GooglePlay
         uses: r0adkll/upload-google-play@v1.1.5
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ inputs.upload_to_play }}
         # workaround, see https://github.com/r0adkll/upload-google-play/issues/129#issuecomment-1325892395
         env:
           OPENSSL_CONF: /dev/null
@@ -60,5 +85,5 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           serviceAccountJson: google_play_service_account.json
           packageName: com.munichways.app
-          track: beta
+          tracks: beta
           status: completed

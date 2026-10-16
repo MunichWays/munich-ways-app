@@ -7,9 +7,36 @@ on:
         description: Upload the signed archive to TestFlight
         type: boolean
         default: true
+      version_check_only:
+        description: Only check the version (no build or upload)
+        type: boolean
+        default: false
+
+run-name: iOS ${{ inputs.upload_to_testflight && 'Upload' || 'Build only' }} (${{ github.ref_name }})
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-release-ios
+  cancel-in-progress: false
 
 jobs:
+  check_version:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/store-version-check
+        with:
+          platform: ios
+          upload: ${{ inputs.upload_to_testflight }}
+          asc_key_id: ${{ secrets.ASC_KEY_ID }}
+          asc_issuer_id: ${{ secrets.ASC_ISSUER_ID }}
+          asc_key_content: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+
   beta:
+    needs: check_version
+    if: ${{ !inputs.version_check_only }}
     runs-on: macos-15
     timeout-minutes: 45
 
