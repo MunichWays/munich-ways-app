@@ -29,19 +29,58 @@ The build server checks if all files are formatted correctly with `dart format`.
 To ensure that the formatter is run locally before a commit set the hooksPath property: `git config --local core.hooksPath ./githooks`
 
 ## Release
-* change version in code pubspec.yaml and commit to master as "Bump version to 2.0.2+26"
-* Update the bundled RadlVorrang network in VS Code: `Terminal` > `Run Task...` > `RadlVorrang-Netz aktualisieren`
-  * The task downloads the current network, validates it and only then replaces the offline asset.
-  * Review and commit the changed file in `assets/radlnetz/` together with the release.
-* commit and push
+
+Android und iOS werden manuell über GitHub Actions hochgeladen. Tags und
+GitHub-Releases sind dafür nicht erforderlich und starten keinen Upload mehr.
+`pubspec.yaml` bleibt die gemeinsame Versionsquelle für beide Plattformen.
+
+1. `version` in `pubspec.yaml` erhöhen, beispielsweise von `3.2.1+80` auf
+   `3.2.1+81`. Die Zahl hinter `+` ist die Buildnummer.
+2. Änderungen committen, pushen und den geprüften Branch nach `master` mergen.
+3. Unter **Actions** den gewünschten Workflow öffnen: **Android Release** oder
+   **iOS TestFlight Release**. **Run workflow** wählen und `master` auswählen.
+4. Für einen Store-Upload die Upload-Option aktiviert und
+   **Only check the version** deaktiviert lassen. Beide Workflows getrennt starten.
+
+Vor einem Upload muss die Buildnummer höher sein als die höchste vom jeweiligen
+Store gemeldete Buildnummer. Android prüft Google Play einschließlich aller
+Tracks, APKs und App Bundles. iOS prüft die Builds der App in App Store Connect
+über alle App-Versionen und Seiten hinweg, auch bereits hochgeladene Builds, die
+noch verarbeitet werden. Bei API-/Berechtigungsfehlern wird vor dem Build abgebrochen.
+Es wird keine Nummer automatisch erhöht oder aus einem Tag übernommen.
+
+Dieselbe Version, z. B. `3.2.1+81`, kann einmal nach Google Play und einmal nach
+TestFlight hochgeladen werden. Der zweite Plattform-Upload benötigt keine neue
+Nummer. Ein weiterer Upload in denselben Store benötigt dagegen eine höhere
+Buildnummer. Nach einem fehlgeschlagenen Upload prüfen, ob der Store das Paket
+bereits angenommen hat; die nächste Versionsprüfung berücksichtigt den Store-Stand.
+
+**Prüfbuild ohne Upload:** Die jeweilige Upload-Option deaktivieren. Damit wird
+das signierte Paket gebaut, ohne einen Store-Upload oder Store-Versionsvergleich
+zu starten. Die Buildnummer darf wiederverwendet werden. Das Android-App-Bundle
+steht anschließend als Workflow-Artefakt `appbundle` bereit.
+
+**Nur Versionsprüfung:** **Only check the version** aktivieren und die
+Upload-Option aktiviert lassen. Der Workflow prüft die Nummer gegen den Store,
+führt aber keinen Build und keinen Upload aus. Ist zusätzlich die Upload-Option
+deaktiviert, wird nur die Versionsangabe in `pubspec.yaml` validiert.
+
+Upload-Läufe derselben Plattform werden nacheinander ausgeführt. Android und
+iOS können unabhängig voneinander laufen. Die Workflow-Zusammenfassung nennt
+jeweils die geprüfte Version und die höchste Store-Buildnummer.
+
+Vor einem Release auch das gebündelte RadlVorrang-Netz bei Bedarf aktualisieren:
+in VS Code **Terminal > Run Task... > RadlVorrang-Netz aktualisieren**. Die
+Änderung in `assets/radlnetz/` prüfen und zusammen mit dem Release committen.
 
 ### iOS
 
 #### Github Actions
 
-* In Browser open iOS Testflight Action: https://github.com/MunichWays/munich-ways-app/actions/workflows/ios-testflight.yml
-* Select "run workflow"
-* New build is uploaded to Testflight
+[Workflow iOS TestFlight Release öffnen](https://github.com/MunichWays/munich-ways-app/actions/workflows/ios-testflight.yml).
+`upload_to_testflight` steuert den TestFlight-Upload; `version_check_only` führt
+nur die oben beschriebene Versionsprüfung aus. Ein Upload startet keine
+App-Store-Veröffentlichung und reicht die App nicht zur Prüfung ein.
 
 ##### Certificate renewal
 Apple Distribution certificates expire after **1 year**. When that happens, `cert` will generate
@@ -73,17 +112,11 @@ See detailed fastlane docs for setup, lanes, credentials, and troubleshooting: [
 
 #### Github Actions
 
-* tag current state and push the tags
-    * `git tag -a 3.1.2+39 -m "3.1.2+39 open beta"`
-    * `git push origin 3.1.2+39` 
-* this will trigger the workflow, see `workflows/android-release`
-* `pubspec.yaml` is the version source for Android builds and iOS. Update and
-  commit its `version` before tagging: the release tag must match it exactly
-  (`VERSION+BUILD`). Invalid or mismatched tags fail before building or accessing
-  signing credentials. Every new Play upload needs a previously unused,
-  increasing build number across all tracks. Retrying a workflow for
-  an old tag uses that tag's existing commit and workflow; merge fixes first and
-  create a new release tag on the corrected commit.
+[Workflow Android Release öffnen](https://github.com/MunichWays/munich-ways-app/actions/workflows/android-release.yml).
+`upload_to_play` steuert den Upload in den Google-Play-Beta-Track;
+`version_check_only` führt nur die oben beschriebene Versionsprüfung aus.
+Das gebaute AAB wird als Workflow-Artefakt gespeichert. Ein GitHub-Release oder
+Tag muss nicht angelegt werden. Der Upload bleibt im Beta-Track.
 
 #### Local
 
