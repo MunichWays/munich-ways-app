@@ -72,6 +72,8 @@
 	<string>Die App benötigt Zugriff auf den Standort um die aktuelle Position auf der Karte anzuzeigen.</string>
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
