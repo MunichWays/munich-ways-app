@@ -91,7 +91,16 @@ class NavigationMotionTracker {
   double _anchorAccuracy = 0;
   DateTime? _lastFixAt;
   DateTime? _lastMovementAt;
+  double? _movementBearing;
+  LatLng? _movementStart;
   NavigationMotionSample latest = const NavigationMotionSample();
+
+  LatLng? get movementStart => _movementStart;
+
+  double? bearingAt(DateTime now) =>
+      _lastFixAt != null && !now.isBefore(_lastFixAt!) && isMovingAt(now)
+          ? _movementBearing
+          : null;
 
   bool isMovingAt(DateTime now) =>
       latest.moving &&
@@ -102,6 +111,8 @@ class NavigationMotionTracker {
     _anchor = null;
     _lastFixAt = null;
     _lastMovementAt = null;
+    _movementBearing = null;
+    _movementStart = null;
     latest = const NavigationMotionSample();
   }
 
@@ -138,6 +149,8 @@ class NavigationMotionTracker {
     var confirmed = 0.0;
     if (distance >= threshold) {
       confirmed = distance;
+      _movementBearing = const Distance().bearing(anchor, position);
+      _movementStart = anchor;
       _anchor = position;
       _anchorAccuracy = accuracy;
       _lastMovementAt = now;
@@ -352,7 +365,67 @@ class VoiceGuidance {
   bool _overlappingRouteWarningSpoken = false;
   bool _finalDestinationReached = false;
   bool _routeRecoveryPending = false;
+  bool _wrongDirection = false;
+  bool _wrongDirectionSpoken = false;
   NavigationRemaining? _remainingEstimate;
+
+  /// Uses confirmed GPS displacement, never the device compass at rest.
+  /// Evaluate once per fix, also after route replacement, before any guidance
+  /// pass. Matching an earlier point must not be mistaken for forward travel.
+  void updateTravelDirection(LatLng position, double? movementBearing,
+      {LatLng? movementStart}) {
+    final route = _route;
+    if (route == null ||
+        _finalDestinationReached ||
+        movementBearing == null ||
+        !movementBearing.isFinite) return;
+    final projection = _projectOntoRoute(route.points, position,
+        preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+        includeBearing: true);
+    if (_isOverlappingProgress(projection.distanceAlongRoute)) {
+      _wrongDirection = false;
+      _wrongDirectionSpoken = false;
+      return;
+    }
+    if (projection.isAmbiguous ||
+        projection.distanceFromRoute > maximumRouteDistanceMeters ||
+        !projection.bearing.isFinite) return;
+    final difference =
+        ((movementBearing - projection.bearing + 540) % 360 - 180).abs();
+    if (difference > 120) {
+      if (movementStart != null) {
+        final origin = _projectOntoRoute(route.points, movementStart,
+            preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+            includeBearing: true);
+        // Displacement across a sharp bend can oppose the outgoing segment
+        // while correctly following the incoming one. Both ends must agree.
+        if (origin.isAmbiguous ||
+            origin.distanceFromRoute > maximumRouteDistanceMeters ||
+            !origin.bearing.isFinite ||
+            ((movementBearing - origin.bearing + 540) % 360 - 180).abs() <=
+                120) {
+          return;
+        }
+      }
+      _wrongDirection = true;
+    } else if (difference < 60 && _wrongDirection) {
+      _wrongDirection = false;
+      _wrongDirectionSpoken = false;
+      // The rider can have travelled backwards past already consumed turns.
+      // Resume at the actual position after turning, preserving stop arrivals.
+      resumeAt(position);
+    }
+  }
+
+  static String _turnAroundMessage(bool english) => english
+      ? 'When safe, turn around.'
+      : 'Bitte wenden, sobald es sicher möglich ist.';
+
+  String? _announceWrongDirection(bool english, {bool repeat = false}) {
+    if (_wrongDirectionSpoken && !repeat) return null;
+    _wrongDirectionSpoken = true;
+    return _turnAroundMessage(english);
+  }
 
   /// Snapshot from the regular display pass, without another projection.
   NavigationRemaining? get remainingEstimate => _remainingEstimate;
@@ -362,7 +435,8 @@ class VoiceGuidance {
   /// Null guidance is legitimate only on the final, correctly matched straight.
   /// A stale progress window or exhausted maneuvers away from the route is not.
   bool hasHealthyMapProgress(LatLng position) {
-    if (_route == null || _finalDestinationReached) return false;
+    if (_route == null || _finalDestinationReached || _wrongDirection)
+      return false;
     final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous ||
         projection.distanceFromRoute > maximumRouteDistanceMeters) return false;
@@ -410,6 +484,8 @@ class VoiceGuidance {
     _overlappingRouteWarningSpoken = false;
     _finalDestinationReached = false;
     _routeRecoveryPending = false;
+    _wrongDirection = false;
+    _wrongDirectionSpoken = false;
     _remainingEstimate = null;
     _intermediateDestinationNames =
         List<String?>.of(intermediateDestinationNames);
@@ -568,7 +644,8 @@ class VoiceGuidance {
         mapReason: VoiceGuidanceMapReason.ambiguousPosition,
       );
     }
-    final arrivalIndex = _arrivalIndexAt(position, projection);
+    final arrivalIndex =
+        _wrongDirection ? null : _arrivalIndexAt(position, projection);
     if (arrivalIndex != null) {
       final isFinalDestination = !_isIntermediateArrival(arrivalIndex);
       if (isFinalDestination) _finalDestinationReached = true;
@@ -586,6 +663,14 @@ class VoiceGuidance {
     }
     if (projection.distanceFromRoute > maximumRouteDistanceMeters) {
       return null;
+    }
+
+    if (_wrongDirection) {
+      return VoiceGuidanceDisplay(
+        text: _turnAroundMessage(english),
+        type: 'turn',
+        modifier: 'uturn',
+      );
     }
 
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
@@ -623,6 +708,7 @@ class VoiceGuidance {
   NavigationRemaining? _estimateRemaining(_RouteProjection projection) {
     final route = _trackingRoute;
     if (route == null ||
+        _wrongDirection ||
         projection.isAmbiguous ||
         projection.distanceFromRoute > maximumRouteDistanceMeters ||
         !projection.totalDistance.isFinite ||
@@ -651,6 +737,10 @@ class VoiceGuidance {
         projection.distanceFromRoute > maximumRouteDistanceMeters ||
         _isOverlappingProgress(projection.distanceAlongRoute)) {
       return null;
+    }
+
+    if (_wrongDirection) {
+      return _announceWrongDirection(english, repeat: repeat);
     }
 
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
@@ -709,7 +799,8 @@ class VoiceGuidance {
       _recordAmbiguousProgress(projection);
       return null;
     }
-    final arrivalIndex = _arrivalIndexAt(position, projection);
+    final arrivalIndex =
+        _wrongDirection ? null : _arrivalIndexAt(position, projection);
     if (arrivalIndex != null && _spokenArrivals.add(arrivalIndex)) {
       if (!_isIntermediateArrival(arrivalIndex)) {
         _finalDestinationReached = true;
@@ -736,6 +827,8 @@ class VoiceGuidance {
     }
     _offRouteUpdates = 0;
     _offRouteWarningSpoken = false;
+
+    if (_wrongDirection) return _announceWrongDirection(english);
 
     _routeProgress = max(_routeProgress, projection.distanceAlongRoute);
     if (_isOverlappingProgress(projection.distanceAlongRoute)) {
@@ -868,6 +961,10 @@ class VoiceGuidance {
     final route = _trackingRoute;
     if (route == null) {
       return const _RouteProjection(0, double.infinity);
+    }
+    if (_wrongDirection) {
+      return _projectOntoRoute(route.points, position,
+          preferEarlierWithinMeters: _projectionContinuityToleranceMeters);
     }
     var projection = _projectOntoRoute(
       route.points,
@@ -1436,6 +1533,7 @@ class VoiceGuidance {
     double minimumDistanceAlongRoute = 0,
     double maximumDistanceAlongRoute = double.infinity,
     double preferEarlierWithinMeters = 0,
+    bool includeBearing = false,
   }) {
     var cumulative = 0.0;
     final candidates = <_RouteProjection>[];
@@ -1464,7 +1562,10 @@ class VoiceGuidance {
       if (distanceAlong + 1 >= minimumDistanceAlongRoute &&
           distanceAlong - 1 <= maximumDistanceAlongRoute) {
         candidates.add(
-          _RouteProjection(distanceAlong, sqrt(distanceSquared)),
+          _RouteProjection(distanceAlong, sqrt(distanceSquared),
+              bearing: includeBearing && segmentLength > 0
+                  ? atan2(dx, dy) * 180 / pi
+                  : double.nan),
         );
       }
       cumulative += segmentLength;
@@ -1499,6 +1600,7 @@ class VoiceGuidance {
       selected.distanceFromRoute,
       isAmbiguous: isAmbiguous,
       totalDistance: cumulative,
+      bearing: selected.bearing,
     );
   }
 }
@@ -1516,12 +1618,14 @@ class _RouteProjection {
     this.distanceFromRoute, {
     this.isAmbiguous = false,
     this.totalDistance = 0,
+    this.bearing = double.nan,
   });
 
   final double distanceAlongRoute;
   final double distanceFromRoute;
   final bool isAmbiguous;
   final double totalDistance;
+  final double bearing;
 }
 
 class _RouteInterval {
