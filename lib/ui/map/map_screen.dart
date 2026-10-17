@@ -1943,6 +1943,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             english: context.l10n.isEnglish));
       }
     }
+    _voiceGuidance.updateTravelDirection(
+      rawPosition,
+      _navigationMotion.bearingAt(DateTime.now()),
+      movementStart: _navigationMotion.movementStart,
+    );
     var routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
             rawPosition,
@@ -2370,13 +2375,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       );
     } else {
       final position = _latestPosition;
-      _navigationStartGate.reset(
-        position == null ||
-                !position.latitude.isFinite ||
-                !position.longitude.isFinite
-            ? null
-            : latlong2.LatLng(position.latitude, position.longitude),
-      );
+      // This is the same ride, not a new navigation start. Reapplying the
+      // 25 metre gate would hide an immediate turn-around on the new route.
       _initialGuidanceAnnouncementPending = true;
       _cancelAutomaticRerouting(resetAttempts: false);
       unawaited(_restoreNavigationZoom(model));

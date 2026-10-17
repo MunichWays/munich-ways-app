@@ -351,6 +351,18 @@ The complete expected behavior is:
   guidance is enabled. Enabling voice guidance later repeats the currently
   relevant maneuver when one is available; otherwise it confirms that voice
   guidance was enabled.
+- Rerouting retains the released start gate. Confirmed GPS displacement against
+  an unambiguous route direction shows and announces a safe turn-around once,
+  suppressing ordinary turns and arrivals until forward movement resumes.
+  Displacement across a sharp bend and known outbound/return overlaps must not
+  create a false turn-around. Stopping preserves the pending direction state;
+  GPS gaps, jumps and poor fixes cannot establish a new direction.
+  On iOS and Android, leave a route so recalculation leads back the way you
+  came: expect the turn-around promptly, continue away briefly (no ordinary
+  turn countdowns), then safely turn and verify regular guidance resumes.
+  Repeat with a stop, locked screen, restored GPS, and speech or automatic
+  rerouting disabled independently. Also check a recalculated route branching
+  ahead, a sharp bend and an overlapping return leg.
 - Normal route matching shows and announces approach, turn, intermediate-stop,
   and final-destination guidance once at the appropriate progress thresholds.
 - A brief departure from the route marks guidance recovery as pending. Re-entry
