@@ -84,11 +84,30 @@ void main() {
     try {
       await model.startNavigation();
       await _pumpHeader(
-          tester, model, NavigationRemaining.estimate(route, 0.5));
+          tester,
+          model,
+          NavigationRemaining.estimate(route, 0.5,
+              estimatedAt: DateTime(2026, 10, 17, 11, 35)));
       expect(find.text('2,1 km'), findsOneWidget);
       expect(find.byIcon(Icons.sports_score), findsWidgets);
       expect(find.byIcon(Icons.route), findsNothing);
       expect(find.text('≈ 10 Min'), findsOneWidget);
+      expect(find.text('11:45'), findsOneWidget);
+      expect(find.byIcon(Icons.schedule), findsNothing);
+      expect(tester.widget<Text>(find.text('≈ 10 Min')).style!.fontWeight,
+          FontWeight.w700);
+      expect(tester.widget<Text>(find.text('11:45')).style!.fontWeight,
+          FontWeight.w400);
+      expect(tester.widget<Text>(find.text('2,1 km')).style!.fontWeight,
+          FontWeight.w400);
+      expect(tester.getCenter(find.text('≈ 10 Min')).dx,
+          lessThan(tester.getCenter(find.text('11:45')).dx));
+      expect(tester.getCenter(find.text('11:45')).dx,
+          lessThan(tester.getCenter(find.text('2,1 km')).dx));
+      expect(tester.getCenter(find.text('≈ 10 Min')).dy,
+          tester.getCenter(find.text('2,1 km')).dy);
+      expect(find.bySemanticsLabel('Geschätzte Ankunftszeit: 11:45'),
+          findsOneWidget);
       expect(find.bySemanticsLabel('Reststrecke: 2,1 km'), findsOneWidget);
       expect(find.bySemanticsLabel('Geschätzte Restfahrzeit: 10 Minuten'),
           findsOneWidget);
@@ -105,14 +124,16 @@ void main() {
     await model.startNavigation();
     final sample = NavigationRemaining.estimate(route, 0.5);
     await _pumpHeader(tester, model, sample);
-    model.onUserStoppedFollowingLocation();
+    model.pauseNavigation();
     await _pumpHeader(tester, model, sample);
     expect(find.text('2,1 km'), findsOneWidget);
     expect(find.text('≈ 10 Min'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
     await _pumpHeader(tester, model, null);
     expect(find.text('— km'), findsOneWidget);
+    expect(find.text('—:—'), findsOneWidget);
     model.route =
         MapRoute(CycleRoute(route.points, 4200, 1200), MapRouteState.SHOWN);
     await _pumpHeader(tester, model, sample);

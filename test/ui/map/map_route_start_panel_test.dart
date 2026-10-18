@@ -193,7 +193,7 @@ void main() {
                     onRefreshRoute: () async {},
                     onEditRoute: () {},
                     onToggleVoiceGuidance: () {},
-                    onPauseNavigation: model.onUserStoppedFollowingLocation,
+                    onPauseNavigation: model.pauseNavigation,
                     onFinishRoute: () {},
                     onEndRoute: () => ended++,
                     onStartNavigation: () async {},

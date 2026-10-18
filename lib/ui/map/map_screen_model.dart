@@ -27,6 +27,8 @@ enum MapSidePanelEdge {
   right,
 }
 
+enum _NavigationState { idle, active, paused }
+
 class MapScreenViewModel extends ChangeNotifier {
   // Limit inactivity, not total download time; the API reports byte progress.
   static const _ratingsRequestTimeout = Duration(seconds: 90);
@@ -207,13 +209,37 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   LocationState locationState = LocationState.NOT_AVAILABLE;
-  bool _navigationStarted = false;
-  bool get navigationStarted => _navigationStarted;
+  _NavigationState _navigationState = _NavigationState.idle;
+  bool get navigationStarted => _navigationState != _NavigationState.idle;
   Future<bool>? _navigationStartRequest;
   bool get navigationStartPending => _navigationStartRequest != null;
   bool get navigationPaused =>
-      _navigationStarted &&
-      locationState != LocationState.FOLLOW_AND_ROTATE_MAP;
+      navigationStarted &&
+      (_navigationState == _NavigationState.paused ||
+          locationState == LocationState.NOT_AVAILABLE);
+  bool get navigationActive => navigationStarted && !navigationPaused;
+
+  /// A deliberate pause is independent of inspecting or rotating the map.
+  void pauseNavigation() {
+    if (!navigationStarted || _navigationState == _NavigationState.paused)
+      return;
+    _navigationState = _NavigationState.paused;
+    if (locationState != LocationState.NOT_AVAILABLE) {
+      locationState = LocationState.DISPLAY;
+    }
+    notifyListeners();
+  }
+
+  /// Called only after fresh, confirmed movement and the map-gesture delay.
+  /// Does not restart guidance, request a route or change the camera zoom.
+  bool resumeNavigationCameraFollowing() {
+    if (!navigationActive || locationState != LocationState.DISPLAY)
+      return false;
+    locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    notifyListeners();
+    return true;
+  }
+
   bool _voiceGuidanceEnabled = false;
   bool get voiceGuidanceEnabled => _voiceGuidanceEnabled;
   bool _automaticReroutingEnabled = true;
@@ -555,7 +581,7 @@ class MapScreenViewModel extends ChangeNotifier {
         locationState != LocationState.FOLLOW_AND_ROTATE_MAP) return false;
 
     final plannedStart = routeStart;
-    if (!_navigationStarted && plannedStart != null) {
+    if (!navigationStarted && plannedStart != null) {
       Position? from;
       try {
         from = await resolveRouteStartPosition()
@@ -609,7 +635,7 @@ class MapScreenViewModel extends ChangeNotifier {
       // A late planning choice must never replace navigation after departure.
       _selectionRevision++;
       _pendingVariant = null;
-      _navigationStarted = true;
+      _navigationState = _NavigationState.active;
       notifyListeners();
       return true;
     }
@@ -619,7 +645,7 @@ class MapScreenViewModel extends ChangeNotifier {
       // A late planning choice must never replace navigation after departure.
       _selectionRevision++;
       _pendingVariant = null;
-      _navigationStarted = true;
+      _navigationState = _NavigationState.active;
       notifyListeners();
     }
     return locationState == LocationState.FOLLOW_AND_ROTATE_MAP;
@@ -768,7 +794,7 @@ class MapScreenViewModel extends ChangeNotifier {
   Future<bool> setTemporaryShortestRouteEnabled(bool enabled) async {
     if (_originalRoute) return false;
     if (enabled && shortestRouteEnabled) return false;
-    if (_navigationStarted) {
+    if (navigationStarted) {
       return _switchRouteVariantDuringNavigation(enabled);
     }
     final selection = ++_selectionRevision;
@@ -1006,7 +1032,7 @@ class MapScreenViewModel extends ChangeNotifier {
     this.destination = place;
     // A new destination prepares a new route. Navigation must be started
     // explicitly so tracking and guidance are initialized for that route.
-    _navigationStarted = false;
+    _navigationState = _NavigationState.idle;
     notifyListeners();
     _destinationStreamController.add(place);
 
@@ -1031,7 +1057,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _routePlanRevision++;
     _originalRoute = false;
     destination = place;
-    _navigationStarted = false;
+    _navigationState = _NavigationState.idle;
     notifyListeners();
     _destinationStreamController.add(place);
     WakelockPlus.enable();
@@ -1049,7 +1075,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }) {
     if (_originalRoute) selectedSavedRoute = null;
     _originalRoute = false;
-    final wasNavigating = _navigationStarted;
+    final wasNavigating = navigationStarted;
     if (!wasNavigating &&
         this.destination != null &&
         this.destination != destination) {
@@ -1067,7 +1093,6 @@ class MapScreenViewModel extends ChangeNotifier {
     _lastPassedWaypointIndex = -1;
     this.destination = destination;
     _routePlanRevision++;
-    _navigationStarted = wasNavigating;
     notifyListeners();
     _destinationStreamController.add(destination);
     WakelockPlus.enable();
@@ -1100,7 +1125,7 @@ class MapScreenViewModel extends ChangeNotifier {
       _invalidateVariants();
       _originalRoute = true;
       _temporaryShortestRouteEnabled = snapshot.native?['variant'] == 'direct';
-      _navigationStarted = false;
+      _navigationState = _NavigationState.idle;
       if (locationState != LocationState.NOT_AVAILABLE)
         locationState = LocationState.DISPLAY;
       routeStart = snapshot.plan.first;
@@ -1140,7 +1165,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _clearTemporaryShortestRoute();
     _lastPassedWaypointIndex = -1;
     _routePlanRevision++;
-    _navigationStarted = false;
+    _navigationState = _NavigationState.idle;
     notifyListeners();
 
     // turn screen off when locating destination is off
@@ -1157,7 +1182,7 @@ class MapScreenViewModel extends ChangeNotifier {
     if (destination == null) {
       return Future<bool>.value(false);
     }
-    if (_navigationStarted) {
+    if (navigationStarted) {
       routeStart = null;
       if (_lastPassedWaypointIndex >= 0) {
         final passedCount =
@@ -1179,7 +1204,7 @@ class MapScreenViewModel extends ChangeNotifier {
     LatLng position, {
     double reachedDistanceMeters = 30,
   }) {
-    if (!_navigationStarted || waypoints.isEmpty) return;
+    if (!navigationStarted || waypoints.isEmpty) return;
     for (var index = _lastPassedWaypointIndex + 1;
         index < waypoints.length;
         index++) {

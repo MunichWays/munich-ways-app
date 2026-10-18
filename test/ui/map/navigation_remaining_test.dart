@@ -18,6 +18,75 @@ void _rideToMiddle(VoiceGuidance guidance) {
 }
 
 void main() {
+  test('arrival clock uses the same rounded minutes, including midnight', () {
+    final route = _route();
+    final at = DateTime(2026, 10, 17, 23, 58, 40);
+    final first = NavigationRemaining.estimate(route, 0.5, estimatedAt: at)!;
+    expect(first.minutes, 5);
+    expect(first.arrivalTime, DateTime(2026, 10, 18, 0, 3));
+    final sameMinute = NavigationRemaining.estimate(route, 0.5,
+        estimatedAt: at.add(const Duration(seconds: 10)));
+    expect(sameMinute, first);
+    final nextMinute = NavigationRemaining.estimate(route, 0.5,
+        estimatedAt: at.add(const Duration(minutes: 1)));
+    expect(nextMinute, isNot(first));
+    expect(nextMinute!.arrivalTime, DateTime(2026, 10, 18, 0, 4));
+  });
+
+  testWidgets('fresh GPS updates the clock minute while pause freezes arrival',
+      (tester) async {
+    var now = DateTime(2026, 10, 17, 11, 40, 55);
+    final route = _route();
+    final controller = NavigationRemainingController(now: () => now);
+    addTearDown(controller.dispose);
+    var changes = 0;
+    controller.addListener(() => changes++);
+    void fix() => controller.update(
+        NavigationRemaining.estimate(route, 0.5, estimatedAt: now),
+        fixTime: now);
+    fix();
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 45));
+    now = now.add(const Duration(seconds: 10));
+    fix();
+    expect(changes, 2);
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 46));
+    controller.setPaused(true);
+    now = now.add(const Duration(minutes: 3));
+    fix();
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 46));
+    controller.setPaused(false);
+    fix();
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 49));
+    controller.update(null, fixTime: now);
+    expect(controller.value, isNull);
+    fix();
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 49));
+    controller.clear();
+  });
+
+  testWidgets('arrival clock latches at the route endpoint until route changes',
+      (tester) async {
+    var now = DateTime(2026, 10, 17, 11, 45);
+    final route = _route();
+    final controller = NavigationRemainingController(now: () => now);
+    addTearDown(controller.dispose);
+    controller.update(
+        NavigationRemaining.estimate(route, 0,
+            destinationReached: true, estimatedAt: now),
+        fixTime: now);
+    now = now.add(const Duration(minutes: 5));
+    controller.update(
+        NavigationRemaining.estimate(route, 0,
+            destinationReached: true, estimatedAt: now),
+        fixTime: now);
+    expect(controller.value!.arrivalTime, DateTime(2026, 10, 17, 11, 45));
+    controller.update(
+        NavigationRemaining.estimate(_route(), 0,
+            destinationReached: true, estimatedAt: now),
+        fixTime: now);
+    expect(controller.value!.arrivalTime, now);
+  });
+
   test('uses the actual matched fraction, independent of speech lookahead', () {
     final route = _route();
     final guidance = VoiceGuidance()..setRoute(route);

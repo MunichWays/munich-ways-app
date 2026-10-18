@@ -14,6 +14,7 @@ import 'package:munich_ways/routing/routing_service.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_travel_summary.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/settings/settings_sheet_content.dart';
 import 'package:munich_ways/ui/app_theme_controller.dart';
@@ -61,7 +62,7 @@ void main() {
     );
     await tester.pump();
 
-    final stats = find.text('4,2 km');
+    final stats = find.byType(MapRouteTravelSummary);
     final start = find.text('Starten');
     final refresh = find.byIcon(Icons.refresh);
     final startButton = tester.widget<FilledButton>(

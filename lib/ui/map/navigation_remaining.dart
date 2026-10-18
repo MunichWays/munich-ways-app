@@ -6,12 +6,14 @@ import 'package:munich_ways/model/route.dart';
 
 /// Rounded presentation data, never a source of navigation progress.
 class NavigationRemaining {
-  const NavigationRemaining._(this.route, this.hundredsOfMeters, this.minutes);
+  const NavigationRemaining._(
+      this.route, this.hundredsOfMeters, this.minutes, this.arrivalTime);
 
   static NavigationRemaining? estimate(
     CycleRoute route,
     double remainingFraction, {
     bool destinationReached = false,
+    DateTime? estimatedAt,
   }) {
     final distance = route.navigationDistance ?? route.distance;
     final duration = route.navigationDuration ?? route.duration;
@@ -21,26 +23,40 @@ class NavigationRemaining {
         !duration.isFinite ||
         duration <= 0) return null;
     final fraction = remainingFraction.clamp(0.0, 1.0);
+    final minutes =
+        destinationReached ? 0 : max(1, (duration * fraction / 60).round());
+    final reference = estimatedAt ?? DateTime.now();
+    final arrival = reference.add(Duration(minutes: minutes));
     return NavigationRemaining._(
       route,
       destinationReached ? 0 : max(1, (distance * fraction / 100).round()),
-      destinationReached ? 0 : max(1, (duration * fraction / 60).round()),
+      minutes,
+      // Match the visible clock precision so fresh GPS does not rebuild the
+      // panel every second. The timestamp remains frozen during a real pause.
+      DateTime.fromMillisecondsSinceEpoch(
+          arrival.millisecondsSinceEpoch ~/
+              Duration.millisecondsPerMinute *
+              Duration.millisecondsPerMinute,
+          isUtc: reference.isUtc),
     );
   }
 
   final CycleRoute route;
   final int hundredsOfMeters;
   final int minutes;
+  final DateTime arrivalTime;
 
   @override
   bool operator ==(Object other) =>
       other is NavigationRemaining &&
       identical(route, other.route) &&
       hundredsOfMeters == other.hundredsOfMeters &&
-      minutes == other.minutes;
+      minutes == other.minutes &&
+      arrivalTime == other.arrivalTime;
 
   @override
-  int get hashCode => Object.hash(route, hundredsOfMeters, minutes);
+  int get hashCode =>
+      Object.hash(route, hundredsOfMeters, minutes, arrivalTime);
 }
 
 /// Expires only the displayed estimate. Owns no GPS, routing or speech work.
@@ -77,7 +93,13 @@ class NavigationRemainingController
       return;
     }
     _fixTime = fixTime;
-    value = estimate;
+    // Repeated endpoint fixes must not move an already reached arrival time.
+    final arrived = value;
+    value = estimate.hundredsOfMeters == 0 &&
+            arrived?.hundredsOfMeters == 0 &&
+            identical(arrived?.route, estimate.route)
+        ? arrived
+        : estimate;
     // Confirmed arrival is latched by navigation and needs no further GPS.
     if (estimate.hundredsOfMeters != 0) {
       _expiry = Timer(maximumFixAge - age, clear);
