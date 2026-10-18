@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,22 +12,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
     // Ahem deliberately uses square glyphs. Check compact layout against the
-    // actual Material font shipped with the same Flutter SDK used by CI.
-    final configFile = File('.dart_tool/package_config.json').absolute;
-    final config =
-        jsonDecode(await configFile.readAsString()) as Map<String, dynamic>;
-    final flutter = (config['packages'] as List)
-        .cast<Map<String, dynamic>>()
-        .firstWhere((package) => package['name'] == 'flutter');
-    final flutterDirectory =
-        Directory.fromUri(configFile.uri.resolve(flutter['rootUri'] as String));
-    final fonts = flutterDirectory.uri
-        .resolve('../../bin/cache/artifacts/material_fonts/');
+    // checked-in Material fonts; SDK caches differ between local and CI hosts.
     final loader = FontLoader('TestRoboto');
     for (final name in ['roboto-regular.ttf', 'roboto-bold.ttf']) {
-      loader.addFont(File.fromUri(fonts.resolve(name))
-          .readAsBytes()
-          .then(ByteData.sublistView));
+      final bytes = await File('test/fixtures/fonts/$name').readAsBytes();
+      loader.addFont(Future.value(ByteData.sublistView(bytes)));
     }
     await loader.load();
   });
