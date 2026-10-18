@@ -19,6 +19,9 @@ import '../../support/wakelock_stub.dart';
 class _SettingsStore extends SettingsStore {
   @override
   Future<SettingsData> load() async => SettingsData.defaults;
+
+  @override
+  Future<void> saveVoiceGuidanceEnabled(bool enabled) async {}
 }
 
 class _LayoutMapPlatform extends MapLibrePlatform {
@@ -36,6 +39,129 @@ class _LayoutMapPlatform extends MapLibrePlatform {
 }
 
 void main() {
+  for (final scenario in [
+    'spoken',
+    'muted',
+    'map-only',
+    'speech failure',
+    'permission enables speech',
+  ]) {
+    testWidgets('navigation start preview: $scenario', (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      stubWakelock();
+      final originalSettings = settingsStore;
+      settingsStore = _SettingsStore();
+      addTearDown(() => settingsStore = originalSettings);
+      final originalMapFactory = MapLibrePlatform.createInstance;
+      MapLibrePlatform.createInstance = () => _LayoutMapPlatform();
+      addTearDown(() => MapLibrePlatform.createInstance = originalMapFactory);
+      const ttsChannel = MethodChannel('flutter_tts');
+      const notificationChannel =
+          MethodChannel('com.munichways.app/notification_permission');
+      final messenger = tester.binding.defaultBinaryMessenger;
+      final spoken = <String>[];
+      var failSpeech = scenario == 'speech failure';
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+        if (call.method == 'speak') {
+          spoken.add(call.arguments is String
+              ? call.arguments as String
+              : (call.arguments as Map)['text'] as String);
+          if (failSpeech) {
+            throw PlatformException(code: 'temporarily_unavailable');
+          }
+        }
+        return 1;
+      });
+      messenger.setMockMethodCallHandler(notificationChannel, (call) async {
+        if (call.method == 'isGranted') {
+          return scenario != 'permission enables speech';
+        }
+        return true;
+      });
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(ttsChannel, null);
+        messenger.setMockMethodCallHandler(notificationChannel, null);
+      });
+      await tester
+          .runAsync(() => rootBundle.loadString(kOpenFreeMapLibertyStyleAsset));
+      await tester.pumpWidget(const MaterialApp(
+        home: MapScreen(startupInteractionsEnabled: false),
+      ));
+      await tester.runAsync(() async {
+        await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+        await settingsStore.load();
+      });
+      await tester.pump();
+      final model =
+          tester.element(find.byType(MapLibreMap)).read<MapScreenViewModel>();
+      model
+        ..destination = Place('Ziel', const latlong.LatLng(48.15, 11.57))
+        ..route = MapRoute(
+          CycleRoute(
+            const [latlong.LatLng(48.14, 11.57), latlong.LatLng(48.15, 11.57)],
+            1000,
+            300,
+            supportsVoiceGuidance: scenario != 'map-only',
+            maneuvers: const [
+              RouteManeuver(
+                  location: latlong.LatLng(48.141, 11.57),
+                  type: 'turn',
+                  modifier: 'right',
+                  roadName: 'Laimer Straße',
+                  wayType: RouteWayType.road),
+              RouteManeuver(
+                  location: latlong.LatLng(48.143, 11.57),
+                  type: 'turn',
+                  modifier: 'left'),
+            ],
+          ),
+          MapRouteState.SHOWN,
+        )
+        ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP
+        ..setVoiceGuidanceEnabled(
+            scenario != 'muted' && scenario != 'permission enables speech')
+        ..toggleGesamtnetzVisible();
+      await tester.pump();
+      expect(spoken, isEmpty);
+      await tester.tap(find.bySemanticsLabel('Starten'));
+      await tester.pump();
+      await tester.pump();
+      if (scenario == 'permission enables speech') {
+        expect(spoken, isEmpty);
+        expect(find.text('Navigations-Mitteilungen erlauben?'), findsOneWidget);
+        await tester.tap(find.text('Weiter'));
+        await tester.pump();
+        await tester.pump();
+      }
+      expect(model.navigationActive, isTrue);
+      if (scenario == 'muted' || scenario == 'map-only') {
+        expect(spoken, isEmpty);
+      } else {
+        expect(spoken, [
+          'In 110 Metern rechts abbiegen auf Laimer Straße, danach links abbiegen.'
+        ]);
+      }
+      await tester.pump();
+      expect(
+          spoken.length, scenario == 'muted' || scenario == 'map-only' ? 0 : 1);
+      if (scenario == 'speech failure') {
+        failSpeech = false;
+        await tester.tap(find.bySemanticsLabel('Sprachansagen ausschalten'));
+        await tester.pump();
+        await tester.tap(find.bySemanticsLabel('Sprachansagen einschalten'));
+        await tester.pump();
+        expect(spoken.last, 'Sprachansagen aktiviert.');
+        expect(model.navigationActive, isTrue);
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
+    });
+  }
+
   testWidgets('touching the real map keeps guidance active; only close pauses',
       (tester) async {
     stubWakelock();

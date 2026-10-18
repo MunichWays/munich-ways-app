@@ -564,6 +564,66 @@ class VoiceGuidance {
     setRoute(null);
   }
 
+  /// Previews the first two turns from the route start without consuming their
+  /// normal approach/turn announcements or changing position matching.
+  String? startPreview({required bool english}) {
+    final turns = _maneuvers
+        .where((target) {
+          final maneuver = target.maneuver;
+          if (maneuver.type == 'exit roundabout' ||
+              maneuver.type == 'exit rotary' ||
+              maneuver.type == 'notification') return false;
+          return maneuver.type == 'roundabout' ||
+              maneuver.type == 'rotary' ||
+              maneuver.type == 'roundabout turn' ||
+              const {
+                'left',
+                'right',
+                'slight left',
+                'slight right',
+                'sharp left',
+                'sharp right',
+                'uturn',
+              }.contains(maneuver.modifier);
+        })
+        .take(2)
+        .toList();
+    if (turns.isEmpty) return null;
+
+    final first = turns.first;
+    final action = _startPreviewAction(first.maneuver, english);
+    final String preview;
+    if (first.routeDistance <= nowDistanceMeters) {
+      preview = english ? '${_sentenceCase(action)} here' : 'Hier $action';
+    } else {
+      final distance = _roundedDistance(first.routeDistance);
+      preview = english
+          ? 'In $distance meters, $action'
+          : 'In $distance Metern $action';
+    }
+    if (turns.length == 1) return '$preview.';
+    final second = _startPreviewAction(turns[1].maneuver, english);
+    return '$preview, ${english ? 'then' : 'danach'} $second.';
+  }
+
+  static String _startPreviewAction(RouteManeuver maneuver, bool english) {
+    final action = maneuver.type == 'continue' &&
+            (maneuver.modifier == 'left' || maneuver.modifier == 'right')
+        ? english
+            ? 'keep ${maneuver.modifier}'
+            : '${maneuver.modifier == 'left' ? 'links' : 'rechts'} weiterfahren'
+        : _actionWithoutWayType(maneuver, english);
+    final wayType = maneuver.wayType ?? maneuver.enteringWayType;
+    final roadName = maneuver.roadName.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (wayType == RouteWayType.road && roadName.isNotEmpty) {
+      return '$action ${english ? 'onto' : 'auf'} $roadName';
+    }
+    if (wayType == RouteWayType.cycleway) {
+      return '$action ${english ? 'onto the cycle path' : 'auf Radweg'}';
+    }
+    return action;
+  }
+
   /// Restarts maneuver guidance at the rider's current place on the route.
   ///
   /// This is used after an off-route episode. A freshly reset guidance session
