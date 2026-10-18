@@ -21,7 +21,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(stubWakelock);
 
-  test('navigation pause follows the active tracking state', () async {
+  test('map inspection changes camera follow without pausing navigation',
+      () async {
     final model = MapScreenViewModel(store: _MemorySettingsStore())
       ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     addTearDown(model.dispose);
@@ -30,12 +31,51 @@ void main() {
     expect(model.navigationPaused, isFalse);
 
     model.onUserStoppedFollowingLocation();
+    expect(model.locationState, LocationState.DISPLAY);
+    expect(model.navigationActive, isTrue);
+    expect(model.navigationPaused, isFalse);
+
+    expect(model.resumeNavigationCameraFollowing(), isTrue);
+    expect(model.locationState, LocationState.FOLLOW_AND_ROTATE_MAP);
+    model.onCompassNorthUpPressed();
+    expect(model.navigationPaused, isFalse);
+
+    model.pauseNavigation();
     expect(model.navigationPaused, isTrue);
+    expect(model.navigationActive, isFalse);
+    expect(model.resumeNavigationCameraFollowing(), isFalse);
 
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    expect(model.navigationPaused, isTrue);
+    expect(await model.startNavigation(), isTrue);
     expect(model.navigationPaused, isFalse);
 
     model.clearDestination();
+    expect(model.navigationPaused, isFalse);
+    expect(model.navigationActive, isFalse);
+  });
+
+  test('camera modes cannot resume an explicit pause or unavailable location',
+      () async {
+    final model = MapScreenViewModel(store: _MemorySettingsStore())
+      ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    addTearDown(model.dispose);
+    expect(model.resumeNavigationCameraFollowing(), isFalse);
+    await model.startNavigation();
+    model.locationState = LocationState.FOLLOW;
+    expect(model.navigationActive, isTrue);
+    expect(model.resumeNavigationCameraFollowing(), isFalse);
+    model.locationState = LocationState.NOT_AVAILABLE;
+    expect(model.navigationPaused, isTrue);
+    expect(model.resumeNavigationCameraFollowing(), isFalse);
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    expect(model.navigationActive, isTrue);
+    model.pauseNavigation();
+    model.clearDestination();
+    expect(model.navigationPaused, isFalse);
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
     expect(model.navigationPaused, isFalse);
   });
 

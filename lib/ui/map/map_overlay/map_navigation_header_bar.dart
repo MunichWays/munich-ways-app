@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_route_travel_summary.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/navigation_remaining.dart';
 import 'package:munich_ways/ui/map/voice_guidance.dart';
@@ -41,16 +42,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
   final VoidCallback? onShowSettings;
   final VoiceGuidanceDisplay? nextManeuver;
   final NavigationRemaining? remaining;
-
-  static String _formatKm(double meters, {bool english = false}) {
-    final km = meters / 1000.0;
-    return '${km.toStringAsFixed(1).replaceAll('.', english ? '.' : ',')} km';
-  }
-
-  static String _formatMin(double seconds) {
-    final min = (seconds / 60.0).round();
-    return '$min Min';
-  }
 
   static IconData _maneuverIcon(VoiceGuidanceDisplay maneuver) {
     if (maneuver.type == 'notification') return Icons.sync;
@@ -152,7 +143,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaSize = MediaQuery.sizeOf(context);
     final compactLandscape = mediaSize.width >= mediaSize.height * 1.5;
-    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
     final actionSize = compactLandscape ? 48.0 : 52.0;
     final refreshWidth = compactLandscape ? 60.0 : 68.0;
     final refreshIconSize = compactLandscape ? 24.0 : 28.0;
@@ -160,7 +150,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
           color: Colors.white,
         ) ??
         const TextStyle(color: Colors.white);
-    final emphasisStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
 
     final route = model.route;
     final navigationTrackingInterrupted = model.navigationPaused;
@@ -179,25 +168,6 @@ class MapNavigationHeaderBar extends StatelessWidget {
                 )
         : null;
     final destinationReached = guidanceDisplay?.isFinalDestination ?? false;
-    Widget routeStat(IconData icon, String value, {String? label}) => Semantics(
-          label: label,
-          excludeSemantics: label != null,
-          child: Tooltip(
-            message: label ?? value,
-            excludeFromSemantics: true,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (model.navigationStarted || onToggleCollapsed == null) ...[
-                  Icon(icon, color: Colors.white70, size: 19),
-                  const SizedBox(width: 7),
-                ],
-                Flexible(child: Text(value, style: emphasisStyle)),
-              ],
-            ),
-          ),
-        );
     final Widget stats;
     switch (route.state) {
       case MapRouteState.LOADING:
@@ -215,70 +185,10 @@ class MapNavigationHeaderBar extends StatelessWidget {
           stats = Text('…', style: baseStyle);
           break;
         }
-        final estimate = identical(remaining?.route, r) ? remaining : null;
-        final hasDestinationAccess = r.destinationConnector.length >= 2;
-        final endpointLabel = context.l10n.isEnglish
-            ? 'Remaining distance to route end'
-            : 'Reststrecke bis Routenende';
-        final distanceText = model.navigationStarted
-            ? estimate == null
-                ? '— km'
-                : _formatKm(estimate.hundredsOfMeters * 100.0,
-                    english: context.l10n.isEnglish)
-            : _formatKm(r.distance);
-        final durationText = model.navigationStarted
-            ? estimate == null
-                ? (context.l10n.isEnglish ? '— min' : '— Min')
-                : '≈ ${estimate.minutes} ${context.l10n.isEnglish ? 'min' : 'Min'}'
-            : _formatMin(r.duration);
-        final distanceLabel = !model.navigationStarted
-            ? null
-            : estimate == null
-                ? (context.l10n.isEnglish
-                    ? 'Remaining distance currently unavailable'
-                    : 'Reststrecke derzeit nicht verfügbar')
-                : (context.l10n.isEnglish
-                    ? '${hasDestinationAccess ? endpointLabel : 'Remaining distance'}: $distanceText'
-                    : '${hasDestinationAccess ? endpointLabel : 'Reststrecke'}: $distanceText');
-        final durationLabel = !model.navigationStarted
-            ? null
-            : estimate == null
-                ? (context.l10n.isEnglish
-                    ? 'Remaining travel time currently unavailable'
-                    : 'Restfahrzeit derzeit nicht verfügbar')
-                : (context.l10n.isEnglish
-                    ? 'Estimated remaining travel time: ${estimate.minutes} minutes'
-                    : 'Geschätzte Restfahrzeit: ${estimate.minutes} Minuten');
-        stats = Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: 16, vertical: model.navigationStarted ? 8 : 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              largeText
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        routeStat(Icons.sports_score, distanceText,
-                            label: distanceLabel),
-                        const SizedBox(height: 4),
-                        routeStat(Icons.schedule, durationText,
-                            label: durationLabel),
-                      ],
-                    )
-                  : Wrap(
-                      alignment: WrapAlignment.spaceAround,
-                      spacing: 16,
-                      runSpacing: 4,
-                      children: [
-                        routeStat(Icons.sports_score, distanceText,
-                            label: distanceLabel),
-                        routeStat(Icons.schedule, durationText,
-                            label: durationLabel),
-                      ],
-                    ),
-            ],
-          ),
+        stats = MapRouteTravelSummary(
+          route: r,
+          remaining: remaining,
+          navigationStarted: model.navigationStarted,
         );
         break;
       case MapRouteState.ERROR:

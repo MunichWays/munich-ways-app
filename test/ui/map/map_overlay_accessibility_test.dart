@@ -451,7 +451,7 @@ void main() {
       )
       ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
-    model.onUserStoppedFollowingLocation();
+    model.pauseNavigation();
 
     await tester.pumpWidget(
       MaterialApp(

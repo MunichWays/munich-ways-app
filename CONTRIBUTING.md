@@ -334,6 +334,27 @@ The complete expected behavior is:
 - During navigation, recalculating an unedited plan uses current waypoint progress
   rather than restoring stops from the planner's opening snapshot.
 
+## Map inspection during navigation (issue #274)
+
+Touching, panning, pinching or turning north-up releases only the camera.
+Speech, remaining values, off-route
+handling and guidance recovery continue. Confirmed GPS movement after all
+fingers are lifted and a three-second quiet period restores follow-and-rotate
+without recalculation or a new navigation start. Stationary GPS jitter, stale
+fixes and jumps must not restore following. Keep the chosen zoom when following
+resumes and until the next recalculation; warning-driven zoom changes also
+respect manual map inspection. Picking a route point holds the camera until
+selection ends. The close button explicitly pauses navigation; movement and
+the location button must not clear that pause. Resume remains deliberate.
+
+On Android and iOS, stop at a safe place during navigation, inspect the map and
+change zoom. Keep the view still while stopped, then ride on: following and
+direction-based rotation should return while the zoom stays chosen. Repeat
+while already moving, with two fingers, after GPS loss/recovery, screen lock,
+and with speech and automatic rerouting independently disabled. Leave/rejoin
+the route while inspecting it and verify guidance recovers. Press close while
+the camera is detached: navigation must stay paused until explicitly resumed.
+
 ## Navigation guidance user story
 
 As a rider, I want navigation guidance to recover from uncertain GPS and route
@@ -415,7 +436,7 @@ The complete expected behavior is:
   map` as `Outbound/return overlap - watch map` while route progress continues.
   It never starts stalled-guidance recovery or a recalculation merely because
   the overlap lasts longer than 30 seconds.
-- An unsupported guidance route, interrupted map tracking, and the
+- An unsupported guidance route, explicitly paused navigation, and the
   navigation-start fallback are separate map-only states. They never start
   stalled-guidance recovery based on their displayed text.
 - A failed recalculation reports the failure and leaves manual recalculation
@@ -439,6 +460,16 @@ The complete expected behavior is:
   along with the other navigation timers and speech state.
 
 ## Remaining distance and time (issue #189)
+
+The destination summary (#275) is one line: finish flag, bold estimated minutes,
+arrival clock, distance. The clock icon is omitted. Navigation arrival time
+belongs to the same remaining-progress snapshot: pause freezes it, stale or
+unreliable progress removes it, and a fresh fix or replacement route restores
+it. Repeated endpoint fixes retain the reached arrival time. The planning
+preview refreshes its clock each minute and after app resume, without routing
+or GPS requests. Large accessibility text scrolls horizontally instead of
+shrinking or adding another row. Test Android/iOS in portrait and landscape,
+large text, English, midnight rollover, pause/resume, GPS recovery and rerouting.
 
 Before navigation the header shows route totals. During navigation it uses the
 existing reliable route match for remaining distance and proportional travel

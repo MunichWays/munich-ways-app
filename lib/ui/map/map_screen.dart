@@ -46,6 +46,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_location_dialogs.dart';
 import 'package:munich_ways/ui/map/ios_navigation_location_settings.dart';
 import 'package:munich_ways/ui/map/navigation_audio.dart';
+import 'package:munich_ways/ui/map/navigation_camera_follow.dart';
 import 'package:munich_ways/ui/map/off_route_announcement.dart';
 import 'package:munich_ways/ui/map/navigation_remaining.dart';
 import 'package:munich_ways/ui/map/navigation_notification_permission.dart';
@@ -318,6 +319,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
   final NavigationMotionTracker _navigationMotion = NavigationMotionTracker();
+  final NavigationCameraFollowGate _navigationCameraFollow =
+      NavigationCameraFollowGate();
+  bool _preserveNavigationZoom = false;
   NavigationMotionSample _motionSample = const NavigationMotionSample();
   bool get _gpsStationary => !_navigationMotion.isMovingAt(DateTime.now());
   bool _movementHeadingAvailable = false;
@@ -737,6 +741,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _navigationRemaining.clear();
     _appReviewPrompt.cancel();
     _navigationMotion.reset();
+    _navigationCameraFollow.reset();
+    _preserveNavigationZoom = false;
     _voiceGuidance.reset();
     _navigationStartGate.reset();
     _resetStalledGuidanceRecovery();
@@ -840,14 +846,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   void _pauseNavigation(MapScreenViewModel model) {
-    if (!model.navigationStarted ||
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
-      return;
-    }
-    model.onUserStoppedFollowingLocation();
+    if (!model.navigationActive) return;
+    model.pauseNavigation();
     _navigationRemaining.setPaused(true);
+    _resetStalledGuidanceRecovery();
+    _cancelAutomaticRerouting(resetAttempts: false);
     _voiceSignalTimer?.cancel();
     _stopVoiceGuidance();
+  }
+
+  void _stopFollowingForMapInspection(MapScreenViewModel model) {
+    _navigationCameraFollow.recordInteraction(DateTime.now());
+    _smoothedMovementBearing = null;
+    _lastLocationCameraPosition = null;
+    _lastLocationCameraBearing = null;
+    if (model.navigationStarted) {
+      _preserveNavigationZoom = true;
+      _offRouteCameraZoomedOut = false;
+    }
+    model.onUserStoppedFollowingLocation();
   }
 
   Future<void> _syncCompassBearingFromMap() async {
@@ -918,6 +935,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           if (!mounted) return;
           _navigationRemaining.clear();
           _navigationMotion.reset();
+          if (!model.navigationStarted) {
+            _navigationCameraFollow.reset();
+            _preserveNavigationZoom = false;
+          }
           _voiceGuidance.reset();
           _navigationStartGate.reset();
           _resetStalledGuidanceRecovery();
@@ -1103,17 +1124,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _mapStyleString != null &&
                       _initialCameraLoaded)
                     Listener(
-                      onPointerDown: (_) {
-                        if (model.locationState == LocationState.FOLLOW ||
-                            model.locationState ==
-                                LocationState.FOLLOW_AND_ROTATE_MAP) {
-                          if (model.navigationStarted) {
-                            _pauseNavigation(model);
-                          } else {
-                            model.onUserStoppedFollowingLocation();
-                          }
-                        }
+                      onPointerDown: (event) {
+                        _navigationCameraFollow.pointerDown(
+                            event.pointer, DateTime.now());
+                        _stopFollowingForMapInspection(model);
                       },
+                      onPointerUp: (event) => _navigationCameraFollow.pointerUp(
+                          event.pointer, DateTime.now()),
+                      onPointerCancel: (event) => _navigationCameraFollow
+                          .pointerUp(event.pointer, DateTime.now()),
                       child: RepaintBoundary(
                         key: _mapLibreViewKey,
                         child: MapLibreMap(
@@ -1325,6 +1344,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               model,
                             ),
                             onNorthUp: () async {
+                              _stopFollowingForMapInspection(model);
                               model.onCompassNorthUpPressed();
                               final c = _mapController;
                               if (c != null) {
@@ -1908,6 +1928,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     Position position,
   ) {
     if (!mounted ||
+        model.navigationPaused ||
         !position.latitude.isFinite ||
         !position.longitude.isFinite ||
         !position.accuracy.isFinite ||
@@ -1921,6 +1942,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final rawPosition = latlong2.LatLng(position.latitude, position.longitude);
     _motionSample = _navigationMotion.update(rawPosition, position.accuracy,
         now: position.timestamp);
+    final now = DateTime.now();
+    if (_pendingRouteMapSelection == null &&
+        !_nameNextMapSelection &&
+        _navigationMotion.isMovingAt(now) &&
+        _navigationCameraFollow.shouldResume(
+            now: now, fixTime: position.timestamp, motion: _motionSample) &&
+        model.resumeNavigationCameraFollowing()) {
+      _navigationCameraFollow.reset();
+    }
     if (!model.navigationStarted) {
       _navigationStartGate.reset();
     }
@@ -2054,8 +2084,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           horizontalAccuracyMeters: position.accuracy),
       healthyMapProgress: _voiceGuidance.hasHealthyMapProgress(rawPosition),
     );
-    final stallReason = model.navigationStarted &&
-            model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP &&
+    final stallReason = model.navigationActive &&
             !_voiceGuidance.finalDestinationReached &&
             model.route.state == MapRouteState.SHOWN &&
             !_automaticRerouteInFlight
@@ -2123,7 +2152,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     bool repeat = false,
   }) {
     if (!mounted ||
-        !model.navigationStarted ||
+        !model.navigationActive ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
       return false;
@@ -2147,7 +2176,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     latlong2.LatLng routePosition,
     Position gpsPosition,
   ) {
-    if (_automaticRerouteInFlight) return;
+    if (!model.navigationActive || _automaticRerouteInFlight) return;
     // Deliver an elapsed warning before considering a resumed recalculation.
     _offRouteAnnouncement.retryIfDue();
     // A committed off-route timer may expire during a stop or GPS outage.
@@ -2297,7 +2326,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _stillOffRoute(MapScreenViewModel model) {
     final position = _latestPosition;
     return mounted &&
-        model.navigationStarted &&
+        model.navigationActive &&
         position != null &&
         position.accuracy.isFinite &&
         position.accuracy <= 50 &&
@@ -2318,7 +2347,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
     if (_automaticRerouteInFlight ||
-        !model.navigationStarted ||
+        !model.navigationActive ||
         _voiceGuidance.finalDestinationReached ||
         !model.automaticReroutingEnabled ||
         !_hasFreshNavigationFix ||
@@ -2336,6 +2365,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       return;
     }
     _automaticRerouteInFlight = true;
+    _preserveNavigationZoom = false;
     _automaticRerouteCommitted = true;
     _automaticRerouteRetryAt = null;
     _offRouteDisplayTimer?.cancel();
@@ -2474,7 +2504,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   Future<void> _zoomOutAfterMissingDirections() async {
     final controller = _mapController;
-    if (!mounted || controller == null) return;
+    if (!mounted ||
+        controller == null ||
+        _preserveNavigationZoom ||
+        _navigationCameraFollow.interacting) return;
     try {
       // Always use the same overview. Subtracting from the current zoom here
       // would zoom farther out after every repeated rerouting attempt.
@@ -2558,6 +2591,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final started = await model.startNavigation();
     if (!mounted || !started) return;
     _navigationMotion.reset();
+    _navigationCameraFollow.reset();
+    _preserveNavigationZoom = false;
     _offRouteCameraZoomedOut = false;
     _resetStalledGuidanceRecovery();
     final initialPosition = _latestPosition;
@@ -2634,10 +2669,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
     if (!mounted || selection == null) return;
 
-    // Picking a point requires a stationary camera, just like touching the map.
-    // Keep GPS/route data alive; reuse the existing tracking pause state.
-    _pauseNavigation(model);
-    model.onUserStoppedFollowingLocation();
+    // Point selection holds only the camera; guidance remains active.
+    _stopFollowingForMapInspection(model);
     setState(() => _pendingRouteMapSelection = selection);
     final pointName = switch (selection.type) {
       RoutePlannerPointType.start =>
@@ -3119,16 +3152,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void _armVoiceSignalWarning(MapScreenViewModel model) {
     _voiceSignalTimer?.cancel();
     if (_automaticReroutingSuspended ||
-        !model.navigationStarted ||
-        model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP ||
+        !model.navigationActive ||
         !model.voiceGuidanceEnabled ||
         !model.voiceGuidanceAvailable) {
       return;
     }
     _voiceSignalTimer = Timer(_voiceSignalWarningDelay, () {
       if (!mounted ||
-          !model.navigationStarted ||
-          model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP ||
+          !model.navigationActive ||
           !model.voiceGuidanceEnabled ||
           !model.voiceGuidanceAvailable) {
         return;
