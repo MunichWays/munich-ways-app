@@ -2171,6 +2171,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return false;
   }
 
+  bool _announceNavigationStartPreview(MapScreenViewModel model) {
+    if (!model.navigationActive ||
+        !model.voiceGuidanceEnabled ||
+        !model.voiceGuidanceAvailable) return false;
+    _voiceGuidance.setRoute(
+      model.route.route,
+      intermediateDestinationNames:
+          model.waypoints.map((place) => place.displayName).toList(),
+    );
+    final english = context.l10n.isEnglish;
+    final preview = _voiceGuidance.startPreview(english: english);
+    if (preview == null) return false;
+    unawaited(_speak(preview, english: english));
+    return true;
+  }
+
   void _updateAutomaticRerouting(
     MapScreenViewModel model,
     latlong2.LatLng routePosition,
@@ -2586,6 +2602,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startNavigation(MapScreenViewModel model) async {
+    if (model.navigationStartPending) return;
     _navigationRemaining.clear();
     _appReviewPrompt.cancel();
     final started = await model.startNavigation();
@@ -2607,6 +2624,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
     );
     _initialGuidanceAnnouncementPending = true;
+    final previewAnnounced = _announceNavigationStartPreview(model);
     if (initialPosition != null &&
         initialPosition.latitude.isFinite &&
         initialPosition.longitude.isFinite &&
@@ -2634,6 +2652,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _armVoiceSignalWarning(model);
     await _requestNavigationNotificationPermission(model);
     if (!mounted) return;
+    // A newly granted notification permission can enable speech on first use.
+    if (!previewAnnounced) _announceNavigationStartPreview(model);
     final position = _latestPosition;
     if (position != null) {
       _refreshVoiceGuidance(model, position);
