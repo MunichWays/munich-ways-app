@@ -141,7 +141,7 @@ void main() {
         expect(spoken, isEmpty);
       } else {
         expect(spoken, [
-          'In 110 Metern rechts abbiegen auf Laimer Straße, danach links abbiegen.'
+          'In 110 Metern rechts abbiegen in Laimer Straße, danach links abbiegen.'
         ]);
       }
       await tester.pump();

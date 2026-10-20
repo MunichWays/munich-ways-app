@@ -1977,6 +1977,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       rawPosition,
       _navigationMotion.bearingAt(DateTime.now()),
       movementStart: _navigationMotion.movementStart,
+      directionConfirmed: _navigationMotion.directionConfirmed,
     );
     var routeGuidanceDisplay = model.navigationStarted
         ? _voiceGuidance.display(
@@ -2601,7 +2602,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return radnetzReload;
   }
 
-  Future<void> _startNavigation(MapScreenViewModel model) async {
+  Future<void> _startNavigation(
+    MapScreenViewModel model, {
+    bool announceStartPreview = true,
+  }) async {
     if (model.navigationStartPending) return;
     _navigationRemaining.clear();
     _appReviewPrompt.cancel();
@@ -2624,7 +2628,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
     );
     _initialGuidanceAnnouncementPending = true;
-    final previewAnnounced = _announceNavigationStartPreview(model);
+    final previewAnnounced =
+        announceStartPreview && _announceNavigationStartPreview(model);
     if (initialPosition != null &&
         initialPosition.latitude.isFinite &&
         initialPosition.longitude.isFinite &&
@@ -2653,7 +2658,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _requestNavigationNotificationPermission(model);
     if (!mounted) return;
     // A newly granted notification permission can enable speech on first use.
-    if (!previewAnnounced) _announceNavigationStartPreview(model);
+    if (announceStartPreview && !previewAnnounced) {
+      _announceNavigationStartPreview(model);
+    }
     final position = _latestPosition;
     if (position != null) {
       _refreshVoiceGuidance(model, position);
@@ -3205,7 +3212,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted || !routeUpdated) return;
     // A successful refresh resumes navigation exactly like the Start action:
     // navigation zoom, location tracking and direction-based map rotation.
-    await _startNavigation(model);
+    // The route-start preview belongs only to a fresh start, not a refresh.
+    await _startNavigation(model, announceStartPreview: false);
   }
 
   Future<void> _primeLocationOnStart(

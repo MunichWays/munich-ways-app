@@ -78,6 +78,42 @@ void main() {
     expect(resumed.confirmedMeters, closeTo(20, 1));
   });
 
+  for (final interruption in ['gap', 'jump', 'poor fix']) {
+    test(
+        'direction needs agreeing movements after $interruption, motion does not',
+        () {
+      final motion = NavigationMotionTracker();
+      motion.update(at(0), 5, now: time(0));
+      motion.update(at(20), 5, now: time(5));
+      expect(motion.bearingAt(time(5)), isNotNull);
+      final anchor = interruption == 'jump' ? 500.0 : 100.0;
+      if (interruption == 'poor fix') {
+        motion.update(at(80), 80, now: time(60));
+      }
+      final recoveredAt = interruption == 'jump' ? 10 : 65;
+      expect(
+          motion.update(at(anchor), 5, now: time(recoveredAt)).moving, isFalse);
+      expect(motion.bearingAt(time(recoveredAt)), isNull);
+      expect(motion.directionConfirmed, isFalse);
+
+      // A backwards correction is movement, but not yet a reliable direction.
+      final firstAt = recoveredAt + 5;
+      expect(
+          motion.update(at(anchor - 20), 5, now: time(firstAt)).moving, isTrue);
+      expect(motion.bearingAt(time(firstAt)), isNotNull);
+      expect(motion.directionConfirmed, isFalse);
+      // An identical fix must not count as another confirmation.
+      motion.update(at(anchor - 20), 5, now: time(firstAt));
+      expect(motion.directionConfirmed, isFalse);
+      motion.update(at(anchor), 5, now: time(firstAt + 5));
+      expect(motion.directionConfirmed, isFalse);
+      motion.update(at(anchor + 20), 5, now: time(firstAt + 10));
+      expect(motion.bearingAt(time(firstAt + 10)), closeTo(0, 1));
+      expect(motion.directionConfirmed, isTrue);
+      expect(motion.bearingAt(time(firstAt + 19)), isNull);
+    });
+  }
+
   test('isolated jump and correction do not count as movement', () {
     final motion = NavigationMotionTracker();
     motion.update(at(0), 5, now: time(0));

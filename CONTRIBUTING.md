@@ -378,6 +378,15 @@ The complete expected behavior is:
   Displacement across a sharp bend and known outbound/return overlaps must not
   create a false turn-around. Stopping preserves the pending direction state;
   GPS gaps, jumps and poor fixes cannot establish a new direction.
+  After such an interruption, two confirmed movements with agreeing bearings
+  allow a new turn-around warning; a single GPS correction must not announce
+  one. Forward movement can still clear an existing warning immediately.
+  Movement for camera following and guidance recovery remains
+  available after the first confirmed displacement. On Birketweg westbound
+  after the underpass near 48.145456, 11.519798, restore tracking after screen
+  lock/energy saving: expect no false turn-around and the regular right turn
+  into Schloßschmidstraße. Also ride genuinely backwards after restoring GPS:
+  the warning should appear after the second agreeing movement.
   On iOS and Android, leave a route so recalculation leads back the way you
   came: expect the turn-around promptly, continue away briefly (no ordinary
   turn countdowns), then safely turn and verify regular guidance resumes.

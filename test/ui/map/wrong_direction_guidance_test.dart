@@ -27,7 +27,8 @@ class Ride {
     final time = epoch.add(Duration(seconds: seconds));
     motion.update(position, accuracy, now: time);
     guidance.updateTravelDirection(position, motion.bearingAt(time),
-        movementStart: motion.movementStart);
+        movementStart: motion.movementStart,
+        directionConfirmed: motion.directionConfirmed);
   }
 }
 
@@ -111,7 +112,12 @@ void main() {
     expect(
         ride.guidance.display(at(40), english: true)?.modifier, isNot('uturn'));
     ride.fix(20, 65);
-    expect(ride.guidance.display(at(20), english: true)?.modifier, 'uturn');
+    expect(
+        ride.guidance.display(at(20), english: true)?.modifier, isNot('uturn'));
+    // After GPS returns, one displacement can still be an anchor correction.
+    // A second agreeing movement confirms a real backwards ride.
+    ride.fix(0, 70);
+    expect(ride.guidance.display(at(0), english: true)?.modifier, 'uturn');
   });
 
   test('movement bearing expires and resets with the shared motion source', () {

@@ -1,0 +1,340 @@
+{
+  "url": "https://api.radlnavi.munichways.de/route/v1/bike/11.521171,48.145371;11.517059,48.146555?alternatives=false&steps=true&annotations=nodes,distance&variant=standard&geometries=geojson&overview=full&continue_straight=default",
+  "response": {
+    "code": "Ok",
+    "routes": [
+      {
+        "legs": [
+          {
+            "annotation": {
+              "nodes": [
+                2595423989,
+                1660688249,
+                12463479399,
+                4515909376,
+                4157127495,
+                2591320042,
+                8926386057,
+                31025559,
+                8926386078,
+                8926386074,
+                283712938,
+                8926386073,
+                283712932
+              ],
+              "distance": [
+                97.73039113,
+                1.567292263,
+                33.87735522,
+                58.31179609,
+                23.62946959,
+                93.96810909,
+                8.077637259,
+                7.826451731,
+                35.84286043,
+                8.151137723,
+                6.815769304,
+                45.13901378
+              ]
+            },
+            "duration": 80.3,
+            "summary": "Birketweg, Schloßschmidstraße",
+            "weight": 103.4,
+            "distance": 421.7,
+            "steps": [
+              {
+                "intersections": [
+                  {
+                    "classes": [
+                      "road"
+                    ],
+                    "out": 0,
+                    "entry": [
+                      true
+                    ],
+                    "bearings": [
+                      275
+                    ],
+                    "location": [
+                      11.521171,
+                      48.145371
+                    ]
+                  }
+                ],
+                "driving_side": "right",
+                "geometry": {
+                  "coordinates": [
+                    [
+                      11.521161,
+                      48.14537
+                    ],
+                    [
+                      11.519853,
+                      48.145445
+                    ],
+                    [
+                      11.519832,
+                      48.145446
+                    ],
+                    [
+                      11.519379,
+                      48.145475
+                    ],
+                    [
+                      11.518599,
+                      48.145523
+                    ],
+                    [
+                      11.518283,
+                      48.145543
+                    ],
+                    [
+                      11.517026,
+                      48.14562
+                    ],
+                    [
+                      11.516918,
+                      48.145627
+                    ]
+                  ],
+                  "type": "LineString"
+                },
+                "maneuver": {
+                  "bearing_after": 275,
+                  "bearing_before": 0,
+                  "location": [
+                    11.521171,
+                    48.145371
+                  ],
+                  "type": "depart"
+                },
+                "name": "Birketweg",
+                "mode": "cycling",
+                "weight": 80,
+                "duration": 61.6,
+                "distance": 317.9
+              },
+              {
+                "intersections": [
+                  {
+                    "out": 0,
+                    "classes": [
+                      "road"
+                    ],
+                    "in": 1,
+                    "entry": [
+                      true,
+                      false,
+                      true
+                    ],
+                    "bearings": [
+                      0,
+                      90,
+                      180
+                    ],
+                    "location": [
+                      11.516918,
+                      48.145627
+                    ]
+                  },
+                  {
+                    "out": 0,
+                    "classes": [
+                      "road"
+                    ],
+                    "in": 1,
+                    "entry": [
+                      true,
+                      false,
+                      true
+                    ],
+                    "bearings": [
+                      0,
+                      180,
+                      270
+                    ],
+                    "location": [
+                      11.516983,
+                      48.146091
+                    ]
+                  }
+                ],
+                "driving_side": "right",
+                "geometry": {
+                  "coordinates": [
+                    [
+                      11.516918,
+                      48.145627
+                    ],
+                    [
+                      11.516929,
+                      48.145697
+                    ],
+                    [
+                      11.516973,
+                      48.146018
+                    ],
+                    [
+                      11.516983,
+                      48.146091
+                    ],
+                    [
+                      11.516992,
+                      48.146152
+                    ],
+                    [
+                      11.517065,
+                      48.146555
+                    ]
+                  ],
+                  "type": "LineString"
+                },
+                "maneuver": {
+                  "bearing_after": 5,
+                  "bearing_before": 274,
+                  "location": [
+                    11.516918,
+                    48.145627
+                  ],
+                  "modifier": "right",
+                  "type": "turn"
+                },
+                "name": "Schloßschmidstraße",
+                "mode": "cycling",
+                "weight": 23.4,
+                "duration": 18.7,
+                "distance": 103.8
+              },
+              {
+                "intersections": [
+                  {
+                    "in": 0,
+                    "entry": [
+                      true
+                    ],
+                    "bearings": [
+                      187
+                    ],
+                    "location": [
+                      11.517065,
+                      48.146555
+                    ]
+                  }
+                ],
+                "driving_side": "right",
+                "geometry": {
+                  "coordinates": [
+                    [
+                      11.517065,
+                      48.146555
+                    ],
+                    [
+                      11.517065,
+                      48.146555
+                    ]
+                  ],
+                  "type": "LineString"
+                },
+                "maneuver": {
+                  "bearing_after": 0,
+                  "bearing_before": 7,
+                  "location": [
+                    11.517065,
+                    48.146555
+                  ],
+                  "type": "arrive"
+                },
+                "name": "Schloßschmidstraße",
+                "mode": "cycling",
+                "weight": 0,
+                "duration": 0,
+                "distance": 0
+              }
+            ]
+          }
+        ],
+        "weight_name": "cyclability",
+        "geometry": {
+          "coordinates": [
+            [
+              11.521161,
+              48.14537
+            ],
+            [
+              11.519853,
+              48.145445
+            ],
+            [
+              11.519832,
+              48.145446
+            ],
+            [
+              11.519379,
+              48.145475
+            ],
+            [
+              11.518599,
+              48.145523
+            ],
+            [
+              11.518283,
+              48.145543
+            ],
+            [
+              11.517026,
+              48.14562
+            ],
+            [
+              11.516918,
+              48.145627
+            ],
+            [
+              11.516929,
+              48.145697
+            ],
+            [
+              11.516973,
+              48.146018
+            ],
+            [
+              11.516983,
+              48.146091
+            ],
+            [
+              11.516992,
+              48.146152
+            ],
+            [
+              11.517065,
+              48.146555
+            ]
+          ],
+          "type": "LineString"
+        },
+        "weight": 103.4,
+        "duration": 80.3,
+        "distance": 421.7
+      }
+    ],
+    "waypoints": [
+      {
+        "hint": "2gcsgBgILIABAAAADAAAANwAAAAAAAAAbLFAP2f3n0D2dcNCAAAAAAEAAAAJAAAAsAAAAAAAAADBAgAAk8yvANuj3gKTzK8A26PeAgIAXwUAAAAA",
+        "location": [
+          11.521171,
+          48.145371
+        ],
+        "name": "Birketweg",
+        "distance": 0
+      },
+      {
+        "hint": "KQQsgLwELIAmAAAAZgAAAAAAAAAAAAAALgCKQVqONEIAAAAAAAAAAB8AAABRAAAAAAAAAAAAAADBAgAAibyvAHuo3gKDvK8Ae6jeAgAArwsAAAAA",
+        "location": [
+          11.517065,
+          48.146555
+        ],
+        "name": "Schloßschmidstraße",
+        "distance": 0.4466694172
+      }
+    ]
+  }
+}
