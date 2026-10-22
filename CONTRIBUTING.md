@@ -387,6 +387,11 @@ The complete expected behavior is:
   lock/energy saving: expect no false turn-around and the regular right turn
   into Schloßschmidstraße. Also ride genuinely backwards after restoring GPS:
   the warning should appear after the second agreeing movement.
+  Miss a turn by a few metres, immediately turn back and join the correct
+  outgoing leg: a previous turn-around warning must clear, with regular
+  guidance and remaining values restored. Repeat on the reported route from
+  Bad-Schachener-Straße toward Bad-Kreuther-Straße, then deliberately ride
+  backwards on the outgoing leg to verify that a new warning still works.
   On iOS and Android, leave a route so recalculation leads back the way you
   came: expect the turn-around promptly, continue away briefly (no ordinary
   turn countdowns), then safely turn and verify regular guidance resumes.
@@ -515,6 +520,16 @@ not trigger routing, speech or camera movement. Battery/performance comparisons
 still require matched physical-device runs.
 
 ## Regression checklist
+
+Screen wake lock (#285): on iOS and Android with a short system auto-lock time,
+start navigation from a new plan and a saved original route; the visible app
+must keep the display on. Map inspection and muted guidance must retain this.
+Pause navigation and wait: normal auto-lock must work, including after an app
+switch. Continue or successfully Refresh: keep-awake must resume. A failed
+Refresh must leave a paused route paused. End navigation: normal auto-lock must
+return. Repeat foreground/background transitions, manual screen lock/unlock,
+location-service loss/recovery and system power saving. Manual device locking
+and background guidance remain under their existing system rules.
 
 Road-test reference: riding through the Laimer Unterführung at Wotanstraße
 successfully produced the missing-guidance/GPS warning, then recalculated and

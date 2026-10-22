@@ -409,6 +409,7 @@ class VoiceGuidance {
         !movementBearing.isFinite) return;
     final projection = _projectOntoRoute(route.points, position,
         preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+        preferClosest: true,
         includeBearing: true);
     if (_isOverlappingProgress(projection.distanceAlongRoute)) {
       _wrongDirection = false;
@@ -420,24 +421,42 @@ class VoiceGuidance {
         !projection.bearing.isFinite) return;
     final difference =
         ((movementBearing - projection.bearing + 540) % 360 - 180).abs();
+    final origin =
+        movementStart != null && (difference > 120 || _wrongDirection)
+            ? _projectOntoRoute(route.points, movementStart,
+                preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+                preferClosest: true,
+                includeBearing: true)
+            : null;
+    final usableOrigin = origin != null &&
+        !origin.isAmbiguous &&
+        origin.distanceFromRoute <= maximumRouteDistanceMeters &&
+        origin.bearing.isFinite;
+    final originBearing = origin?.bearing;
+    final originProgress = origin?.distanceAlongRoute;
     if (difference > 120) {
       if (!directionConfirmed) return;
       if (movementStart != null) {
-        final origin = _projectOntoRoute(route.points, movementStart,
-            preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
-            includeBearing: true);
         // Displacement across a sharp bend can oppose the outgoing segment
         // while correctly following the incoming one. Both ends must agree.
-        if (origin.isAmbiguous ||
-            origin.distanceFromRoute > maximumRouteDistanceMeters ||
-            !origin.bearing.isFinite ||
-            ((movementBearing - origin.bearing + 540) % 360 - 180).abs() <=
+        if (!usableOrigin ||
+            originBearing == null ||
+            ((movementBearing - originBearing + 540) % 360 - 180).abs() <=
                 120) {
           return;
         }
       }
       _wrongDirection = true;
-    } else if (difference < 60 && _wrongDirection) {
+    } else if (_wrongDirection &&
+        (difference < 60 ||
+            (usableOrigin &&
+                originProgress != null &&
+                projection.distanceAlongRoute - originProgress >
+                    _projectionContinuityToleranceMeters))) {
+      // After returning to a missed junction, the movement bearing can still
+      // describe the approach from the wrong side. Clear the old warning once
+      // an unambiguous match advances along the outgoing leg, even before the
+      // movement tracker has travelled far enough to replace that bearing.
       _wrongDirection = false;
       _wrongDirectionSpoken = false;
       // The rider can have travelled backwards past already consumed turns.
@@ -1639,6 +1658,7 @@ class VoiceGuidance {
     double minimumDistanceAlongRoute = 0,
     double maximumDistanceAlongRoute = double.infinity,
     double preferEarlierWithinMeters = 0,
+    bool preferClosest = false,
     bool includeBearing = false,
   }) {
     var cumulative = 0.0;
@@ -1688,16 +1708,30 @@ class VoiceGuidance {
               closestDistance + preferEarlierWithinMeters,
         )
         .toList();
-    final selected = plausible.reduce(
-      (earlier, candidate) =>
-          candidate.distanceAlongRoute < earlier.distanceAlongRoute
-              ? candidate
-              : earlier,
-    );
+    final earliest = plausible.reduce((earlier, candidate) =>
+        candidate.distanceAlongRoute < earlier.distanceAlongRoute
+            ? candidate
+            : earlier);
+    final selected = preferClosest
+        ? plausible.reduce((earlier, candidate) {
+            // Progress matching prefers continuity, but direction must use the
+            // closest leg at a corner. Otherwise returning to a missed turn can
+            // compare travel on the outgoing leg with the incoming leg's bearing.
+            // Ambiguity below still considers every plausible candidate.
+            if (candidate.distanceFromRoute != earlier.distanceFromRoute) {
+              return candidate.distanceFromRoute < earlier.distanceFromRoute
+                  ? candidate
+                  : earlier;
+            }
+            return candidate.distanceAlongRoute < earlier.distanceAlongRoute
+                ? candidate
+                : earlier;
+          })
+        : earliest;
     final isAmbiguous = preferEarlierWithinMeters > 0 &&
         plausible.any(
           (candidate) =>
-              (candidate.distanceAlongRoute - selected.distanceAlongRoute)
+              (candidate.distanceAlongRoute - earliest.distanceAlongRoute)
                   .abs() >=
               _ambiguousRouteSeparationMeters,
         );
