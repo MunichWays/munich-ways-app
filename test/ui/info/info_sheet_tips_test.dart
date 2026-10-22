@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
@@ -52,13 +53,44 @@ void main() {
     await tester.tap(find.text(english ? 'Legend & tips' : 'Legende & Tipps'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(
-        find.text(english ? 'Tips & controls' : 'Tipps & Bedienung'));
-    await tester
-        .tap(find.text(english ? 'Tips & controls' : 'Tipps & Bedienung'));
+        find.text(english ? 'Tips & controls' : 'Tipps & Bedienung').first);
+    await tester.tap(
+        find.text(english ? 'Tips & controls' : 'Tipps & Bedienung').first);
     await tester.pumpAndSettle();
   }
 
   for (final english in [false, true]) {
+    testWidgets('import tip links to RadlNavi in an external app ($english)',
+        (tester) async {
+      const channel = MethodChannel('plugins.flutter.io/url_launcher');
+      final launches = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        launches.add(call);
+        return true;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      await openInfo(tester, english: english);
+      final title = find.text(AppTip.importRoute.title(english));
+      await tester.ensureVisible(title);
+      await tester.tap(title);
+      await tester.pumpAndSettle();
+      expect(launches, isEmpty);
+      final link = find.widgetWithText(
+          TextButton, english ? 'Go to RadlNavi' : 'zu RadlNavi');
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+      expect(launches, hasLength(1));
+      expect(launches.single.method, 'launch');
+      expect(
+          launches.single.arguments['url'], 'https://radlnavi.munichways.de/');
+      expect(launches.single.arguments['useWebView'], isFalse);
+      expect(launches.single.arguments['useSafariVC'], isFalse);
+      expect(find.byType(InfoSheetTipContent), findsOneWidget);
+    });
+
     testWidgets(
         'opens every tip independently and returns to the list (${english ? "en" : "de"})',
         (tester) async {
@@ -101,14 +133,14 @@ void main() {
       'system Back follows tip, list, legend, info; Close dismisses a detail',
       (tester) async {
     await openInfo(tester);
-    await tester.tap(find.text(AppTip.resumeNavigation.title(false)));
+    await tester.tap(find.text(AppTip.savedPlaceMenu.title(false)));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(InfoSheetTipsContent), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Tipps & Bedienung'), findsOneWidget);
+    expect(find.text('Tipps & Bedienung'), findsNWidgets(2));
     expect(find.byType(InfoSheetTipsContent), findsNothing);
     expect(find.text('Farben (MunichWays-Bewertung)'), findsOneWidget);
     // The legend remains in the Back path; its button opens the tips again.
@@ -117,10 +149,10 @@ void main() {
     expect(find.text('Tipps & Bedienung'), findsNothing);
     await tester.tap(find.text('Legende & Tipps'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Tipps & Bedienung'));
-    await tester.tap(find.text('Tipps & Bedienung'));
+    await tester.ensureVisible(find.text('Tipps & Bedienung').last);
+    await tester.tap(find.text('Tipps & Bedienung').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text(AppTip.resumeNavigation.title(false)));
+    await tester.tap(find.text(AppTip.savedPlaceMenu.title(false)));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Schließen'));
     await tester.pumpAndSettle();

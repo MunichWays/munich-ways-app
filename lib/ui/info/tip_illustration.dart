@@ -34,7 +34,6 @@ class TipIllustration extends StatelessWidget {
         row(RoutePointBadge(index: index, count: 3), text);
 
     final content = switch (tip) {
-      AppTip.resumeNavigation ||
       AppTip.savedPlaceMenu ||
       AppTip.exploreMap ||
       AppTip.reorderRoute =>
@@ -84,6 +83,16 @@ class TipIllustration extends StatelessWidget {
             const Divider(),
             row(const Icon(Icons.edit_outlined),
                 english ? 'Route name: Isar loop' : 'Routenname: Isarrunde'),
+          ],
+        ),
+      AppTip.importRoute => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            row(const Icon(Icons.folder_open_outlined),
+                english ? 'GPX file · max. 4 MB' : 'GPX-Datei · max. 4 MB'),
+            const Divider(),
+            row(const Icon(Icons.qr_code_scanner), 'RadlNavi'),
+            row(const Icon(Icons.link), english ? 'Route link' : 'Routenlink'),
           ],
         ),
       AppTip.favorites => Column(

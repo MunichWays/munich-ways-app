@@ -21,6 +21,37 @@ Future<bool> showRouteImportDialog(
               final media = MediaQuery.of(context);
               final stops = transfer.plan.length - 2;
               final validName = value.text.trim().isNotEmpty;
+              final compact =
+                  media.size.height - media.viewInsets.vertical < 480 ||
+                      media.textScaler.scale(14) > 21;
+              final actions = Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      compact ? 0 : 20, 8, compact ? 0 : 20, 12),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FilledButton(
+                            style: AppButtonStyles.secondary(context),
+                            onPressed: validName
+                                ? () => Navigator.pop(context, false)
+                                : null,
+                            child: Text(
+                                english
+                                    ? 'Use without saving'
+                                    : 'Ohne Speichern übernehmen',
+                                textAlign: TextAlign.center)),
+                        const SizedBox(height: 8),
+                        FilledButton.icon(
+                            onPressed: validName
+                                ? () => Navigator.pop(context, true)
+                                : null,
+                            icon: const Icon(Icons.save_outlined),
+                            label: Text(
+                                english
+                                    ? 'Save and use'
+                                    : 'Speichern & übernehmen',
+                                textAlign: TextAlign.center)),
+                      ]));
               return Dialog(
                 insetPadding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -163,32 +194,9 @@ Future<bool> showRouteImportDialog(
                                           Text(english
                                               ? 'Using this route replaces the current route and ends active navigation. The imported route stays unchanged until you edit the plan or press Refresh.'
                                               : 'Die Übernahme ersetzt die aktuelle Route und beendet eine laufende Navigation. Die importierte Strecke bleibt erhalten, bis du neu planst oder auf Aktualisieren drückst.'),
+                                          if (compact) actions,
                                         ]))),
-                            Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      FilledButton.icon(
-                                          onPressed: validName
-                                              ? () =>
-                                                  Navigator.pop(context, true)
-                                              : null,
-                                          icon: const Icon(Icons.save_outlined),
-                                          label: Text(english
-                                              ? 'Save and use'
-                                              : 'Speichern & übernehmen')),
-                                      TextButton(
-                                          onPressed: validName
-                                              ? () =>
-                                                  Navigator.pop(context, false)
-                                              : null,
-                                          child: Text(english
-                                              ? 'Use without saving'
-                                              : 'Ohne Speichern übernehmen')),
-                                    ])),
+                            if (!compact) actions,
                           ])),
                 ),
               );

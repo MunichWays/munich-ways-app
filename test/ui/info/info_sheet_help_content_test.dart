@@ -7,6 +7,7 @@ import 'package:munich_ways/ui/info/info_sheet_help_content.dart';
 void main() {
   testWidgets('legend omits unused plan and network-style entries',
       (tester) async {
+    var openedTips = 0;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('de'),
@@ -19,7 +20,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SingleChildScrollView(
-              child: InfoSheetHelpContent(onOpenTips: () {})),
+              child: InfoSheetHelpContent(onOpenTips: () => openedTips++)),
         ),
       ),
     );
@@ -45,7 +46,16 @@ void main() {
     expect(find.textContaining('Halte eine bewertete Linie'), findsNothing);
     expect(find.text('Ziel auswählen'), findsNothing);
     expect(find.text('Details zu Streckenabschnitten'), findsNothing);
-    expect(find.text('Tipps & Bedienung'), findsOneWidget);
+    expect(find.text('Tipps & Bedienung'), findsNWidgets(2));
+    final topLink = find.widgetWithText(TextButton, 'Tipps & Bedienung');
+    final bottomButton = find.widgetWithText(FilledButton, 'Tipps & Bedienung');
+    expect(tester.getTopLeft(topLink).dy,
+        lessThan(tester.getTopLeft(find.text('Radl-Komfort-Index')).dy));
+    await tester.tap(topLink);
+    expect(openedTips, 1);
+    await tester.ensureVisible(bottomButton);
+    await tester.tap(bottomButton);
+    expect(openedTips, 2);
     expect(find.textContaining('Halte eine farbige Linie'), findsNothing);
   });
 }

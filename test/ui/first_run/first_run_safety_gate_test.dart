@@ -159,9 +159,9 @@ void main() {
     await tester.tap(find.text('Tipps ansehen'));
     await tester.pumpAndSettle();
     final expected = [
-      AppTip.resumeNavigation,
       AppTip.savedPlaceMenu,
-      AppTip.exploreMap
+      AppTip.exploreMap,
+      AppTip.reorderRoute
     ];
     for (var index = 0; index < expected.length; index++) {
       expect(find.text('${index + 1} / 3'), findsOneWidget);
@@ -281,7 +281,7 @@ void main() {
         dark: true,
         onDismissTutorial: () async => completions++);
     expect(find.text('2 / 3'), findsOneWidget);
-    expect(find.text(AppTip.savedPlaceMenu.title(true)), findsOneWidget);
+    expect(find.text(AppTip.exploreMap.title(true)), findsOneWidget);
     expect(completions, 0);
   });
 

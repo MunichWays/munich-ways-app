@@ -11,7 +11,6 @@ class TipScreenshot extends StatelessWidget {
   final AppTip tip;
 
   static bool hasScreenshot(AppTip tip) => switch (tip) {
-        AppTip.resumeNavigation ||
         AppTip.savedPlaceMenu ||
         AppTip.exploreMap ||
         AppTip.reorderRoute ||
@@ -33,16 +32,6 @@ class TipScreenshot extends StatelessWidget {
       arrowEnd,
       hold
     ) = switch (tip) {
-      AppTip.resumeNavigation => (
-          'images/tip-resume-navigation.jpg',
-          1080.0,
-          974.0,
-          const Offset(.806, .894),
-          const Size(.226, .194),
-          const Offset(.95, .64),
-          const Offset(.90, .785),
-          false
-        ),
       AppTip.savedPlaceMenu => (
           'images/tip-saved-place-menu.jpg',
           1080.0,
