@@ -53,6 +53,7 @@ import 'package:munich_ways/ui/map/navigation_notification_permission.dart';
 import 'package:munich_ways/ui/map/map_long_press_action_sheet.dart';
 import 'package:munich_ways/ui/map/map_loading_overlay.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/map_render_diagnostics.dart';
 import 'package:munich_ways/ui/map/street_details_modal_listener.dart';
 import 'package:munich_ways/ui/map/map_destination_offscreen_overlay.dart';
 import 'package:munich_ways/ui/map/network_geojson.dart';
@@ -315,6 +316,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   int _nearbyCoverageCheckGeneration = 0;
   Position? _pendingPosition;
   bool _locationRenderRunning = false;
+  final _mapRenderDiagnostics = MapRenderDiagnostics();
   latlong2.LatLng? _lastLocationCameraPosition;
   double? _lastLocationCameraBearing;
   double? _smoothedMovementBearing;
@@ -554,6 +556,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _mapRenderDiagnostics.record('lifecycle: ${state.name}');
     if (state != AppLifecycleState.resumed) _appReviewPrompt.cancel();
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
@@ -835,6 +838,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             _lastAcceptedLocationUpdate?.toUtc().toIso8601String() ?? '—',
         label('Neuberechnung läuft', 'Rerouting in progress'):
             flag(_automaticRerouteInFlight),
+        label('App-Lebenszyklus', 'App lifecycle'):
+            WidgetsBinding.instance.lifecycleState?.name ?? '—',
+        label('Kartenstil bereit', 'Map style ready'): flag(_styleLoaded),
+        label('Kartenkamera bereit', 'Map camera ready'): flag(_cameraReady),
+        label('Standort-Zeichenlauf aktiv', 'Location render active'):
+            flag(_locationRenderRunning),
+        label('Standort zum Zeichnen ausstehend', 'Location render pending'):
+            flag(_pendingPosition != null),
+        label('Kameraänderung aktiv', 'Camera update active'):
+            flag(_cameraUpdateRunning),
+        label('Kameraänderung ausstehend', 'Camera update pending'):
+            flag(_pendingCameraUpdate != null),
+        ..._mapRenderDiagnostics.snapshot(english: english),
       };
     });
   }
@@ -1163,6 +1179,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               return;
                             }
                             _mapController = controller;
+                            _mapRenderDiagnostics.record('map created');
                           },
                           onStyleLoadedCallback: () {
                             if (!mounted ||
@@ -1170,6 +1187,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               return;
                             }
                             final c = _mapController;
+                            _mapRenderDiagnostics.record('style loaded');
                             Future<void> afterStyle() async {
                               if (c != null) {
                                 // Remove overlay layers before re-adding after style load.
@@ -1245,6 +1263,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             );
                           },
                           onCameraMove: (CameraPosition position) {
+                            if (mapStyleGeneration == _mapStyleGeneration) {
+                              _mapRenderDiagnostics.cameraMoved();
+                            }
                             _mapBearingDegrees.value = position.bearing;
                             model.onMapCenterChanged(latlong2.LatLng(
                               position.target.latitude,
@@ -1252,9 +1273,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ));
                           },
                           onCameraIdle: () {
+                            if (mapStyleGeneration == _mapStyleGeneration) {
+                              _mapRenderDiagnostics.cameraIdle();
+                            }
                             _compassIdleTick.value++;
                             _activateCamera(model);
                             _scheduleCameraPersistence();
+                          },
+                          onMapIdle: () {
+                            if (mapStyleGeneration == _mapStyleGeneration) {
+                              _mapRenderDiagnostics.mapIdle();
+                            }
                           },
                         ),
                       ),
@@ -1797,7 +1826,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       displayedPosition.longitude,
     );
     try {
-      await _showCurrentLocation(controller, mapPosition);
+      await _mapRenderDiagnostics.track('position layer',
+          () => _showCurrentLocation(controller, mapPosition));
       final state = model.locationState;
       if (state != LocationState.FOLLOW &&
           state != LocationState.FOLLOW_AND_ROTATE_MAP) {
@@ -1841,15 +1871,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         return;
       }
 
-      await controller.moveCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: mapPosition,
-            zoom: _safeZoom(controller.cameraPosition?.zoom),
-            bearing: bearing,
-          ),
-        ),
-      );
+      await _mapRenderDiagnostics.track(
+          'position camera',
+          () => controller.moveCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(
+                    target: mapPosition,
+                    zoom: _safeZoom(controller.cameraPosition?.zoom),
+                    bearing: bearing,
+                  ),
+                ),
+              ));
       _lastLocationCameraPosition = displayedPosition;
       _lastLocationCameraBearing = bearing;
     } catch (error, stackTrace) {
@@ -3191,6 +3223,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           !model.voiceGuidanceAvailable) {
         return;
       }
+      _mapRenderDiagnostics.record('GPS signal warning');
       unawaited(_zoomOutAfterMissingDirections());
       unawaited(
         _speak(
@@ -3307,7 +3340,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _persistCameraPosition() async {
     if (!_cameraReady || !mounted) return;
     try {
-      final position = await _mapController?.queryCameraPosition();
+      final position = await _mapRenderDiagnostics.track(
+          'read camera', () async => _mapController?.queryCameraPosition());
       if (position == null ||
           !_isValidCoordinate(
             position.target.latitude,
@@ -3388,9 +3422,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       // Avoid MapLibre's native easeTo path for the first iOS camera update.
       // This is the path confirmed by the TestFlight SIGABRT reports.
       if (Platform.isIOS && _firstCameraUpdate) {
-        await controller.moveCamera(update);
+        await _mapRenderDiagnostics.track(
+            'scheduled camera', () => controller.moveCamera(update));
       } else {
-        await controller.animateCamera(update);
+        await _mapRenderDiagnostics.track(
+            'scheduled camera', () => controller.animateCamera(update));
       }
       _firstCameraUpdate = false;
     } catch (error, stackTrace) {
