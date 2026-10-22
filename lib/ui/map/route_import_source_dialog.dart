@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 import 'package:munich_ways/ui/map/route_qr_scanner.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 Future<RouteTransfer?> showRouteImportSourceDialog(BuildContext context) async {
   final route = DialogRoute<RouteTransfer>(
@@ -182,6 +184,57 @@ class _RouteImportSourceDialogState extends State<RouteImportSourceDialog> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                 const SizedBox(height: 12),
+                                FilledButton.icon(
+                                    style: AppButtonStyles.primary(context),
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _run(
+                                            widget.pickFile ??
+                                                RouteTransferIo.pick,
+                                            file: true),
+                                    icon:
+                                        const Icon(Icons.folder_open_outlined),
+                                    label: Text(
+                                        _english
+                                            ? 'Choose GPX file'
+                                            : 'GPX-Datei auswählen',
+                                        textAlign: TextAlign.center)),
+                                const SizedBox(height: 8),
+                                Text(
+                                    _english
+                                        ? 'One continuous track · max. 4 MB'
+                                        : 'Ein durchgehender Track · max. 4 MB',
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                                Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    child: Row(children: [
+                                      const Expanded(child: Divider()),
+                                      Flexible(
+                                          flex: 4,
+                                          child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12),
+                                              child: Text(
+                                                  _english
+                                                      ? 'or from RadlNavi'
+                                                      : 'oder aus RadlNavi',
+                                                  textAlign: TextAlign.center,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall))),
+                                      const Expanded(child: Divider()),
+                                    ])),
+                                OutlinedButton.icon(
+                                    onPressed: _busy ? null : _scan,
+                                    icon: const Icon(Icons.qr_code_scanner),
+                                    label: Text(_english
+                                        ? 'Scan QR code'
+                                        : 'QR-Code scannen')),
+                                const SizedBox(height: 16),
                                 TextField(
                                     controller: _link,
                                     enabled: !_busy,
@@ -210,43 +263,24 @@ class _RouteImportSourceDialogState extends State<RouteImportSourceDialog> {
                                         border: const OutlineInputBorder())),
                                 const SizedBox(height: 8),
                                 FilledButton.icon(
+                                    style: AppButtonStyles.secondary(context),
                                     onPressed: _busy ? null : _openLink,
                                     icon: const Icon(Icons.link),
                                     label: Text(
                                         _english ? 'Load link' : 'Link laden')),
-                                Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    child: Row(children: [
-                                      const Expanded(child: Divider()),
-                                      Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12),
-                                          child: Text(_english ? 'or' : 'oder',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall)),
-                                      const Expanded(child: Divider()),
-                                    ])),
-                                OutlinedButton.icon(
-                                    onPressed: _busy ? null : _scan,
-                                    icon: const Icon(Icons.qr_code_scanner),
-                                    label: Text(_english
-                                        ? 'Scan QR code'
-                                        : 'QR-Code scannen')),
-                                const SizedBox(height: 8),
-                                OutlinedButton.icon(
+                                TextButton.icon(
                                     onPressed: _busy
                                         ? null
-                                        : () => _run(
-                                            widget.pickFile ??
-                                                RouteTransferIo.pick,
-                                            file: true),
+                                        : () => launchUrl(
+                                            Uri.parse(
+                                                'https://radlnavi.munichways.de/'),
+                                            mode:
+                                                LaunchMode.externalApplication),
                                     icon:
-                                        const Icon(Icons.folder_open_outlined),
+                                        const Icon(Icons.open_in_new, size: 18),
                                     label: Text(_english
-                                        ? 'Choose GPX file'
-                                        : 'GPX-Datei auswählen')),
+                                        ? 'Go to RadlNavi'
+                                        : 'zu RadlNavi')),
                                 if (_busy) ...[
                                   const SizedBox(height: 16),
                                   const LinearProgressIndicator(),

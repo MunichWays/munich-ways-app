@@ -6,6 +6,59 @@ import 'package:munich_ways/ui/map/voice_guidance.dart';
 void main() {
   const start = LatLng(48.14, 11.57);
 
+  for (final gap in [999.0, 1001.0, 1400.0]) {
+    for (final english in [false, true]) {
+      test('long-section suffix only at the turn: $gap ($english)', () {
+        // Match the guidance projection's metres-per-latitude model exactly.
+        LatLng at(double meters) =>
+            LatLng(start.latitude + meters / 111320, start.longitude);
+        final guidance = VoiceGuidance()
+          ..setRoute(CycleRoute(
+            [start, at(100), at(100 + gap), at(200 + gap)],
+            200 + gap,
+            500,
+            maneuvers: [
+              RouteManeuver(
+                  location: at(100),
+                  type: 'turn',
+                  modifier: 'left',
+                  roadName: 'Maximiliansplatz',
+                  wayType: RouteWayType.road),
+              RouteManeuver(
+                  location: at(100 + gap), type: 'turn', modifier: 'right'),
+            ],
+          ));
+        expect(guidance.resumeAt(at(50)), isTrue);
+        expect(
+            guidance.update(at(50), english: english),
+            english
+                ? 'In 50 meters, turn left, onto Maximiliansplatz.'
+                : 'In 50 Metern links abbiegen, auf Maximiliansplatz.');
+        final now = guidance.update(at(95), english: english);
+        if (gap > 1000) {
+          final distance = gap == 1400 ? '1.4' : '1.0';
+          expect(
+              now,
+              english
+                  ? 'Turn left, onto Maximiliansplatz here, then continue straight for $distance kilometers.'
+                  : 'Hier links abbiegen, auf Maximiliansplatz, danach ${distance.replaceAll('.', ',')} Kilometer geradeaus weiterfahren.');
+        } else {
+          expect(
+              now,
+              english
+                  ? 'Turn left, onto Maximiliansplatz here.'
+                  : 'Hier links abbiegen, auf Maximiliansplatz.');
+        }
+        expect(guidance.update(at(95), english: english), isNull);
+        // The new suffix must leave the existing midpoint reminder available.
+        final midpoint = at(100 + gap / 2 + 1);
+        expect(guidance.resumeAt(midpoint), isTrue);
+        expect(guidance.update(midpoint, english: english),
+            startsWith(english ? 'Continue straight.' : 'Weiter geradeaus.'));
+      });
+    }
+  }
+
   CycleRoute routeToTurn(double latitudeDelta) {
     final midpoint =
         LatLng(start.latitude + latitudeDelta / 2, start.longitude);

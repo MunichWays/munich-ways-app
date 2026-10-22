@@ -18,6 +18,17 @@ class InfoSheetHelpContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onOpenTips,
+            icon: const Icon(Icons.lightbulb_outline),
+            label: Text(context.l10n.isEnglish
+                ? 'Tips & controls'
+                : 'Tipps & Bedienung'),
+          ),
+        ),
+        const SizedBox(height: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

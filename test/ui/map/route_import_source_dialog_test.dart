@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 import 'package:munich_ways/ui/map/route_import_source_dialog.dart';
+import 'package:munich_ways/ui/theme.dart';
 
 void main() {
   final uri = Uri.parse('https://radlnavi.munichways.de/r/${'a' * 32}');
@@ -28,6 +29,30 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+      'GPX is primary and comes before the RadlNavi secondary link action',
+      (tester) async {
+    await open(tester, const RouteImportSourceDialog());
+    final file = find.widgetWithText(FilledButton, 'GPX-Datei auswählen');
+    final scan = find.widgetWithText(OutlinedButton, 'QR-Code scannen');
+    final link = find.widgetWithText(FilledButton, 'Link laden');
+    final website = find.widgetWithText(TextButton, 'zu RadlNavi');
+    expect(tester.getTopLeft(file).dy,
+        lessThan(tester.getTopLeft(find.text('oder aus RadlNavi')).dy));
+    expect(tester.getTopLeft(scan).dy,
+        lessThan(tester.getTopLeft(find.byType(TextField)).dy));
+    expect(tester.getTopLeft(find.byType(TextField)).dy,
+        lessThan(tester.getTopLeft(link).dy));
+    expect(tester.getTopLeft(link).dy, lessThan(tester.getTopLeft(website).dy));
+    final context = tester.element(file);
+    expect(
+        tester.widget<FilledButton>(file).style!.backgroundColor!.resolve({}),
+        AppButtonStyles.primary(context).backgroundColor!.resolve({}));
+    expect(
+        tester.widget<FilledButton>(link).style!.backgroundColor!.resolve({}),
+        AppButtonStyles.secondary(context).backgroundColor!.resolve({}));
+  });
 
   testWidgets(
       'paste is explicit and fills the link field without requesting the camera',
@@ -125,7 +150,8 @@ void main() {
       await tester.tap(find.text('GPX-Datei auswählen'));
       await tester.pumpAndSettle();
       if (i == 0) expect(find.byType(Dialog), findsOneWidget);
-      if (i == 1) expect(find.textContaining('4 MB'), findsOneWidget);
+      if (i == 1)
+        expect(find.textContaining('Datei nicht lesbar'), findsOneWidget);
     }
     expect(selected, same(transfer));
   });

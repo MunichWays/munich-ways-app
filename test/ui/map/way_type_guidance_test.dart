@@ -57,6 +57,49 @@ Future<CycleRoute> _parse(List<Map<String, Object?>> steps) async {
 }
 
 void main() {
+  for (final entry in {
+    'Landsberger Straße': 'in',
+    'Birketweg': 'in',
+    'Maximiliansplatz': 'auf',
+    'Karlsplatz': 'auf',
+  }.entries) {
+    for (final english in [false, true]) {
+      test('road preposition for ${entry.key} ($english)', () async {
+        final route = await _parse([
+          _step(
+              'depart',
+              _start,
+              [
+                ['road']
+              ],
+              name: 'Startweg'),
+          _step(
+              'turn',
+              _turn,
+              [
+                ['road']
+              ],
+              name: '  ${entry.key}  '),
+        ]);
+        final guidance = VoiceGuidance()..setRoute(route);
+        final preposition = english ? 'onto' : entry.value;
+        final action = english ? 'turn right' : 'rechts abbiegen';
+        expect(guidance.startPreview(english: english),
+            contains('$action $preposition ${entry.key}'));
+        expect(
+            guidance.update(const LatLng(48.1405, 11.57), english: english),
+            english
+                ? 'In 60 meters, turn right, onto ${entry.key}.'
+                : 'In 60 Metern rechts abbiegen, $preposition ${entry.key}.');
+        expect(
+            guidance.update(const LatLng(48.1409, 11.57), english: english),
+            english
+                ? 'Turn right, onto ${entry.key} here.'
+                : 'Hier rechts abbiegen, $preposition ${entry.key}.');
+      });
+    }
+  }
+
   for (final incoming in ['road', 'cycleway']) {
     for (final english in [false, true]) {
       test('speaks named road from $incoming ($english)', () async {

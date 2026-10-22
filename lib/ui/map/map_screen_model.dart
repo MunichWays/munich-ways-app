@@ -19,7 +19,7 @@ import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/routing/routing_service.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:munich_ways/ui/map/navigation_screen_awake.dart';
 
 /// Which horizontal edge the map side control column is pinned to.
 enum MapSidePanelEdge {
@@ -287,6 +287,7 @@ class MapScreenViewModel extends ChangeNotifier {
   MunichwaysApi _munichwaysApi = MunichwaysApi();
   late final RoutingService _routingService;
   bool _disposed = false;
+  late final NavigationScreenAwake _screenAwake;
   late final SettingsStore _settingsStore;
   late final SavedRoutesStore _snapshotStore;
 
@@ -316,7 +317,13 @@ class MapScreenViewModel extends ChangeNotifier {
     SettingsStore? store,
     SavedRoutesStore? snapshotStore,
     MunichwaysApi? munichwaysApi,
+    Future<void> Function(bool)? setScreenAwake,
   }) {
+    _screenAwake = NavigationScreenAwake(
+      navigationActive: () => navigationActive,
+      setEnabled: setScreenAwake,
+    );
+    addListener(_synchronizeScreenAwake);
     _routingService = routingService ??
         RoutingService(
           radlNavi: RadlNaviApi(),
@@ -352,6 +359,10 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void _displayErrorMsg(String msg) {
     _errorMsgsController.add(msg);
+  }
+
+  void _synchronizeScreenAwake() {
+    unawaited(_screenAwake.synchronize());
   }
 
   void onMapReady() {
@@ -636,6 +647,7 @@ class MapScreenViewModel extends ChangeNotifier {
       _selectionRevision++;
       _pendingVariant = null;
       _navigationState = _NavigationState.active;
+      unawaited(_screenAwake.synchronize(force: true));
       notifyListeners();
       return true;
     }
@@ -646,6 +658,7 @@ class MapScreenViewModel extends ChangeNotifier {
       _selectionRevision++;
       _pendingVariant = null;
       _navigationState = _NavigationState.active;
+      unawaited(_screenAwake.synchronize(force: true));
       notifyListeners();
     }
     return locationState == LocationState.FOLLOW_AND_ROTATE_MAP;
@@ -1036,9 +1049,6 @@ class MapScreenViewModel extends ChangeNotifier {
     notifyListeners();
     _destinationStreamController.add(place);
 
-    // keep screen on while locating destination is on
-    WakelockPlus.enable();
-
     unawaited(_requestRoute());
   }
 
@@ -1060,7 +1070,6 @@ class MapScreenViewModel extends ChangeNotifier {
     _navigationState = _NavigationState.idle;
     notifyListeners();
     _destinationStreamController.add(place);
-    WakelockPlus.enable();
     return _requestRoute();
   }
 
@@ -1095,7 +1104,6 @@ class MapScreenViewModel extends ChangeNotifier {
     _routePlanRevision++;
     notifyListeners();
     _destinationStreamController.add(destination);
-    WakelockPlus.enable();
     unawaited(_requestRoute());
   }
 
@@ -1167,9 +1175,6 @@ class MapScreenViewModel extends ChangeNotifier {
     _routePlanRevision++;
     _navigationState = _NavigationState.idle;
     notifyListeners();
-
-    // turn screen off when locating destination is off
-    WakelockPlus.disable();
 
     _clearRoute();
   }
@@ -1377,6 +1382,8 @@ class MapScreenViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    removeListener(_synchronizeScreenAwake);
+    _screenAwake.dispose();
     _invalidateVariants();
     super.dispose();
   }

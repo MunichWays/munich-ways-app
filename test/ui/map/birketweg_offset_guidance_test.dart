@@ -27,6 +27,48 @@ Future<CycleRoute> birketweg() async {
 }
 
 void main() {
+  test('GPS correction after Birketweg tracking gap does not request a U-turn',
+      () async {
+    final saved = jsonDecode(await File(
+      'test_resources/routing/birketweg-westbound-osrm-2026-10-20.json',
+    ).readAsString()) as Map<String, dynamic>;
+    final client = MockClient((_) async => Response(
+        jsonEncode(saved['response']), 200,
+        headers: {'content-type': 'application/json; charset=UTF-8'}));
+    addTearDown(client.close);
+    final route = await RadlNaviApi(client: client).route(const [
+      LatLng(48.145371, 11.521171),
+      LatLng(48.146555, 11.517059),
+    ]);
+    final guidance = VoiceGuidance()..setRoute(route);
+    final motion = NavigationMotionTracker();
+    final epoch = DateTime(2026, 10, 20);
+    void fix(LatLng point, int seconds) {
+      final time = epoch.add(Duration(seconds: seconds));
+      motion.update(point, 5, now: time);
+      guidance.updateTravelDirection(point, motion.bearingAt(time),
+          movementStart: motion.movementStart,
+          directionConfirmed: motion.directionConfirmed);
+      expect(guidance.update(point, english: false),
+          isNot('Bitte wenden, sobald es sicher möglich ist.'));
+      expect(guidance.display(point, english: false)?.modifier, isNot('uturn'));
+    }
+
+    fix(const LatLng(48.14540, 11.52060), 0);
+    fix(const LatLng(48.14542, 11.52030), 5);
+    // After the tracking pause, GPS first overshoots the rider by about 11 m.
+    fix(const LatLng(48.145456, 11.519650), 65);
+    fix(const LatLng(48.145456, 11.519798), 70);
+    // The next fixes resume the rider's actual westbound movement.
+    fix(const LatLng(48.145475, 11.519379), 75);
+    fix(const LatLng(48.14549, 11.5191), 80);
+    expect(guidance.resumeAt(const LatLng(48.14562, 11.51710)), isTrue);
+    expect(
+        guidance.announceCurrentManeuver(const LatLng(48.14562, 11.51710),
+            english: false),
+        contains('rechts abbiegen'));
+  });
+
   test('Birketweg parser retains both original maneuvers and full geometry',
       () async {
     final route = await birketweg();

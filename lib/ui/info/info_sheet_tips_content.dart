@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/info/app_tip.dart';
 import 'package:munich_ways/ui/info/tip_illustration.dart';
@@ -34,8 +35,29 @@ class InfoSheetTipContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final illustrated = TipScreenshot.hasScreenshot(tip);
-    final description = Text(tip.body(context.l10n.isEnglish),
-        style: Theme.of(context).textTheme.bodyLarge);
+    final description = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(tip.body(context.l10n.isEnglish),
+            style: Theme.of(context).textTheme.bodyLarge),
+        if (tip == AppTip.importRoute) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse('https://radlnavi.munichways.de/'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(
+                  context.l10n.isEnglish ? 'Go to RadlNavi' : 'zu RadlNavi'),
+            ),
+          ),
+        ],
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

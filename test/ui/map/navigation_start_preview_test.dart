@@ -35,7 +35,7 @@ void main() {
             name: 'Birketweg', wayType: RouteWayType.road),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 30 Metern rechts abbiegen auf Schloßschmidstraße, danach links abbiegen auf Birketweg.');
+        'In 30 Metern rechts abbiegen in Schloßschmidstraße, danach links abbiegen in Birketweg.');
     expect(guidance.startPreview(english: true),
         'In 30 meters, turn right onto Schloßschmidstraße, then turn left onto Birketweg.');
   });
@@ -50,7 +50,7 @@ void main() {
         _maneuver(324, 'turn', 'straight'),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 290 Metern links weiterfahren auf Birketweg, danach rechts abbiegen auf Radweg.');
+        'In 290 Metern links weiterfahren in Birketweg, danach rechts abbiegen auf Radweg.');
     expect(guidance.startPreview(english: true),
         'In 290 meters, keep left onto Birketweg, then turn right onto the cycle path.');
   });
@@ -67,7 +67,7 @@ void main() {
             name: 'Winfriedstraße', wayType: RouteWayType.road),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 120 Metern leicht rechts halten auf Radweg, danach links abbiegen auf De-la-Paz-Straße.');
+        'In 120 Metern leicht rechts halten auf Radweg, danach links abbiegen in De-la-Paz-Straße.');
   });
 
   test('short dogleg names both roads without saying immediately (#278)', () {
@@ -81,7 +81,7 @@ void main() {
         _maneuver(304, 'arrive', null),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 160 Metern rechts abbiegen auf Laimer Straße, danach links abbiegen auf Richildenstraße.');
+        'In 160 Metern rechts abbiegen in Laimer Straße, danach links abbiegen in Richildenstraße.');
   });
 
   test('skips straight turns, notifications and way-type-only transitions', () {
@@ -109,7 +109,7 @@ void main() {
         _maneuver(500, 'turn', 'uturn'),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 100 Metern rechts abbiegen auf Laimer Straße, danach links abbiegen.');
+        'In 100 Metern rechts abbiegen in Laimer Straße, danach links abbiegen.');
   });
 
   test('handles a turn immediately at the route start', () {

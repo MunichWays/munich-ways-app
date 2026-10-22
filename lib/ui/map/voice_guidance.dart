@@ -93,9 +93,15 @@ class NavigationMotionTracker {
   DateTime? _lastMovementAt;
   double? _movementBearing;
   LatLng? _movementStart;
+  bool _directionRecoveryPending = false;
+  double? _recoveryBearing;
   NavigationMotionSample latest = const NavigationMotionSample();
 
   LatLng? get movementStart => _movementStart;
+
+  /// Whether the current bearing may establish a new wrong-direction episode.
+  /// An unconfirmed bearing may still clear an existing warning on recovery.
+  bool get directionConfirmed => !_directionRecoveryPending;
 
   double? bearingAt(DateTime now) =>
       _lastFixAt != null && !now.isBefore(_lastFixAt!) && isMovingAt(now)
@@ -113,6 +119,8 @@ class NavigationMotionTracker {
     _lastMovementAt = null;
     _movementBearing = null;
     _movementStart = null;
+    _directionRecoveryPending = false;
+    _recoveryBearing = null;
     latest = const NavigationMotionSample();
   }
 
@@ -124,6 +132,7 @@ class NavigationMotionTracker {
         !position.latitude.isFinite ||
         !position.longitude.isFinite) {
       reset();
+      _directionRecoveryPending = true;
       return latest;
     }
     final previousFix = _lastFixAt;
@@ -140,6 +149,10 @@ class NavigationMotionTracker {
     if (anchor == null ||
         elapsed > const Duration(seconds: 20) ||
         distance > 200) {
+      if (anchor != null) {
+        _directionRecoveryPending = true;
+        _recoveryBearing = null;
+      }
       _anchor = position;
       _anchorAccuracy = accuracy;
       _lastMovementAt = null;
@@ -150,6 +163,21 @@ class NavigationMotionTracker {
     if (distance >= threshold) {
       confirmed = distance;
       _movementBearing = const Distance().bearing(anchor, position);
+      if (_directionRecoveryPending) {
+        // The first displacement after lost tracking can be GPS correcting
+        // its new anchor, including a correction against the rider's travel.
+        // Confirm direction with a second, agreeing movement. Motion itself
+        // remains available immediately for camera and recovery decisions.
+        final previousBearing = _recoveryBearing;
+        if (previousBearing != null &&
+            ((_movementBearing! - previousBearing + 540) % 360 - 180).abs() <
+                60) {
+          _directionRecoveryPending = false;
+          _recoveryBearing = null;
+        } else {
+          _recoveryBearing = _movementBearing;
+        }
+      }
       _movementStart = anchor;
       _anchor = position;
       _anchorAccuracy = accuracy;
@@ -373,7 +401,7 @@ class VoiceGuidance {
   /// Evaluate once per fix, also after route replacement, before any guidance
   /// pass. Matching an earlier point must not be mistaken for forward travel.
   void updateTravelDirection(LatLng position, double? movementBearing,
-      {LatLng? movementStart}) {
+      {LatLng? movementStart, bool directionConfirmed = true}) {
     final route = _route;
     if (route == null ||
         _finalDestinationReached ||
@@ -381,6 +409,7 @@ class VoiceGuidance {
         !movementBearing.isFinite) return;
     final projection = _projectOntoRoute(route.points, position,
         preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+        preferClosest: true,
         includeBearing: true);
     if (_isOverlappingProgress(projection.distanceAlongRoute)) {
       _wrongDirection = false;
@@ -392,23 +421,42 @@ class VoiceGuidance {
         !projection.bearing.isFinite) return;
     final difference =
         ((movementBearing - projection.bearing + 540) % 360 - 180).abs();
+    final origin =
+        movementStart != null && (difference > 120 || _wrongDirection)
+            ? _projectOntoRoute(route.points, movementStart,
+                preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+                preferClosest: true,
+                includeBearing: true)
+            : null;
+    final usableOrigin = origin != null &&
+        !origin.isAmbiguous &&
+        origin.distanceFromRoute <= maximumRouteDistanceMeters &&
+        origin.bearing.isFinite;
+    final originBearing = origin?.bearing;
+    final originProgress = origin?.distanceAlongRoute;
     if (difference > 120) {
+      if (!directionConfirmed) return;
       if (movementStart != null) {
-        final origin = _projectOntoRoute(route.points, movementStart,
-            preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
-            includeBearing: true);
         // Displacement across a sharp bend can oppose the outgoing segment
         // while correctly following the incoming one. Both ends must agree.
-        if (origin.isAmbiguous ||
-            origin.distanceFromRoute > maximumRouteDistanceMeters ||
-            !origin.bearing.isFinite ||
-            ((movementBearing - origin.bearing + 540) % 360 - 180).abs() <=
+        if (!usableOrigin ||
+            originBearing == null ||
+            ((movementBearing - originBearing + 540) % 360 - 180).abs() <=
                 120) {
           return;
         }
       }
       _wrongDirection = true;
-    } else if (difference < 60 && _wrongDirection) {
+    } else if (_wrongDirection &&
+        (difference < 60 ||
+            (usableOrigin &&
+                originProgress != null &&
+                projection.distanceAlongRoute - originProgress >
+                    _projectionContinuityToleranceMeters))) {
+      // After returning to a missed junction, the movement bearing can still
+      // describe the approach from the wrong side. Clear the old warning once
+      // an unambiguous match advances along the outgoing leg, even before the
+      // movement tracker has travelled far enough to replace that bearing.
       _wrongDirection = false;
       _wrongDirectionSpoken = false;
       // The rider can have travelled backwards past already consumed turns.
@@ -616,7 +664,7 @@ class VoiceGuidance {
     final wayType = maneuver.wayType ?? maneuver.enteringWayType;
     final roadName = maneuver.roadName.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (wayType == RouteWayType.road && roadName.isNotEmpty) {
-      return '$action ${english ? 'onto' : 'auf'} $roadName';
+      return '$action ${_roadNamePreposition(roadName, english)} $roadName';
     }
     if (wayType == RouteWayType.cycleway) {
       return '$action ${english ? 'onto the cycle path' : 'auf Radweg'}';
@@ -1161,6 +1209,18 @@ class VoiceGuidance {
 
     final next = _maneuvers[_index + 1];
     final gap = next.routeDistance - target.routeDistance;
+    if (now &&
+        gap > 1000 &&
+        target.maneuver.type != 'arrive' &&
+        !_arrivals.any((arrival) =>
+            arrival.routeDistance > target.routeDistance &&
+            arrival.routeDistance <= next.routeDistance)) {
+      final kilometers = (gap / 1000).toStringAsFixed(1);
+      final distance = english ? kilometers : kilometers.replaceAll('.', ',');
+      return english
+          ? '${first.substring(0, first.length - 1)}, then continue straight for $distance kilometers.'
+          : '${first.substring(0, first.length - 1)}, danach $distance Kilometer geradeaus weiterfahren.';
+    }
     if (gap <= 0 || gap > closeManeuverDistanceMeters) return first;
 
     final nextAction = _action(next.maneuver, english, speakRoadName: true);
@@ -1530,13 +1590,18 @@ class VoiceGuidance {
     };
   }
 
+  static String _roadNamePreposition(String roadName, bool english) {
+    if (english) return 'onto';
+    return roadName.toLowerCase().endsWith('platz') ? 'auf' : 'in';
+  }
+
   static String _action(RouteManeuver maneuver, bool english,
       {bool speakRoadName = false}) {
     final action = _actionWithoutWayType(maneuver, english);
     final roadName = maneuver.roadName.trim().replaceAll(RegExp(r'\s+'), ' ');
     final wayType = maneuver.wayType ?? maneuver.enteringWayType;
     if (speakRoadName && wayType == RouteWayType.road && roadName.isNotEmpty) {
-      return '$action, ${english ? 'onto' : 'in'} $roadName';
+      return '$action, ${_roadNamePreposition(roadName, english)} $roadName';
     }
     return switch (maneuver.enteringWayType) {
       RouteWayType.cycleway =>
@@ -1593,6 +1658,7 @@ class VoiceGuidance {
     double minimumDistanceAlongRoute = 0,
     double maximumDistanceAlongRoute = double.infinity,
     double preferEarlierWithinMeters = 0,
+    bool preferClosest = false,
     bool includeBearing = false,
   }) {
     var cumulative = 0.0;
@@ -1642,16 +1708,30 @@ class VoiceGuidance {
               closestDistance + preferEarlierWithinMeters,
         )
         .toList();
-    final selected = plausible.reduce(
-      (earlier, candidate) =>
-          candidate.distanceAlongRoute < earlier.distanceAlongRoute
-              ? candidate
-              : earlier,
-    );
+    final earliest = plausible.reduce((earlier, candidate) =>
+        candidate.distanceAlongRoute < earlier.distanceAlongRoute
+            ? candidate
+            : earlier);
+    final selected = preferClosest
+        ? plausible.reduce((earlier, candidate) {
+            // Progress matching prefers continuity, but direction must use the
+            // closest leg at a corner. Otherwise returning to a missed turn can
+            // compare travel on the outgoing leg with the incoming leg's bearing.
+            // Ambiguity below still considers every plausible candidate.
+            if (candidate.distanceFromRoute != earlier.distanceFromRoute) {
+              return candidate.distanceFromRoute < earlier.distanceFromRoute
+                  ? candidate
+                  : earlier;
+            }
+            return candidate.distanceAlongRoute < earlier.distanceAlongRoute
+                ? candidate
+                : earlier;
+          })
+        : earliest;
     final isAmbiguous = preferEarlierWithinMeters > 0 &&
         plausible.any(
           (candidate) =>
-              (candidate.distanceAlongRoute - selected.distanceAlongRoute)
+              (candidate.distanceAlongRoute - earliest.distanceAlongRoute)
                   .abs() >=
               _ambiguousRouteSeparationMeters,
         );
