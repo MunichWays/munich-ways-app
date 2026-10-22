@@ -133,6 +133,30 @@ String energySavingAnnouncement(bool english) => english
     ? 'Energy saving mode enabled. Location updates are reduced.'
     : 'Energiesparmodus aktiviert. Standort wird seltener aktualisiert.';
 
+/// A map gesture leaves the current perspective alone. Explicit north-up is
+/// handled by its camera update; automatic following restores the riding view.
+@visibleForTesting
+double? navigationCameraTilt(MapScreenViewModel model) {
+  if (!model.navigationActive || model.locationState == LocationState.FOLLOW) {
+    return 0;
+  }
+  return model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP ? 30 : null;
+}
+
+@visibleForTesting
+CameraPosition navigationCameraPosition(
+  MapScreenViewModel model, {
+  required LatLng target,
+  required double zoom,
+  required double bearing,
+}) =>
+    CameraPosition(
+      target: target,
+      zoom: zoom,
+      bearing: bearing,
+      tilt: navigationCameraTilt(model) ?? 0,
+    );
+
 @visibleForTesting
 bool shouldAcceptTrackingUpdate({
   required bool energySaving,
@@ -257,6 +281,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _cameraUpdateRunning = false;
   bool _firstCameraUpdate = true;
   CameraUpdate? _pendingCameraUpdate;
+  bool _cameraPerspectiveSyncPending = false;
+  // iOS acknowledges animateCamera before its native animation has finished.
+  // Only perspective-only work waits for idle; normal camera actions still run.
+  bool _cameraAnimationPending = false;
   bool _initialContentReady = false;
   bool _mapReadyNotified = false;
   bool _locationPrimeStarted = false;
@@ -540,6 +568,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _mapController = null;
       _styleLoaded = false;
       _cameraReady = false;
+      _cameraAnimationPending = false;
       _networkGeoJsonReady = false;
       _routingCoverageGeoJsonReady = false;
       _routeGeoJsonReady = false;
@@ -1073,6 +1102,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             });
           }
           _scheduleOverlaySync(model);
+          _scheduleCameraPerspective(model);
 
           if (widget.startupInteractionsEnabled &&
               model.initialRatingsLoadFailed &&
@@ -1221,6 +1251,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               setState(() {
                                 _styleLoaded = true;
                                 _cameraReady = false;
+                                _cameraAnimationPending = false;
                                 // Ratings are optional background content. The
                                 // map is usable as soon as its style is ready.
                                 _initialContentReady = true;
@@ -1275,9 +1306,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           onCameraIdle: () {
                             if (mapStyleGeneration == _mapStyleGeneration) {
                               _mapRenderDiagnostics.cameraIdle();
+                              _cameraAnimationPending = false;
                             }
                             _compassIdleTick.value++;
                             _activateCamera(model);
+                            _scheduleCameraPerspective(model);
+                            unawaited(_flushPendingCameraUpdate());
                             _scheduleCameraPersistence();
                           },
                           onMapIdle: () {
@@ -1376,9 +1410,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _stopFollowingForMapInspection(model);
                               model.onCompassNorthUpPressed();
                               final c = _mapController;
-                              if (c != null) {
-                                await c
-                                    .animateCamera(CameraUpdate.bearingTo(0));
+                              final camera = c?.cameraPosition;
+                              if (camera != null) {
+                                await _scheduleCameraUpdate(
+                                  CameraUpdate.newCameraPosition(CameraPosition(
+                                    target: camera.target,
+                                    zoom: _safeZoom(camera.zoom),
+                                    bearing: 0,
+                                    tilt: 0,
+                                  )),
+                                );
                                 await _syncCompassBearingFromMap();
                               }
                             },
@@ -1867,7 +1908,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           : ((bearing - previousBearing + 540) % 360 - 180).abs();
       final minimumMovementMeters = (position.accuracy * 0.25).clamp(3.0, 10.0);
       if (movedMeters < minimumMovementMeters &&
-          (state != LocationState.FOLLOW_AND_ROTATE_MAP || bearingDelta < 5)) {
+          (state != LocationState.FOLLOW_AND_ROTATE_MAP || bearingDelta < 5) &&
+          controller.cameraPosition?.tilt == navigationCameraTilt(model)) {
         return;
       }
 
@@ -1875,7 +1917,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           'position camera',
           () => controller.moveCamera(
                 CameraUpdate.newCameraPosition(
-                  CameraPosition(
+                  navigationCameraPosition(
+                    model,
                     target: mapPosition,
                     zoom: _safeZoom(controller.cameraPosition?.zoom),
                     bearing: bearing,
@@ -1884,6 +1927,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ));
       _lastLocationCameraPosition = displayedPosition;
       _lastLocationCameraBearing = bearing;
+      _scheduleCameraPerspective(model);
     } catch (error, stackTrace) {
       log.d(
         'render location skipped while map is updating',
@@ -2670,7 +2714,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       final headingAvailable = _hasReliableMovementHeading(initialPosition);
       await _scheduleCameraUpdate(
         CameraUpdate.newCameraPosition(
-          CameraPosition(
+          navigationCameraPosition(
+            model,
             target: LatLng(
               initialPosition.latitude,
               initialPosition.longitude,
@@ -3393,6 +3438,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted || !_styleLoaded || _cameraReady) return;
     _cameraReady = true;
     unawaited(_flushPendingCameraUpdate());
+    _scheduleCameraPerspective(model);
     final position = _latestPosition;
     if (position != null) {
       _pendingPosition = position;
@@ -3408,28 +3454,60 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     await _flushPendingCameraUpdate();
   }
 
+  void _scheduleCameraPerspective(MapScreenViewModel model) {
+    if (!mounted ||
+        !_styleLoaded ||
+        !_cameraReady ||
+        _cameraPerspectiveSyncPending) return;
+    final camera = _mapController?.cameraPosition;
+    final tilt = navigationCameraTilt(model);
+    if (camera == null || tilt == null || (camera.tilt - tilt).abs() < 0.1) {
+      return;
+    }
+    // Use the existing camera queue without replacing a pending zoom/overview.
+    // Read navigation state again when executing, so a late start cannot undo
+    // a pause or a map gesture.
+    _cameraPerspectiveSyncPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_flushPendingCameraUpdate());
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
   Future<void> _flushPendingCameraUpdate() async {
     if (!mounted || !_styleLoaded || !_cameraReady || _cameraUpdateRunning) {
       return;
     }
     final controller = _mapController;
     final update = _pendingCameraUpdate;
-    if (controller == null || update == null) return;
+    if (controller == null ||
+        (update == null && !_cameraPerspectiveSyncPending)) return;
+    if (update == null && _cameraAnimationPending) return;
 
     _pendingCameraUpdate = null;
+    _cameraPerspectiveSyncPending = false;
     _cameraUpdateRunning = true;
     try {
+      // Apply before a queued animation, never immediately after it: on iOS
+      // the returned Future is only an acknowledgement, and a tiltTo would
+      // cancel the zoom/target animation before it reaches its destination.
+      await _applyCameraPerspective(controller);
+      if (!mounted || !identical(controller, _mapController)) return;
       // Avoid MapLibre's native easeTo path for the first iOS camera update.
       // This is the path confirmed by the TestFlight SIGABRT reports.
-      if (Platform.isIOS && _firstCameraUpdate) {
-        await _mapRenderDiagnostics.track(
-            'scheduled camera', () => controller.moveCamera(update));
-      } else {
-        await _mapRenderDiagnostics.track(
-            'scheduled camera', () => controller.animateCamera(update));
+      if (update != null) {
+        if (Platform.isIOS && _firstCameraUpdate) {
+          await _mapRenderDiagnostics.track(
+              'scheduled camera', () => controller.moveCamera(update));
+        } else {
+          _cameraAnimationPending = true;
+          await _mapRenderDiagnostics.track(
+              'scheduled camera', () => controller.animateCamera(update));
+        }
+        _firstCameraUpdate = false;
       }
-      _firstCameraUpdate = false;
     } catch (error, stackTrace) {
+      _cameraAnimationPending = false;
       log.w(
         'Map camera update failed',
         error: error,
@@ -3439,8 +3517,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _cameraUpdateRunning = false;
     }
 
-    if (_pendingCameraUpdate != null) {
+    if (_pendingCameraUpdate != null ||
+        (_cameraPerspectiveSyncPending && !_cameraAnimationPending)) {
       await _flushPendingCameraUpdate();
+    }
+  }
+
+  Future<void> _applyCameraPerspective(MapLibreMapController controller) async {
+    final tilt = navigationCameraTilt(mapViewModel);
+    if (tilt == null || controller.cameraPosition?.tilt == tilt) return;
+    try {
+      await _mapRenderDiagnostics.track('camera perspective',
+          () => controller.moveCamera(CameraUpdate.tiltTo(tilt)));
+    } catch (error, stackTrace) {
+      // An optional perspective failure must not discard a queued zoom or move.
+      log.d('Map perspective update failed',
+          error: error, stackTrace: stackTrace);
     }
   }
 

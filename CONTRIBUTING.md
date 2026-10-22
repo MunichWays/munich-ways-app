@@ -521,6 +521,16 @@ still require matched physical-device runs.
 
 ## Regression checklist
 
+Navigation perspective (#276): on iOS and Android, start a new route and a
+saved original route. While following the travel direction, expect a gentle
+30-degree tilt without changing the established zoom. Pan/zoom the map: no
+forced perspective jump during the gesture; confirmed riding restores the
+tilted following view. North-up, pause, navigation end and route planning must
+be flat. Resume or successfully Refresh: the riding perspective returns.
+Repeat after screen lock/unlock, location loss/recovery and a light/dark style
+change. Check route/position alignment, readable street labels and buildings,
+portrait/landscape, zoom controls, and the unchanged spoken guidance.
+
 Screen wake lock (#285): on iOS and Android with a short system auto-lock time,
 start navigation from a new plan and a saved original route; the visible app
 must keep the display on. Map inspection and muted guidance must retain this.
