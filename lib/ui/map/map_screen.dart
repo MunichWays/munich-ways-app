@@ -75,11 +75,19 @@ import 'package:munich_ways/ui/theme.dart';
 import 'package:provider/provider.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key, this.startupInteractionsEnabled = true});
+  const MapScreen({
+    super.key,
+    this.startupInteractionsEnabled = true,
+    this.createViewModel,
+  });
 
   /// Map/style/ratings may load behind the first-run notice. Location prompts
   /// and startup messages wait until that notice is closed.
   final bool startupInteractionsEnabled;
+
+  /// Inject dependencies without starting unrelated cache/network work in tests.
+  /// The provider owns and disposes the supplied model, just as in the app.
+  final MapScreenViewModel Function()? createViewModel;
 
   @override
   _MapScreenState createState() => _MapScreenState();
@@ -929,7 +937,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         : Colors.white;
     return ChangeNotifierProvider<MapScreenViewModel>(
       create: (BuildContext _) {
-        final model = MapScreenViewModel();
+        final model = widget.createViewModel?.call() ?? MapScreenViewModel();
         mapViewModel = model;
         model.startInitialLoad();
 

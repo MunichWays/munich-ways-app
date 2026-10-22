@@ -7,7 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
+import 'package:munich_ways/model/polyline.dart';
+import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_side_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -21,6 +24,21 @@ class _Settings extends SettingsStore {
   Future<SettingsData> load() async => SettingsData.defaults;
 }
 
+class _CameraRatingsApi extends MunichwaysApi {
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates({
+    Duration? responseTimeout,
+    bool forceRefresh = false,
+  }) async* {
+    yield <MPolyline>{};
+  }
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails(
+          {bool forceRefresh = false}) async =>
+      {};
+}
+
 const _initial =
     CameraPosition(target: LatLng(48.14, 11.57), zoom: 16, bearing: 90);
 
@@ -30,6 +48,8 @@ class _CameraPlatform extends MapLibrePlatform {
   final updates = <List<dynamic>>[];
   Completer<void>? holdNext;
   bool failNext = false;
+  bool acknowledgeAnimationBeforeIdle = false;
+  CameraUpdate? _animation;
 
   @override
   Widget buildView(
@@ -38,9 +58,9 @@ class _CameraPlatform extends MapLibrePlatform {
           Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers) =>
       const SizedBox.expand();
 
-  Future<bool?> _update(CameraUpdate update) async {
+  Future<bool?> _update(CameraUpdate update, {bool record = true}) async {
     final data = update.toJson() as List<dynamic>;
-    updates.add(data);
+    if (record) updates.add(data);
     final hold = holdNext;
     holdNext = null;
     if (hold != null) await hold.future;
@@ -72,8 +92,20 @@ class _CameraPlatform extends MapLibrePlatform {
   Future<bool?> moveCamera(CameraUpdate cameraUpdate) => _update(cameraUpdate);
   @override
   Future<bool?> animateCamera(CameraUpdate cameraUpdate,
-          {Duration? duration}) =>
-      _update(cameraUpdate);
+      {Duration? duration}) async {
+    if (!acknowledgeAnimationBeforeIdle) return _update(cameraUpdate);
+    updates.add(cameraUpdate.toJson() as List<dynamic>);
+    _animation = cameraUpdate;
+    onCameraMoveStartedPlatform(null);
+    return null;
+  }
+
+  Future<void> finishAnimation() async {
+    final update = _animation!;
+    _animation = null;
+    await _update(update, record: false);
+  }
+
   @override
   Future<CameraPosition?> queryCameraPosition() async => camera;
   @override
@@ -109,8 +141,12 @@ Future<({MapScreenViewModel model, _CameraPlatform platform})> _open(
       .setMockMethodCallHandler(tts, null));
   await tester
       .runAsync(() => rootBundle.loadString(kOpenFreeMapLibertyStyleAsset));
-  await tester.pumpWidget(
-      const MaterialApp(home: MapScreen(startupInteractionsEnabled: false)));
+  await tester.pumpWidget(MaterialApp(
+      home: MapScreen(
+    startupInteractionsEnabled: false,
+    createViewModel: () => MapScreenViewModel(
+        store: _Settings(), munichwaysApi: _CameraRatingsApi()),
+  )));
   await tester.runAsync(() async {
     await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
     await settingsStore.load();
@@ -124,6 +160,7 @@ Future<({MapScreenViewModel model, _CameraPlatform platform})> _open(
       annotationConsumeTapEvents: const [],
       onCameraMove: map.onCameraMove,
       onCameraIdle: map.onCameraIdle);
+  addTearDown(controller.dispose);
   map.onMapCreated!(controller);
   map.onStyleLoadedCallback!();
   await _frames(tester);
@@ -206,7 +243,6 @@ void main() {
     expect(platform.camera.tilt, 0);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
-    controllerCleanup(platform);
     await tester.pump();
   });
 
@@ -246,13 +282,38 @@ void main() {
     expect(platform.camera.tilt, 30);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
-    controllerCleanup(platform);
     await tester.pump();
   });
-}
 
-// The manually supplied controller has no platform-view owner in these tests.
-void controllerCleanup(_CameraPlatform platform) {
-  platform.onCameraMovePlatform.clear();
-  platform.onCameraIdlePlatform.clear();
+  testWidgets('native animation acknowledgement cannot trigger an early tilt',
+      (tester) async {
+    final h = await _open(tester);
+    final model = h.model;
+    final platform = h.platform;
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    await _frames(tester);
+    expect(platform.camera.tilt, 30);
+    platform.acknowledgeAnimationBeforeIdle = true;
+    await tester
+        .widget<MapSideActionButtons>(find.byType(MapSideActionButtons))
+        .onNorthUp();
+    final callsWhileAnimating = platform.updates.length;
+    model.pauseNavigation();
+    await _frames(tester);
+    expect(platform.updates.length, callsWhileAnimating);
+    expect(platform.camera.tilt, 30);
+    await platform.finishAnimation();
+    await _frames(tester);
+    expect(platform.camera.tilt, 0);
+    expect(model.navigationPaused, isTrue);
+    platform.acknowledgeAnimationBeforeIdle = false;
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    await _frames(tester);
+    expect(platform.camera.tilt, 30);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
 }
