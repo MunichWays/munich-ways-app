@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'dart:io';
 import 'package:app_links/app_links.dart';
 import 'package:file_picker/file_picker.dart';
@@ -71,19 +72,27 @@ class RouteTransferIo {
 
   static RouteTransfer decode(List<int> bytes) {
     if (bytes.length > RouteTransfer.maxBytes)
-      throw const FormatException('GPX exceeds 4 MB');
-    return RouteTransfer.fromGpx(utf8.decode(bytes));
+      throw const GpxImportException(GpxImportIssue.tooLarge);
+    final String source;
+    try {
+      source = utf8.decode(bytes);
+    } on FormatException {
+      throw const GpxImportException(GpxImportIssue.invalidXml);
+    }
+    return RouteTransfer.fromGpx(source);
   }
 
   static Future<RouteTransfer?> pick() async {
     final file = await FilePicker.pickFile(
-        type: FileType.custom, allowedExtensions: ['gpx']);
+      type: FileType.custom,
+      allowedExtensions: ['gpx'],
+    );
     if (file == null) return null;
     final bytes = <int>[];
     await for (final chunk in file.readAsByteStream()) {
       bytes.addAll(chunk);
       if (bytes.length > RouteTransfer.maxBytes)
-        throw const FormatException('GPX exceeds 4 MB');
+        throw const GpxImportException(GpxImportIssue.tooLarge);
     }
     return decode(bytes);
   }

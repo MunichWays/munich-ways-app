@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -50,8 +51,10 @@ class _RouteImportSourceDialogState extends State<RouteImportSourceDialog> {
     }
   }
 
-  Future<void> _run(Future<RouteTransfer?> Function() action,
-      {required bool file}) async {
+  Future<void> _run(
+    Future<RouteTransfer?> Function() action, {
+    required bool file,
+  }) async {
     if (_busy) return;
     setState(() {
       _busy = true;
@@ -67,27 +70,33 @@ class _RouteImportSourceDialogState extends State<RouteImportSourceDialog> {
       }
     } catch (error) {
       if (!mounted) return;
-      final message = error is ExpiredRouteLinkException
-          ? (_english
-              ? 'Link expired or unavailable. Create a new sharing link in RadlNavi.'
-              : 'Link abgelaufen oder nicht verfügbar. Bitte in RadlNavi einen neuen Teilen-Link erstellen.')
-          : file
+      final message = error is GpxImportException
+          ? error.userMessage(english: _english)
+          : error is ExpiredRouteLinkException
               ? (_english
-                  ? 'File unreadable. Choose a GPX file with one track (max. 4 MB).'
-                  : 'Datei nicht lesbar. Bitte eine GPX-Datei mit einem Track wählen (max. 4 MB).')
-              : error is FormatException
-                  ? (_english
-                      ? 'Route unreadable. Create a new sharing link in RadlNavi.'
-                      : 'Route nicht lesbar. Bitte in RadlNavi einen neuen Teilen-Link erstellen.')
-                  : error is IOException ||
-                          error is TimeoutException ||
-                          error is http.ClientException
+                  ? 'Link expired or unavailable. Create a new sharing link in RadlNavi.'
+                  : 'Link abgelaufen oder nicht verfügbar. Bitte in RadlNavi einen neuen Teilen-Link erstellen.')
+              : file
+                  ? error is FormatException
                       ? (_english
-                          ? 'Could not load route. Check your internet connection and retry.'
-                          : 'Route nicht geladen. Internetverbindung prüfen und erneut versuchen.')
+                          ? 'The GPX file is damaged or unsupported.'
+                          : 'Die GPX-Datei ist beschädigt oder wird nicht unterstützt.')
                       : (_english
-                          ? 'Import failed. Please try again.'
-                          : 'Import fehlgeschlagen. Bitte erneut versuchen.');
+                          ? 'Could not read the file. Please select it again.'
+                          : 'Die Datei konnte nicht gelesen werden. Bitte erneut auswählen.')
+                  : error is FormatException
+                      ? (_english
+                          ? 'Route unreadable. Create a new sharing link in RadlNavi.'
+                          : 'Route nicht lesbar. Bitte in RadlNavi einen neuen Teilen-Link erstellen.')
+                      : error is IOException ||
+                              error is TimeoutException ||
+                              error is http.ClientException
+                          ? (_english
+                              ? 'Could not load route. Check your internet connection and retry.'
+                              : 'Route nicht geladen. Internetverbindung prüfen und erneut versuchen.')
+                          : (_english
+                              ? 'Import failed. Please try again.'
+                              : 'Import fehlgeschlagen. Bitte erneut versuchen.');
       setState(() => _error = message);
     } finally {
       if (mounted && !_finishing) setState(() => _busy = false);

@@ -1,10 +1,35 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:munich_ways/model/route_transfer.dart';
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 
 void main() {
+  test('file size and broken UTF-8 have distinct import reasons', () {
+    expect(
+      () => RouteTransferIo.decode(Uint8List(RouteTransfer.maxBytes + 1)),
+      throwsA(
+        isA<GpxImportException>().having(
+          (e) => e.issue,
+          'issue',
+          GpxImportIssue.tooLarge,
+        ),
+      ),
+    );
+    expect(
+      () => RouteTransferIo.decode([0xff]),
+      throwsA(
+        isA<GpxImportException>().having(
+          (e) => e.issue,
+          'issue',
+          GpxImportIssue.invalidXml,
+        ),
+      ),
+    );
+  });
   test(
       'pasted and scanned text must be one bounded own-domain HTTPS sharing link',
       () {

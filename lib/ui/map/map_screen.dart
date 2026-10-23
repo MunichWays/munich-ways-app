@@ -1,3 +1,4 @@
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 import 'package:munich_ways/ui/map/route_import_dialog.dart';
@@ -455,12 +456,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           await showRouteImportDialog(context, transfer, mapViewModel);
       if (accepted && mounted)
         Navigator.of(context).popUntil((route) => route.isFirst);
-    } catch (_) {
+    } catch (error) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.isEnglish
-                ? 'Route could not be opened. The link may have expired; reopen it to retry. GPX files must have one track and be at most 4 MB.'
-                : 'Route konnte nicht geöffnet werden. Link eventuell abgelaufen; für einen neuen Versuch erneut öffnen. GPX: ein Track, maximal 4 MB.')));
+            content: Text(error is GpxImportException
+                ? error.userMessage(english: context.l10n.isEnglish)
+                : error is ExpiredRouteLinkException
+                    ? (context.l10n.isEnglish
+                        ? 'Link expired or unavailable. Create a new sharing link in RadlNavi.'
+                        : 'Link abgelaufen oder nicht verfügbar. Bitte in RadlNavi einen neuen Teilen-Link erstellen.')
+                    : (context.l10n.isEnglish
+                        ? 'Route could not be opened. Please try importing it again.'
+                        : 'Route konnte nicht geöffnet werden. Bitte erneut importieren.'))));
     } finally {
       _transferDialogOpen = false;
     }

@@ -90,6 +90,11 @@ class TipIllustration extends StatelessWidget {
           children: [
             row(const Icon(Icons.folder_open_outlined),
                 english ? 'GPX file · max. 4 MB' : 'GPX-Datei · max. 4 MB'),
+            row(
+                const Icon(Icons.add_location_alt_outlined),
+                english
+                    ? 'Up to 50 intermediate stops'
+                    : 'Bis zu 50 Zwischenziele'),
             const Divider(),
             row(const Icon(Icons.qr_code_scanner), 'RadlNavi'),
             row(const Icon(Icons.link), english ? 'Route link' : 'Routenlink'),
