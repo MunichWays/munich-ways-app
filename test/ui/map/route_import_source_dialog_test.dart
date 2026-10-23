@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
+import 'package:munich_ways/model/gpx_import_exception.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/route_import_source_dialog.dart';
 import 'package:munich_ways/ui/theme.dart';
 
@@ -15,8 +17,11 @@ void main() {
       File('test_resources/routing/route-transfer.json').readAsStringSync()));
 
   Future<void> open(WidgetTester tester, RouteImportSourceDialog chooser,
-      {void Function(RouteTransfer?)? result}) async {
+      {void Function(RouteTransfer?)? result, bool english = false}) async {
     await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates:
+            english ? [AppLocalizations.delegate] : const [],
         home: Builder(
             builder: (context) => Scaffold(
                 body: TextButton(
@@ -26,8 +31,74 @@ void main() {
                       result?.call(route);
                     },
                     child: const Text('Open'))))));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
+  }
+
+  for (final english in [false, true]) {
+    for (final entry in [
+      (
+        const GpxImportException(GpxImportIssue.tooLarge),
+        'zu groß',
+        'too large',
+      ),
+      (
+        const GpxImportException(GpxImportIssue.trackCount, count: 2),
+        '2 Tracks',
+        '2 tracks',
+      ),
+      (
+        const GpxImportException(GpxImportIssue.segmentCount, count: 2),
+        '2 Teilstrecken',
+        '2 segments',
+      ),
+      (
+        const GpxImportException(
+          GpxImportIssue.tooManyStops,
+          count: 51,
+          limit: 50,
+        ),
+        '51 Zwischenziele',
+        '51 intermediate stops',
+      ),
+    ]) {
+      testWidgets(
+        'file error explains ${entry.$1.issue} and permits retry (english=$english)',
+        (tester) async {
+          var calls = 0;
+          RouteTransfer? selected;
+          await open(
+            tester,
+            RouteImportSourceDialog(
+              pickFile: () async {
+                if (calls++ == 0) throw entry.$1;
+                return transfer;
+              },
+            ),
+            english: english,
+            result: (value) => selected = value,
+          );
+          final label = english ? 'Choose GPX file' : 'GPX-Datei auswählen';
+          await tester.tap(find.text(label));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining(english ? entry.$3 : entry.$2),
+            findsOneWidget,
+          );
+          if (entry.$1.issue != GpxImportIssue.tooLarge) {
+            final errorText = tester
+                .widget<Text>(
+                    find.textContaining(english ? entry.$3 : entry.$2))
+                .data!;
+            expect(errorText, isNot(contains('4 MB')));
+          }
+          await tester.tap(find.text(label));
+          await tester.pumpAndSettle();
+          expect(selected, same(transfer));
+        },
+      );
+    }
   }
 
   testWidgets(
@@ -150,8 +221,7 @@ void main() {
       await tester.tap(find.text('GPX-Datei auswählen'));
       await tester.pumpAndSettle();
       if (i == 0) expect(find.byType(Dialog), findsOneWidget);
-      if (i == 1)
-        expect(find.textContaining('Datei nicht lesbar'), findsOneWidget);
+      if (i == 1) expect(find.textContaining('beschädigt'), findsOneWidget);
     }
     expect(selected, same(transfer));
   });

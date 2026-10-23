@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:xml/xml.dart';
 import 'package:munich_ways/api/radlnavi_api.dart';
@@ -8,7 +9,7 @@ import 'package:munich_ways/model/route.dart';
 class RouteTransfer {
   static const namespace = 'https://www.munichways.de/gpx/1';
   static const maxBytes = 4 * 1024 * 1024;
-  static const maxStops = 20;
+  static const maxStops = 50;
   static const gpxNamespace = 'http://www.topografix.com/GPX/1/1';
   final String name;
   final List<Place> plan;
@@ -136,16 +137,21 @@ class RouteTransfer {
   }
 
   static RouteTransfer fromGpx(String source) {
-    if (utf8.encode(source).length > maxBytes ||
-        RegExp(r'<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(source)) {
-      throw const FormatException(
-          'GPX is too large or contains unsupported XML declarations');
+    if (utf8.encode(source).length > maxBytes)
+      throw const GpxImportException(GpxImportIssue.tooLarge);
+    if (RegExp(r'<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(source))
+      throw const GpxImportException(GpxImportIssue.invalidXml);
+    final XmlDocument doc;
+    try {
+      doc = XmlDocument.parse(source);
+    } on XmlParserException {
+      throw const GpxImportException(GpxImportIssue.invalidXml);
     }
-    final doc = XmlDocument.parse(source);
     final root = doc.rootElement;
-    _require(root.name.local == 'gpx' &&
+    if (!(root.name.local == 'gpx' &&
         root.namespaceUri == gpxNamespace &&
-        root.getAttribute('version') == '1.1');
+        root.getAttribute('version') == '1.1'))
+      throw const GpxImportException(GpxImportIssue.unsupportedVersion);
     final native = root.descendants
         .whereType<XmlElement>()
         .where((e) => e.name.local == 'route' && e.namespaceUri == namespace)
@@ -153,57 +159,82 @@ class RouteTransfer {
     final tracks = root.childElements
         .where((e) => e.name.local == 'trk' && e.namespaceUri == gpxNamespace)
         .toList();
-    _require(tracks.length == 1);
+    if (tracks.length != 1)
+      throw GpxImportException(GpxImportIssue.trackCount, count: tracks.length);
     final segments = tracks.single.childElements
         .where(
-            (e) => e.name.local == 'trkseg' && e.namespaceUri == gpxNamespace)
+          (e) => e.name.local == 'trkseg' && e.namespaceUri == gpxNamespace,
+        )
         .toList();
     if (segments.length != 1)
-      throw const FormatException(
-          'Choose a GPX file with one continuous track');
+      throw GpxImportException(
+        GpxImportIssue.segmentCount,
+        count: segments.length,
+      );
     final points = <LatLng>[];
     for (final element in segments.single.childElements.where(
-        (e) => e.name.local == 'trkpt' && e.namespaceUri == gpxNamespace)) {
+      (e) => e.name.local == 'trkpt' && e.namespaceUri == gpxNamespace,
+    )) {
       final lat = double.tryParse(element.getAttribute('lat') ?? '');
       final lon = double.tryParse(element.getAttribute('lon') ?? '');
-      _require(lat != null && lon != null && _point([lon, lat]));
-      points.add(LatLng(lat!, lon!));
-      _require(points.length <= 100000);
+      if (lat == null || lon == null || !_point([lon, lat]))
+        throw const GpxImportException(GpxImportIssue.invalidCoordinates);
+      points.add(LatLng(lat, lon));
+      if (points.length > 100000)
+        throw const GpxImportException(
+          GpxImportIssue.tooManyPoints,
+          limit: 100000,
+        );
     }
-    _require(points.length >= 2);
+    if (points.length < 2)
+      throw const GpxImportException(GpxImportIssue.noTrackPoints);
     if (native.isNotEmpty) {
       _require(native.length == 1);
-      final transfer =
-          fromJson(jsonDecode(native.single.innerText) as Map<String, dynamic>);
+      final transfer = fromJson(
+        jsonDecode(native.single.innerText) as Map<String, dynamic>,
+      );
       final raw = transfer.native!['response']['routes'][0]['geometry']
           ['coordinates'] as List;
       _require(raw.length == points.length);
       for (var i = 0; i < raw.length; i++) {
-        _require(raw[i][0] == points[i].longitude &&
-            raw[i][1] == points[i].latitude);
+        _require(
+          raw[i][0] == points[i].longitude && raw[i][1] == points[i].latitude,
+        );
       }
       return transfer;
     }
     // Standard GPX waypoints, including Komoot highlights, in file order.
     final stops = <Place>[];
     for (final element in root.childElements.where(
-        (e) => e.name.local == 'wpt' && e.namespaceUri == gpxNamespace)) {
+      (e) => e.name.local == 'wpt' && e.namespaceUri == gpxNamespace,
+    )) {
       final lat = double.tryParse(element.getAttribute('lat') ?? '');
       final lon = double.tryParse(element.getAttribute('lon') ?? '');
-      _require(lat != null && lon != null && _point([lon, lat]));
+      if (lat == null || lon == null || !_point([lon, lat]))
+        throw const GpxImportException(GpxImportIssue.invalidWaypoint);
       final label = element.childElements
           .where(
-              (e) => e.name.local == 'name' && e.namespaceUri == gpxNamespace)
+            (e) => e.name.local == 'name' && e.namespaceUri == gpxNamespace,
+          )
           .firstOrNull
           ?.innerText
           .trim();
-      _require(label == null || label.length <= 500);
-      stops.add(Place(
+      if (label != null && label.length > 500)
+        throw const GpxImportException(GpxImportIssue.invalidWaypoint);
+      stops.add(
+        Place(
           label?.isNotEmpty == true
               ? label!
               : 'Zwischenziel ${stops.length + 1}',
-          LatLng(lat!, lon!)));
-      _require(stops.length <= maxStops);
+          LatLng(lat, lon),
+        ),
+      );
+      if (stops.length > maxStops)
+        throw GpxImportException(
+          GpxImportIssue.tooManyStops,
+          count: stops.length,
+          limit: maxStops,
+        );
     }
     final name = tracks.single.childElements
         .where((e) => e.name.local == 'name')
@@ -212,18 +243,22 @@ class RouteTransfer {
         .trim();
     var distance = 0.0;
     for (var i = 1; i < points.length; i++) {
-      distance +=
-          const Distance().as(LengthUnit.Meter, points[i - 1], points[i]);
+      distance += const Distance().as(
+        LengthUnit.Meter,
+        points[i - 1],
+        points[i],
+      );
     }
     return RouteTransfer._(
-        name?.isNotEmpty == true ? name! : 'GPX-Track',
-        List.unmodifiable([
-          Place('Start', points.first),
-          ...stops,
-          Place('Ziel', points.last)
-        ]),
-        CycleRoute(points, distance, 0, supportsVoiceGuidance: false),
-        null);
+      name?.isNotEmpty == true ? name! : 'GPX-Track',
+      List.unmodifiable([
+        Place('Start', points.first),
+        ...stops,
+        Place('Ziel', points.last),
+      ]),
+      CycleRoute(points, distance, 0, supportsVoiceGuidance: false),
+      null,
+    );
   }
 
   static RouteTransfer fromRoute(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/model/route_transfer.dart';
+import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/model/saved_route.dart';
 
@@ -9,6 +10,60 @@ Map<String, dynamic> fixture() => jsonDecode(
         File('test_resources/routing/route-transfer.json').readAsStringSync())
     as Map<String, dynamic>;
 void main() {
+  test('GPX parser reports the actual structural or coordinate failure', () {
+    const prefix =
+        '<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1">';
+    const segment =
+        '<trkseg><trkpt lat="48" lon="11"/><trkpt lat="49" lon="12"/></trkseg>';
+    for (final entry in [
+      ('<gpx', GpxImportIssue.invalidXml),
+      (
+        '$prefix<trk>$segment</trk><trk>$segment</trk></gpx>',
+        GpxImportIssue.trackCount,
+      ),
+      ('$prefix<trk>$segment$segment</trk></gpx>', GpxImportIssue.segmentCount),
+      (
+        '$prefix<trk>${segment.replaceFirst('lat="48"', 'lat="NaN"')}</trk></gpx>',
+        GpxImportIssue.invalidCoordinates,
+      ),
+      (
+        '${prefix.replaceFirst('version="1.1"', 'version="1.0"')}<trk>$segment</trk></gpx>',
+        GpxImportIssue.unsupportedVersion,
+      ),
+    ]) {
+      expect(
+        () => RouteTransfer.fromGpx(entry.$1),
+        throwsA(
+          isA<GpxImportException>().having((e) => e.issue, 'issue', entry.$2),
+        ),
+      );
+    }
+  });
+  test(
+    'Nymphenburg Komoot file retains all 21 waypoints and 860 track points',
+    () {
+      final transfer = RouteTransfer.fromGpx(
+        File('test_resources/routing/komoot-nymphenburg-21-stops.gpx')
+            .readAsStringSync(),
+      );
+      expect(transfer.plan.length, 23);
+      expect(transfer.plan[1].displayName, 'Neue Postwiese');
+      expect(transfer.route.points.length, 860);
+      final restored = RouteTransfer.fromGpx(
+        RouteTransfer.fromStorageJson(transfer.toStorageJson()).toGpx(),
+      );
+      expect(
+        restored.plan.map((p) => p.displayName),
+        transfer.plan.map((p) => p.displayName),
+      );
+      expect(
+        restored.plan.map((p) => p.latLng),
+        transfer.plan.map((p) => p.latLng),
+      );
+      expect(restored.route.points, transfer.route.points);
+      expect(restored.name, transfer.name);
+    },
+  );
   test(
       'real Komoot tour retains eight named stops through storage and GPX export',
       () {
@@ -45,8 +100,14 @@ void main() {
         throwsFormatException);
     expect(
         () => RouteTransfer.fromGpx(
-            '$prefix${List.filled(21, waypoint).join()}$track'),
+            '$prefix${List.filled(RouteTransfer.maxStops + 1, waypoint).join()}$track'),
         throwsFormatException);
+    expect(
+        RouteTransfer.fromGpx(
+                '$prefix${List.filled(RouteTransfer.maxStops, waypoint).join()}$track')
+            .plan
+            .length,
+        52);
     final old = RouteTransfer.fromStorageJson(
         transfer.toStorageJson()..remove('trackPlan'));
     expect(old.plan.length, 2);
