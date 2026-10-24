@@ -5,6 +5,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
 
 import 'api_exception.dart';
+import 'address_entrances.dart';
 
 class NominatimApi {
   Client? client;
@@ -36,6 +37,7 @@ class NominatimApi {
     String query, {
     required bool localOnly,
     required LatLng center,
+    bool entrancesOnly = false,
   }) async {
     final queryParameters = {
       'q': query,
@@ -43,6 +45,9 @@ class NominatimApi {
       'format': 'jsonv2',
       'namedetails': '1',
       'addressdetails': '1',
+      'entrances': '1',
+      'extratags': '1',
+      'dedupe': '0',
       'limit': '15',
       if (localOnly) ...{
         'viewbox': _viewBox(center),
@@ -53,12 +58,13 @@ class NominatimApi {
     Response response = await client!.get(uri, headers: {
       "Accept": "application/json",
       "User-Agent": "com.munichways.app/flutter"
-    }).timeout(const Duration(seconds: 8));
+    }).timeout(Duration(seconds: entrancesOnly ? 2 : 8));
     switch (response.statusCode) {
       case 200:
         log.d(response.body);
         log.d(response.jsonBody());
-        return _parsePlaces(response.jsonBody());
+        return _parsePlaces(response.jsonBody(), query,
+            entrancesOnly: entrancesOnly);
       default:
         throw ApiException("Error retrieving places: " + response.body);
     }
@@ -96,7 +102,35 @@ class NominatimApi {
       '${center.longitude - 0.35},${center.latitude + 0.25},'
       '${center.longitude + 0.35},${center.latitude - 0.25}';
 
-  static List<Place> _parsePlaces(dynamic json) {
+  Future<List<Place>> resolveEntrances(List<Place> places, String query) async {
+    if (!RegExp(r'\b\d').hasMatch(query)) return places;
+    final addresses = places
+        .where((p) =>
+            (p.searchAddress['house_number'] ?? '').isNotEmpty &&
+            (p.searchAddress['road'] ?? '').isNotEmpty)
+        .toList();
+    if (addresses.isEmpty) return places;
+    final entrances = await _request(query,
+        localOnly: true, center: addresses.first.latLng, entrancesOnly: true);
+    return places.map((place) {
+      for (final entrance in entrances) {
+        if (sameSearchAddress(place.searchAddress, entrance.searchAddress) &&
+            const Distance()
+                    .as(LengthUnit.Meter, place.latLng, entrance.latLng) <
+                150) {
+          return Place(place.displayName, entrance.latLng,
+              favoriteOrder: place.favoriteOrder,
+              alternativeNames: place.alternativeNames,
+              searchAddress: place.searchAddress);
+        }
+      }
+      return place;
+    }).toList();
+  }
+
+  static List<Place> _parsePlaces(dynamic json, String query,
+      {bool entrancesOnly = false}) {
+    if (entrancesOnly && json is! List) return const [];
     if (json is Map<String, dynamic>) {
       final features = json['features'];
       if (features is! List) return const [];
@@ -109,7 +143,9 @@ class NominatimApi {
 
     // JSONv2 preserves the full name details requested above.
     if (json is List) {
-      return json.whereType<Map<String, dynamic>>().map((result) {
+      final places = addressEntrances(json, query)
+          .where((r) => !entrancesOnly || r['_routing_entrance'] == true)
+          .map((result) {
         return Place(
           _displayName(result),
           LatLng(
@@ -117,8 +153,15 @@ class NominatimApi {
             double.parse(result['lon'].toString()),
           ),
           alternativeNames: _alternativeNames(result),
+          searchAddress: (result['address'] as Map)
+              .map((key, value) => MapEntry(key.toString(), value.toString())),
         );
       }).toList();
+      final seen = <String>{};
+      return places
+          .where((p) => seen.add(
+              '${p.displayName}|${p.latLng.latitude}|${p.latLng.longitude}'))
+          .toList();
     }
     return const [];
   }

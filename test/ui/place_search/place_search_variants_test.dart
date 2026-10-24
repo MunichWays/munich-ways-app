@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +59,57 @@ PlaceSearchScreenViewModel modelWith(Search primary, {Search? fallback}) =>
     );
 
 void main() {
+  test(
+      'primary address survives entrance failure and recovers on the next search',
+      () async {
+    var lookups = 0;
+    final primary = Place('Schloßschmidstraße 16, 80639 München',
+        const LatLng(48.1466430, 11.5167847),
+        searchAddress: const {
+          'road': 'Schloßschmidstraße',
+          'house_number': '16',
+          'city': 'München',
+          'postcode': '80639',
+        });
+    final model = PlaceSearchScreenViewModel(
+      recentSearchesRepo: _Store(),
+      favoritesRepo: _Store(),
+      savedRoutesRepo: _Routes(),
+      api: _Geoapify((_, __) async => [primary]),
+      streetCorrector: MunichStreetCorrector.fromStreetNames(const []),
+      fallbackApi: NominatimApi(client: MockClient((_) async {
+        lookups++;
+        if (lookups == 1) return Response('unavailable', 503);
+        return Response(
+            jsonEncode([
+              {
+                'name': '',
+                'category': 'place',
+                'type': 'house',
+                'lat': '48.1467013',
+                'lon': '11.5169022',
+                'address': primary.searchAddress,
+                'extratags': {'entrance': 'home'},
+              }
+            ]),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'});
+      })),
+    );
+    addTearDown(model.dispose);
+    await model.startSearch('Schloßschmidstraße 16');
+    expect(model.places.single, same(primary));
+    expect(model.loading, isFalse);
+    expect(model.errorMsg, isNull);
+    await model.startSearch('Schloßschmidstraße 16');
+    expect(model.places, hasLength(1));
+    expect(model.places.single.latLng, const LatLng(48.1467013, 11.5169022));
+    expect(model.places.single.displayName, primary.displayName);
+    expect(model.resultsFromNominatim, isFalse);
+    expect(model.loading, isFalse);
+    expect(lookups, 2);
+  });
+
   const location = LatLng(48.128, 11.557);
 
   test('typed and spoken association variants use one canonical query',

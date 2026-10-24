@@ -214,8 +214,19 @@ class PlaceSearchScreenViewModel extends ChangeNotifier {
       String query, int sequence) async {
     try {
       final result = await api.search(query, searchCenter: searchCenter);
+      if (!_isCurrentSearch(sequence)) {
+        return (places: const <Place>[], fromNominatim: false);
+      }
       if (result.isNotEmpty) {
-        return (places: result, fromNominatim: false);
+        try {
+          final resolved = await fallbackApi.resolveEntrances(result, query);
+          return (places: resolved, fromNominatim: false);
+        } catch (error, stackTrace) {
+          // Entrance enrichment must never discard usable primary results.
+          log.w('Optional entrance lookup failed',
+              error: error, stackTrace: stackTrace);
+          return (places: result, fromNominatim: false);
+        }
       }
       log.d('Geoapify returned no places, trying Nominatim fallback');
     } catch (error, stackTrace) {
