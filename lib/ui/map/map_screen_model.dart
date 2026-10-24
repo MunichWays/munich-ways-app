@@ -218,6 +218,13 @@ class MapScreenViewModel extends ChangeNotifier {
       (_navigationState == _NavigationState.paused ||
           locationState == LocationState.NOT_AVAILABLE);
   bool get navigationActive => navigationStarted && !navigationPaused;
+  double navigationTilt = 30;
+
+  void recordNavigationTilt(double tilt) {
+    if (navigationActive && tilt.isFinite) navigationTilt = tilt.clamp(0, 60);
+  }
+
+  void resetNavigationPerspective() => navigationTilt = 30;
 
   /// A deliberate pause is independent of inspecting or rotating the map.
   void pauseNavigation() {
@@ -646,6 +653,7 @@ class MapScreenViewModel extends ChangeNotifier {
       // A late planning choice must never replace navigation after departure.
       _selectionRevision++;
       _pendingVariant = null;
+      resetNavigationPerspective();
       _navigationState = _NavigationState.active;
       unawaited(_screenAwake.synchronize(force: true));
       notifyListeners();
@@ -657,6 +665,7 @@ class MapScreenViewModel extends ChangeNotifier {
       // A late planning choice must never replace navigation after departure.
       _selectionRevision++;
       _pendingVariant = null;
+      resetNavigationPerspective();
       _navigationState = _NavigationState.active;
       unawaited(_screenAwake.synchronize(force: true));
       notifyListeners();
