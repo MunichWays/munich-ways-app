@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/settings_store.dart';
@@ -203,6 +204,76 @@ void main() {
     expect(fix().tilt, 30);
     model.clearDestination();
     expect(fix().tilt, 0);
+  });
+
+  testWidgets(
+      'manual two-finger tilt survives follow and resets on a fresh start',
+      (tester) async {
+    final h = await _open(tester);
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    await _frames(tester);
+    final mapFinder = find.byType(MapLibreMap);
+    final listener = tester.widget<Listener>(
+        find.ancestor(of: mapFinder, matching: find.byType(Listener)).first);
+    listener.onPointerDown!(const PointerDownEvent(pointer: 1));
+    listener.onPointerDown!(const PointerDownEvent(pointer: 2));
+    await _frames(tester);
+    h.platform.camera = CameraPosition(
+        target: _initial.target, zoom: 18, bearing: 90, tilt: 48);
+    h.platform.onCameraMovePlatform(h.platform.camera);
+    listener.onPointerUp!(const PointerUpEvent(pointer: 1));
+    listener.onPointerUp!(const PointerUpEvent(pointer: 2));
+    h.platform.onCameraIdlePlatform(h.platform.camera);
+    await _frames(tester);
+    expect(h.model.resumeNavigationCameraFollowing(), isTrue);
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 48);
+    expect(
+        navigationCameraPosition(h.model,
+                target: _initial.target, zoom: 18, bearing: 90)
+            .tilt,
+        48);
+    await h.model.startNavigation();
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 30);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('initial zoom is applied atomically and subsequent GPS keeps it',
+      (tester) async {
+    final h = await _open(tester);
+    h.platform.camera =
+        CameraPosition(target: _initial.target, zoom: 18, tilt: 30);
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    h.platform.acknowledgeAnimationBeforeIdle = true;
+    final dynamic state = tester.state(find.byType(MapScreen));
+    await h.model.startNavigation();
+    await _frames(tester);
+    await state.resetNavigationCamera(h.model);
+    await _frames(tester);
+    expect(h.platform.camera.zoom, 16);
+    final count = h.platform.updates.length;
+    final position = geo.Position(
+        latitude: 48.14,
+        longitude: 11.57,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 90,
+        headingAccuracy: 1,
+        speed: 3,
+        speedAccuracy: 1);
+    await state.renderLocation(h.model, position);
+    expect(h.platform.updates.length, greaterThan(count));
+    expect(h.platform.camera.zoom, 16);
+    await state.renderLocation(h.model, position);
+    expect(h.platform.camera.zoom, 16);
+    expect(h.platform.camera.tilt, 30);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets('native perspective follows start, pause, north-up and end',

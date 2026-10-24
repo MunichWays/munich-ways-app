@@ -5,11 +5,14 @@ class Place {
   final LatLng latLng;
   final int? favoriteOrder;
   final List<String> alternativeNames;
+  // Transient structured search data; persisted places already have resolved coordinates.
+  final Map<String, String> searchAddress;
 
   Place(
     this.displayName,
     this.latLng, {
     this.favoriteOrder,
+    this.searchAddress = const {},
     List<String> alternativeNames = const [],
   }) : alternativeNames = List.unmodifiable(alternativeNames);
 
@@ -24,7 +27,8 @@ class Place {
       };
 
   Place.fromJson(Map<String, dynamic> json)
-      : displayName = json['displayName'] as String?,
+      : searchAddress = const {},
+        displayName = json['displayName'] as String?,
         latLng = LatLng.fromJson(json['latLng']),
         favoriteOrder = json['favoriteOrder'] as int?,
         alternativeNames = List.unmodifiable(

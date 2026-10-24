@@ -143,13 +143,15 @@ String energySavingAnnouncement(bool english) => english
     : 'Energiesparmodus aktiviert. Standort wird seltener aktualisiert.';
 
 /// A map gesture leaves the current perspective alone. Explicit north-up is
-/// handled by its camera update; automatic following restores the riding view.
+/// handled by its camera update; automatic following keeps the chosen tilt.
 @visibleForTesting
 double? navigationCameraTilt(MapScreenViewModel model) {
   if (!model.navigationActive || model.locationState == LocationState.FOLLOW) {
     return 0;
   }
-  return model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP ? 30 : null;
+  return model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP
+      ? model.navigationTilt
+      : null;
 }
 
 @visibleForTesting
@@ -290,6 +292,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _cameraUpdateRunning = false;
   bool _firstCameraUpdate = true;
   CameraUpdate? _pendingCameraUpdate;
+  bool _pendingCameraAnimated = true;
   bool _cameraPerspectiveSyncPending = false;
   // iOS acknowledges animateCamera before its native animation has finished.
   // Only perspective-only work waits for idle; normal camera actions still run.
@@ -361,6 +364,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final NavigationCameraFollowGate _navigationCameraFollow =
       NavigationCameraFollowGate();
   bool _preserveNavigationZoom = false;
+  bool _navigationTiltGesture = false;
   NavigationMotionSample _motionSample = const NavigationMotionSample();
   bool get _gpsStationary => !_navigationMotion.isMovingAt(DateTime.now());
   bool _movementHeadingAvailable = false;
@@ -392,7 +396,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   DateTime? _automaticRerouteRetryAt;
   bool _initialGuidanceAnnouncementPending = false;
   bool _automaticReroutingSuspended = false;
-  bool _offRouteCameraZoomedOut = false;
   int _consecutiveAutomaticReroutes = 0;
   int _offRouteAnnouncementCount = 0;
   double _onRouteDistanceSinceReroute = 0;
@@ -922,7 +925,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _lastLocationCameraBearing = null;
     if (model.navigationStarted) {
       _preserveNavigationZoom = true;
-      _offRouteCameraZoomedOut = false;
     }
     model.onUserStoppedFollowingLocation();
   }
@@ -1186,6 +1188,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _initialCameraLoaded)
                     Listener(
                       onPointerDown: (event) {
+                        _navigationTiltGesture = model.navigationActive;
                         _navigationCameraFollow.pointerDown(
                             event.pointer, DateTime.now());
                         _stopFollowingForMapInspection(model);
@@ -1312,6 +1315,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             if (mapStyleGeneration == _mapStyleGeneration) {
                               _mapRenderDiagnostics.cameraMoved();
                             }
+                            if (_navigationTiltGesture ||
+                                _navigationCameraFollow.interacting) {
+                              model.recordNavigationTilt(position.tilt);
+                            }
                             _mapBearingDegrees.value = position.bearing;
                             model.onMapCenterChanged(latlong2.LatLng(
                               position.target.latitude,
@@ -1322,6 +1329,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             if (mapStyleGeneration == _mapStyleGeneration) {
                               _mapRenderDiagnostics.cameraIdle();
                               _cameraAnimationPending = false;
+                            }
+                            if (_navigationTiltGesture) {
+                              final tilt = _mapController?.cameraPosition?.tilt;
+                              if (tilt != null)
+                                model.recordNavigationTilt(tilt);
+                              _navigationTiltGesture = false;
                             }
                             _compassIdleTick.value++;
                             _activateCamera(model);
@@ -1422,6 +1435,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               model,
                             ),
                             onNorthUp: () async {
+                              _navigationTiltGesture = false;
                               _stopFollowingForMapInspection(model);
                               model.onCompassNorthUpPressed();
                               final c = _mapController;
@@ -1827,14 +1841,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       while (_pendingPosition != null) {
         final position = _pendingPosition!;
         _pendingPosition = null;
-        await _renderLocation(model, position);
+        await renderLocation(model, position);
       }
     } finally {
       _locationRenderRunning = false;
     }
   }
 
-  Future<void> _renderLocation(
+  @visibleForTesting
+  Future<void> renderLocation(
     MapScreenViewModel model,
     Position position,
   ) async {
@@ -1895,6 +1910,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       if (state == LocationState.FOLLOW) {
         _smoothedMovementBearing = null;
       }
+
+      // Let queued camera resets finish before using the current zoom for GPS.
+      if (_cameraUpdateRunning || _pendingCameraUpdate != null) return;
 
       var bearing = state == LocationState.FOLLOW_AND_ROTATE_MAP
           ? _mapBearingDegrees.value
@@ -2619,7 +2637,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       // Always use the same overview. Subtracting from the current zoom here
       // would zoom farther out after every repeated rerouting attempt.
-      _offRouteCameraZoomedOut = true;
       await _scheduleCameraUpdate(CameraUpdate.zoomTo(_offRouteZoom));
     } catch (error, stackTrace) {
       log.d(
@@ -2631,13 +2648,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _restoreNavigationZoom(MapScreenViewModel model) async {
-    if (!_offRouteCameraZoomedOut ||
-        !model.navigationStarted ||
+    if (!model.navigationStarted ||
         model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
       return;
     }
-    await _scheduleCameraUpdate(CameraUpdate.zoomTo(_navigationStartZoom));
-    _offRouteCameraZoomedOut = false;
+    _navigationTiltGesture = false;
+    model.resetNavigationPerspective();
+    await _scheduleCameraUpdate(CameraUpdate.zoomTo(_navigationStartZoom),
+        animated: false);
   }
 
   void _offerInitialRatingsReload(MapScreenViewModel model) {
@@ -2705,7 +2723,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _navigationMotion.reset();
     _navigationCameraFollow.reset();
     _preserveNavigationZoom = false;
-    _offRouteCameraZoomedOut = false;
+    _navigationTiltGesture = false;
     _resetStalledGuidanceRecovery();
     final initialPosition = _latestPosition;
     _navigationStartGate.reset(
@@ -2721,30 +2739,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _initialGuidanceAnnouncementPending = true;
     final previewAnnounced =
         announceStartPreview && _announceNavigationStartPreview(model);
-    if (initialPosition != null &&
-        initialPosition.latitude.isFinite &&
-        initialPosition.longitude.isFinite &&
-        initialPosition.accuracy.isFinite &&
-        initialPosition.accuracy <= 50) {
-      final headingAvailable = _hasReliableMovementHeading(initialPosition);
-      await _scheduleCameraUpdate(
-        CameraUpdate.newCameraPosition(
-          navigationCameraPosition(
-            model,
-            target: LatLng(
-              initialPosition.latitude,
-              initialPosition.longitude,
-            ),
-            zoom: _navigationStartZoom,
-            bearing: headingAvailable ? initialPosition.heading : 0,
-          ),
-        ),
-      );
-    } else {
-      await _scheduleCameraUpdate(
-        CameraUpdate.zoomTo(_navigationStartZoom),
-      );
-    }
+    await resetNavigationCamera(model, initialPosition: initialPosition);
     if (!mounted) return;
     _armVoiceSignalWarning(model);
     await _requestNavigationNotificationPermission(model);
@@ -2764,6 +2759,37 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     await _applyNativeLocationTracking(model);
     await _updateLocationStream(model);
+  }
+
+  @visibleForTesting
+  Future<void> resetNavigationCamera(MapScreenViewModel model,
+      {Position? initialPosition}) async {
+    if (initialPosition != null &&
+        initialPosition.latitude.isFinite &&
+        initialPosition.longitude.isFinite &&
+        initialPosition.accuracy.isFinite &&
+        initialPosition.accuracy <= 50) {
+      final headingAvailable = _hasReliableMovementHeading(initialPosition);
+      await _scheduleCameraUpdate(
+        CameraUpdate.newCameraPosition(
+          navigationCameraPosition(
+            model,
+            target: LatLng(
+              initialPosition.latitude,
+              initialPosition.longitude,
+            ),
+            zoom: _navigationStartZoom,
+            bearing: headingAvailable ? initialPosition.heading : 0,
+          ),
+        ),
+        animated: false,
+      );
+    } else {
+      await _scheduleCameraUpdate(
+        CameraUpdate.zoomTo(_navigationStartZoom),
+        animated: false,
+      );
+    }
   }
 
   Future<void> _openRoutePlanner(
@@ -3464,8 +3490,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Defers camera operations until MapLibre has completed its first native
   /// render. Calling `animateCamera` earlier can abort MapLibre iOS inside
   /// `TransformState::constrainCameraAndZoomToBounds`.
-  Future<void> _scheduleCameraUpdate(CameraUpdate update) async {
+  Future<void> _scheduleCameraUpdate(CameraUpdate update,
+      {bool animated = true}) async {
     _pendingCameraUpdate = update;
+    _pendingCameraAnimated = animated;
     await _flushPendingCameraUpdate();
   }
 
@@ -3495,6 +3523,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     final controller = _mapController;
     final update = _pendingCameraUpdate;
+    final animated = _pendingCameraAnimated;
     if (controller == null ||
         (update == null && !_cameraPerspectiveSyncPending)) return;
     if (update == null && _cameraAnimationPending) return;
@@ -3511,7 +3540,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       // Avoid MapLibre's native easeTo path for the first iOS camera update.
       // This is the path confirmed by the TestFlight SIGABRT reports.
       if (update != null) {
-        if (Platform.isIOS && _firstCameraUpdate) {
+        if (!animated || (Platform.isIOS && _firstCameraUpdate)) {
           await _mapRenderDiagnostics.track(
               'scheduled camera', () => controller.moveCamera(update));
         } else {

@@ -160,6 +160,12 @@ class GeoapifyApi {
       final place = Place(
         displayName,
         LatLng(lat.toDouble(), lon.toDouble()),
+        searchAddress: {
+          'road': _value(result, 'street'),
+          'house_number': _value(result, 'housenumber'),
+          'city': _value(result, 'city'),
+          'postcode': _value(result, 'postcode'),
+        },
       );
       placesByAddress.putIfAbsent(
         _addressKey(result, generalizeStreet: generalizeStreet),
