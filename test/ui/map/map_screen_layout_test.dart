@@ -121,9 +121,13 @@ void main() {
           MapRouteState.SHOWN,
         )
         ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP
-        ..setVoiceGuidanceEnabled(
-            scenario != 'muted' && scenario != 'permission enables speech')
         ..toggleGesamtnetzVisible();
+      // The regular start must speak with fresh-install settings, without a
+      // speaker tap or an Android notification permission grant.
+      expect(model.voiceGuidanceEnabled, isTrue);
+      if (scenario == 'muted' || scenario == 'permission enables speech') {
+        model.setVoiceGuidanceEnabled(false);
+      }
       await tester.pump();
       expect(spoken, isEmpty);
       await tester.tap(find.bySemanticsLabel('Starten'));

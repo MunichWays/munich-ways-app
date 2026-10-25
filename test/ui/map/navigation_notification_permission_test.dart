@@ -176,7 +176,9 @@ void main() {
 }
 
 class _MemorySettingsStore extends SettingsStore {
-  SettingsData data = SettingsData.defaults;
+  // These scenarios start with an explicitly muted saved preference.
+  SettingsData data =
+      SettingsData.defaults.copyWith(voiceGuidanceEnabled: false);
   final voiceWrites = <bool>[];
 
   @override
