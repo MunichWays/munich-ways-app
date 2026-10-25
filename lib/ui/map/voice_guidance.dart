@@ -294,9 +294,10 @@ class VoiceGuidance {
 
   VoiceGuidance({
     this.approachDistanceMeters = 60,
+    this.minimumApproachDistanceMeters = 40,
     this.nowDistanceMeters = 15,
     this.maximumRouteDistanceMeters = 25,
-    this.arrivalDistanceMeters = 20,
+    this.arrivalDistanceMeters = 25,
     this.lookAheadSeconds = 2,
     this.maximumLookAheadMeters = 15,
     this.speechLeadSeconds = 1,
@@ -307,6 +308,7 @@ class VoiceGuidance {
   });
 
   final double approachDistanceMeters;
+  final double minimumApproachDistanceMeters;
   final double nowDistanceMeters;
   final double maximumRouteDistanceMeters;
   final double arrivalDistanceMeters;
@@ -828,10 +830,11 @@ class VoiceGuidance {
         destinationReached: remaining <= 1);
   }
 
-  /// Announces the currently relevant maneuver regardless of its distance.
+  /// Announces the current maneuver after startup/recovery or on request.
   ///
-  /// Used once when the initial 25 metre start gate opens. Regular guidance
-  /// keeps using the normal distance thresholds in [update].
+  /// Used once when the initial 25 metre start gate opens. Automatic calls
+  /// omit late approach prompts; an explicit [repeat] still provides a short
+  /// instruction. The immediate turn remains available in both cases.
   String? announceCurrentManeuver(
     LatLng position, {
     required bool english,
@@ -869,6 +872,7 @@ class VoiceGuidance {
       _nowSpoken = true;
       return _formatSpokenManeuver(target, english: english, now: true);
     }
+    if (!repeat && remaining < minimumApproachDistanceMeters) return null;
     if (_approachSpoken && !repeat) return null;
     _approachSpoken = true;
     // Re-enabling voice at the midpoint already announces this maneuver.
@@ -884,6 +888,7 @@ class VoiceGuidance {
       target,
       english: english,
       distanceMeters: _roundedDistance(remaining),
+      compact: remaining < minimumApproachDistanceMeters,
     );
   }
 
@@ -991,6 +996,7 @@ class VoiceGuidance {
     if (!_approachSpoken &&
         target.maneuver.type != 'arrive' &&
         remaining > nowDistanceMeters &&
+        remaining >= minimumApproachDistanceMeters &&
         remaining <= approachDistanceMeters) {
       _approachSpoken = true;
       return _formatSpokenManeuver(
@@ -1198,17 +1204,21 @@ class VoiceGuidance {
     required bool english,
     bool now = false,
     int? distanceMeters,
+    bool compact = false,
   }) {
+    final next = _index + 1 < _maneuvers.length ? _maneuvers[_index + 1] : null;
+    final gap = next == null
+        ? double.infinity
+        : next.routeDistance - target.routeDistance;
+    final closeNext = gap > 0 && gap <= closeManeuverDistanceMeters;
     final first = formatManeuver(
       target.maneuver,
       english: english,
       now: now,
       distanceMeters: distanceMeters,
+      compact: compact || closeNext,
     );
-    if (_index + 1 >= _maneuvers.length) return first;
-
-    final next = _maneuvers[_index + 1];
-    final gap = next.routeDistance - target.routeDistance;
+    if (next == null) return first;
     if (now &&
         gap > 1000 &&
         target.maneuver.type != 'arrive' &&
@@ -1221,9 +1231,9 @@ class VoiceGuidance {
           ? '${first.substring(0, first.length - 1)}, then continue straight for $distance kilometers.'
           : '${first.substring(0, first.length - 1)}, danach $distance Kilometer geradeaus weiterfahren.';
     }
-    if (gap <= 0 || gap > closeManeuverDistanceMeters) return first;
+    if (!closeNext) return first;
 
-    final nextAction = _action(next.maneuver, english, speakRoadName: true);
+    final nextAction = _action(next.maneuver, english, compact: true);
     return english
         ? '${first.substring(0, first.length - 1)}, then immediately $nextAction.'
         : '${first.substring(0, first.length - 1)}, danach sofort $nextAction.';
@@ -1538,6 +1548,7 @@ class VoiceGuidance {
     required bool english,
     bool now = false,
     int? distanceMeters,
+    bool compact = false,
   }) {
     if (maneuver.type == 'arrive') {
       return english
@@ -1545,7 +1556,8 @@ class VoiceGuidance {
           : 'Du hast das Ziel erreicht.';
     }
 
-    final action = _action(maneuver, english, speakRoadName: true);
+    final action =
+        _action(maneuver, english, speakRoadName: !compact, compact: compact);
     if (now) {
       return english ? '${_sentenceCase(action)} here.' : 'Hier $action.';
     }
@@ -1596,8 +1608,15 @@ class VoiceGuidance {
   }
 
   static String _action(RouteManeuver maneuver, bool english,
-      {bool speakRoadName = false}) {
-    final action = _actionWithoutWayType(maneuver, english);
+      {bool speakRoadName = false, bool compact = false}) {
+    // Keep essential qualifiers, roundabout exits and road/cycleway changes.
+    // Close sequences omit street names and shorten the German turn verbs.
+    final action = compact &&
+            !english &&
+            !const {'roundabout', 'rotary', 'roundabout turn'}
+                .contains(maneuver.type)
+        ? _shortAction(maneuver, english)
+        : _actionWithoutWayType(maneuver, english);
     final roadName = maneuver.roadName.trim().replaceAll(RegExp(r'\s+'), ' ');
     final wayType = maneuver.wayType ?? maneuver.enteringWayType;
     if (speakRoadName && wayType == RouteWayType.road && roadName.isNotEmpty) {
