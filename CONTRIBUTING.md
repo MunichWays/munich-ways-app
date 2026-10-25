@@ -355,6 +355,29 @@ and with speech and automatic rerouting independently disabled. Leave/rejoin
 the route while inspecting it and verify guidance recovers. Press close while
 the camera is detached: navigation must stay paused until explicitly resumed.
 
+## Closely spaced spoken turns (issue #287)
+
+Automatic approach prompts use the existing speed lookahead and require at
+least 40 metres of remaining lead; the usual approach window still ends at
+60 metres and the immediate turn threshold remains 15 metres. Automatic
+startup/recovery announcements also omit a late approach prompt. Explicitly
+re-enabling speech still gives a short instruction when close to the turn.
+The navigation header and explicit route-start preview remain available.
+
+For maneuvers at most 35 metres apart, the combined spoken instruction omits
+street names and uses shorter German turn wording. Direction qualifiers,
+roundabout exits and road/cycleway transitions remain. A following isolated
+turn retains its street name. Native speech interruption and cancellation
+are unchanged so an urgent current instruction can still replace old speech.
+
+On Android and iOS, compare slow and brisk riding, late GPS recovery and
+recalculation 20-40 metres before a turn: no extra late approach prompt should
+precede the normal immediate turn. Repeat with speech toggled off/on. Ride
+the Birketweg crossing in both directions, then two and three nearby turns:
+listen for complete directions and their order, including slight/sharp turns
+and cycleway changes. Check long street names, screen lock and energy saving.
+Actual voice duration and audible interruptions still require device tests.
+
 ## Navigation guidance user story
 
 As a rider, I want navigation guidance to recover from uncertain GPS and route
@@ -400,6 +423,12 @@ The complete expected behavior is:
   ahead, a sharp bend and an overlapping return leg.
 - Normal route matching shows and announces approach, turn, intermediate-stop,
   and final-destination guidance once at the appropriate progress thresholds.
+  Intermediate and final arrival use the same 25 metre radius. On iOS and
+  Android, ride just inside and outside that radius, including two nearby
+  intermediate stops used to shape the route. Passed stops use a separate
+  35 metre rerouting tolerance, independently of speech. After passing both,
+  recalculate with speech on and off: neither stop should be requested again.
+  Repeat after a failed recalculation and retry; unvisited stops must remain.
 - A brief departure from the route marks guidance recovery as pending. Re-entry
   on any valid part of the route re-anchors maneuver progress and resumes normal
   guidance without requiring a network recalculation.
@@ -567,6 +596,17 @@ changes should cover most of the first group.
 
 ### Navigation and routing
 
+- Android map rendering (#287): on Flip3/Fairphone and another Android device,
+  start with a fresh installation and immediately grant location permission.
+  Start the first route, ride with the display on, then repeat several manual
+  screen lock/unlock cycles, including a longer locked interval and an app
+  switch. After every return, the position and route must update visibly and
+  pan/zoom must respond immediately. Repeat with an existing installation,
+  after ending/restarting navigation, in light/dark mode and with power saving.
+  Check smoothness, map controls, overlays and unchanged background speech.
+  If frozen, copy Info > Diagnostics before restarting, note the local time
+  and collect Android logs. Successful native calls alone do not prove that
+  the map image is being presented to Flutter.
 - iOS: start navigation in the foreground, lock the screen and verify location
   updates and spoken turns continue, including after a longer stationary stop
 - iOS: restore GPS after an outage with the screen locked; verify guidance

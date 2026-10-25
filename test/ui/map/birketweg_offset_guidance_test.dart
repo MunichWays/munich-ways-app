@@ -102,13 +102,13 @@ void main() {
       expect(guidance.display(route.points.first, english: false)?.text,
           'In 50 m links');
       expect(guidance.update(route.points.first, english: false),
-          'In 50 Metern links abbiegen, danach sofort rechts abbiegen.');
+          'In 50 Metern links, danach sofort rechts.');
       expect(guidance.update(route.points.first, english: false), isNull);
       expect(route.maneuvers, orderedEquals(originalManeuvers));
 
       final immediate = VoiceGuidance()..setRoute(route);
       expect(immediate.update(route.maneuvers[1].location, english: false),
-          'Hier links abbiegen, danach sofort rechts abbiegen.');
+          'Hier links, danach sofort rechts.');
       final english = VoiceGuidance()..setRoute(route);
       expect(english.update(route.points.first, english: true),
           'In 50 meters, turn left, then immediately turn right.');
@@ -165,7 +165,8 @@ void main() {
       final guidance = VoiceGuidance()..setRoute(route);
       expect(guidance.display(route.points.first, english: false), isNotNull,
           reason: pair.toString());
-      expect(guidance.update(route.points.first, english: false),
+      expect(guidance.update(route.points.first, english: false), isNull);
+      expect(guidance.update(route.maneuvers.first.location, english: false),
           contains('danach sofort'),
           reason: pair.toString());
     }

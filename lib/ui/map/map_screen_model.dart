@@ -1216,7 +1216,7 @@ class MapScreenViewModel extends ChangeNotifier {
   /// that were passed at a distance remain pending and are kept on refresh.
   void updateWaypointProgress(
     LatLng position, {
-    double reachedDistanceMeters = 30,
+    double reachedDistanceMeters = 35,
   }) {
     if (!navigationStarted || waypoints.isEmpty) return;
     for (var index = _lastPassedWaypointIndex + 1;

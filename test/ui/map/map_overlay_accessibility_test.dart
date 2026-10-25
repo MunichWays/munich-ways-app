@@ -417,7 +417,7 @@ void main() {
     );
 
     final edit = find.bySemanticsLabel('Route bearbeiten');
-    final voice = find.bySemanticsLabel('Sprachansagen einschalten');
+    final voice = find.bySemanticsLabel('Sprachansagen ausschalten');
     final refresh = find.bySemanticsLabel('Route neu berechnen');
     expect(tester.getSize(edit), const Size.square(52));
     expect(tester.getSize(voice), const Size.square(52));

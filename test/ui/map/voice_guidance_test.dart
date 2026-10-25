@@ -782,7 +782,7 @@ void main() {
 
     expect(
       guidance.update(beforeTurn, english: false),
-      'In 60 Metern rechts abbiegen, danach sofort links abbiegen.',
+      'In 60 Metern rechts, danach sofort links.',
     );
   });
 
@@ -1032,7 +1032,7 @@ void main() {
     );
   });
 
-  test('uses the 20 metre radius for final arrival', () {
+  test('uses the inclusive 25 metre radius for final arrival', () {
     final guidance = VoiceGuidance();
     guidance.setRoute(CycleRoute(
       const [start, end],
@@ -1043,15 +1043,65 @@ void main() {
       ],
     ));
 
-    const aboutTwentyFiveMetresBeforeEnd = LatLng(48.14127, 11.5700);
+    final outsideRadius = const Distance().offset(end, 26, 180);
+    final withinRadius = const Distance().offset(end, 25, 180);
     expect(
-      guidance.update(aboutTwentyFiveMetresBeforeEnd, english: false),
+      guidance.display(outsideRadius, english: false)?.isFinalDestination,
+      isNot(isTrue),
+    );
+    expect(
+      guidance.update(outsideRadius, english: false),
       isNull,
     );
     expect(
-      guidance.update(end, english: false),
+      guidance.display(withinRadius, english: false)?.isFinalDestination,
+      isTrue,
+    );
+    expect(
+      guidance.update(withinRadius, english: false),
       'Du hast das Ziel erreicht.',
     );
+    expect(guidance.update(end, english: false), isNull);
+  });
+
+  test('recognizes nearby intermediate stops at 25 metres in order', () {
+    const first = LatLng(48.1410, 11.5700);
+    final second = const Distance().offset(first, 20, 0);
+    final destination = const Distance().offset(second, 150, 0);
+    final guidance = VoiceGuidance()
+      ..setRoute(
+        CycleRoute(
+          [start, first, second, destination],
+          280,
+          70,
+          maneuvers: [
+            RouteManeuver(location: first, type: 'arrive'),
+            RouteManeuver(location: second, type: 'arrive'),
+            RouteManeuver(location: destination, type: 'arrive'),
+          ],
+        ),
+        intermediateDestinationNames: const [null, null],
+      );
+    final outsideFirst = const Distance().offset(first, 26, 270);
+    final nearFirst = const Distance().offset(first, 25, 270);
+    final nearSecond = const Distance().offset(second, 25, 270);
+
+    expect(guidance.update(outsideFirst, english: false), isNull);
+    // A later stop cannot be announced before the first, even when nearby.
+    expect(guidance.update(nearSecond, english: false), isNull);
+    expect(guidance.display(nearFirst, english: false)?.isFinalDestination,
+        isFalse);
+    expect(guidance.update(nearFirst, english: false),
+        'Du hast das Zwischenziel 1 erreicht.');
+    expect(guidance.update(nearFirst, english: false), isNull);
+    expect(guidance.display(nearSecond, english: false)?.isFinalDestination,
+        isFalse);
+    expect(guidance.update(nearSecond, english: false),
+        'Du hast das Zwischenziel 2 erreicht.');
+    expect(guidance.update(nearSecond, english: false), isNull);
+    expect(guidance.finalDestinationReached, isFalse);
+    expect(guidance.update(destination, english: false),
+        'Du hast das Ziel erreicht.');
   });
 
   test('final arrival takes precedence over an off-route classification', () {

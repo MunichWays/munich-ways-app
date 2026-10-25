@@ -182,7 +182,7 @@ class SettingsData {
     showZoomButtons: true,
     sidePanelEdgeName: 'right',
     languageCode: null,
-    voiceGuidanceEnabled: false,
+    voiceGuidanceEnabled: true,
     automaticReroutingEnabled: true,
     routingMode: RoutingMode.automatic,
     bRouterProfile: BRouterProfile.trekking,
@@ -276,7 +276,8 @@ class SettingsData {
       showZoomButtons: json['showZoomButtons'] as bool? ?? true,
       sidePanelEdgeName: (edge == 'left' || edge == 'right') ? edge! : 'right',
       languageCode: (language == 'de' || language == 'en') ? language : null,
-      voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? false,
+      voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ??
+          defaults.voiceGuidanceEnabled,
       automaticReroutingEnabled:
           json['automaticReroutingEnabled'] as bool? ?? true,
       routingMode: routingMode,

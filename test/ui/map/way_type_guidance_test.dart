@@ -237,7 +237,7 @@ void main() {
         'In 50 Metern leicht rechts halten, in Teststraße.');
   });
 
-  test('each close turn speaks its own outgoing street name', () async {
+  test('close pair omits outgoing street names', () async {
     final route = await _parse([
       _step('depart', _start, [
         ['road']
@@ -260,7 +260,7 @@ void main() {
     ]);
     final guidance = VoiceGuidance()..setRoute(route);
     expect(guidance.update(const LatLng(48.1405, 11.57), english: false),
-        'In 60 Metern links abbiegen, in Erste Straße, danach sofort rechts abbiegen, in Zweite Straße.');
+        'In 60 Metern links, danach sofort rechts.');
   });
 
   test('keeps a way-type change when geometry softens a turn', () {
@@ -312,8 +312,9 @@ void main() {
               enteringWayType: RouteWayType.cycleway),
         ],
       ));
-    expect(guidance.update(_start, english: false),
-        'In 30 Metern leicht rechts halten, auf Straße, danach sofort leicht links halten, auf Radweg.');
+    expect(guidance.update(_start, english: false), isNull);
+    expect(guidance.update(const LatLng(48.1403, 11.57), english: false),
+        'Hier leicht rechts, auf Straße, danach sofort leicht links, auf Radweg.');
   });
 
   for (final entering in RouteWayType.values) {
@@ -442,6 +443,6 @@ void main() {
         ],
       ));
     expect(guidance.update(const LatLng(48.1405, 11.57), english: false),
-        'In 60 Metern links abbiegen, auf Radweg, danach sofort rechts abbiegen, auf Straße.');
+        'In 60 Metern links, auf Radweg, danach sofort rechts, auf Straße.');
   });
 }

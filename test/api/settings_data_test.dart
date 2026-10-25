@@ -3,6 +3,20 @@ import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 
 void main() {
+  test('enables voice guidance for fresh installs and missing preferences', () {
+    expect(SettingsData.defaults.voiceGuidanceEnabled, isTrue);
+    expect(SettingsData.fromJson(const {}).voiceGuidanceEnabled, isTrue);
+  });
+
+  for (final enabled in [false, true]) {
+    test('preserves saved voice guidance preference $enabled', () {
+      final restored = SettingsData.fromJson(
+        SettingsData.defaults.copyWith(voiceGuidanceEnabled: enabled).toJson(),
+      );
+      expect(restored.voiceGuidanceEnabled, enabled);
+    });
+  }
+
   test('persists the last map camera', () {
     final restored = SettingsData.fromJson(
       SettingsData.defaults

@@ -251,6 +251,80 @@ void main() {
     expect(h.model.route.route!.maneuvers, hasLength(2));
   });
 
+  for (final distanceMeters in [34.0, 36.0]) {
+    test('rerouting retains only stops outside 35 metres ($distanceMeters m)',
+        () async {
+      final h = Harness();
+      await h.model.refreshRoute();
+      await h.api.waitForDirect(1);
+      h.model.routeStart = null;
+      h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+      await h.model.startNavigation();
+      h.model.updateWaypointProgress(
+          const Distance().offset(points[1], distanceMeters, 270));
+
+      final remainingStops =
+          distanceMeters < 35 ? [points[2]] : [points[1], points[2]];
+      expect(await h.model.refreshRoute(), isTrue);
+      await h.api.waitForDirect(2);
+      expect(h.model.waypoints.map((stop) => stop.latLng), remainingStops);
+      expect(h.api.requests.last,
+          [const LatLng(48.11, 11.60), ...remainingStops, points.last]);
+    });
+  }
+
+  test('nearby passed stops stay removed through a failed reroute and retry',
+      () async {
+    final h = Harness();
+    final first = points[1];
+    final second = const Distance().offset(first, 10, 0);
+    final midpoint = const Distance().offset(first, 5, 0);
+    final passingPosition = const Distance().offset(midpoint, 34, 270);
+    final pendingStop = Place('Noch offen', points[2]);
+    h.model.waypoints
+      ..clear()
+      ..addAll([
+        Place('Weganfang', first),
+        Place('Wegende', second),
+        pendingStop,
+      ]);
+    for (final stop in [first, second]) {
+      expect(const Distance()(passingPosition, stop), inExclusiveRange(30, 35));
+    }
+    await h.model.refreshRoute();
+    await h.api.waitForDirect(1);
+    h.api.direct.single.complete(result(true, h.api.requests.single));
+    await h.model.setTemporaryShortestRouteEnabled(true);
+    h.model.routeStart = null;
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    // Stop progress must also work while voice guidance is muted.
+    h.model.setVoiceGuidanceEnabled(false);
+    h.model.updateWaypointProgress(passingPosition);
+
+    final expectedRequest = [
+      const LatLng(48.11, 11.60),
+      pendingStop.latLng,
+      points.last,
+    ];
+    h.fallback.fail = true;
+    final failed = h.model.refreshRoute();
+    await h.api.waitForDirect(2);
+    expect(h.api.requests.last, expectedRequest);
+    expect(h.model.waypoints, [pendingStop]);
+    h.api.direct.last.completeError(StateError('offline'));
+    expect(await failed, isFalse);
+
+    h.fallback.fail = false;
+    final retry = h.model.refreshRoute();
+    await h.api.waitForDirect(3);
+    expect(h.api.requests.last, expectedRequest);
+    h.api.direct.last.complete(result(true, expectedRequest));
+    expect(await retry, isTrue);
+    expect(h.model.waypoints, [pendingStop]);
+    expect(h.model.navigationActive, isTrue);
+  });
+
   test('switch during navigation recalculates from GPS before replacing route',
       () async {
     final h = Harness();
@@ -560,8 +634,15 @@ class Harness {
 }
 
 class MemorySettings extends SettingsStore {
+  SettingsData data = SettingsData.defaults;
+
   @override
-  Future<SettingsData> load() async => SettingsData.defaults;
+  Future<SettingsData> load() async => data;
+
+  @override
+  Future<void> saveVoiceGuidanceEnabled(bool enabled) async {
+    data = data.copyWith(voiceGuidanceEnabled: enabled);
+  }
 }
 
 class Coverage implements RoutingCoverage {
