@@ -23,6 +23,24 @@ and automatic rerouting as critical paths.
 
 ## Scrumboard and user stories
 
+### Preparing an approved implementation
+
+- When the user requests implementation preparation, create a feature or
+  bugfix branch and increase the build number before changing behavior.
+- For the first change after a production release, also increase the patch
+  version (for example, 3.2.1+88 becomes 3.2.2+89). Do not increase it again
+  for every subsequent change in the same release cycle.
+- Preparation changes only version metadata and requested agent documentation;
+  functional implementation waits for the user's instruction.
+- Create a concise initial user story for the agreed scope. Add it to
+  MunichWays-Scrumboard, set App to MunichWays-App and Status to In Progress,
+  assign thomas-munichways, and link the branch under Development when possible.
+  An explicit preparation request authorizes these initial story/board updates.
+- Commit and push preparation only when requested in the current task. If the
+  user explicitly waives checks for this metadata/documentation-only step,
+  review the complete diff and report the skipped checks. This exception does
+  not apply to subsequent functional code changes.
+
 - Without explicit user approval, limit Scrumboard and user-story updates to
   the agent's own comments, clearly marked as AI comments. Editing story
   descriptions, titles, status, fields, or other board content requires approval.
