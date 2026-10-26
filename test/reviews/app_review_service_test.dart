@@ -44,7 +44,7 @@ class _MemoryReviewStore extends AppReviewStore {
   bool attempted = false;
 
   @override
-  Future<void> requestOnce({
+  Future<void> requestIfEligible({
     required bool Function() canRequest,
     required Future<void> Function() request,
   }) async {
@@ -64,7 +64,9 @@ void main() {
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('app_review_service_');
-    store = AppReviewStore(directoryProvider: () async => directory);
+    store = AppReviewStore(
+        directoryProvider: () async => directory,
+        versionProvider: () async => '3.2.2');
     platform = FakeReviewPlatform();
     webOpens = 0;
     webSucceeds = true;
@@ -266,8 +268,7 @@ void main() {
     expect(await service.openStoreListing(), isTrue);
     await obstruction.delete();
     expect(await service.openStoreListing(), isTrue);
-    expect((jsonDecode(await file.readAsString()) as Map)['requestAttempted'],
-        isFalse);
+    expect((jsonDecode(await file.readAsString()) as Map)['attempts'], isEmpty);
     await service.requestAutomaticReview(canRequest: () => true);
     expect(platform.requests, 1);
   });
