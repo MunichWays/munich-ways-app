@@ -85,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Version 3.2.1'), findsNothing);
     expect(find.textContaining('3.2.1+76'), findsOneWidget);
-    expect(find.text('Bewertungszähler: 2/3'), findsNothing);
+    expect(find.text('Abgeschlossene Fahrten: 2'), findsNothing);
     expect(find.text('Routing mode: automatic'), findsNothing);
     expect(find.text('Zoom buttons: Yes'), findsNothing);
     expect(tester.getTopLeft(find.text('Einstellungen')).dy,
@@ -99,13 +99,13 @@ void main() {
       await tester.tap(find.text(title));
       await tester.pumpAndSettle();
     }
-    expect(find.text('Bewertungszähler: 2/3'), findsOneWidget);
-    final value = tester.widget<Text>(find.text('Bewertungszähler: 2/3'));
+    expect(find.text('Abgeschlossene Fahrten: 2'), findsOneWidget);
+    final value = tester.widget<Text>(find.text('Abgeschlossene Fahrten: 2'));
     final spans = (value.textSpan! as TextSpan).children!;
     expect((spans.last as TextSpan).style?.fontWeight, FontWeight.w600);
     expect(
         value.style?.fontSize,
-        Theme.of(tester.element(find.text('Bewertungsz\u00e4hler: 2/3')))
+        Theme.of(tester.element(find.text('Abgeschlossene Fahrten: 2')))
             .textTheme
             .bodySmall
             ?.fontSize);
@@ -115,8 +115,8 @@ void main() {
     await tester.ensureVisible(find.text('Aktualisieren'));
     await tester.tap(find.text('Aktualisieren'));
     await tester.pumpAndSettle();
-    expect(find.text('Bewertungszähler: 3/3'), findsOneWidget);
-    expect(find.text('Einmaliger Anfrageversuch vermerkt: Ja'), findsOneWidget);
+    expect(find.text('Abgeschlossene Fahrten: 3'), findsOneWidget);
+    expect(find.text('Anfrageversuch vermerkt: Ja'), findsOneWidget);
     String? copied;
     tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -129,7 +129,7 @@ void main() {
     await tester.ensureVisible(find.text('Kopieren'));
     await tester.tap(find.text('Kopieren'));
     await tester.pumpAndSettle();
-    expect(copied, contains('Bewertungszähler: 3/3'));
+    expect(copied, contains('Abgeschlossene Fahrten: 3'));
     expect(copied, contains('Routing mode: automatic'));
     expect(copied, contains('Zoom buttons: Yes'));
     expect(copied, isNot(contains('Version: Version')));
@@ -163,13 +163,13 @@ void main() {
       service.fail = false;
       await tester.tap(find.text(en ? 'Refresh' : 'Aktualisieren'));
       await tester.pumpAndSettle();
-      expect(find.text(en ? 'Review counter: 3/3' : 'Bewertungszähler: 3/3'),
+      expect(find.text(en ? 'Completed trips: 3' : 'Abgeschlossene Fahrten: 3'),
           findsNothing);
       final review = find.text(en ? 'App review' : 'App-Bewertung');
       await tester.ensureVisible(review);
       await tester.tap(review);
       await tester.pumpAndSettle();
-      expect(find.text(en ? 'Review counter: 3/3' : 'Bewertungszähler: 3/3'),
+      expect(find.text(en ? 'Completed trips: 3' : 'Abgeschlossene Fahrten: 3'),
           findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip(en ? 'Back' : 'Zurück'));

@@ -128,7 +128,7 @@ class AppReviewService {
         return;
       }
       var handedOff = false;
-      await _store.requestOnce(
+      await _store.requestIfEligible(
         canRequest: canRequest,
         request: () {
           handedOff = true;

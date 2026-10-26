@@ -92,13 +92,26 @@ The close/cancel button never counts. Planning, aborts, intermediate stops, paus
 do not add completions. Map-only routes without an arrival signal are excluded.
 
 After the third qualifying completion, a two-second idle window may request a
-native review. User interaction, backgrounding or a new task cancels this window.
+native review. Further attempts require at least three more qualifying trips,
+30 days since the last attempt, a different marketing app version, and fewer
+than three attempts in the rolling preceding 365 days. Each marketing version
+is requested at most once, even across restarts or a downgrade; changing only
+the build number does not qualify. These thresholds suit occasional use without
+requiring 50 or 100 trips. Passing time or installing an update alone never
+requests a review: a qualifying completion must still trigger the idle window.
+Trips made during a waiting period count toward the next opportunity, without
+queuing multiple prompts. User interaction, backgrounding or a new task cancels this window.
 Existing installations start at zero on update when review state is absent,
-just like new installations; no first-run flag is used. One attempt per retained
-installation is persisted before native handoff;
-silent suppression or native failure still consumes it. Manual store launches
+just like new installations; no first-run flag is used. Each attempt is persisted
+before native handoff; silent suppression or native failure still consumes that
+opportunity. Old schema 2 consumed attempts have no date or version: the first
+subsequent state-changing operation conservatively anchors them to the current
+date and app version, once. Diagnostics alone does not migrate or change state.
+The unreleased schema 1 manual-store flag remains ignored. Manual store launches
 leave the counter and automatic request state unchanged. No review result is inferred.
-Counts and flags live only in `app_review.json`; no route or account data is saved.
+Counts and attempt dates/versions live only in `app_review.json`; no route or
+account data is saved. This is attempt history, never evidence of a shown
+dialog or submitted rating. The total trip counter continues past three.
 
 Run the focused tests in `test/reviews/` and
 `test/ui/info/info_sheet_review_test.dart`. For native Android UI testing use an
@@ -107,7 +120,11 @@ development builds can show the prompt; TestFlight cannot. An absent production
 prompt is not by itself a failure. Test the manual link, store return, muted
 guidance, aborts, background/resume and recovery after unavailable networking.
 Test an update of an existing installation without deleting personal data.
-Use a separate installation only when repeating a consumed native request. See the [analysis and acceptance steps](docs/analysis/257-app-store-bewertungen.md).
+For repeated eligible attempts, also verify the additional-trip requirement,
+version restriction, cooldown and rolling yearly limit using controlled test
+state; do not clear personal data to make a production prompt appear. The old
+one-attempt policy in the [original analysis](docs/analysis/257-app-store-bewertungen.md)
+is superseded by issue #296 and these rules.
 
 Diagnostics are available under About & attributions, between Terms and the
 version. They read persisted review state without changing it and show a bounded

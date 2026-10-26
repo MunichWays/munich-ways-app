@@ -123,14 +123,13 @@ class _InfoSheetDiagnosticsContentState
           collapsed: true,
           rows: [
             (
-              t('Bewertungszähler', 'Review counter'),
+              t('Abgeschlossene Fahrten', 'Completed trips'),
               data.completedTrips == null
                   ? t('Nicht lesbar', 'Unreadable')
-                  : '${data.completedTrips}/3'
+                  : '${data.completedTrips}'
             ),
             (
-              t('Einmaliger Anfrageversuch vermerkt',
-                  'One-time request attempt recorded'),
+              t('Anfrageversuch vermerkt', 'Request attempt recorded'),
               flag(data.requestAttempted)
             ),
             (
