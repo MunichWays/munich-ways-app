@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/map_background.dart';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_bottom_action_buttons.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
@@ -20,7 +21,11 @@ class _Settings extends SettingsStore {
   @override
   Future<void> saveMapSettings(
       {required bool showZoomButtons,
-      required String sidePanelEdgeName}) async {}
+      required String sidePanelEdgeName,
+      MapBackground? mapBackground,
+      bool? showMapButton,
+      bool? radlvorrangnetzVisible,
+      bool? gesamtnetzVisible}) async {}
 }
 
 void main() {

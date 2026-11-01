@@ -5,6 +5,7 @@ import 'package:munich_ways/ui/map/map_overlay/map_compass_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_button.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_overlay_layout_constants.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
+import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/icons/munichways_icons_icons.dart';
 
 /// Side map controls: zoom and compass.
@@ -20,6 +21,7 @@ class MapSideActionButtons extends StatelessWidget {
     required this.onPressLocation,
     this.bottomActionRowPadding = kMapBottomActionRowCollapsedPadding,
     this.additionalBottomOffset = 0,
+    this.onShowMaps,
   });
 
   final MapScreenViewModel model;
@@ -31,6 +33,7 @@ class MapSideActionButtons extends StatelessWidget {
   final VoidCallback onPressLocation;
   final double bottomActionRowPadding;
   final double additionalBottomOffset;
+  final VoidCallback? onShowMaps;
 
   static const double _buttonSpacing = 10;
 
@@ -71,6 +74,44 @@ class MapSideActionButtons extends StatelessWidget {
       ],
     ];
 
+    final showMap = model.showMapButton && model.canChangeMapBackground;
+    // Keep all five controls accessible in short windows without shrinking
+    // touch targets or hiding the user's zoom buttons.
+    final compact = showMap &&
+        model.showZoomButtons &&
+        MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom -
+                sideColumnBottom <
+            312;
+    final followingWidgets = <Widget>[
+      MapCompassOverlayButton(
+        mapBearingDegrees: mapBearingDegrees,
+        mapIdleTick: compassIdleTick,
+        locationState: model.locationState,
+        onNorthUp: onNorthUp,
+        queryMapBearingDegrees: queryMapBearingDegrees,
+        alwaysVisible: true,
+      ),
+      const SizedBox(height: _buttonSpacing),
+      MapOverlayButton(
+        tooltip: context.l10n.tr('Standort'),
+        size: 40,
+        tapTargetSize: 56,
+        isActive: model.locationState == LocationState.FOLLOW ||
+            model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
+        emphasizeActive: true,
+        onPressed: onPressLocation,
+        child: switch (model.locationState) {
+          LocationState.NOT_AVAILABLE => const Icon(Icons.location_searching),
+          LocationState.DISPLAY ||
+          LocationState.FOLLOW =>
+            const Icon(Icons.my_location),
+          LocationState.FOLLOW_AND_ROTATE_MAP =>
+            const Icon(MunichwaysIcons.compass),
+        },
+      ),
+    ];
+
     return Positioned(
       left: model.sidePanelEdge == MapSidePanelEdge.left
           ? kMapHorizontalHolderClearance
@@ -82,34 +123,35 @@ class MapSideActionButtons extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ...zoomWidgets,
-          MapCompassOverlayButton(
-            mapBearingDegrees: mapBearingDegrees,
-            mapIdleTick: compassIdleTick,
-            locationState: model.locationState,
-            onNorthUp: onNorthUp,
-            queryMapBearingDegrees: queryMapBearingDegrees,
-            alwaysVisible: true,
-          ),
-          const SizedBox(height: _buttonSpacing),
-          MapOverlayButton(
-            tooltip: context.l10n.tr('Standort'),
-            size: 40,
-            tapTargetSize: 56,
-            isActive: model.locationState == LocationState.FOLLOW ||
-                model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP,
-            emphasizeActive: true,
-            onPressed: onPressLocation,
-            child: switch (model.locationState) {
-              LocationState.NOT_AVAILABLE =>
-                const Icon(Icons.location_searching),
-              LocationState.DISPLAY ||
-              LocationState.FOLLOW =>
-                const Icon(Icons.my_location),
-              LocationState.FOLLOW_AND_ROTATE_MAP =>
-                const Icon(MunichwaysIcons.compass),
-            },
-          ),
+          if (showMap) ...[
+            MapOverlayButton(
+              tooltip:
+                  context.l10n.isEnglish ? 'Choose map' : 'Karte auswählen',
+              size: 40,
+              tapTargetSize: 56,
+              onPressed: onShowMaps ?? () => showMapLayersSheet(context, model),
+              child: const Icon(Icons.layers_outlined),
+            ),
+            const SizedBox(height: _buttonSpacing),
+          ],
+          if (compact)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: zoomWidgets.sublist(0, zoomWidgets.length - 1),
+                ),
+                const SizedBox(width: _buttonSpacing),
+                Column(
+                    mainAxisSize: MainAxisSize.min, children: followingWidgets),
+              ],
+            )
+          else ...[
+            ...zoomWidgets,
+            ...followingWidgets,
+          ],
         ],
       ),
     );

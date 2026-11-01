@@ -10,6 +10,7 @@ import 'package:munich_ways/api/munichways/munichways_api.dart';
 import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/map_background.dart';
 import 'package:munich_ways/model/polyline.dart';
 import 'package:munich_ways/model/saved_route.dart';
 import 'package:munich_ways/model/street_details.dart';
@@ -28,6 +29,15 @@ enum MapSidePanelEdge {
 }
 
 enum _NavigationState { idle, active, paused }
+
+enum _MapPreference {
+  background,
+  button,
+  radlvorrangnetz,
+  gesamtnetz,
+  zoom,
+  side
+}
 
 class MapScreenViewModel extends ChangeNotifier {
   // Limit inactivity, not total download time; the API reports byte progress.
@@ -56,6 +66,31 @@ class MapScreenViewModel extends ChangeNotifier {
 
   /// Zoom +/- overlay buttons; default on.
   bool _showZoomButtons = true;
+  MapBackground _mapBackground = MapBackground.standard;
+  bool _showMapButton = true;
+  final _editedMapPreferences = <_MapPreference>{};
+  late final Future<void> _settingsLoaded;
+
+  MapBackground get mapBackground => _mapBackground;
+  bool get showMapButton => _showMapButton;
+  bool get canChangeMapBackground =>
+      !navigationStarted && !navigationStartPending;
+
+  void setMapBackground(MapBackground value) {
+    if (!canChangeMapBackground || value == _mapBackground) return;
+    _mapBackground = value;
+    _editedMapPreferences.add(_MapPreference.background);
+    notifyListeners();
+    _persistSettings();
+  }
+
+  void setShowMapButton(bool value) {
+    if (_showMapButton == value) return;
+    _showMapButton = value;
+    _editedMapPreferences.add(_MapPreference.button);
+    notifyListeners();
+    _persistSettings();
+  }
 
   /// Side column for layers / location / compass (zoom if enabled).
   MapSidePanelEdge _sidePanelEdge = MapSidePanelEdge.right;
@@ -67,6 +102,7 @@ class MapScreenViewModel extends ChangeNotifier {
   void setShowZoomButtons(bool value) {
     if (_showZoomButtons == value) return;
     _showZoomButtons = value;
+    _editedMapPreferences.add(_MapPreference.zoom);
     notifyListeners();
     _persistSettings();
   }
@@ -74,6 +110,7 @@ class MapScreenViewModel extends ChangeNotifier {
   void setSidePanelEdge(MapSidePanelEdge value) {
     if (_sidePanelEdge == value) return;
     _sidePanelEdge = value;
+    _editedMapPreferences.add(_MapPreference.side);
     notifyListeners();
     _persistSettings();
   }
@@ -138,23 +175,56 @@ class MapScreenViewModel extends ChangeNotifier {
     }
   }
 
-  void _persistSettings() {
-    _settingsStore
-        .saveMapSettings(
-      showZoomButtons: _showZoomButtons,
-      sidePanelEdgeName: _sidePanelEdge.name,
-    )
-        .catchError((Object e, StackTrace st) {
+  Future<void> _persistSettings() async {
+    try {
+      // Merge untouched preferences before saving an early user interaction.
+      // Otherwise choosing a background could overwrite saved network flags.
+      await _settingsLoaded;
+      if (_disposed) return;
+      await _settingsStore.saveMapSettings(
+        showZoomButtons: _showZoomButtons,
+        sidePanelEdgeName: _sidePanelEdge.name,
+        mapBackground: _mapBackground,
+        showMapButton: _showMapButton,
+        radlvorrangnetzVisible: _isRadlvorrangnetzVisible,
+        gesamtnetzVisible: _isGesamtnetzVisible,
+      );
+    } catch (e, st) {
       log.e('Failed to save settings', error: e, stackTrace: st);
-    });
+    }
   }
 
   void _applyLoadedSettings(SettingsData data) {
-    final edge = data.sidePanelEdgeName == 'left'
-        ? MapSidePanelEdge.left
-        : MapSidePanelEdge.right;
+    if (_disposed) return;
+    final showZoomButtons = _editedMapPreferences.contains(_MapPreference.zoom)
+        ? _showZoomButtons
+        : data.showZoomButtons;
+    final background =
+        !_editedMapPreferences.contains(_MapPreference.background) &&
+                canChangeMapBackground
+            ? data.mapBackground
+            : _mapBackground;
+    final showMapButton = _editedMapPreferences.contains(_MapPreference.button)
+        ? _showMapButton
+        : data.showMapButton;
+    final radlvorrangnetz =
+        _editedMapPreferences.contains(_MapPreference.radlvorrangnetz)
+            ? _isRadlvorrangnetzVisible
+            : data.radlvorrangnetzVisible;
+    final gesamtnetz = _editedMapPreferences.contains(_MapPreference.gesamtnetz)
+        ? _isGesamtnetzVisible
+        : data.gesamtnetzVisible;
+    final edge = _editedMapPreferences.contains(_MapPreference.side)
+        ? _sidePanelEdge
+        : data.sidePanelEdgeName == 'left'
+            ? MapSidePanelEdge.left
+            : MapSidePanelEdge.right;
     final routingMode = data.routingMode;
-    if (data.showZoomButtons == _showZoomButtons &&
+    if (showZoomButtons == _showZoomButtons &&
+        background == _mapBackground &&
+        showMapButton == _showMapButton &&
+        radlvorrangnetz == _isRadlvorrangnetzVisible &&
+        gesamtnetz == _isGesamtnetzVisible &&
         edge == _sidePanelEdge &&
         data.voiceGuidanceEnabled == _voiceGuidanceEnabled &&
         data.automaticReroutingEnabled == _automaticReroutingEnabled &&
@@ -163,7 +233,11 @@ class MapScreenViewModel extends ChangeNotifier {
         data.routeRecommendation == _routeRecommendation) {
       return;
     }
-    _showZoomButtons = data.showZoomButtons;
+    _showZoomButtons = showZoomButtons;
+    _mapBackground = background;
+    _showMapButton = showMapButton;
+    _isRadlvorrangnetzVisible = radlvorrangnetz;
+    _isGesamtnetzVisible = gesamtnetz;
     _sidePanelEdge = edge;
     _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
     _automaticReroutingEnabled = data.automaticReroutingEnabled;
@@ -357,7 +431,7 @@ class MapScreenViewModel extends ChangeNotifier {
     _routeStreamController = StreamController();
     routeStream = _routeStreamController.stream;
 
-    _settingsStore.load().then((data) {
+    _settingsLoaded = _settingsStore.load().then<void>((data) {
       _applyLoadedSettings(data);
     }).catchError((Object e, StackTrace st) {
       log.e('Failed to load settings', error: e, stackTrace: st);
@@ -675,12 +749,16 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void toggleGesamtnetzVisible() {
     _isGesamtnetzVisible = !_isGesamtnetzVisible;
+    _editedMapPreferences.add(_MapPreference.gesamtnetz);
     notifyListeners();
+    _persistSettings();
   }
 
   void toggleRadvorrangnetzVisible() {
     _isRadlvorrangnetzVisible = !_isRadlvorrangnetzVisible;
+    _editedMapPreferences.add(_MapPreference.radlvorrangnetz);
     notifyListeners();
+    _persistSettings();
   }
 
   /// North-up / compass control: stop follow/compass tracking like a map gesture.

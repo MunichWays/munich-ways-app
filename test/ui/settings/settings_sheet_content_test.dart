@@ -240,7 +240,7 @@ void main() {
     expect(find.text('Routenwunsch'), findsOneWidget);
     expect(find.text('Routenberechnung'), findsNothing);
     final language = find.text('Sprache');
-    final bikeNetwork = find.text('Fahrradnetz auswählen');
+    final bikeNetwork = find.text('Karten');
     final reloadNetwork = find.text('Radnetz neu laden');
     expect(language, findsOneWidget);
     expect(bikeNetwork, findsOneWidget);

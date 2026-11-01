@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/map_background.dart';
+import 'package:munich_ways/ui/map/aerial_map_style.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class MapAttribution extends StatelessWidget {
@@ -7,10 +9,12 @@ class MapAttribution extends StatelessWidget {
     super.key,
     required this.expanded,
     this.inline = false,
+    this.background = MapBackground.standard,
   });
 
   final bool expanded;
   final bool inline;
+  final MapBackground background;
 
   Future<void> _launch(String url) async {
     if (await canLaunchUrlString(url)) {
@@ -43,12 +47,13 @@ class MapAttribution extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!expanded) return const SizedBox.shrink();
+    final aerial = background == MapBackground.aerial;
+    if (!expanded && !aerial) return const SizedBox.shrink();
     final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Colors.black87,
             ) ??
         const TextStyle(color: Colors.black87);
-    final content = Container(
+    final links = Container(
       width: double.infinity,
       height: 48,
       color: Colors.white.withValues(alpha: 0.92),
@@ -76,6 +81,31 @@ class MapAttribution extends StatelessWidget {
           ],
         ),
       ),
+    );
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (aerial)
+          Container(
+            color: Colors.white.withValues(alpha: 0.92),
+            padding: const EdgeInsets.all(4),
+            child: const SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Text(
+                '$bavariaAerialAttribution · © OpenStreetMap contributors · OpenMapTiles · OpenFreeMap',
+                style: TextStyle(fontSize: 11, color: Colors.black87),
+              ),
+            ),
+          ),
+        if (expanded) links,
+        if (aerial && expanded)
+          Container(
+            color: Colors.white.withValues(alpha: 0.92),
+            child: _link(context, 'Bayern-WMTS',
+                'https://geodatenonline.bayern.de/geodatenonline/seiten/wmts_ba'),
+          ),
+      ],
     );
     if (inline) return content;
     return Align(alignment: Alignment.bottomCenter, child: content);
