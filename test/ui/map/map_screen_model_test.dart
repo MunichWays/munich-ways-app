@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart';
+import 'package:munich_ways/api/recent_searches_store.dart';
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -196,6 +198,96 @@ void main() {
       energySavingAnnouncement(true),
       'Energy saving mode enabled. Location updates are reduced.',
     );
+  });
+
+  test('secret tips survive failed V20 refresh and recover with fresh data',
+      () async {
+    final api = _SecretTipsApi();
+    final model =
+        MapScreenViewModel(store: _MemorySettingsStore(), munichwaysApi: api);
+    addTearDown(model.dispose);
+    Future<void> refresh() async {
+      await model.refreshRadlnetze(minimumLoadingDuration: Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    await refresh();
+    final original = model.secretTipsGeoJson;
+    expect((original['features'] as List).single['properties']['name'],
+        'Isarblick');
+    api.fail = true;
+    await refresh();
+    expect(identical(model.secretTipsGeoJson, original), isTrue);
+    expect(model.hasRatings, isTrue);
+    api.fail = false;
+    api.name = 'Neuer Geheimtipp';
+    await refresh();
+    expect(
+        (model.secretTipsGeoJson['features'] as List).single['properties']
+            ['name'],
+        'Neuer Geheimtipp');
+  });
+
+  test(
+      'detail destination previews first and enters history once on successful start',
+      () async {
+    final history = _DetailHistory();
+    final model = _DetailRouteModel(history);
+    addTearDown(model.dispose);
+    final place = Place('Isarblick', const LatLng(48.2, 11.6));
+    expect(await model.previewDetailDestination(place), isTrue);
+    expect(model.navigationStarted, isFalse);
+    expect(history.places, isEmpty);
+    model.locationState = LocationState.NOT_AVAILABLE;
+    expect(await model.startNavigation(), isFalse);
+    expect(history.places, isEmpty);
+    model.locationState = LocationState.FOLLOW;
+    expect(await model.startNavigation(), isTrue);
+    expect(history.places, [place]);
+    await model.startNavigation();
+    expect(history.places, [place]);
+  });
+
+  test(
+      'discarded detail preview does not enter history for another destination',
+      () async {
+    final history = _DetailHistory();
+    final model = _DetailRouteModel(history);
+    addTearDown(model.dispose);
+    await model.previewDetailDestination(
+        Place('Geheimtipp', const LatLng(48.2, 11.6)));
+    model.clearDestination();
+    expect(
+        await model.setDestinationAndCalculateRoute(
+            Place('Other POI', const LatLng(48.3, 11.7))),
+        isTrue);
+    model.locationState = LocationState.FOLLOW;
+    expect(await model.startNavigation(), isTrue);
+    expect(history.places, isEmpty);
+  });
+
+  test(
+      'street detail destination uses V20 midpoint or bundled fallback geometry',
+      () async {
+    final model = MapScreenViewModel(
+        store: _MemorySettingsStore(), munichwaysApi: _SecretTipsApi());
+    addTearDown(model.dispose);
+    final details = StreetDetails.fromV20Json({
+      'properties': {'osm_name': 'Street'},
+      'geometry': {
+        'type': 'LineString',
+        'coordinates': [
+          [11, 0],
+          [11.1, 0]
+        ]
+      },
+    });
+    expect(model.destinationForStreet(details)!.latLng.longitude,
+        closeTo(11.05, .00001));
+    await model.refreshRadlnetze(minimumLoadingDuration: Duration.zero);
+    expect(model.destinationForStreet(_localRatings.first.details!), isNotNull);
+    expect(model.destinationForStreet(StreetDetails(name: 'Missing geometry')),
+        isNull);
   });
 
   test('allows slow initial and manual downloads the same inactivity deadline',
@@ -514,4 +606,70 @@ class _ControlledMunichwaysApi extends MunichwaysApi {
   Future<Map<String, StreetDetails>> getStreetDetails(
           {bool forceRefresh = false}) async =>
       {};
+}
+
+class _SecretTipsApi extends MunichwaysApi {
+  bool fail = false;
+  String name = 'Isarblick';
+  @override
+  Stream<Set<MPolyline>> getRadlvorrangnetzUpdates(
+      {Duration? responseTimeout, bool forceRefresh = false}) async* {
+    yield _localRatings;
+  }
+
+  @override
+  Future<Map<String, StreetDetails>> getStreetDetails(
+      {bool forceRefresh = false}) async {
+    if (fail) throw StateError('Temporary network failure');
+    return {
+      'tip': StreetDetails.fromV20Json({
+        'properties': {
+          'munichways_id': 'MW-tip',
+          'munichways_name': name,
+          'munichways_neuralgic_point': 'Geheimtipp'
+        },
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [11.5, 48.1]
+        },
+      })
+    };
+  }
+}
+
+class _DetailHistory extends RecentSearchesStore {
+  final places = <Place>[];
+  @override
+  Future<void> add(Place place,
+      {int maxEntries = RecentSearchesStore.maxEntries}) async {
+    places.add(place);
+  }
+}
+
+class _DetailRouteModel extends MapScreenViewModel {
+  _DetailRouteModel(RecentSearchesStore history)
+      : super(
+          store: _MemorySettingsStore(),
+          detailDestinationsStore: history,
+          routingService: RoutingService(
+              radlNavi: _RecordingRoutingProvider(),
+              bRouter: _RecordingRoutingProvider(),
+              radlNaviCoverage: _AlwaysCovered()),
+        );
+  @override
+  Future<Position?> resolveRouteStartPosition() async => Position(
+        latitude: 48.1,
+        longitude: 11.5,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+  @override
+  Future<void> onPressLocationBtn(
+      {bool permissionCheck = true, bool followLocation = true}) async {}
 }

@@ -1,3 +1,4 @@
+import 'package:munich_ways/ui/street_details/street_details_sheet.dart';
 import 'package:munich_ways/model/gpx_import_exception.dart';
 import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
@@ -339,6 +340,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Completer<Map<String, dynamic>> _firstPublicToiletsData = Completer();
   StreamSubscription<Map<String, dynamic>>? _publicToiletsSubscription;
   bool _repairStationsGeoJsonReady = false;
+  bool _secretTipsGeoJsonReady = false;
+  bool _secretTipsSyncRunning = false;
+  Map<String, dynamic>? _syncedSecretTips;
+  static const _kSecretTipsSourceId = 'munichways_secret_tips';
+  static const _kSecretTipsLayerId = 'munichways_secret_tips_symbols';
+  static const _kSecretTipsImageId = 'munichways_secret_tips_icon';
   bool _examplePlacesGeoJsonReady = false;
   bool _examplePlacesSyncRunning = false;
   bool _repairStationsLoadStarted = false;
@@ -619,6 +626,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _publicToiletsGeoJsonReady = false;
       _repairStationsGeoJsonReady = false;
       _examplePlacesGeoJsonReady = false;
+      _secretTipsGeoJsonReady = false;
       _lastSyncedNetworkFingerprint = null;
       _lastRouteFingerprint = null;
       _mapStyleString = style;
@@ -1286,6 +1294,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _publicToiletsGeoJsonReady = false;
                               _repairStationsGeoJsonReady = false;
                               _examplePlacesGeoJsonReady = false;
+                              _secretTipsGeoJsonReady = false;
                               if (!mounted ||
                                   mapStyleGeneration != _mapStyleGeneration ||
                                   !identical(c, _mapController)) {
@@ -1319,6 +1328,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _schedulePublicToiletsSync();
                               _scheduleRepairStationsSync();
                               unawaited(_syncExamplePlaces());
+                              unawaited(_syncSecretTips());
                               _startDrinkingWaterLoad();
                               _startPublicToiletsLoad();
                               _startRepairStationsLoad();
@@ -3057,6 +3067,17 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         }
         return;
       case MapLongPressAction.startRoute:
+        if (poiDetails?.type == PoiType.secretTip &&
+            poiDetails?.location != null) {
+          await model.previewDetailDestination(
+            Place(poiDetails!.title, poiDetails.location!),
+          );
+          return;
+        }
+        if (poiDetails == null && details != null) {
+          await model.previewDetailDestination(Place(details.name, position));
+          return;
+        }
         await model.setDestinationAndCalculateRoute(
           Place(null, position),
         );
@@ -3213,11 +3234,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         (!_drinkingWaterGeoJsonReady &&
             !_publicToiletsGeoJsonReady &&
             !_repairStationsGeoJsonReady &&
-            !_examplePlacesGeoJsonReady)) {
+            !_examplePlacesGeoJsonReady &&
+            !_secretTipsGeoJsonReady)) {
       return null;
     }
     try {
       final layers = <String>[
+        if (_secretTipsGeoJsonReady) _kSecretTipsLayerId,
         if (_drinkingWaterGeoJsonReady) _kDrinkingWaterLayerId,
         if (_publicToiletsGeoJsonReady) _kPublicToiletsLayerId,
         if (_repairStationsGeoJsonReady) _kRepairStationsLayerId,
@@ -3249,21 +3272,33 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     PoiDetails details,
     latlong2.LatLng position,
   ) {
+    final tip = details.type == PoiType.secretTip
+        ? model.secretTipForId(details.tags['munichways_id'])
+        : null;
+    void routeHere(BuildContext sheetContext) {
+      Navigator.pop(sheetContext);
+      if (details.type == PoiType.secretTip) {
+        unawaited(model.previewDetailDestination(Place(
+          tip?.details.name ?? details.title,
+          tip?.location ?? details.location ?? position,
+        )));
+      } else {
+        unawaited(
+            _startRouteToPoi(model, details, details.location ?? position));
+      }
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (sheetContext) => PoiDetailsSheet(
-        details: details,
-        onRouteHere: () {
-          Navigator.pop(sheetContext);
-          unawaited(
-            _startRouteToPoi(model, details, details.location ?? position),
-          );
-        },
-      ),
+      builder: (sheetContext) => tip != null
+          ? StreetDetailsSheet(
+              details: tip.details, onRouteHere: () => routeHere(sheetContext))
+          : PoiDetailsSheet(
+              details: details, onRouteHere: () => routeHere(sheetContext)),
     );
   }
 
@@ -3285,6 +3320,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 PoiType.bicycleRepairStation => context.l10n.isEnglish
                     ? 'Bicycle repair station'
                     : 'Fahrrad-Servicestation',
+                PoiType.secretTip =>
+                  context.l10n.isEnglish ? 'Hidden gem' : 'Geheimtipp',
                 PoiType.place => context.l10n.isEnglish ? 'Place' : 'Ort',
               }
             : details.title,
@@ -3869,6 +3906,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (!_styleLoaded || controller == null) return;
     // Optional local POIs must never hold up route or network rendering.
     unawaited(_syncExamplePlaces());
+    unawaited(_syncSecretTips());
 
     if (_overlaySyncRunning) {
       _overlaySyncQueued = true;
@@ -5128,6 +5166,76 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _examplePlacesSyncRunning = false;
       if (mounted && !identical(controller, _mapController)) {
         unawaited(_syncExamplePlaces());
+      }
+    }
+  }
+
+  Future<void> _syncSecretTips() async {
+    final controller = _mapController;
+    final data = mapViewModel.secretTipsGeoJson;
+    final generation = _mapStyleGeneration;
+    if (controller == null ||
+        !_styleLoaded ||
+        identical(_syncedSecretTips, data) && _secretTipsGeoJsonReady ||
+        _secretTipsSyncRunning) return;
+    _secretTipsSyncRunning = true;
+    bool isCurrent() =>
+        mounted &&
+        _styleLoaded &&
+        generation == _mapStyleGeneration &&
+        identical(controller, _mapController);
+    try {
+      await _serializePoiStyleOperation(() async {
+        if (!isCurrent()) return;
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final style = ExamplePlacesMapStyle(dark: dark);
+        // Check native state so a partially failed setup can recover on the
+        // next overlay update instead of repeatedly adding a duplicate source.
+        final sources = await controller.getSourceIds();
+        if (!isCurrent()) return;
+        if (!sources.contains(_kSecretTipsSourceId)) {
+          await controller.addGeoJsonSource(
+            _kSecretTipsSourceId,
+            data,
+          );
+        }
+        if (!isCurrent()) return;
+        await controller.setGeoJsonSource(_kSecretTipsSourceId, data);
+        if (!isCurrent()) return;
+        final layers = await controller.getLayerIds();
+        if (!isCurrent()) return;
+        if (!layers.contains(_kSecretTipsLayerId)) {
+          final image = await _createPoiIconImage(Icons.diamond);
+          if (!isCurrent()) return;
+          await controller.addImage(
+            _kSecretTipsImageId,
+            image,
+          );
+          if (!isCurrent()) return;
+          await controller.addSymbolLayer(
+            _kSecretTipsSourceId,
+            _kSecretTipsLayerId,
+            style.markers(_kSecretTipsImageId),
+            minzoom: 12,
+            enableInteraction: false,
+          );
+        }
+        if (!isCurrent()) return;
+        if (isCurrent()) {
+          _secretTipsGeoJsonReady = true;
+          _syncedSecretTips = data;
+        }
+      });
+    } catch (error, stackTrace) {
+      log.w('Displaying secret tips failed',
+          error: error, stackTrace: stackTrace);
+    } finally {
+      _secretTipsSyncRunning = false;
+      if (mounted &&
+          (generation != _mapStyleGeneration ||
+              !identical(controller, _mapController) ||
+              !identical(data, mapViewModel.secretTipsGeoJson))) {
+        unawaited(_syncSecretTips());
       }
     }
   }

@@ -1,3 +1,6 @@
+import 'package:munich_ways/api/recent_searches_store.dart';
+import 'package:munich_ways/model/secret_tip_geometry.dart';
+import 'package:munich_ways/model/secret_tip.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
 import 'dart:async';
 
@@ -375,6 +378,15 @@ class MapScreenViewModel extends ChangeNotifier {
 
   Set<MPolyline> _polylinesGesamtnetz = {};
   Map<String, StreetDetails> _streetDetailsByFeatureId = {};
+  late final RecentSearchesStore _detailDestinationsStore;
+  Place? _detailDestinationToRemember;
+  Map<String, SecretTip> _secretTips = {};
+  SecretTip? secretTipForId(String? id) => _secretTips[id];
+  Map<String, dynamic> _secretTipsGeoJson = {
+    'type': 'FeatureCollection',
+    'features': <dynamic>[],
+  };
+  Map<String, dynamic> get secretTipsGeoJson => _secretTipsGeoJson;
   int _networkRevision = 0;
   int get networkRevision => _networkRevision;
   bool get hasRatings => _polylinesGesamtnetz.isNotEmpty;
@@ -392,6 +404,29 @@ class MapScreenViewModel extends ChangeNotifier {
       );
       if (_disposed) return;
       _streetDetailsByFeatureId = details;
+      _secretTips = groupSecretTips(details.values);
+      _secretTipsGeoJson = {
+        'type': 'FeatureCollection',
+        'features': [
+          for (final entry in _secretTips.entries)
+            {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'Point',
+                'coordinates': [
+                  entry.value.location.longitude,
+                  entry.value.location.latitude,
+                ]
+              },
+              'properties': {
+                'amenity': 'munichways_secret_tip',
+                'munichways_id': entry.key,
+                'name': entry.value.details.name,
+              },
+            },
+        ],
+      };
+      notifyListeners();
       log.d('street details loaded in background: ${details.length}');
     } catch (e, st) {
       // Details are optional. Ratings, routing and navigation remain usable.
@@ -437,6 +472,7 @@ class MapScreenViewModel extends ChangeNotifier {
     SavedRoutesStore? snapshotStore,
     MunichwaysApi? munichwaysApi,
     Future<void> Function(bool)? setScreenAwake,
+    RecentSearchesStore? detailDestinationsStore,
   }) {
     _screenAwake = NavigationScreenAwake(
       navigationActive: () => navigationActive,
@@ -449,6 +485,7 @@ class MapScreenViewModel extends ChangeNotifier {
           bRouter: BRouterApi(),
           radlNaviCoverage: OberbayernCoverage(),
         );
+    _detailDestinationsStore = detailDestinationsStore ?? recentSearchesRepo;
     _settingsStore = store ?? settingsStore;
     _snapshotStore = snapshotStore ?? savedRoutesStore;
     _munichwaysApi = munichwaysApi ?? MunichwaysApi();
@@ -685,6 +722,7 @@ class MapScreenViewModel extends ChangeNotifier {
     final pending = _navigationStartRequest;
     if (pending != null) return pending;
     final revision = _routePlanRevision;
+    final detailDestination = _detailDestinationToRemember;
     _selectionRevision++;
     _pendingVariant = null;
     final completion = Completer<bool>();
@@ -694,7 +732,23 @@ class MapScreenViewModel extends ChangeNotifier {
     });
     _navigationStartRequest = request;
     notifyListeners();
-    unawaited(_startNavigation(revision).then<void>(completion.complete,
+    unawaited(_startNavigation(revision).then<void>((started) {
+      final place = detailDestination;
+      if (started &&
+          !_disposed &&
+          place != null &&
+          identical(place, _detailDestinationToRemember) &&
+          identical(place, destination)) {
+        _detailDestinationToRemember = null;
+        unawaited(_detailDestinationsStore
+            .add(place)
+            .catchError((Object error, StackTrace stackTrace) {
+          log.w('Saving detail destination failed',
+              error: error, stackTrace: stackTrace);
+        }));
+      }
+      completion.complete(started);
+    },
         onError: (Object error, StackTrace stackTrace) =>
             completion.completeError(error, stackTrace)));
     return request;
@@ -1123,6 +1177,37 @@ class MapScreenViewModel extends ChangeNotifier {
     if (destination != null) unawaited(_requestRoute());
   }
 
+  Place? destinationForStreet(StreetDetails details) {
+    var location = details.routeLocation;
+    if (location == null) {
+      final id = streetDetailsFeatureId(details);
+      final lines = _polylinesGesamtnetz.where((line) =>
+          identical(line.details, details) ||
+          (id != null && streetDetailsFeatureId(line.details) == id));
+      location = secretTipLocationFromGeometry({
+        'type': 'MultiLineString',
+        'coordinates': [
+          for (final line in lines)
+            [
+              for (final point in line.points ?? <LatLng>[])
+                [point.longitude, point.latitude]
+            ]
+        ],
+      });
+    }
+    return location == null
+        ? null
+        : Place(details.name ?? details.munichwaysName, location);
+  }
+
+  /// Details prepare the normal Start preview; history is written only after
+  /// a successful explicit navigation start, never during route calculation.
+  Future<bool> previewDetailDestination(Place place) {
+    final ready = setDestinationAndCalculateRoute(place);
+    _detailDestinationToRemember = place;
+    return ready;
+  }
+
   void onTap(StreetDetails? details) {
     log.d(details);
     showStreetDetailsController.add(details);
@@ -1158,6 +1243,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void setDestination(Place? place) {
+    _detailDestinationToRemember = null;
     if (place == null) {
       return;
     }
@@ -1185,6 +1271,7 @@ class MapScreenViewModel extends ChangeNotifier {
   /// Sets a new destination and completes once its route calculation finishes.
   /// Used by deliberate quick actions that should enter navigation immediately.
   Future<bool> setDestinationAndCalculateRoute(Place place) {
+    _detailDestinationToRemember = null;
     if (locationState == LocationState.FOLLOW ||
         locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
       locationState = LocationState.DISPLAY;
@@ -1294,6 +1381,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void clearDestination() {
+    _detailDestinationToRemember = null;
     resetMapInspectionTilt();
     // Drop any in-flight route so a late response cannot repopulate the map.
     _originalRoute = false;
