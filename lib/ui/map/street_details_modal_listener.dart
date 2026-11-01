@@ -31,6 +31,8 @@ class _StreetDetailsModalListenerState
 
   void _onStreetDetails(StreetDetails? details) {
     if (!mounted || details == null) return;
+    final model = context.read<MapScreenViewModel>();
+    final destination = model.destinationForStreet(details);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -42,7 +44,15 @@ class _StreetDetailsModalListenerState
           padding: EdgeInsets.only(
             bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
           ),
-          child: StreetDetailsSheet(details: details),
+          child: StreetDetailsSheet(
+            details: details,
+            onRouteHere: destination == null
+                ? null
+                : () {
+                    Navigator.pop(sheetContext);
+                    unawaited(model.previewDetailDestination(destination));
+                  },
+          ),
         );
         if (kStoreScreenshots) {
           return Semantics(

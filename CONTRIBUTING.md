@@ -663,3 +663,29 @@ changes should cover most of the first group.
 Summarize the observed cause, the chosen fix, affected critical paths, checks
 performed, device/manual verification, and any residual uncertainty. State
 clearly whether the work is uncommitted, committed, or pushed.
+
+## Secret-tip POIs (issue #268)
+
+V20 features marked `munichways_neuralgic_point = Geheimtipp` appear as diamond
+markers without map labels from zoom 12, grouped once per MunichWays ID. Lines use their midpoint by geographic length;
+MultiLineString gaps do not count. The midpoint includes the grouped line geometries. Details reuse the street
+sheet with MunichWays fields and links, excluding OSM tags and derived ratings.
+Details and their Route here action use this position. The long-press Route here action also targets the marker position.
+Nearby categories and routing modes remain unchanged. Tips load with optional
+V20 details; a failed refresh retains existing tips, and a later successful
+refresh replaces them. There is no bundled secret-tip dataset.
+
+On the phone, reload ratings and check known secret tips, their descriptions,
+long-press routing and the detail-sheet route button. Repeat after restart,
+offline with cached V20 data, failed reload and restored network, and after
+light/dark switching. Check large text, German/English, existing water/toilet/
+repair POIs and unchanged Nearby categories.
+
+
+Street details and secret-tip details offer Route here to open the normal route
+preview with Start. Only a successful explicit navigation start saves these
+destinations in recent destinations; cancelling or a failed start does not.
+Regular street details use the section midpoint, including bundled network
+geometry when V20 details are unavailable. Other POI quick-start actions stay
+unchanged. On the phone, test both detail buttons, cancel a preview, deny location
+then retry Start, and verify recent destinations only after a successful start.

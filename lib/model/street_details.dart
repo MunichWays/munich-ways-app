@@ -1,4 +1,6 @@
+import 'package:latlong2/latlong.dart';
 import 'package:equatable/equatable.dart';
+import 'package:munich_ways/model/secret_tip_geometry.dart';
 import 'package:munich_ways/model/ImgIdParser.dart';
 import 'package:munich_ways/model/bezirk.dart';
 import 'package:munich_ways/model/kategorie.dart';
@@ -50,6 +52,9 @@ class StreetDetails extends Equatable {
   final String? massnahmenKategorie;
   final num? prioGesamt;
   final String? neuralgischerPunkt;
+  final LatLng? routeLocation;
+  final LatLng? secretTipLocation;
+  final Map<String, dynamic>? secretTipGeometry;
   final bool? vielKfz;
   final String? mapillaryImgId;
   final bool isMunichWaysRadlVorrangNetz;
@@ -98,6 +103,9 @@ class StreetDetails extends Equatable {
       this.massnahmenKategorie,
       this.prioGesamt,
       this.neuralgischerPunkt,
+      this.routeLocation,
+      this.secretTipLocation,
+      this.secretTipGeometry,
       this.vielKfz,
       this.bezirk,
       this.mapillaryImgId,
@@ -196,6 +204,22 @@ class StreetDetails extends Equatable {
           _germanColor(properties['color']),
       statusUmsetzung: properties['munichways_status_implementation'],
       neuralgischerPunkt: properties['munichways_neuralgic_point'],
+      routeLocation: secretTipLocationFromGeometry(json['geometry']),
+      secretTipLocation: properties['munichways_neuralgic_point']
+                  ?.toString()
+                  .trim()
+                  .toLowerCase() ==
+              'geheimtipp'
+          ? secretTipLocationFromGeometry(json['geometry'])
+          : null,
+      secretTipGeometry: properties['munichways_neuralgic_point']
+                      ?.toString()
+                      .trim()
+                      .toLowerCase() ==
+                  'geheimtipp' &&
+              json['geometry'] is Map<String, dynamic>
+          ? json['geometry'] as Map<String, dynamic>
+          : null,
       netTypePlan: properties['munichways_net_type_plan']?.toString(),
       netTypeTarget: properties['munichways_net_type_target']?.toString(),
       mwRvRoute: properties['munichways_mw_rv_route']?.toString(),
@@ -210,6 +234,28 @@ class StreetDetails extends Equatable {
           !['-', null, ''].contains(properties['munichways_mw_rv_route']),
     );
   }
+
+  /// A MunichWays entry spans multiple OSM ways, so none of their tags or
+  /// derived ratings describes the grouped secret tip reliably.
+  StreetDetails get secretTipDetails => StreetDetails(
+        name: _firstNotEmpty(munichwaysName, null) ?? 'Geheimtipp',
+        munichwaysName: munichwaysName,
+        munichwaysId: munichwaysId,
+        description: description,
+        ist: ist,
+        soll: soll,
+        statusUmsetzung: statusUmsetzung,
+        neuralgischerPunkt: neuralgischerPunkt,
+        netTypePlan: netTypePlan,
+        netTypeTarget: netTypeTarget,
+        mwRvRoute: mwRvRoute,
+        routeLinks: routeLinks,
+        measureCategoryLinks: measureCategoryLinks,
+        districtLinks: districtLinks,
+        links: links,
+        mapillaryLinks: mapillaryLinks,
+        isMunichWaysRadlVorrangNetz: isMunichWaysRadlVorrangNetz,
+      );
 
   @override
   String toString() {
@@ -262,6 +308,8 @@ class StreetDetails extends Equatable {
         this.massnahmenKategorie,
         this.prioGesamt,
         this.neuralgischerPunkt,
+        this.routeLocation,
+        this.secretTipLocation,
         this.vielKfz,
         this.bezirk,
         this.isMunichWaysRadlVorrangNetz

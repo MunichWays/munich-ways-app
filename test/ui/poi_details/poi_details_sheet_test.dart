@@ -1,3 +1,5 @@
+import 'package:munich_ways/model/street_details.dart';
+import 'package:munich_ways/ui/street_details/street_details_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +49,63 @@ void main() {
       expect(
           find.text(language == 'de' ? 'Adresse' : 'Address'), findsOneWidget);
       expect(find.text(exampleDestinations.first.address), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester
+          .tap(find.text(language == 'de' ? 'Route hierhin' : 'Route here'));
+      expect(selected, isTrue);
+    });
+    testWidgets('secret tip details and route action work in $language',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var selected = false;
+      final details = StreetDetails.fromV20Json({
+        'properties': {
+          'munichways_id': 'MW-42',
+          'munichways_name': 'Isarblick',
+          'munichways_description': 'Aussicht am Fluss',
+          'munichways_current': 'Ruhiger Abschnitt',
+          'munichways_target': 'Verbesserung',
+          'munichways_neuralgic_point': 'Geheimtipp',
+          'osm_id': '123',
+          'osm_name': 'OSM name',
+          'osm_surface': 'OSM surface',
+          'osm_class_bicycle': '2',
+        },
+      }).secretTipDetails;
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        locale: Locale(language),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: StreetDetailsSheet(
+            details: details,
+            onRouteHere: () => selected = true,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('Ruhiger Abschnitt'), findsOneWidget);
+      expect(find.text('OSM name'), findsNothing);
+      expect(find.text('OSM surface'), findsNothing);
+      expect(find.textContaining('OSM class:bicycle'), findsNothing);
+      expect(find.byIcon(Icons.water_drop), findsNothing);
+      expect(find.text('Isarblick'), findsWidgets);
+      expect(find.text('Aussicht am Fluss'), findsOneWidget);
+      expect(find.text('munichways_secret_tip'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester
           .tap(find.text(language == 'de' ? 'Route hierhin' : 'Route here'));

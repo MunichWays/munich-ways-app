@@ -154,6 +154,7 @@ class PoiDetailsSheet extends StatelessWidget {
             'description',
             'source',
           ],
+        PoiType.secretTip => const ['name', 'description'],
         PoiType.drinkingWater => _tagOrder,
         PoiType.place => const ['name', 'address', 'website'],
       };
@@ -161,6 +162,7 @@ class PoiDetailsSheet extends StatelessWidget {
   List<MapEntry<String, String>> _orderedTags() {
     final entries = details.tags.entries
         .where((entry) =>
+            !(details.type == PoiType.secretTip && entry.key == 'amenity') &&
             entry.key != 'osm_type' &&
             entry.key != 'osm_url' &&
             !entry.key.toLowerCase().startsWith('panoramax') &&
@@ -200,6 +202,7 @@ class PoiDetailsSheet extends StatelessWidget {
         english ? 'Public toilet' : 'Öffentliche Toilette',
       PoiType.bicycleRepairStation =>
         english ? 'Bicycle repair station' : 'Fahrrad-Servicestation',
+      PoiType.secretTip => english ? 'Hidden gem' : 'Geheimtipp',
       PoiType.place => english ? 'Place' : 'Ort',
     };
     final title = details.title.isEmpty ? fallbackTitle : details.title;
@@ -207,6 +210,7 @@ class PoiDetailsSheet extends StatelessWidget {
       PoiType.drinkingWater => Icons.water_drop,
       PoiType.publicToilet => Icons.wc,
       PoiType.bicycleRepairStation => Icons.build,
+      PoiType.secretTip => Icons.diamond,
       PoiType.place => Icons.place,
     };
     return Material(

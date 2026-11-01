@@ -20,9 +20,11 @@ class StreetDetailsSheet extends StatefulWidget {
   const StreetDetailsSheet({
     super.key,
     required this.details,
+    this.onRouteHere,
   });
 
   final StreetDetails details;
+  final VoidCallback? onRouteHere;
 
   @override
   State<StreetDetailsSheet> createState() => _StreetDetailsSheetState();
@@ -306,6 +308,18 @@ class _StreetDetailsSheetState extends State<StreetDetailsSheet> {
               children: [
                 const BottomSheetDragHandle(),
                 _Header(farbe: d.farbe, name: d.name),
+                if (widget.onRouteHere != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: FilledButton.icon(
+                      style: AppButtonStyles.primary(context),
+                      onPressed: widget.onRouteHere,
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: Text(context.l10n.isEnglish
+                          ? 'Route here'
+                          : 'Route hierhin'),
+                    ),
+                  ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 Expanded(
                   child: ListView(
