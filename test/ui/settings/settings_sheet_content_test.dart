@@ -234,13 +234,15 @@ void main() {
     expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
+    expect(find.text('3D'), findsOneWidget);
+    expect(model.map3dEnabled, isTrue);
     expect(energySaving, findsOneWidget);
     expect(automaticRerouting, findsOneWidget);
     expect(mapControls, findsOneWidget);
     expect(find.text('Routenwunsch'), findsOneWidget);
     expect(find.text('Routenberechnung'), findsNothing);
     final language = find.text('Sprache');
-    final bikeNetwork = find.text('Fahrradnetz auswählen');
+    final bikeNetwork = find.text('Karten');
     final reloadNetwork = find.text('Radnetz neu laden');
     expect(language, findsOneWidget);
     expect(bikeNetwork, findsOneWidget);

@@ -7,6 +7,9 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/map_background.dart';
+import 'package:munich_ways/ui/map/aerial_map_style.dart';
+import 'dart:convert';
 import 'package:munich_ways/model/route.dart';
 import 'package:munich_ways/ui/map/map_screen.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
@@ -22,6 +25,22 @@ class _SettingsStore extends SettingsStore {
 
   @override
   Future<void> saveVoiceGuidanceEnabled(bool enabled) async {}
+
+  @override
+  Future<void> saveMapSettings(
+      {required bool showZoomButtons,
+      required String sidePanelEdgeName,
+      MapBackground? mapBackground,
+      bool? showMapButton,
+      bool? radlvorrangnetzVisible,
+      bool? gesamtnetzVisible}) async {}
+}
+
+class _MapChoiceModel extends MapScreenViewModel {
+  _MapChoiceModel()
+      : super(store: _SettingsStore(), setScreenAwake: (_) async {});
+  @override
+  void startInitialLoad() {}
 }
 
 class _LayoutMapPlatform extends MapLibrePlatform {
@@ -39,6 +58,92 @@ class _LayoutMapPlatform extends MapLibrePlatform {
 }
 
 void main() {
+  testWidgets(
+      'background switches preserve the current camera and aerial choice across theme changes',
+      (tester) async {
+    final originalSettings = settingsStore;
+    settingsStore = _SettingsStore();
+    addTearDown(() => settingsStore = originalSettings);
+    final originalMapFactory = MapLibrePlatform.createInstance;
+    MapLibrePlatform.createInstance = () => _LayoutMapPlatform();
+    addTearDown(() => MapLibrePlatform.createInstance = originalMapFactory);
+    const ttsChannel = MethodChannel('flutter_tts');
+    tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(ttsChannel, (_) async => 1);
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(ttsChannel, null));
+    await tester
+        .runAsync(() => rootBundle.loadString(kOpenFreeMapLibertyStyleAsset));
+    late _MapChoiceModel model;
+    final screen = MapScreen(
+        startupInteractionsEnabled: false,
+        createViewModel: () => model = _MapChoiceModel());
+    await tester.pumpWidget(MaterialApp(home: screen));
+    await tester.runAsync(() async {
+      await settingsStore.load();
+    });
+    await tester.pump();
+    final original = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    const camera = CameraPosition(
+        target: LatLng(48.16, 11.59), zoom: 18.25, bearing: 73, tilt: 24);
+    original.onCameraMove!(camera);
+    model.setMapBackground(MapBackground.aerial);
+    await tester.runAsync(() async {
+      await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    });
+    await tester.pump();
+    final aerial = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect(aerial.key, isNot(original.key));
+    expect(aerial.initialCameraPosition, camera);
+    expect((jsonDecode(aerial.styleString) as Map)['sources']['bavaria-aerial'],
+        isNotNull);
+    // Callbacks from the disposed map must not replace the retained camera.
+    original.onCameraMove!(const CameraPosition(target: LatLng(0, 0), zoom: 3));
+    model.setMapBackground(MapBackground.standard);
+    model.setMapBackground(MapBackground.aerial);
+    await tester.runAsync(() async {
+      await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    });
+    await tester.pump();
+    final latest = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect(latest.initialCameraPosition, camera);
+    expect((jsonDecode(latest.styleString) as Map)['sources']['bavaria-aerial'],
+        isNotNull);
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    model.setMapBackground(MapBackground.standard);
+    expect(model.mapBackground, MapBackground.aerial);
+    await tester.pumpWidget(MaterialApp(theme: ThemeData.dark(), home: screen));
+    await tester.runAsync(() async {
+      await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    });
+    await tester.pump();
+    final dark = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect(
+        (jsonDecode(dark.styleString) as Map)['sources']['bavaria-aerial']
+            ['attribution'],
+        bavariaAerialAttribution);
+    expect(dark.initialCameraPosition, camera);
+    expect(model.navigationStarted, isTrue);
+    expect(find.byTooltip('Karte auswählen'), findsNothing);
+    model.pauseNavigation();
+    await tester.pump();
+    model.setMapBackground(MapBackground.standard);
+    await tester.runAsync(() async {
+      await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    });
+    await tester.pump();
+    final paused = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect((jsonDecode(paused.styleString) as Map)['sources']['bavaria-aerial'],
+        isNull);
+    expect(paused.initialCameraPosition, camera);
+    expect(model.navigationPaused, isTrue);
+    expect(find.byTooltip('Karte auswählen'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
   for (final scenario in [
     'spoken',
     'muted',
@@ -131,6 +236,10 @@ void main() {
       await tester.pump();
       expect(spoken, isEmpty);
       await tester.tap(find.bySemanticsLabel('Starten'));
+      if (scenario == 'spoken') {
+        // A second tap before the next frame must not duplicate start speech.
+        await tester.tap(find.bySemanticsLabel('Starten'));
+      }
       await tester.pump();
       await tester.pump();
       if (scenario == 'permission enables speech') {

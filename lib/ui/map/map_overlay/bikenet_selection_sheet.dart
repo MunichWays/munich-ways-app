@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
-import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
+import 'package:munich_ways/model/map_background.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
-import 'package:munich_ways/ui/theme.dart';
+import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
+
+Future<void> showMapLayersSheet(
+    BuildContext context, MapScreenViewModel model) async {
+  if (!model.canChangeMapBackground) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => BikenetSelectionSheet(model: model),
+  );
+}
 
 class BikenetSelectionSheet extends StatefulWidget {
-  const BikenetSelectionSheet({
-    super.key,
-    required this.model,
-  });
-
+  const BikenetSelectionSheet({super.key, required this.model});
   final MapScreenViewModel model;
 
   @override
@@ -17,134 +25,159 @@ class BikenetSelectionSheet extends StatefulWidget {
 }
 
 class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.model.addListener(_onModelChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.model.removeListener(_onModelChanged);
+    super.dispose();
+  }
+
+  void _onModelChanged() {
+    if (!mounted) return;
+    if (!widget.model.canChangeMapBackground && !_closing) {
+      _closing = true;
+      final route = ModalRoute.of(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || route == null || !route.isActive) return;
+        // Never pop a newer dialog which happens to cover this sheet.
+        if (route.isCurrent) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).removeRoute(route);
+        }
+      });
+    }
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final lineColors = <Color>[
-      AppColors.getPolylineColor(
-        'grün',
-        dark: theme.brightness == Brightness.dark,
-      ),
-      AppColors.mapYellow,
-      AppColors.mapRed,
-      AppColors.getPolylineColor(
-        'schwarz',
-        dark: theme.brightness == Brightness.dark,
-      ),
-    ];
-    final rowTitleStyle = theme.textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-      color: theme.colorScheme.onSurface,
-    );
-    final rowSubtitleStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: theme.colorScheme.onSurface,
-    );
-
+    final english = context.l10n.isEnglish;
+    final model = widget.model;
     return BottomSheetFrame(
-      title: BottomSheetTitle(
-        title: context.l10n.tr('Fahrradnetz auswählen'),
-      ),
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _BikenetLayerRow(
-            selected: widget.model.isRadlvorrangnetzVisible,
-            title: context.l10n.tr('Radl-Vorrang-Netz'),
-            subtitle: context.l10n.isEnglish
-                ? 'Line style shows the Happy-Bike level'
-                : 'Linienart zeigt das Happy-Bike-Level',
-            lineColors: lineColors,
-            onTap: () {
-              widget.model.toggleRadvorrangnetzVisible();
-              setState(() {});
-            },
-            titleStyle: rowTitleStyle,
-            subtitleStyle: rowSubtitleStyle,
-          ),
-          _BikenetLayerRow(
-            selected: widget.model.isGesamtnetzVisible,
-            title: context.l10n.tr('Weitere Strecken'),
-            subtitle: context.l10n.isEnglish
-                ? 'Line style shows the Happy-Bike level'
-                : 'Linienart zeigt das Happy-Bike-Level',
-            lineColors: lineColors,
-            onTap: () {
-              widget.model.toggleGesamtnetzVisible();
-              setState(() {});
-            },
-            titleStyle: rowTitleStyle,
-            subtitleStyle: rowSubtitleStyle,
-          ),
-        ],
+      title: BottomSheetTitle(title: english ? 'Maps' : 'Karten'),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final background in MapBackground.values) ...[
+                    if (background != MapBackground.values.first)
+                      const SizedBox(width: 12),
+                    Expanded(
+                        child: _MapBackgroundCard(
+                      background: background,
+                      selected: model.mapBackground == background,
+                      onTap: model.canChangeMapBackground
+                          ? () => model.setMapBackground(background)
+                          : null,
+                    )),
+                  ],
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(english
+                  ? 'Aerial imagery is available in Bavaria.'
+                  : 'Luftbilder sind für Bayern verfügbar.'),
+            ),
+            const Divider(),
+            Material(
+              color: Colors.transparent,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile.adaptive(
+                    title: Text(context.l10n.tr('Radl-Vorrang-Netz')),
+                    value: model.isRadlvorrangnetzVisible,
+                    onChanged: (_) => model.toggleRadvorrangnetzVisible(),
+                  ),
+                  SwitchListTile.adaptive(
+                    title: Text(context.l10n.tr('Weitere Strecken')),
+                    value: model.isGesamtnetzVisible,
+                    onChanged: (_) => model.toggleGesamtnetzVisible(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _BikenetLayerRow extends StatelessWidget {
-  const _BikenetLayerRow({
-    required this.selected,
-    required this.title,
-    required this.subtitle,
-    required this.lineColors,
-    required this.onTap,
-    required this.titleStyle,
-    required this.subtitleStyle,
-  });
-
+class _MapBackgroundCard extends StatelessWidget {
+  const _MapBackgroundCard(
+      {required this.background, required this.selected, required this.onTap});
+  final MapBackground background;
   final bool selected;
-  final String title;
-  final String subtitle;
-  final List<Color> lineColors;
-  final VoidCallback onTap;
-  final TextStyle? titleStyle;
-  final TextStyle? subtitleStyle;
-
-  static const double _previewSize = 56;
-  static const double _lineThickness = 3;
-  static const double _lineGap = 4;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final aerial = background == MapBackground.aerial;
+    final label = aerial
+        ? (context.l10n.isEnglish ? 'Aerial Bavaria' : 'Luftbild Bayern')
+        : 'Standard';
+    final colors = Theme.of(context).colorScheme;
     return Semantics(
-      container: true,
-      label: '$title, $subtitle',
-      toggled: selected,
+      selected: selected,
+      button: true,
+      enabled: onTap != null,
+      label: label,
       onTap: onTap,
+      excludeSemantics: true,
       child: Material(
-        color: Colors.transparent,
+        color: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+              color: selected ? colors.primary : colors.outline,
+              width: selected ? 3 : 1),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ExcludeSemantics(
-                  child: _LinePreviewBadge(
-                    size: _previewSize,
-                    selected: selected,
-                    lineColors: lineColors,
-                    lineThickness: _lineThickness,
-                    lineGap: _lineGap,
-                  ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 104,
+                width: double.infinity,
+                child: aerial
+                    ? Image.asset('images/map_preview_aerial.jpg',
+                        fit: BoxFit.cover)
+                    : const CustomPaint(painter: _StandardMapPreview()),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(selected ? Icons.check_circle : Icons.circle_outlined,
+                        size: 20,
+                        color: selected ? colors.primary : colors.onSurface),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(label)),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ExcludeSemantics(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: titleStyle),
-                        const SizedBox(height: 4),
-                        Text(subtitle, style: subtitleStyle),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -152,127 +185,49 @@ class _BikenetLayerRow extends StatelessWidget {
   }
 }
 
-class _LinePreviewBadge extends StatelessWidget {
-  const _LinePreviewBadge({
-    required this.size,
-    required this.selected,
-    required this.lineColors,
-    required this.lineThickness,
-    required this.lineGap,
-  });
-
-  final double size;
-  final bool selected;
-  final List<Color> lineColors;
-  final double lineThickness;
-  final double lineGap;
-
-  @override
-  Widget build(BuildContext context) {
-    final inner = Padding(
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < lineColors.length; i++) ...[
-            if (i > 0) SizedBox(height: lineGap),
-            i >= 2
-                ? LayoutBuilder(
-                    builder: (context, constraints) {
-                      return CustomPaint(
-                        size: Size(constraints.maxWidth, lineThickness),
-                        painter: _DashedBarPainter(color: lineColors[i]),
-                      );
-                    },
-                  )
-                : Container(
-                    height: lineThickness,
-                    decoration: BoxDecoration(
-                      color: lineColors[i],
-                      borderRadius: BorderRadius.circular(lineThickness / 2),
-                    ),
-                  ),
-          ],
-        ],
-      ),
-    );
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: selected ? Colors.white : const Color(0xFFF0F0F0),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: selected ? AppColors.mapAccentColor : Colors.black54,
-                width: selected ? 4 : 1,
-              ),
-            ),
-            child: inner,
-          ),
-          if (selected)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: AppColors.mapAccentColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 2,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(3),
-                  child: Icon(
-                    Icons.check,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Short horizontal dashes for the “gestrichelt” preview.
-class _DashedBarPainter extends CustomPainter {
-  _DashedBarPainter({required this.color});
-
-  final Color color;
+/// Local schematic preview: no extra renderer or map downloads in the menu.
+class _StandardMapPreview extends CustomPainter {
+  const _StandardMapPreview();
 
   @override
   void paint(Canvas canvas, Size size) {
-    const dashLen = 4.0;
-    const gap = 6.0;
-    final y = size.height / 2;
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = size.height.clamp(1.0, 4.0)
-      ..strokeCap = StrokeCap.round;
-    var x = 0.0;
-    while (x < size.width) {
-      final end = (x + dashLen).clamp(0.0, size.width);
-      if (end > x) {
-        canvas.drawLine(Offset(x, y), Offset(end, y), paint);
-      }
-      x += dashLen + gap;
+    canvas.drawRect(
+        Offset.zero & size, Paint()..color = const Color(0xffefefef));
+    canvas.drawRect(
+        Rect.fromLTWH(size.width * .6, 0, size.width * .4, size.height * .6),
+        Paint()..color = const Color(0xffd8e8c8));
+    final river = Path()
+      ..moveTo(size.width * .3, 0)
+      ..cubicTo(size.width * .7, size.height * .3, size.width * .2,
+          size.height * .7, size.width * .4, size.height);
+    canvas.drawPath(
+        river,
+        Paint()
+          ..color = const Color(0xff9dc8df)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10);
+    for (final y in [.25, .65]) {
+      canvas.drawLine(
+          Offset(0, size.height * y),
+          Offset(size.width, size.height * (y + .1)),
+          Paint()
+            ..color = const Color(0xffd0b888)
+            ..strokeWidth = 9);
+      canvas.drawLine(
+          Offset(0, size.height * y),
+          Offset(size.width, size.height * (y + .1)),
+          Paint()
+            ..color = Colors.white
+            ..strokeWidth = 6);
     }
+    canvas.drawLine(
+        Offset(size.width * .7, 0),
+        Offset(size.width * .5, size.height),
+        Paint()
+          ..color = const Color(0xff4f98a5)
+          ..strokeWidth = 3);
   }
 
   @override
-  bool shouldRepaint(covariant _DashedBarPainter oldDelegate) =>
-      oldDelegate.color != color;
+  bool shouldRepaint(_StandardMapPreview oldDelegate) => false;
 }

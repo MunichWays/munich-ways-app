@@ -67,6 +67,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('sources include Bayern WMTS', (tester) async {
+    await openAbout(tester, _DiagnosticsService());
+    final sources = find.text('Quellen & Routendienste');
+    await tester.ensureVisible(sources);
+    await tester.tap(sources);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Bayern-WMTS'));
+    expect(find.text('Bayern-WMTS'), findsOneWidget);
+  });
+
   testWidgets(
       'diagnostics sits between terms and version, refreshes, copies and returns to About',
       (tester) async {

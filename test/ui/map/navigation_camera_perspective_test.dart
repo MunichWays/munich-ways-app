@@ -22,6 +22,8 @@ import '../../support/wakelock_stub.dart';
 
 class _Settings extends SettingsStore {
   @override
+  Future<void> saveMap3dEnabled(bool enabled) async {}
+  @override
   Future<SettingsData> load() async => SettingsData.defaults;
 }
 
@@ -183,25 +185,25 @@ void main() {
         target: _initial.target, zoom: 17.5, bearing: 123);
     expect(fix().tilt, 0); // Planning cannot activate the riding perspective.
     await model.startNavigation();
-    expect(fix().tilt, 30);
+    expect(fix().tilt, 50);
     expect(fix().zoom, 17.5);
     expect(fix().bearing, 123);
     expect(fix().target, _initial.target);
     model.onUserStoppedFollowingLocation();
-    expect(navigationCameraTilt(model), isNull); // Keep a gesture undisturbed.
+    expect(navigationCameraTilt(model), 50); // Keep a gesture undisturbed.
     expect(model.navigationActive, isTrue);
     expect(model.resumeNavigationCameraFollowing(), isTrue);
-    expect(fix().tilt, 30);
+    expect(fix().tilt, 50);
     model.locationState = LocationState.NOT_AVAILABLE;
     expect(fix().tilt, 0);
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
-    expect(fix().tilt, 30);
+    expect(fix().tilt, 50);
     model.pauseNavigation();
     expect(fix().tilt, 0);
     expect(model.resumeNavigationCameraFollowing(), isFalse);
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
-    expect(fix().tilt, 30);
+    expect(fix().tilt, 50);
     model.clearDestination();
     expect(fix().tilt, 0);
   });
@@ -236,7 +238,7 @@ void main() {
         48);
     await h.model.startNavigation();
     await _frames(tester);
-    expect(h.platform.camera.tilt, 30);
+    expect(h.platform.camera.tilt, 50);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
@@ -271,7 +273,67 @@ void main() {
     expect(h.platform.camera.zoom, 16);
     await state.renderLocation(h.model, position);
     expect(h.platform.camera.zoom, 16);
-    expect(h.platform.camera.tilt, 30);
+    expect(h.platform.camera.tilt, 50);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets(
+      '3D defaults flat, toggles to 50 degrees and allows native gestures',
+      (tester) async {
+    final h = await _open(tester);
+    final camera = h.platform.camera;
+    expect(h.model.map3dEnabled, isTrue);
+    expect(camera.tilt, 0);
+    expect(find.byTooltip('3D'), findsNothing);
+    h.model.setMap3dEnabled(false);
+    await _frames(tester);
+    expect(
+        tester
+            .widget<MapLibreMap>(find.byType(MapLibreMap))
+            .tiltGesturesEnabled,
+        isFalse);
+    h.model.setMap3dEnabled(true);
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 50);
+    expect(h.platform.camera.target, camera.target);
+    expect(h.platform.camera.zoom, camera.zoom);
+    expect(h.platform.camera.bearing, camera.bearing);
+    final map = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect(map.tiltGesturesEnabled, isTrue);
+    final listener = tester.widget<Listener>(find
+        .ancestor(of: find.byType(MapLibreMap), matching: find.byType(Listener))
+        .first);
+    listener.onPointerDown!(const PointerDownEvent(pointer: 1));
+    listener.onPointerDown!(const PointerDownEvent(pointer: 2));
+    h.platform.camera = CameraPosition(
+        target: camera.target,
+        zoom: camera.zoom,
+        bearing: camera.bearing,
+        tilt: 42);
+    h.platform.onCameraMovePlatform(h.platform.camera);
+    listener.onPointerUp!(const PointerUpEvent(pointer: 1));
+    listener.onPointerUp!(const PointerUpEvent(pointer: 2));
+    h.platform.onCameraIdlePlatform(h.platform.camera);
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 42);
+    expect(h.model.mapInspectionTilt, 42);
+    await tester
+        .widget<MapSideActionButtons>(find.byType(MapSideActionButtons))
+        .onNorthUp();
+    await _frames(tester);
+    expect(h.model.map3dEnabled, isTrue);
+    expect(h.platform.camera.tilt, 0);
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    await _frames(tester);
+    h.model.setMap3dEnabled(false);
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 0);
+    h.model.setMap3dEnabled(true);
+    await _frames(tester);
+    expect(h.platform.camera.tilt, 50);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
@@ -285,13 +347,13 @@ void main() {
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     expect(platform.camera.target, _initial.target);
     expect(platform.camera.zoom, _initial.zoom);
     expect(platform.camera.bearing, _initial.bearing);
     model.onUserStoppedFollowingLocation();
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     await tester
         .widget<MapSideActionButtons>(find.byType(MapSideActionButtons))
         .onNorthUp();
@@ -301,14 +363,14 @@ void main() {
     expect(model.navigationActive, isTrue);
     expect(model.resumeNavigationCameraFollowing(), isTrue);
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     model.pauseNavigation();
     await _frames(tester);
     expect(platform.camera.tilt, 0);
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation(); // Same entry point as successful Refresh.
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     model.clearDestination();
     await _frames(tester);
     expect(platform.camera.tilt, 0);
@@ -350,7 +412,7 @@ void main() {
     model.onUserStoppedFollowingLocation();
     model.resumeNavigationCameraFollowing();
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -364,7 +426,7 @@ void main() {
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     platform.acknowledgeAnimationBeforeIdle = true;
     await tester
         .widget<MapSideActionButtons>(find.byType(MapSideActionButtons))
@@ -373,7 +435,7 @@ void main() {
     model.pauseNavigation();
     await _frames(tester);
     expect(platform.updates.length, callsWhileAnimating);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     await platform.finishAnimation();
     await _frames(tester);
     expect(platform.camera.tilt, 0);
@@ -382,7 +444,7 @@ void main() {
     model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
     await _frames(tester);
-    expect(platform.camera.tilt, 30);
+    expect(platform.camera.tilt, 50);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/common/logger_setup.dart';
+import 'package:munich_ways/model/map_background.dart';
+import 'package:munich_ways/ui/map/aerial_map_style.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class MapAttribution extends StatelessWidget {
@@ -7,10 +9,12 @@ class MapAttribution extends StatelessWidget {
     super.key,
     required this.expanded,
     this.inline = false,
+    this.background = MapBackground.standard,
   });
 
   final bool expanded;
   final bool inline;
+  final MapBackground background;
 
   Future<void> _launch(String url) async {
     if (await canLaunchUrlString(url)) {
@@ -36,7 +40,7 @@ class MapAttribution extends StatelessWidget {
               ),
         ),
         onPressed: () => _launch(url),
-        child: Text(label, maxLines: 1),
+        child: Text(label, textAlign: TextAlign.center),
       ),
     );
   }
@@ -44,37 +48,50 @@ class MapAttribution extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!expanded) return const SizedBox.shrink();
-    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.black87,
-            ) ??
-        const TextStyle(color: Colors.black87);
+    final aerial = background == MapBackground.aerial;
     final content = Container(
       width: double.infinity,
-      height: 48,
       color: Colors.white.withValues(alpha: 0.92),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: 4),
-            Text('©', style: baseStyle),
-            _link(
-              context,
-              'OpenMapTiles',
-              'https://www.openmaptiles.org/',
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (aerial)
+            const Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 2),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(bavariaAerialAttribution,
+                    style: TextStyle(fontSize: 11, color: Colors.black87)),
+              ),
             ),
-            Text('· ©', style: baseStyle),
-            _link(
-              context,
-              'OpenStreetMap contributors',
-              'https://www.openstreetmap.org/copyright',
-            ),
-            Text('·', style: baseStyle),
-            _link(context, 'OpenFreeMap', 'https://openfreemap.org/'),
-            const SizedBox(width: 4),
-          ],
-        ),
+          IntrinsicHeight(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                Expanded(
+                    child: _link(context, 'OpenMapTiles',
+                        'https://www.openmaptiles.org/')),
+                Expanded(
+                    child: _link(context, '© OpenStreetMap contributors',
+                        'https://www.openstreetmap.org/copyright')),
+              ])),
+          IntrinsicHeight(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                Expanded(
+                    child: _link(
+                        context, 'OpenFreeMap', 'https://openfreemap.org/')),
+                if (aerial)
+                  Expanded(
+                      child: _link(context, 'Bayern-WMTS',
+                          'https://geodatenonline.bayern.de/geodatenonline/seiten/wmts_ba'))
+                else
+                  const Expanded(child: SizedBox.shrink()),
+              ])),
+        ],
       ),
     );
     if (inline) return content;

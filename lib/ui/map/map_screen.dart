@@ -23,6 +23,7 @@ import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/street_details.dart';
 import 'package:munich_ways/model/place.dart';
+import 'package:munich_ways/model/map_background.dart';
 import 'package:munich_ways/model/poi_details.dart';
 import 'package:munich_ways/model/example_places.dart';
 import 'package:munich_ways/routing/oberbayern_coverage.dart';
@@ -31,6 +32,8 @@ import 'package:munich_ways/reviews/app_review_service.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/ui/map/vector_basemap_constants.dart';
 import 'package:munich_ways/ui/map/dark_map_style.dart';
+import 'package:munich_ways/ui/map/aerial_map_style.dart';
+import 'package:munich_ways/ui/map/map_overlay/bikenet_selection_sheet.dart';
 import 'package:munich_ways/ui/map/map_overlay_line_style.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 import 'package:munich_ways/screenshots/store_screenshot_controls.dart';
@@ -146,12 +149,15 @@ String energySavingAnnouncement(bool english) => english
 /// handled by its camera update; automatic following keeps the chosen tilt.
 @visibleForTesting
 double? navigationCameraTilt(MapScreenViewModel model) {
-  if (!model.navigationActive || model.locationState == LocationState.FOLLOW) {
-    return 0;
+  if (!model.map3dEnabled ||
+      (model.navigationStarted &&
+          model.locationState == LocationState.NOT_AVAILABLE &&
+          !model.canChangeMapBackground)) return 0;
+  if (!model.navigationActive ||
+      model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
+    return model.mapInspectionTilt;
   }
-  return model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP
-      ? model.navigationTilt
-      : null;
+  return model.navigationTilt;
 }
 
 @visibleForTesting
@@ -425,6 +431,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   late bool _mountMapView;
   String? _mapStyleString;
   bool? _darkMapStyle;
+  MapBackground _mapBackground = MapBackground.standard;
+  MapBackground _renderedMapBackground = MapBackground.standard;
+  MapScreenViewModel? _observedMapModel;
+  Future<void>? _mapStyleFuture;
+  int _mapStyleRequest = 0;
   int _mapStyleGeneration = 0;
   bool _initialCameraLoaded = false;
   CameraPosition? _savedInitialCamera;
@@ -555,10 +566,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final dark = Theme.of(context).brightness == Brightness.dark;
     if (_darkMapStyle == dark) return;
     _darkMapStyle = dark;
-    unawaited(_loadMapStyle(dark));
+    _mapStyleFuture = _loadMapStyle(dark);
+  }
+
+  void _onMapBackgroundChanged() {
+    final background = _observedMapModel!.mapBackground;
+    if (!mounted || _mapBackground == background) return;
+    _mapBackground = background;
+    _mapStyleFuture = _loadMapStyle(_darkMapStyle ?? false);
   }
 
   Future<void> _loadMapStyle(bool dark) async {
+    final request = ++_mapStyleRequest;
+    final background = _mapBackground;
     String style;
     try {
       style = await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
@@ -572,16 +592,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     if (style != kOpenFreeMapLibertyStyleAsset) {
       style = dark ? createDarkMapStyle(style) : createCyclingMapStyle(style);
+      if (background == MapBackground.aerial)
+        style = createAerialMapStyle(style);
     }
     // Loading and transforming the bundled style is asynchronous. If the
     // theme changes again while it is in progress, an older request must not
     // overwrite the style for the current theme when it finishes last.
-    if (!mounted || _darkMapStyle != dark) return;
+    if (!mounted || request != _mapStyleRequest) return;
     setState(() {
       // Recreate the native map for a new style instead of changing the style
       // underneath in-flight layer operations. In particular on Android,
       // callbacks from the previous style can otherwise race the new style and
       // leave overlays missing or crash the native map renderer.
+      _savedInitialCamera =
+          _mapController?.cameraPosition ?? _savedInitialCamera;
       _mapStyleGeneration++;
       _mapController = null;
       _styleLoaded = false;
@@ -598,6 +622,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _lastSyncedNetworkFingerprint = null;
       _lastRouteFingerprint = null;
       _mapStyleString = style;
+      _renderedMapBackground = style == kOpenFreeMapLibertyStyleAsset
+          ? MapBackground.standard
+          : background;
     });
   }
 
@@ -642,6 +669,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _resetStalledGuidanceRecovery();
     _cancelAutomaticRerouting(resetAttempts: false);
     _stopVoiceGuidance();
+    _observedMapModel?.removeListener(_onMapBackgroundChanged);
     _mapBearingDegrees.dispose();
     _compassIdleTick.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -948,6 +976,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       create: (BuildContext _) {
         final model = widget.createViewModel?.call() ?? MapScreenViewModel();
         mapViewModel = model;
+        _observedMapModel = model;
+        model.addListener(_onMapBackgroundChanged);
+        _onMapBackgroundChanged();
         model.startInitialLoad();
 
         model.errorMsgs.listen((errorMsg) {
@@ -1188,7 +1219,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _initialCameraLoaded)
                     Listener(
                       onPointerDown: (event) {
-                        _navigationTiltGesture = model.navigationActive;
+                        _navigationTiltGesture = model.map3dEnabled;
                         _navigationCameraFollow.pointerDown(
                             event.pointer, DateTime.now());
                         _stopFollowingForMapInspection(model);
@@ -1212,6 +1243,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                           // Native MapLibre compass (default on) duplicates [MapCompassControl].
                           compassEnabled: false,
+                          tiltGesturesEnabled: model.map3dEnabled,
                           trackCameraPosition: true,
                           minMaxZoomPreference:
                               const MinMaxZoomPreference(3, 22),
@@ -1312,9 +1344,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             );
                           },
                           onCameraMove: (CameraPosition position) {
-                            if (mapStyleGeneration == _mapStyleGeneration) {
-                              _mapRenderDiagnostics.cameraMoved();
-                            }
+                            if (mapStyleGeneration != _mapStyleGeneration)
+                              return;
+                            _savedInitialCamera = position;
+                            _mapRenderDiagnostics.cameraMoved();
                             if (_navigationTiltGesture ||
                                 _navigationCameraFollow.interacting) {
                               model.recordNavigationTilt(position.tilt);
@@ -1326,10 +1359,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ));
                           },
                           onCameraIdle: () {
-                            if (mapStyleGeneration == _mapStyleGeneration) {
-                              _mapRenderDiagnostics.cameraIdle();
-                              _cameraAnimationPending = false;
-                            }
+                            if (mapStyleGeneration != _mapStyleGeneration)
+                              return;
+                            _mapRenderDiagnostics.cameraIdle();
+                            _cameraAnimationPending = false;
                             if (_navigationTiltGesture) {
                               final tilt = _mapController?.cameraPosition?.tilt;
                               if (tilt != null)
@@ -1412,18 +1445,22 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           Positioned(
                             top: 0,
                             left: 0,
-                            right: 0,
-                            height: 48,
+                            right: 72,
                             child: IgnorePointer(
                               ignoring: !_mapAttributionExpanded,
                               child: MapAttribution(
                                 expanded: _mapAttributionExpanded,
                                 inline: true,
+                                background: _renderedMapBackground,
                               ),
                             ),
                           ),
                           MapSideActionButtons(
                             model: model,
+                            onShowMaps: () {
+                              _appReviewPrompt.cancel();
+                              showMapLayersSheet(context, model);
+                            },
                             mapController: _mapController,
                             mapBearingDegrees: _mapBearingDegrees,
                             compassIdleTick: _compassIdleTick,
@@ -1466,7 +1503,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                            top: _mapAttributionExpanded ? 56 : 28,
+                            top: _mapAttributionExpanded ? 0 : 28,
                             right: 12,
                             child: MapOverlayButton(
                               tooltip: context.l10n.isEnglish
@@ -1493,7 +1530,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                           if (energySaving)
                             Positioned(
-                              top: _mapAttributionExpanded ? 112 : 84,
+                              top: _mapAttributionExpanded ? 56 : 84,
                               right: 12,
                               child: IconButton.filled(
                                 style: IconButton.styleFrom(
@@ -1564,8 +1601,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                                   model),
                                           onEditRoute: () =>
                                               _openRoutePlanner(model),
-                                          onStartNavigation: () =>
-                                              _startNavigation(model),
+                                          onStartNavigation: () async {
+                                            if (model.navigationStarted) return;
+                                            await _startNavigation(model);
+                                          },
                                           onToggleVoiceGuidance: () =>
                                               _toggleVoiceGuidance(
                                             model,
@@ -2718,7 +2757,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (model.navigationStartPending) return;
     _navigationRemaining.clear();
     _appReviewPrompt.cancel();
-    final started = await model.startNavigation();
+    // Reserve the existing start request synchronously, before any style await,
+    // so a double tap cannot start two announcement/camera sequences.
+    final navigationStart = model.startNavigation();
+    // Finish applying the selected local style before starting guidance. A later
+    // selection supersedes an earlier load; navigation never changes the choice.
+    while (_mapStyleFuture != null) {
+      final loading = _mapStyleFuture;
+      await loading;
+      if (!mounted) return;
+      if (identical(loading, _mapStyleFuture)) break;
+    }
+    final started = await navigationStart;
     if (!mounted || !started) return;
     _navigationMotion.reset();
     _navigationCameraFollow.reset();
@@ -3535,7 +3585,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       // Apply before a queued animation, never immediately after it: on iOS
       // the returned Future is only an acknowledgement, and a tiltTo would
       // cancel the zoom/target animation before it reaches its destination.
-      await _applyCameraPerspective(controller);
+      // A full camera position already carries its intended tilt. Applying a
+      // separate tilt first would snap the map before a north-up animation.
+      final updateData = update?.toJson();
+      if (updateData is! List || updateData.first != 'newCameraPosition') {
+        await _applyCameraPerspective(controller);
+      }
       if (!mounted || !identical(controller, _mapController)) return;
       // Avoid MapLibre's native easeTo path for the first iOS camera update.
       // This is the path confirmed by the TestFlight SIGABRT reports.

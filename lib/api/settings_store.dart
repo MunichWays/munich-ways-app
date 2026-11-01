@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
+import 'package:munich_ways/model/map_background.dart';
 
 var settingsStore = SettingsStore();
 
@@ -56,12 +57,23 @@ class SettingsStore {
   Future<void> saveMapSettings({
     required bool showZoomButtons,
     required String sidePanelEdgeName,
+    MapBackground? mapBackground,
+    bool? showMapButton,
+    bool? radlvorrangnetzVisible,
+    bool? gesamtnetzVisible,
   }) {
     return _enqueueUpdate((current) => current.copyWith(
           showZoomButtons: showZoomButtons,
           sidePanelEdgeName: sidePanelEdgeName,
+          mapBackground: mapBackground,
+          showMapButton: showMapButton,
+          radlvorrangnetzVisible: radlvorrangnetzVisible,
+          gesamtnetzVisible: gesamtnetzVisible,
         ));
   }
+
+  Future<void> saveMap3dEnabled(bool enabled) =>
+      _enqueueUpdate((current) => current.copyWith(map3dEnabled: enabled));
 
   Future<void> saveMapCamera({
     required double latitude,
@@ -157,6 +169,11 @@ class SettingsData {
     this.mapZoom,
     this.mapBearing,
     this.energySavingEnabled = false,
+    this.map3dEnabled = true,
+    this.mapBackground = MapBackground.standard,
+    this.showMapButton = true,
+    this.radlvorrangnetzVisible = true,
+    this.gesamtnetzVisible = true,
   });
 
   final bool showZoomButtons;
@@ -177,6 +194,11 @@ class SettingsData {
   final double? mapZoom;
   final double? mapBearing;
   final bool energySavingEnabled;
+  final bool map3dEnabled;
+  final MapBackground mapBackground;
+  final bool showMapButton;
+  final bool radlvorrangnetzVisible;
+  final bool gesamtnetzVisible;
 
   static const SettingsData defaults = SettingsData(
     showZoomButtons: true,
@@ -207,6 +229,11 @@ class SettingsData {
         if (mapZoom != null) 'mapZoom': mapZoom,
         if (mapBearing != null) 'mapBearing': mapBearing,
         'energySavingEnabled': energySavingEnabled,
+        'map3dEnabled': map3dEnabled,
+        'mapBackground': mapBackground.name,
+        'showMapButton': showMapButton,
+        'radlvorrangnetzVisible': radlvorrangnetzVisible,
+        'gesamtnetzVisible': gesamtnetzVisible,
       };
 
   SettingsData copyWith({
@@ -226,6 +253,11 @@ class SettingsData {
     double? mapZoom,
     double? mapBearing,
     bool? energySavingEnabled,
+    MapBackground? mapBackground,
+    bool? showMapButton,
+    bool? radlvorrangnetzVisible,
+    bool? gesamtnetzVisible,
+    bool? map3dEnabled,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -246,6 +278,12 @@ class SettingsData {
         mapZoom: mapZoom ?? this.mapZoom,
         mapBearing: mapBearing ?? this.mapBearing,
         energySavingEnabled: energySavingEnabled ?? this.energySavingEnabled,
+        map3dEnabled: map3dEnabled ?? this.map3dEnabled,
+        mapBackground: mapBackground ?? this.mapBackground,
+        showMapButton: showMapButton ?? this.showMapButton,
+        radlvorrangnetzVisible:
+            radlvorrangnetzVisible ?? this.radlvorrangnetzVisible,
+        gesamtnetzVisible: gesamtnetzVisible ?? this.gesamtnetzVisible,
       );
 
   factory SettingsData.fromJson(Map<String, dynamic> json) {
@@ -293,6 +331,13 @@ class SettingsData {
       mapZoom: (json['mapZoom'] as num?)?.toDouble(),
       mapBearing: (json['mapBearing'] as num?)?.toDouble(),
       energySavingEnabled: json['energySavingEnabled'] as bool? ?? false,
+      map3dEnabled: json['map3dEnabled'] as bool? ?? true,
+      mapBackground: json['mapBackground'] == 'aerial'
+          ? MapBackground.aerial
+          : MapBackground.standard,
+      showMapButton: json['showMapButton'] as bool? ?? true,
+      radlvorrangnetzVisible: json['radlvorrangnetzVisible'] as bool? ?? true,
+      gesamtnetzVisible: json['gesamtnetzVisible'] as bool? ?? true,
     );
   }
 }

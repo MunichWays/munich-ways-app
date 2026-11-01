@@ -92,6 +92,15 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         children: [
                           const MenuGroupDivider(),
                           MenuGroupItem(
+                            label: '3D',
+                            trailingElement: _SecondarySettingsSwitch(
+                              semanticLabel: '3D',
+                              value: model.map3dEnabled,
+                              onChanged: model.setMap3dEnabled,
+                            ),
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
                             label: strings.isEnglish
                                 ? 'Recalculate automatically'
                                 : 'Automatisch neu berechnen',
@@ -101,6 +110,19 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                                   : 'Automatisch neu berechnen',
                               value: model.automaticReroutingEnabled,
                               onChanged: model.setAutomaticReroutingEnabled,
+                            ),
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
+                            label: strings.isEnglish
+                                ? 'Show map button'
+                                : 'Kartentaste anzeigen',
+                            trailingElement: _SecondarySettingsSwitch(
+                              semanticLabel: strings.isEnglish
+                                  ? 'Show map button'
+                                  : 'Kartentaste anzeigen',
+                              value: model.showMapButton,
+                              onChanged: model.setShowMapButton,
                             ),
                           ),
                           const MenuGroupDivider(),
@@ -174,20 +196,16 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                           ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
-                            label: context.l10n.tr('Fahrradnetz auswählen'),
+                            label: strings.isEnglish ? 'Maps' : 'Karten',
                             trailingElement: Icon(
                               model.isRadlvorrangnetzVisible &&
                                       model.isGesamtnetzVisible
                                   ? Icons.layers
                                   : Icons.layers_clear,
                             ),
-                            onTap: () => showModalBottomSheet<void>(
-                              context: context,
-                              useSafeArea: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) =>
-                                  BikenetSelectionSheet(model: model),
-                            ),
+                            onTap: model.canChangeMapBackground
+                                ? () => showMapLayersSheet(context, model)
+                                : null,
                           ),
                           const MenuGroupDivider(),
                           MenuGroupItem(
