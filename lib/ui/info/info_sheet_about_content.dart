@@ -114,6 +114,13 @@ class InfoSheetAboutContent extends StatelessWidget {
                     label: 'OpenFreeMap',
                     onTap: () => _openUrl(context, 'https://openfreemap.org/'),
                   ),
+                  const MenuGroupDivider(),
+                  MenuGroupItem(
+                    icon: Icons.open_in_new,
+                    label: 'Bayern-WMTS',
+                    onTap: () => _openUrl(context,
+                        'https://geodatenonline.bayern.de/geodatenonline/seiten/wmts_ba'),
+                  ),
                 ],
               ),
             ],

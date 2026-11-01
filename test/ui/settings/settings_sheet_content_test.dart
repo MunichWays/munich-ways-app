@@ -234,6 +234,8 @@ void main() {
     expect(find.text('Routenberechnung'), findsNothing);
     await tester.tap(more);
     await tester.pumpAndSettle();
+    expect(find.text('3D'), findsOneWidget);
+    expect(model.map3dEnabled, isTrue);
     expect(energySaving, findsOneWidget);
     expect(automaticRerouting, findsOneWidget);
     expect(mapControls, findsOneWidget);

@@ -92,6 +92,15 @@ class _SettingsSheetContentState extends State<SettingsSheetContent> {
                         children: [
                           const MenuGroupDivider(),
                           MenuGroupItem(
+                            label: '3D',
+                            trailingElement: _SecondarySettingsSwitch(
+                              semanticLabel: '3D',
+                              value: model.map3dEnabled,
+                              onChanged: model.setMap3dEnabled,
+                            ),
+                          ),
+                          const MenuGroupDivider(),
+                          MenuGroupItem(
                             label: strings.isEnglish
                                 ? 'Recalculate automatically'
                                 : 'Automatisch neu berechnen',

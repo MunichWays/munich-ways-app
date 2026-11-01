@@ -15,12 +15,14 @@ void main() {
           showMapButton: false,
           radlvorrangnetzVisible: false,
           gesamtnetzVisible: true),
+      store.saveMap3dEnabled(false),
       store.saveThemeMode('dark'),
       store.saveLanguage('en'),
       store.saveMapCamera(
           latitude: 48.15, longitude: 11.59, zoom: 18, bearing: 72),
     ]);
     final restored = SettingsData.fromJson((await store.load()).toJson());
+    expect(restored.map3dEnabled, isFalse);
     expect(restored.mapBackground, MapBackground.aerial);
     expect(restored.showMapButton, isFalse);
     expect(restored.radlvorrangnetzVisible, isFalse);
@@ -57,6 +59,7 @@ void main() {
       final data = SettingsData.fromJson(json);
       expect(data.mapBackground, MapBackground.standard);
       expect(data.showMapButton, isTrue);
+      expect(data.map3dEnabled, isTrue);
       expect(data.radlvorrangnetzVisible, isTrue);
       expect(data.gesamtnetzVisible, isTrue);
     }

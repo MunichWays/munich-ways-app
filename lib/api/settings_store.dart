@@ -72,6 +72,9 @@ class SettingsStore {
         ));
   }
 
+  Future<void> saveMap3dEnabled(bool enabled) =>
+      _enqueueUpdate((current) => current.copyWith(map3dEnabled: enabled));
+
   Future<void> saveMapCamera({
     required double latitude,
     required double longitude,
@@ -166,6 +169,7 @@ class SettingsData {
     this.mapZoom,
     this.mapBearing,
     this.energySavingEnabled = false,
+    this.map3dEnabled = true,
     this.mapBackground = MapBackground.standard,
     this.showMapButton = true,
     this.radlvorrangnetzVisible = true,
@@ -190,6 +194,7 @@ class SettingsData {
   final double? mapZoom;
   final double? mapBearing;
   final bool energySavingEnabled;
+  final bool map3dEnabled;
   final MapBackground mapBackground;
   final bool showMapButton;
   final bool radlvorrangnetzVisible;
@@ -224,6 +229,7 @@ class SettingsData {
         if (mapZoom != null) 'mapZoom': mapZoom,
         if (mapBearing != null) 'mapBearing': mapBearing,
         'energySavingEnabled': energySavingEnabled,
+        'map3dEnabled': map3dEnabled,
         'mapBackground': mapBackground.name,
         'showMapButton': showMapButton,
         'radlvorrangnetzVisible': radlvorrangnetzVisible,
@@ -251,6 +257,7 @@ class SettingsData {
     bool? showMapButton,
     bool? radlvorrangnetzVisible,
     bool? gesamtnetzVisible,
+    bool? map3dEnabled,
   }) =>
       SettingsData(
         showZoomButtons: showZoomButtons ?? this.showZoomButtons,
@@ -271,6 +278,7 @@ class SettingsData {
         mapZoom: mapZoom ?? this.mapZoom,
         mapBearing: mapBearing ?? this.mapBearing,
         energySavingEnabled: energySavingEnabled ?? this.energySavingEnabled,
+        map3dEnabled: map3dEnabled ?? this.map3dEnabled,
         mapBackground: mapBackground ?? this.mapBackground,
         showMapButton: showMapButton ?? this.showMapButton,
         radlvorrangnetzVisible:
@@ -323,6 +331,7 @@ class SettingsData {
       mapZoom: (json['mapZoom'] as num?)?.toDouble(),
       mapBearing: (json['mapBearing'] as num?)?.toDouble(),
       energySavingEnabled: json['energySavingEnabled'] as bool? ?? false,
+      map3dEnabled: json['map3dEnabled'] as bool? ?? true,
       mapBackground: json['mapBackground'] == 'aerial'
           ? MapBackground.aerial
           : MapBackground.standard,

@@ -40,72 +40,59 @@ class MapAttribution extends StatelessWidget {
               ),
         ),
         onPressed: () => _launch(url),
-        child: Text(label, maxLines: 1),
+        child: Text(label, textAlign: TextAlign.center),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!expanded) return const SizedBox.shrink();
     final aerial = background == MapBackground.aerial;
-    if (!expanded && !aerial) return const SizedBox.shrink();
-    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.black87,
-            ) ??
-        const TextStyle(color: Colors.black87);
-    final links = Container(
+    final content = Container(
       width: double.infinity,
-      height: 48,
       color: Colors.white.withValues(alpha: 0.92),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: 4),
-            Text('©', style: baseStyle),
-            _link(
-              context,
-              'OpenMapTiles',
-              'https://www.openmaptiles.org/',
-            ),
-            Text('· ©', style: baseStyle),
-            _link(
-              context,
-              'OpenStreetMap contributors',
-              'https://www.openstreetmap.org/copyright',
-            ),
-            Text('·', style: baseStyle),
-            _link(context, 'OpenFreeMap', 'https://openfreemap.org/'),
-            const SizedBox(width: 4),
-          ],
-        ),
-      ),
-    );
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (aerial)
-          Container(
-            color: Colors.white.withValues(alpha: 0.92),
-            padding: const EdgeInsets.all(4),
-            child: const SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Text(
-                '$bavariaAerialAttribution · © OpenStreetMap contributors · OpenMapTiles · OpenFreeMap',
-                style: TextStyle(fontSize: 11, color: Colors.black87),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (aerial)
+            const Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 2),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(bavariaAerialAttribution,
+                    style: TextStyle(fontSize: 11, color: Colors.black87)),
               ),
             ),
-          ),
-        if (expanded) links,
-        if (aerial && expanded)
-          Container(
-            color: Colors.white.withValues(alpha: 0.92),
-            child: _link(context, 'Bayern-WMTS',
-                'https://geodatenonline.bayern.de/geodatenonline/seiten/wmts_ba'),
-          ),
-      ],
+          IntrinsicHeight(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                Expanded(
+                    child: _link(context, 'OpenMapTiles',
+                        'https://www.openmaptiles.org/')),
+                Expanded(
+                    child: _link(context, '© OpenStreetMap contributors',
+                        'https://www.openstreetmap.org/copyright')),
+              ])),
+          IntrinsicHeight(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                Expanded(
+                    child: _link(
+                        context, 'OpenFreeMap', 'https://openfreemap.org/')),
+                if (aerial)
+                  Expanded(
+                      child: _link(context, 'Bayern-WMTS',
+                          'https://geodatenonline.bayern.de/geodatenonline/seiten/wmts_ba'))
+                else
+                  const Expanded(child: SizedBox.shrink()),
+              ])),
+        ],
+      ),
     );
     if (inline) return content;
     return Align(alignment: Alignment.bottomCenter, child: content);

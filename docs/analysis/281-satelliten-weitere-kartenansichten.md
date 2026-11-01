@@ -1,5 +1,14 @@
 # #281 – Luftbilder und weitere Kartenansichten
 
+Aktueller Abschlussstand: App `3.2.2+91` auf
+`feature/281-kartenansichten-analyse`. Gegenüber der ersten Umsetzung (`+90`):
+Kartentaste unter Zoom, Hintergrundwechsel auch in bewusster Navigationspause,
+gespeicherter 3D-Schalter unter weiteren Einstellungen (standardmäßig an,
+Startkarte flach), Zwei-Finger-Kippen und 50-Grad-Navigationsperspektive.
+Quellenangaben sind im ©-Bereich gebündelt; Bayern-WMTS ist in der Quellenliste
+verlinkt. Die folgenden früheren Abstimmungen dokumentieren die Entwicklung;
+bei Abweichungen gelten diese Abschlussfassung und der Abschnitt zum App-Abschlussstand `+91`.
+
 Stand: 01.11.2026. Ausgangsanalyse auf App-Commit `e400afc`, Version `3.2.2+89`.
 Die anschließend beauftragte App-Umsetzung hat Version `3.2.2+90`.
 Branch: `feature/281-kartenansichten-analyse`.
@@ -434,3 +443,38 @@ RadlNavi: TypeScript-Prüfung, Lint der neuen Dateien und bestehender
 Detailmodule erfolgreich; 103 Frontend- und vier Datenaufbau-Tests erfolgreich.
 Produktionsbuild erfolgreich mit bestehenden Warnungen in `App.tsx` und
 `routeTransfer.ts` sowie veralteter Browserslist-Datenbank. Kein Deployment.
+
+## App-Abschlussstand 3.2.2+91
+
+- Kartentaste direkt unter den Zoomtasten, auch im kompakten Querformat und
+  auf beiden Bildschirmseiten. Ohne Zoomtasten bleibt die Kartenwahl erreichbar.
+- Hintergrundwechsel auch in einer bewusst ausgelösten Navigationspause;
+  während aktiver Navigation und ausstehendem Start gesperrt. GPS-Ausfall allein
+  gibt die Auswahl nicht frei. Die Pause bleibt beim Kartenwechsel bestehen.
+- Gespeicherter 3D-Schalter unter „Weitere Einstellungen“, standardmäßig an.
+  Die Startkarte bleibt flach. Ausschalten stellt flach und sperrt Kippgesten;
+  Wiedereinschalten kippt auf die ausdrücklich bestätigten 50 Grad.
+- Native Zwei-Finger-Kippgeste vor, während und in Pause der Navigation.
+  Kompass/Nord setzt Richtung und Neigung zurück, ohne 3D abzuschalten.
+  Die Standardneigung beim Navigationsstart und Zurücksetzen beträgt 50 Grad.
+  Vollständige Kameraaktionen übernehmen Neigung und Richtung gemeinsam, damit
+  keine separate Neigungsänderung der Nord-Animation vorgreift.
+- Luftbildquellen nur noch hinter ©: amtliche Quellenzeile und zwei kompakte
+  Reihen mit jeweils zwei Links. Tastflächen bleiben mindestens 48 Pixel hoch,
+  Namen dürfen umbrechen. Dauerleiste, Quellenzeile im Kartendialog und
+  Bedienhinweis zur Kartenwahl entfernt; regionaler Abdeckungshinweis bleibt.
+- Bayern-WMTS zusätzlich unter „Quellen & Routendienste“ verlinkt.
+
+### Abnahme und Abschlussprüfung
+
+Der Nutzer meldete erfolgreiche Handytests; spätere Anordnungs- und
+50-Grad-Anpassungen sind mit den Regressionstests geprüft. Beim nächsten
+Handytest die Kartentaste unter Zoom, Kartenwechsel in Pause und Fortsetzen,
+3D-Schalter mit Neustart, Zwei-Finger-Kippen, Nordausrichtung und ©-Links
+prüfen, auch im Querformat, mit großer Schrift und Tasten links/rechts.
+
+Final erneut geprüft mit Flutter 3.47.6: 15 geänderte Dart-Dateien formatkonform,
+`git diff --check` sauber, Analyse ohne Befund, 71 fokussierte Tests und
+vollständige Suite mit 880 erfolgreichen Tests. Ein optionaler RadlNavi-Livetest
+ist standardmäßig deaktiviert. Alle 16 Tests des CI-Versionsschutzes erfolgreich.
+Kein neuer APK-/iOS-Build oder Deployment im Rahmen dieses Abschlusses.

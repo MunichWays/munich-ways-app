@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/map_background.dart';
-import 'package:munich_ways/ui/map/aerial_map_style.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';
 
@@ -63,20 +62,7 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
     final english = context.l10n.isEnglish;
     final model = widget.model;
     return BottomSheetFrame(
-      title: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          BottomSheetTitle(title: english ? 'Maps' : 'Karten'),
-          const SizedBox(height: 6),
-          // Keep the thumbnail's source visible even when the body scrolls.
-          const SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child:
-                Text(bavariaAerialAttribution, style: TextStyle(fontSize: 11)),
-          ),
-        ],
-      ),
+      title: BottomSheetTitle(title: english ? 'Maps' : 'Karten'),
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
@@ -106,8 +92,8 @@ class _BikenetSelectionSheetState extends State<BikenetSelectionSheet> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(english
-                  ? 'Aerial imagery is available in Bavaria. Choose the map before starting navigation.'
-                  : 'Luftbilder sind für Bayern verfügbar. Wähle die Karte vor dem Navigationsstart.'),
+                  ? 'Aerial imagery is available in Bavaria.'
+                  : 'Luftbilder sind für Bayern verfügbar.'),
             ),
             const Divider(),
             Material(

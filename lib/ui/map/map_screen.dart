@@ -149,12 +149,15 @@ String energySavingAnnouncement(bool english) => english
 /// handled by its camera update; automatic following keeps the chosen tilt.
 @visibleForTesting
 double? navigationCameraTilt(MapScreenViewModel model) {
-  if (!model.navigationActive || model.locationState == LocationState.FOLLOW) {
-    return 0;
+  if (!model.map3dEnabled ||
+      (model.navigationStarted &&
+          model.locationState == LocationState.NOT_AVAILABLE &&
+          !model.canChangeMapBackground)) return 0;
+  if (!model.navigationActive ||
+      model.locationState != LocationState.FOLLOW_AND_ROTATE_MAP) {
+    return model.mapInspectionTilt;
   }
-  return model.locationState == LocationState.FOLLOW_AND_ROTATE_MAP
-      ? model.navigationTilt
-      : null;
+  return model.navigationTilt;
 }
 
 @visibleForTesting
@@ -1216,7 +1219,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _initialCameraLoaded)
                     Listener(
                       onPointerDown: (event) {
-                        _navigationTiltGesture = model.navigationActive;
+                        _navigationTiltGesture = model.map3dEnabled;
                         _navigationCameraFollow.pointerDown(
                             event.pointer, DateTime.now());
                         _stopFollowingForMapInspection(model);
@@ -1240,6 +1243,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                           // Native MapLibre compass (default on) duplicates [MapCompassControl].
                           compassEnabled: false,
+                          tiltGesturesEnabled: model.map3dEnabled,
                           trackCameraPosition: true,
                           minMaxZoomPreference:
                               const MinMaxZoomPreference(3, 22),
@@ -1441,14 +1445,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           Positioned(
                             top: 0,
                             left: 0,
-                            right:
-                                _renderedMapBackground == MapBackground.aerial
-                                    ? 72
-                                    : 0,
+                            right: 72,
                             child: IgnorePointer(
-                              ignoring: !_mapAttributionExpanded &&
-                                  _renderedMapBackground !=
-                                      MapBackground.aerial,
+                              ignoring: !_mapAttributionExpanded,
                               child: MapAttribution(
                                 expanded: _mapAttributionExpanded,
                                 inline: true,
@@ -1504,9 +1503,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                            top: _renderedMapBackground == MapBackground.aerial
-                                ? 0
-                                : (_mapAttributionExpanded ? 56 : 28),
+                            top: _mapAttributionExpanded ? 0 : 28,
                             right: 12,
                             child: MapOverlayButton(
                               tooltip: context.l10n.isEnglish
@@ -1533,10 +1530,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                           if (energySaving)
                             Positioned(
-                              top:
-                                  _renderedMapBackground == MapBackground.aerial
-                                      ? 56
-                                      : (_mapAttributionExpanded ? 112 : 84),
+                              top: _mapAttributionExpanded ? 56 : 84,
                               right: 12,
                               child: IconButton.filled(
                                 style: IconButton.styleFrom(
@@ -3591,7 +3585,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       // Apply before a queued animation, never immediately after it: on iOS
       // the returned Future is only an acknowledgement, and a tiltTo would
       // cancel the zoom/target animation before it reaches its destination.
-      await _applyCameraPerspective(controller);
+      // A full camera position already carries its intended tilt. Applying a
+      // separate tilt first would snap the map before a north-up animation.
+      final updateData = update?.toJson();
+      if (updateData is! List || updateData.first != 'newCameraPosition') {
+        await _applyCameraPerspective(controller);
+      }
       if (!mounted || !identical(controller, _mapController)) return;
       // Avoid MapLibre's native easeTo path for the first iOS camera update.
       // This is the path confirmed by the TestFlight SIGABRT reports.

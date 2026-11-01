@@ -126,6 +126,19 @@ void main() {
     expect(dark.initialCameraPosition, camera);
     expect(model.navigationStarted, isTrue);
     expect(find.byTooltip('Karte auswählen'), findsNothing);
+    model.pauseNavigation();
+    await tester.pump();
+    model.setMapBackground(MapBackground.standard);
+    await tester.runAsync(() async {
+      await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
+    });
+    await tester.pump();
+    final paused = tester.widget<MapLibreMap>(find.byType(MapLibreMap));
+    expect((jsonDecode(paused.styleString) as Map)['sources']['bavaria-aerial'],
+        isNull);
+    expect(paused.initialCameraPosition, camera);
+    expect(model.navigationPaused, isTrue);
+    expect(find.byTooltip('Karte auswählen'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

@@ -75,7 +75,20 @@ class MapSideActionButtons extends StatelessWidget {
     ];
 
     final showMap = model.showMapButton && model.canChangeMapBackground;
-    // Keep all five controls accessible in short windows without shrinking
+    final zoomAndMapWidgets = <Widget>[
+      ...zoomWidgets,
+      if (showMap) ...[
+        MapOverlayButton(
+          tooltip: context.l10n.isEnglish ? 'Choose map' : 'Karte auswählen',
+          size: 40,
+          tapTargetSize: 56,
+          onPressed: onShowMaps ?? () => showMapLayersSheet(context, model),
+          child: const Icon(Icons.layers_outlined),
+        ),
+        const SizedBox(height: _buttonSpacing),
+      ],
+    ];
+    // Keep the controls accessible in short windows without shrinking
     // touch targets or hiding the user's zoom buttons.
     final compact = showMap &&
         model.showZoomButtons &&
@@ -122,18 +135,10 @@ class MapSideActionButtons extends StatelessWidget {
       bottom: sideColumnBottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: model.sidePanelEdge == MapSidePanelEdge.left
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
         children: [
-          if (showMap) ...[
-            MapOverlayButton(
-              tooltip:
-                  context.l10n.isEnglish ? 'Choose map' : 'Karte auswählen',
-              size: 40,
-              tapTargetSize: 56,
-              onPressed: onShowMaps ?? () => showMapLayersSheet(context, model),
-              child: const Icon(Icons.layers_outlined),
-            ),
-            const SizedBox(height: _buttonSpacing),
-          ],
           if (compact)
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -141,7 +146,8 @@ class MapSideActionButtons extends StatelessWidget {
               children: [
                 Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: zoomWidgets.sublist(0, zoomWidgets.length - 1),
+                  children: zoomAndMapWidgets.sublist(
+                      0, zoomAndMapWidgets.length - 1),
                 ),
                 const SizedBox(width: _buttonSpacing),
                 Column(
@@ -149,7 +155,7 @@ class MapSideActionButtons extends StatelessWidget {
               ],
             )
           else ...[
-            ...zoomWidgets,
+            ...zoomAndMapWidgets,
             ...followingWidgets,
           ],
         ],

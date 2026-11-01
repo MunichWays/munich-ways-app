@@ -71,6 +71,10 @@ void main() {
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(640));
       }
+      final zoomOut = tester.getRect(find.byTooltip('Verkleinern'));
+      final maps = tester.getRect(find.byTooltip('Karte auswählen'));
+      expect(maps.top, greaterThan(zoomOut.bottom));
+      expect(maps.center.dx, zoomOut.center.dx);
       expect(tester.takeException(), isNull);
     });
   }
@@ -107,7 +111,7 @@ void main() {
     });
   }
 
-  test('navigation locks background through pause and unlocks after ending',
+  test('navigation locks background while riding and permits changes in pause',
       () async {
     final store = MemoryMapSettings();
     final model =
@@ -123,9 +127,18 @@ void main() {
     model.setMapBackground(MapBackground.standard);
     expect(model.mapBackground, MapBackground.aerial);
     model.pauseNavigation();
+    expect(model.canChangeMapBackground, isTrue);
     model.setMapBackground(MapBackground.standard);
-    expect(model.mapBackground, MapBackground.aerial);
-    expect(store.data.mapBackground, MapBackground.aerial);
+    expect(model.mapBackground, MapBackground.standard);
+    await Future<void>.delayed(Duration.zero);
+    expect(store.data.mapBackground, MapBackground.standard);
+    expect(model.navigationPaused, isTrue);
+    model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await model.startNavigation();
+    model.setMapBackground(MapBackground.aerial);
+    expect(model.mapBackground, MapBackground.standard);
+    model.locationState = LocationState.NOT_AVAILABLE;
+    expect(model.canChangeMapBackground, isFalse);
     model.clearDestination();
     expect(model.canChangeMapBackground, isTrue);
     model.setMapBackground(MapBackground.standard);
@@ -133,6 +146,30 @@ void main() {
     expect(store.data.mapBackground, MapBackground.standard);
     expect(store.data.showMapButton, isFalse);
     expect(store.data.gesamtnetzVisible, isFalse);
+  });
+
+  test(
+      '3D preference restores without tilting and early edits beat late storage',
+      () async {
+    final store = _DelayedSettings();
+    final model =
+        MapScreenViewModel(store: store, setScreenAwake: (_) async {});
+    addTearDown(model.dispose);
+    expect(model.map3dEnabled, isTrue);
+    expect(model.mapInspectionTilt, 0);
+    model.setMap3dEnabled(false);
+    model.setMap3dEnabled(true);
+    store.loaded.complete(SettingsData.defaults.copyWith(map3dEnabled: false));
+    await Future<void>.delayed(Duration.zero);
+    expect(model.map3dEnabled, isTrue);
+    expect(model.mapInspectionTilt, 50);
+    expect(store.data.map3dEnabled, isTrue);
+    final restored = MapScreenViewModel(
+        store: MemoryMapSettings(store.data), setScreenAwake: (_) async {});
+    addTearDown(restored.dispose);
+    await Future<void>.delayed(Duration.zero);
+    expect(restored.map3dEnabled, isTrue);
+    expect(restored.mapInspectionTilt, 0);
   });
 
   test('failed navigation start unlocks selection for retry', () async {
@@ -229,6 +266,8 @@ void main() {
     await tester.tap(find.text('Luftbild Bayern'));
     await tester.pumpAndSettle();
     expect(model.mapBackground, MapBackground.aerial);
+    expect(find.textContaining('Copernicus'), findsNothing);
+    expect(find.textContaining('Wähle die Karte'), findsNothing);
     expect(
         tester
             .getSemantics(find.bySemanticsLabel('Luftbild Bayern'))
@@ -250,7 +289,7 @@ void main() {
     expect(find.byType(BikenetSelectionSheet), findsNothing);
     model.pauseNavigation();
     await tester.pump();
-    expect(find.byTooltip('Karte auswählen'), findsNothing);
+    expect(find.byTooltip('Karte auswählen'), findsOneWidget);
     model.clearDestination();
     await tester.pump();
     expect(find.byTooltip('Karte auswählen'), findsOneWidget);
@@ -281,8 +320,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'aerial sources remain visible when attribution details are closed',
+  testWidgets('aerial sources stay hidden when attribution details are closed',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(
         home: Scaffold(
@@ -291,13 +329,18 @@ void main() {
       child: MapAttribution(
           expanded: false, inline: true, background: MapBackground.aerial),
     ))));
-    expect(find.textContaining('Copernicus Sentinel-2'), findsOneWidget);
-    expect(find.textContaining('OpenStreetMap'), findsOneWidget);
+    expect(find.textContaining('Copernicus Sentinel-2'), findsNothing);
+    expect(find.textContaining('OpenStreetMap'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
 
 class MemoryMapSettings extends SettingsStore {
+  @override
+  Future<void> saveMap3dEnabled(bool enabled) async {
+    data = data.copyWith(map3dEnabled: enabled);
+  }
+
   MemoryMapSettings([this.data = SettingsData.defaults]);
   SettingsData data;
 

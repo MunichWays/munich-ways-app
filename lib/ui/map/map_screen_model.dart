@@ -32,6 +32,7 @@ enum _NavigationState { idle, active, paused }
 
 enum _MapPreference {
   background,
+  perspective,
   button,
   radlvorrangnetz,
   gesamtnetz,
@@ -74,7 +75,8 @@ class MapScreenViewModel extends ChangeNotifier {
   MapBackground get mapBackground => _mapBackground;
   bool get showMapButton => _showMapButton;
   bool get canChangeMapBackground =>
-      !navigationStarted && !navigationStartPending;
+      (!navigationStarted || _navigationState == _NavigationState.paused) &&
+      !navigationStartPending;
 
   void setMapBackground(MapBackground value) {
     if (!canChangeMapBackground || value == _mapBackground) return;
@@ -219,8 +221,13 @@ class MapScreenViewModel extends ChangeNotifier {
         : data.sidePanelEdgeName == 'left'
             ? MapSidePanelEdge.left
             : MapSidePanelEdge.right;
+    final map3dEnabled =
+        _editedMapPreferences.contains(_MapPreference.perspective)
+            ? _map3dEnabled
+            : data.map3dEnabled;
     final routingMode = data.routingMode;
-    if (showZoomButtons == _showZoomButtons &&
+    if (map3dEnabled == _map3dEnabled &&
+        showZoomButtons == _showZoomButtons &&
         background == _mapBackground &&
         showMapButton == _showMapButton &&
         radlvorrangnetz == _isRadlvorrangnetzVisible &&
@@ -233,6 +240,8 @@ class MapScreenViewModel extends ChangeNotifier {
         data.routeRecommendation == _routeRecommendation) {
       return;
     }
+    _map3dEnabled = map3dEnabled;
+    if (!map3dEnabled) _mapInspectionTilt = 0;
     _showZoomButtons = showZoomButtons;
     _mapBackground = background;
     _showMapButton = showMapButton;
@@ -292,19 +301,48 @@ class MapScreenViewModel extends ChangeNotifier {
       (_navigationState == _NavigationState.paused ||
           locationState == LocationState.NOT_AVAILABLE);
   bool get navigationActive => navigationStarted && !navigationPaused;
-  double navigationTilt = 30;
+  double navigationTilt = 50;
+  bool _map3dEnabled = true;
+  bool get map3dEnabled => _map3dEnabled;
+  double _mapInspectionTilt = 0;
+  double get mapInspectionTilt => _mapInspectionTilt;
 
-  void recordNavigationTilt(double tilt) {
-    if (navigationActive && tilt.isFinite) navigationTilt = tilt.clamp(0, 60);
+  void setMap3dEnabled(bool value) {
+    if (value == _map3dEnabled) return;
+    _map3dEnabled = value;
+    _mapInspectionTilt = value ? 50 : 0;
+    navigationTilt = _mapInspectionTilt;
+    _editedMapPreferences.add(_MapPreference.perspective);
+    notifyListeners();
+    unawaited(_persistMap3dEnabled());
   }
 
-  void resetNavigationPerspective() => navigationTilt = 30;
+  Future<void> _persistMap3dEnabled() async {
+    await _settingsLoaded;
+    if (_disposed) return;
+    try {
+      await _settingsStore.saveMap3dEnabled(_map3dEnabled);
+    } catch (e, st) {
+      log.e('Failed to save 3D setting', error: e, stackTrace: st);
+    }
+  }
+
+  void resetMapInspectionTilt() => _mapInspectionTilt = 0;
+
+  void recordNavigationTilt(double tilt) {
+    if (!_map3dEnabled || !tilt.isFinite) return;
+    _mapInspectionTilt = tilt.clamp(0, 60);
+    if (navigationActive) navigationTilt = _mapInspectionTilt;
+  }
+
+  void resetNavigationPerspective() => navigationTilt = 50;
 
   /// A deliberate pause is independent of inspecting or rotating the map.
   void pauseNavigation() {
     if (!navigationStarted || _navigationState == _NavigationState.paused)
       return;
     _navigationState = _NavigationState.paused;
+    resetMapInspectionTilt();
     if (locationState != LocationState.NOT_AVAILABLE) {
       locationState = LocationState.DISPLAY;
     }
@@ -763,6 +801,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   /// North-up / compass control: stop follow/compass tracking like a map gesture.
   void onCompassNorthUpPressed() {
+    resetMapInspectionTilt();
     if (locationState == LocationState.NOT_AVAILABLE) {
       return;
     }
@@ -1107,6 +1146,10 @@ class MapScreenViewModel extends ChangeNotifier {
 
   /// Called when the user touches the map and breaks camera following.
   void onUserStoppedFollowingLocation() {
+    if (navigationActive &&
+        locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
+      _mapInspectionTilt = _map3dEnabled ? navigationTilt : 0;
+    }
     if (locationState == LocationState.FOLLOW ||
         locationState == LocationState.FOLLOW_AND_ROTATE_MAP) {
       locationState = LocationState.DISPLAY;
@@ -1251,6 +1294,7 @@ class MapScreenViewModel extends ChangeNotifier {
   }
 
   void clearDestination() {
+    resetMapInspectionTilt();
     // Drop any in-flight route so a late response cannot repopulate the map.
     _originalRoute = false;
     this.destination = null;
