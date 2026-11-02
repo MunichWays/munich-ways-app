@@ -725,3 +725,16 @@ Check speech and rerouting continue with the selected type. Repeat with a
 network/GPS failure and recovery, outside coverage, in German/English, dark
 mode and at large text size. Imported original tracks remain unchanged until
 explicit recalculation.
+
+## Navigation layout (issue #290)
+
+On Android and iOS, start a route and check portrait/landscape and large text:
+
+- Maneuver, rerouting, map-only and arrival hints appear in the upper blue card.
+  Fold/unfold the lower panel by grip, swipe and arrow; the hint stays visible.
+- The rider stays above the lower panel, with more visible map ahead. Rotate
+  the phone and fold the panel while following; position and arrow stay aligned.
+- Pan the map, resume following, pause/resume navigation, briefly lose GPS and
+  recover. Existing voice prompts, remaining distance and controls still work.
+- Finish/end navigation and plan another route. The map returns to its usual
+  centered view; route overview, zoom and destination selection still work.

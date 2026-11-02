@@ -45,8 +45,8 @@ class AppLocalizations {
   String routeRecommendationInfo(RouteRecommendation recommendation) =>
       switch (recommendation) {
         RouteRecommendation.discovery => isEnglish
-            ? 'Prefers relaxed cycling routes and green surroundings, accepting longer detours and suitable gravel sections. Please check the route before setting off.'
-            : 'Bevorzugt entspannte Radstrecken und grüne Wege, nimmt dafür größere Umwege und geeignete Schotterabschnitte in Kauf. Bitte prüfe die Route vor der Fahrt.',
+            ? 'Enjoy relaxed cycling on lovely bike routes and green paths. The discovery tour favors more pleasant connections wherever the route allows, even with a small detour.'
+            : 'Entspannt unterwegs auf schönen Radstrecken und grünen Wegen. Die Entdeckertour bevorzugt angenehmere Verbindungen, wo es die Route hergibt – auch mal mit einem kleinen Umweg.',
         RouteRecommendation.standard => isEnglish
             ? 'Returns to the balanced automatic route recommendation used by default.'
             : 'Kehrt zur ausgewogenen automatischen Routenempfehlung zurück, die standardmäßig verwendet wird.',

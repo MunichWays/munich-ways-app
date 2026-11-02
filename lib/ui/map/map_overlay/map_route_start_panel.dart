@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/map_route_state.dart';
 import 'package:munich_ways/ui/map/map_screen_model.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_route_comfort_summary.dart';
@@ -67,14 +68,33 @@ class _MapRouteStartPanelState extends State<MapRouteStartPanel> {
           child: SizedBox(
             key: const ValueKey('route-panel-handle'),
             width: double.infinity,
-            height: 32,
+            height: widget.model.navigationStarted ? 48 : 32,
             child: Material(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
               ),
               clipBehavior: Clip.antiAlias,
-              child: const BottomSheetDragHandle(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const BottomSheetDragHandle(),
+                  if (widget.model.navigationStarted)
+                    IconButton(
+                      tooltip: context.l10n.isEnglish
+                          ? (collapsed
+                              ? 'Expand navigation panel'
+                              : 'Collapse navigation panel')
+                          : (collapsed
+                              ? 'Navigation ausklappen'
+                              : 'Navigation einklappen'),
+                      onPressed: () => _setCollapsed(!collapsed),
+                      icon: Icon(collapsed
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

@@ -394,6 +394,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   VoiceGuidanceDisplay? _nextManeuver;
   final _navigationRemaining = NavigationRemainingController();
   double? _navigationPanelHeight;
+  double _guidanceHeight = 0;
+  EdgeInsets _navigationInsets = EdgeInsets.zero;
+  EdgeInsets? _appliedNavigationInsets;
   VoiceGuidanceDisplay? _reroutingDisplay;
   RoutePlannerMapSelection? _pendingRouteMapSelection;
   _RouteEndpointMove? _pendingRouteEndpointMove;
@@ -1199,6 +1202,27 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ? kMapBottomActionRowExpandedPadding
               : kMapBottomActionRowCollapsedPadding;
 
+          final media = MediaQuery.of(context);
+          final anchor = navigationMapAnchor(
+            height: media.size.height,
+            top: media.padding.top + _guidanceHeight + 16,
+            bottom: media.padding.bottom + (_navigationPanelHeight ?? 180) + 36,
+          );
+          final insets = model.navigationStarted
+              ? EdgeInsets.only(
+                  top: (2 * anchor - media.size.height)
+                      .clamp(0.0, media.size.height - 1),
+                  bottom: (media.size.height - 2 * anchor)
+                      .clamp(0.0, media.size.height - 1))
+              : EdgeInsets.zero;
+          if (_navigationInsets != insets) {
+            _navigationInsets = insets;
+            _cameraPerspectiveSyncPending = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) unawaited(_flushPendingCameraUpdate());
+            });
+          }
+
           final content = ScaffoldMessenger(
             key: scaffoldMessengerKey,
             child: Scaffold(
@@ -1309,6 +1333,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               _lastRouteFingerprint = null;
                               setState(() {
                                 _styleLoaded = true;
+                                _appliedNavigationInsets = null;
                                 _cameraReady = false;
                                 _cameraAnimationPending = false;
                                 // Ratings are optional background content. The
@@ -1398,7 +1423,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       _movementHeadingAvailable)
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: Center(
+                        child: Align(
+                          alignment: Alignment(
+                              0,
+                              model.navigationStarted
+                                  ? (2 * anchor - media.size.height) /
+                                      (media.size.height - 36)
+                                  : 0),
                           child: DecoratedBox(
                             decoration: const BoxDecoration(
                               color: Colors.white,
@@ -1438,6 +1469,44 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
+                          if (model.navigationStarted &&
+                              model.destination != null)
+                            Positioned(
+                              top: 8,
+                              left: 12,
+                              right: 12,
+                              child: MapOverlaySizeObserver(
+                                onHeightChanged: (height) {
+                                  if (mounted && _guidanceHeight != height) {
+                                    setState(() => _guidanceHeight = height);
+                                  }
+                                },
+                                child: MapNavigationHeaderBar(
+                                  guidanceOnly: true,
+                                  model: model,
+                                  onRefreshRoute: () =>
+                                      _refreshRouteAndResumeNavigation(model),
+                                  onEditRoute: () => _openRoutePlanner(model),
+                                  onStartNavigation: () async {
+                                    if (model.navigationStarted) return;
+                                    await _startNavigation(model);
+                                  },
+                                  onToggleVoiceGuidance: () =>
+                                      _toggleVoiceGuidance(
+                                    model,
+                                    english: context.l10n.isEnglish,
+                                  ),
+                                  onPauseNavigation: () =>
+                                      _pauseNavigation(model),
+                                  onShowInfo: () => _showInfo(context),
+                                  onShowSettings: () =>
+                                      _showSettings(context, model),
+                                  onEndRoute: () => _endRoute(model),
+                                  onFinishRoute: () => _finishRoute(model),
+                                  nextManeuver: _nextManeuver,
+                                ),
+                              ),
+                            ),
                           if (model.destination != null &&
                               _styleLoaded &&
                               _mapController != null)
@@ -1603,6 +1672,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                         builder: (context, remaining, child) =>
                                             MapNavigationHeaderBar(
                                           remaining: remaining,
+                                          showGuidance: false,
                                           collapsed: collapsed,
                                           onToggleCollapsed: toggle,
                                           model: model,
@@ -3619,6 +3689,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _cameraPerspectiveSyncPending = false;
     _cameraUpdateRunning = true;
     try {
+      if (_appliedNavigationInsets != _navigationInsets) {
+        final insets = _navigationInsets;
+        await controller.updateContentInsets(insets, false);
+        _appliedNavigationInsets = insets;
+      }
       // Apply before a queued animation, never immediately after it: on iOS
       // the returned Future is only an acknowledgement, and a tiltTo would
       // cancel the zoom/target animation before it reaches its destination.

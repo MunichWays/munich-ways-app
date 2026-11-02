@@ -97,7 +97,7 @@ class MapBottomActionButtons extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxWidth: landscapePhone ? 360 : double.infinity,
                   ),
-                  child: _NavigationBarSizeObserver(
+                  child: MapOverlaySizeObserver(
                     onHeightChanged: onNavigationBarHeightChanged,
                     child: SizedBox(width: double.infinity, child: bar),
                   ),
@@ -130,9 +130,8 @@ class MapBottomActionButtons extends StatelessWidget {
 }
 
 /// Measures the whole panel, including folding and accessibility text wrapping.
-class _NavigationBarSizeObserver extends SingleChildRenderObjectWidget {
-  const _NavigationBarSizeObserver(
-      {required super.child, this.onHeightChanged});
+class MapOverlaySizeObserver extends SingleChildRenderObjectWidget {
+  const MapOverlaySizeObserver({required super.child, this.onHeightChanged});
 
   final ValueChanged<double>? onHeightChanged;
 

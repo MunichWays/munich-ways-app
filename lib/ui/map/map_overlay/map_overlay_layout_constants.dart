@@ -20,3 +20,11 @@ double navigationPanelSideControlsOffset(double panelHeight) =>
     (panelHeight - kMapGapSideColumnAboveBottomBar + 8)
         .clamp(0.0, double.infinity)
         .toDouble();
+
+/// Rider sits two thirds down the free viewport, clear of both panels.
+double navigationMapAnchor(
+    {required double height, required double top, required double bottom}) {
+  final lower = (height - bottom - 24).clamp(24.0, height - 24);
+  final upper = (top + 24).clamp(24.0, lower);
+  return upper + (lower - upper) * 2 / 3;
+}

@@ -25,11 +25,15 @@ class MapNavigationHeaderBar extends StatelessWidget {
     this.nextManeuver,
     this.remaining,
     this.collapsed = false,
+    this.guidanceOnly = false,
+    this.showGuidance = true,
     this.onToggleCollapsed,
   });
 
   final MapScreenViewModel model;
   final bool collapsed;
+  final bool guidanceOnly;
+  final bool showGuidance;
   final VoidCallback? onToggleCollapsed;
   final Future<void> Function() onRefreshRoute;
   final VoidCallback onEditRoute;
@@ -398,6 +402,74 @@ class MapNavigationHeaderBar extends StatelessWidget {
             icon: Icon(icon, size: 23),
           ),
         );
+    Widget guidance() {
+      if (guidanceDisplay == null) return const SizedBox.shrink();
+      return ExcludeSemantics(
+        excluding: navigationTrackingInterrupted,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+          child: Row(
+            children: [
+              if (guidanceDisplay.type != 'map') ...[
+                Icon(
+                  _maneuverIcon(guidanceDisplay),
+                  size: 32,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  guidanceDisplay.text,
+                  textAlign: TextAlign.center,
+                  maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: (guidanceDisplay.type == 'map'
+                              ? theme.textTheme.titleMedium
+                              : theme.textTheme.titleLarge)
+                          ?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        height: 1.15,
+                      ) ??
+                      const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              if (navigationTrackingInterrupted && onShowInfo != null) ...[
+                const SizedBox(width: 8),
+                pausedAction(
+                  label: context.l10n.tr('Info'),
+                  icon: Icons.info_outline,
+                  onPressed: onShowInfo!,
+                ),
+              ],
+              if (navigationTrackingInterrupted && onShowSettings != null) ...[
+                const SizedBox(width: 8),
+                pausedAction(
+                  label: context.l10n.settings,
+                  icon: Icons.settings_outlined,
+                  onPressed: onShowSettings!,
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (guidanceOnly) {
+      if (guidanceDisplay == null) return const SizedBox.shrink();
+      return Material(
+        color: AppColors.mapRouteColor,
+        elevation: 3,
+        borderRadius: BorderRadius.circular(16),
+        child: guidance(),
+      );
+    }
     return Material(
       color: AppColors.mapRouteColor,
       elevation: 3,
@@ -414,64 +486,8 @@ class MapNavigationHeaderBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!collapsed && guidanceDisplay != null)
-              ExcludeSemantics(
-                excluding: navigationTrackingInterrupted,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-                  child: Row(
-                    children: [
-                      if (guidanceDisplay.type != 'map') ...[
-                        Icon(
-                          _maneuverIcon(guidanceDisplay),
-                          size: 32,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: Text(
-                          guidanceDisplay.text,
-                          textAlign: TextAlign.center,
-                          maxLines: guidanceDisplay.type == 'map' ? 1 : 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: (guidanceDisplay.type == 'map'
-                                      ? theme.textTheme.titleMedium
-                                      : theme.textTheme.titleLarge)
-                                  ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                height: 1.15,
-                              ) ??
-                              const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                      if (navigationTrackingInterrupted &&
-                          onShowInfo != null) ...[
-                        const SizedBox(width: 8),
-                        pausedAction(
-                          label: context.l10n.tr('Info'),
-                          icon: Icons.info_outline,
-                          onPressed: onShowInfo!,
-                        ),
-                      ],
-                      if (navigationTrackingInterrupted &&
-                          onShowSettings != null) ...[
-                        const SizedBox(width: 8),
-                        pausedAction(
-                          label: context.l10n.settings,
-                          icon: Icons.settings_outlined,
-                          onPressed: onShowSettings!,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+            if (showGuidance && !collapsed && guidanceDisplay != null)
+              guidance(),
             if (!collapsed)
               SizedBox(width: double.infinity, child: Center(child: stats)),
             if (!collapsed && route.route?.supportsVoiceGuidance == false)
