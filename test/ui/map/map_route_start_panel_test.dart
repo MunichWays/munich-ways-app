@@ -132,6 +132,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(starts, 1);
       expect(model.navigationStarted, isTrue);
+      expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.keyboard_arrow_up));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
       expect(handle, findsOneWidget);
       expect(find.text('Starten'), findsNothing);
       expect(find.bySemanticsLabel('Route bearbeiten'), findsOneWidget);

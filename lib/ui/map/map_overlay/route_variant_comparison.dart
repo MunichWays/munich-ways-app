@@ -1,3 +1,4 @@
+import 'package:munich_ways/ui/map/map_overlay/direct_route_info_dialog.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';
 import 'dart:async';
 
@@ -38,6 +39,29 @@ class _VariantCard extends StatelessWidget {
         RouteVariant.discovery => 'discovery',
         RouteVariant.direct => 'true',
       };
+
+  Future<void> _showModeInfo(BuildContext context, String title) {
+    if (direct) return showDirectRouteInfoDialog(context);
+    final strings = context.l10n;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        scrollable: true,
+        title: Text(title),
+        content: Text(strings.routeRecommendationInfo(
+          variant == RouteVariant.discovery
+              ? RouteRecommendation.discovery
+              : RouteRecommendation.standard,
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(strings.close),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,28 +144,33 @@ class _VariantCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title, style: titleStyle),
-                            Text(comfortText, style: secondaryStyle),
+                            _InlineInfoLine(
+                              text: title,
+                              style: titleStyle,
+                              infoKey: ValueKey('variant-mode-info-$keySuffix'),
+                              tooltip: '${context.l10n.tr('Info')}: $title',
+                              onInfo: () => _showModeInfo(context, title),
+                            ),
+                            _InlineInfoLine(
+                              text: comfortText,
+                              style: secondaryStyle,
+                              infoKey:
+                                  ValueKey('variant-comfort-info-$keySuffix'),
+                              tooltip: english
+                                  ? 'About the cycling comfort index'
+                                  : 'Erläuterung zum Radl-Komfort-Index',
+                              onInfo: comfort == null
+                                  ? null
+                                  : () => showRouteComfortInfoDialog(
+                                        context,
+                                        comfort,
+                                        direct: direct,
+                                      ),
+                            ),
                           ],
                         ),
                       ),
-                      if (comfort != null)
-                        IconButton(
-                          key: ValueKey('variant-comfort-info-$keySuffix'),
-                          tooltip: english
-                              ? 'About the cycling comfort index'
-                              : 'Erläuterung zum Radl-Komfort-Index',
-                          onPressed: () => showRouteComfortInfoDialog(
-                            context,
-                            comfort,
-                            direct: direct,
-                          ),
-                          icon: Icon(
-                            Icons.info_outline,
-                            size: direct ? 19 : 21,
-                          ),
-                        )
-                      else if (comfortError)
+                      if (comfortError)
                         IconButton(
                           tooltip: english
                               ? 'Retry comfort analysis'
@@ -198,6 +227,54 @@ class _VariantCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Inline buttons follow the text size without adding an IconButton's usual
+/// minimum height to the two-line variant header.
+class _InlineInfoLine extends StatelessWidget {
+  const _InlineInfoLine(
+      {required this.text,
+      required this.style,
+      required this.infoKey,
+      required this.tooltip,
+      required this.onInfo});
+
+  final String text;
+  final TextStyle? style;
+  final Key infoKey;
+  final String tooltip;
+  final VoidCallback? onInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveStyle = DefaultTextStyle.of(context).style.merge(style);
+    final fontSize = effectiveStyle.fontSize ?? 14;
+    final lineHeight = MediaQuery.textScalerOf(context).scale(fontSize) *
+        (effectiveStyle.height ?? 1.2);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(child: Text(text, style: style)),
+        if (onInfo != null) ...[
+          const SizedBox(width: 4),
+          SizedBox.square(
+            dimension: lineHeight,
+            child: IconButton(
+              key: infoKey,
+              tooltip: tooltip,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              iconSize: MediaQuery.textScalerOf(context).scale(fontSize),
+              onPressed: onInfo,
+              icon: const Icon(Icons.info_outline),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

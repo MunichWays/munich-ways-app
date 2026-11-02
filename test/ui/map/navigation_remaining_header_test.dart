@@ -20,7 +20,9 @@ Future<void> _pumpHeader(WidgetTester tester, MapScreenViewModel model,
     NavigationRemaining? remaining,
     {bool english = false,
     double textScale = 1,
-    bool collapsed = false}) async {
+    bool collapsed = false,
+    bool guidanceOnly = false,
+    bool showGuidance = true}) async {
   await tester.pumpWidget(MaterialApp(
     locale: Locale(english ? 'en' : 'de'),
     localizationsDelegates: const [
@@ -39,6 +41,8 @@ Future<void> _pumpHeader(WidgetTester tester, MapScreenViewModel model,
           child: MapNavigationHeaderBar(
             model: model,
             remaining: remaining,
+            guidanceOnly: guidanceOnly,
+            showGuidance: showGuidance,
             collapsed: collapsed,
             onToggleCollapsed: () {},
             onRefreshRoute: () async {},
@@ -68,6 +72,23 @@ void main() {
       ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
   });
   tearDown(() => model.dispose());
+
+  testWidgets(
+      'separate guidance stays visible while the controls fold and pause',
+      (tester) async {
+    await model.startNavigation();
+    await _pumpHeader(tester, model, null,
+        guidanceOnly: true, collapsed: true, textScale: 2);
+    expect(find.text('Route auf Karte folgen'), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsNothing);
+    expect(tester.takeException(), isNull);
+    model.pauseNavigation();
+    await _pumpHeader(tester, model, null, guidanceOnly: true);
+    expect(find.text('Pause'), findsOneWidget);
+    await _pumpHeader(tester, model, null, showGuidance: false);
+    expect(find.text('Pause'), findsNothing);
+    expect(find.bySemanticsLabel('Navigation beenden'), findsOneWidget);
+  });
 
   testWidgets('planning keeps total values even if a sample is supplied',
       (tester) async {

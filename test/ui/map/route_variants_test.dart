@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:munich_ways/localization/app_localizations.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -746,6 +748,46 @@ void main() {
     expect(find.text('Radl-Komfort-Index'), findsNothing);
     expect(tester.takeException(), isNull);
     await h.finishPending(tester);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.info_outline), findsNWidgets(6));
+    for (final entry in [
+      ('false', 'Standard Route', RouteRecommendation.standard),
+      ('discovery', 'Entdeckertour', RouteRecommendation.discovery),
+    ]) {
+      final info = find.byKey(ValueKey('variant-mode-info-${entry.$1}'));
+      final title = find.text(entry.$2);
+      expect(tester.getSize(info).height,
+          lessThanOrEqualTo(tester.getSize(title).height));
+      expect(
+          tester.getTopLeft(info).dx, greaterThan(tester.getTopLeft(title).dx));
+      await tester.ensureVisible(info);
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      expect(
+          find.text(const AppLocalizations(Locale('de'))
+              .routeRecommendationInfo(entry.$3)),
+          findsOneWidget);
+      expect(h.model.selectedRouteVariant, RouteVariant.direct);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.byType(TextButton)));
+      await tester.pumpAndSettle();
+    }
+    final directInfo = find.byKey(const ValueKey('variant-mode-info-true'));
+    await tester.ensureVisible(directInfo);
+    await tester.tap(directInfo);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Die direkte Route bevorzugt'), findsOneWidget);
+    expect(h.model.selectedRouteVariant, RouteVariant.direct);
+    await tester.tap(find.descendant(
+        of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await tester.pumpAndSettle();
+    final comfortInfo = find.byKey(const ValueKey('variant-comfort-info-true'));
+    final index = find.text('Radl-Komfort -');
+    expect(tester.getSize(comfortInfo).height,
+        lessThanOrEqualTo(tester.getSize(index).height));
+    expect(tester.getCenter(comfortInfo).dy,
+        closeTo(tester.getCenter(index).dy, 1));
+    expect(tester.takeException(), isNull);
   });
 }
 

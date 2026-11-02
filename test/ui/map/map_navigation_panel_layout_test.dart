@@ -29,6 +29,19 @@ class _Settings extends SettingsStore {
 }
 
 void main() {
+  test('navigation anchor follows the free map area in portrait and landscape',
+      () {
+    for (final height in [360.0, 800.0]) {
+      for (final panel in [100.0, 180.0]) {
+        final anchor =
+            navigationMapAnchor(height: height, top: 80, bottom: panel);
+        expect(anchor, greaterThanOrEqualTo(104));
+        expect(anchor, lessThanOrEqualTo(height - panel - 24));
+        expect(anchor, greaterThan((104 + height - panel - 24) / 2));
+      }
+    }
+  });
+
   testWidgets('compass stays above a growing and folding navigation panel',
       (tester) async {
     tester.view.physicalSize = const Size(320, 800);
