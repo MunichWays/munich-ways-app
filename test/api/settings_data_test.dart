@@ -157,6 +157,18 @@ void main() {
     expect(freshInstall.bRouterProfile, BRouterProfile.trekking);
   });
 
+  test(
+      'discovery recommendation persists by name without shifting older choices',
+      () {
+    final data = SettingsData.fromJson({'routeRecommendation': 'discovery'});
+    expect(data.routeRecommendation, RouteRecommendation.discovery);
+    expect(data.toJson()['routeRecommendation'], 'discovery');
+    expect(
+        SettingsData.fromJson({'routeRecommendation': 'aloneAfterDark'})
+            .routeRecommendation,
+        RouteRecommendation.aloneAfterDark);
+  });
+
   test('loads and stores a route recommendation', () {
     final data = SettingsData.fromJson({
       'routeRecommendation': 'aloneAfterDark',

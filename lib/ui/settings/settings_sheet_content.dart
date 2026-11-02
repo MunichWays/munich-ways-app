@@ -397,6 +397,7 @@ class _RouteRecommendationSettings extends StatelessWidget {
 
   String _label(RouteRecommendation recommendation) => switch (recommendation) {
         RouteRecommendation.standard => strings.standardRoute,
+        RouteRecommendation.discovery => strings.discoveryRoute,
         RouteRecommendation.trekking => strings.bRouterTrekking,
         RouteRecommendation.roadBike => strings.bRouterFastBike,
         RouteRecommendation.shortest => strings.bRouterShortest,

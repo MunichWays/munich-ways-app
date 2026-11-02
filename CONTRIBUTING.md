@@ -689,3 +689,39 @@ Regular street details use the section midpoint, including bundled network
 geometry when V20 details are unavailable. Other POI quick-start actions stay
 unchanged. On the phone, test both detail buttons, cancel a preview, deny location
 then retry Start, and verify recent destinations only after a successful start.
+
+
+## Discovery route recommendation (issue #299, build 92)
+
+Settings > Route recommendation offers Discovery tour (relaxed) immediately
+below Standard. In Upper Bavaria it requests RadlNavi's `discovery` variant,
+including the same variant for later comfort analysis. Explicit shortest-route
+comparison still uses `direct`; switching back or automatic rerouting returns
+to Discovery. Outside coverage, unsupported/failed Discovery requests use the
+existing BRouter trekking fallback. The recommendation persists across restart.
+Discovery snapshots can be saved, shared and imported without losing their
+variant or original geometry.
+
+Phone/beta: choose Discovery, plan with intermediate stops, inspect the relaxed
+detour and guidance, switch shortest on/off, start and trigger rerouting. Repeat
+with network failure/recovery, outside Upper Bavaria, after restart, in English
+and with large text. Compare a rated green path and a known secret tip against
+Standard. Road type is only a routing preference, not a guarantee of greenery,
+traffic volume or safety. Backend/API and the Discovery graph must be deployed
+at 2.4.0 before testing this mode in production.
+
+### Three route types in the planner
+
+The route comparison lists Standard, Discovery tour, then Direct route. Each
+variant keeps its own geometry, comfort result and pending request. Selecting
+one does not change the saved route recommendation. A new destination resets
+the trip selection to that recommendation; refresh and rerouting retain the
+selected trip variant. An unavailable alternative leaves the active route and
+navigation intact and can be retried. GPX exports retain the selected variant.
+
+Phone: compare all three choices with intermediate stops, switch rapidly while
+an alternative loads, then repeat during navigation after passing a stop.
+Check speech and rerouting continue with the selected type. Repeat with a
+network/GPS failure and recovery, outside coverage, in German/English, dark
+mode and at large text size. Imported original tracks remain unchanged until
+explicit recalculation.

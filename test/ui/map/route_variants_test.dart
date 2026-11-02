@@ -46,6 +46,148 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(stubWakelock);
 
+  test('Discovery survives shortest comparison and navigation recalculation',
+      () async {
+    final h = Harness();
+    await flush(); // finish initial settings restoration before the user choice
+    h.model.setRouteRecommendation(RouteRecommendation.discovery);
+    await h.model.refreshRoute();
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+    final discoveryCalls = h.api.discoveryCalls;
+    await h.api.waitForDirect(1);
+    h.api.direct.last.complete(result(true));
+    expect(await h.model.setTemporaryShortestRouteEnabled(true), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'direct');
+    expect(await h.model.setTemporaryShortestRouteEnabled(false), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    expect(await h.model.refreshRoute(), isTrue);
+    expect(h.api.discoveryCalls, greaterThan(discoveryCalls));
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+  });
+
+  test('late saved settings cannot change a pending trip selection', () async {
+    final loaded = Completer<SettingsData>();
+    final h = Harness(store: MemorySettings()..loadReply = loaded.future);
+    final calculation = h.model.refreshRoute();
+    loaded.complete(SettingsData.defaults
+        .copyWith(routeRecommendation: RouteRecommendation.discovery));
+    expect(await calculation, isTrue);
+    expect(h.model.route.state, MapRouteState.SHOWN);
+    expect(h.model.route.route!.analysisContext!.variant, 'standard');
+    expect(h.model.selectedRouteVariant, RouteVariant.standard);
+    expect(h.model.routeRecommendation, RouteRecommendation.discovery);
+  });
+
+  test('three planner variants retain independent routes and comfort contexts',
+      () async {
+    final h = Harness();
+    await h.model.refreshRoute();
+    await h.api.waitForDirect(1);
+    await flush();
+    final standard = h.model.route.route;
+    final discovery = h.model.routeVariantFor(RouteVariant.discovery)!.route;
+    h.api.direct.single.complete(result(true));
+    await flush();
+    expect(h.api.discoveryRequests.single, points);
+    expect(await h.model.selectRouteVariant(RouteVariant.discovery), isTrue);
+    expect(h.model.route.route, same(discovery));
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+    expect(await h.model.selectRouteVariant(RouteVariant.direct), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'direct');
+    expect(await h.model.selectRouteVariant(RouteVariant.standard), isTrue);
+    expect(h.model.route.route, same(standard));
+    expect(h.model.selectedRouteVariant, RouteVariant.standard);
+    expect(h.api.standardCalls, 1);
+    expect(h.api.discoveryCalls, 1);
+    expect(h.api.direct, hasLength(1));
+    expect(
+        h.api.analyses.keys, containsAll(['standard', 'discovery', 'direct']));
+  });
+
+  test('failed discovery preserves the route and recovers on retry', () async {
+    final h = Harness();
+    h.api.discoveryReply = Completer<CycleRoute>();
+    h.fallback.fail = true;
+    await h.model.refreshRoute();
+    await flush();
+    final original = h.model.route.route;
+    final pending = h.model.selectRouteVariant(RouteVariant.discovery);
+    h.api.discoveryReply!.completeError(StateError('offline'));
+    expect(await pending, isFalse);
+    expect(h.model.route.route, same(original));
+    expect(h.model.selectedRouteVariant, RouteVariant.standard);
+    expect(h.model.pendingRouteType, isNull);
+    h.api.discoveryReply = null;
+    expect(await h.model.selectRouteVariant(RouteVariant.discovery), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+  });
+
+  test('late discovery cannot replace a newer standard selection', () async {
+    final h = Harness();
+    h.api.discoveryReply = Completer<CycleRoute>();
+    await h.model.refreshRoute();
+    await flush();
+    final standard = h.model.route.route;
+    final pending = h.model.selectRouteVariant(RouteVariant.discovery);
+    await h.model.selectRouteVariant(RouteVariant.standard);
+    h.api.discoveryReply!.complete(result(false));
+    expect(await pending, isFalse);
+    expect(h.model.route.route, same(standard));
+    expect(h.model.selectedRouteVariant, RouteVariant.standard);
+    expect(h.model.pendingRouteType, isNull);
+  });
+
+  test('navigation discovery switch recovers after a GPS error', () async {
+    final h = Harness();
+    await h.model.refreshRoute();
+    await flush();
+    h.model.routeStart = null;
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    await h.model.startNavigation();
+    final active = h.model.route.route;
+    h.model.gpsReply = Future.error(StateError('no location'));
+    expect(await h.model.selectRouteVariant(RouteVariant.discovery), isFalse);
+    expect(h.model.route.route, same(active));
+    expect(h.model.pendingRouteType, isNull);
+    expect(h.model.navigationStarted, isTrue);
+    h.model.gpsReply = null;
+    expect(await h.model.selectRouteVariant(RouteVariant.discovery), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+    await h.model.refreshRoute();
+    expect(h.model.selectedRouteVariant, RouteVariant.discovery);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+  });
+
+  testWidgets('planner shows standard, discovery and direct in order',
+      (tester) async {
+    final h = Harness();
+    await h.model.refreshRoute();
+    await tester.pump();
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SingleChildScrollView(
+                child: ListenableBuilder(
+                    listenable: h.model,
+                    builder: (context, _) =>
+                        RouteVariantComparison(model: h.model))))));
+    final standard = find.text('Standard Route');
+    final discovery = find.text('Entdeckertour');
+    final direct = find.text('Direkte Route');
+    expect(tester.getTopLeft(standard).dy,
+        lessThan(tester.getTopLeft(discovery).dy));
+    expect(tester.getTopLeft(discovery).dy,
+        lessThan(tester.getTopLeft(direct).dy));
+    await tester.tap(find.byKey(const ValueKey('route-variant-discovery')));
+    await tester.pumpAndSettle();
+    expect(h.model.selectedRouteVariant, RouteVariant.discovery);
+    expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_unchecked), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+    await h.finishPending(tester);
+  });
+
   test('GPS lookup failure finishes recalculation and later retry recovers',
       () async {
     final h = Harness();
@@ -481,7 +623,7 @@ void main() {
     expect(find.text('Standard Route'), findsOneWidget);
     expect(find.text('Direkte Route'), findsOneWidget);
     expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
-    expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_unchecked), findsNWidgets(2));
     expect(find.byKey(const ValueKey('route-variant-true')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -603,18 +745,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Radl-Komfort-Index'), findsNothing);
     expect(tester.takeException(), isNull);
+    await h.finishPending(tester);
   });
 }
 
 Future<void> flush() => Future<void>.delayed(Duration.zero);
 
 class Harness {
+  Future<void> finishPending(WidgetTester tester) async {
+    for (final request in api.direct) {
+      if (!request.isCompleted) request.complete(result(true));
+    }
+    await tester.pump();
+    for (final pending in api.analyses.values.expand((list) => list)) {
+      if (!pending.isCompleted) pending.complete(comfort);
+    }
+    await tester.pump();
+  }
+
   final api = VariantApi();
   final fallback = Fallback();
   late final TestModel model;
-  Harness() {
+  Harness({MemorySettings? store}) {
     model = TestModel(
-        store: MemorySettings(),
+        store: store ?? MemorySettings(),
         routingService: RoutingService(
             radlNavi: api, bRouter: fallback, radlNaviCoverage: Coverage()));
     model.routeStart = Place('Start', points.first);
@@ -636,8 +790,24 @@ class Harness {
 class MemorySettings extends SettingsStore {
   SettingsData data = SettingsData.defaults;
 
+  Future<SettingsData>? loadReply;
   @override
-  Future<SettingsData> load() async => data;
+  Future<SettingsData> load() async => loadReply ?? Future.value(data);
+
+  @override
+  Future<void> saveRouteRecommendation(RouteRecommendation? value) async {
+    data = data.copyWith(routeRecommendation: value);
+  }
+
+  @override
+  Future<void> saveRoutingMode(RoutingMode value) async {
+    data = data.copyWith(routingMode: value);
+  }
+
+  @override
+  Future<void> saveBRouterProfile(BRouterProfile value) async {
+    data = data.copyWith(bRouterProfile: value);
+  }
 
   @override
   Future<void> saveVoiceGuidanceEnabled(bool enabled) async {
@@ -651,7 +821,11 @@ class Coverage implements RoutingCoverage {
 }
 
 class VariantApi
-    implements RoutingProvider, DirectRoutingProvider, RouteComfortProvider {
+    implements
+        RoutingProvider,
+        DirectRoutingProvider,
+        RouteComfortProvider,
+        DiscoveryRoutingProvider {
   int standardCalls = 0;
   final direct = <Completer<CycleRoute>>[];
   final _requestWaiters = <Completer<void>>[];
@@ -661,6 +835,21 @@ class VariantApi
       _requestWaiters.add(waiter);
       await waiter.future;
     }
+  }
+
+  int discoveryCalls = 0;
+  Completer<CycleRoute>? discoveryReply;
+  final discoveryRequests = <List<LatLng>>[];
+  @override
+  Future<CycleRoute> routeDiscovery(List<LatLng> coordinates) async {
+    discoveryCalls++;
+    discoveryRequests.add(coordinates);
+    if (discoveryReply != null) return discoveryReply!.future;
+    return CycleRoute(coordinates, 50000, 10000,
+        maneuvers: result(false, coordinates).maneuvers,
+        analysisContext: RouteAnalysisContext(const [
+          [1, 2]
+        ], variant: 'discovery'));
   }
 
   final requests = <List<LatLng>>[];

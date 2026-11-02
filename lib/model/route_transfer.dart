@@ -46,7 +46,7 @@ class RouteTransfer {
       _require(utf8.encode(jsonEncode(value)).length <= maxBytes);
       _require(value['version'] == 1 &&
           value['provider'] == 'radlnavi' &&
-          const ['standard', 'direct'].contains(value['variant']));
+          const ['standard', 'direct', 'discovery'].contains(value['variant']));
       final name = value['name'];
       _require(name is String && name.trim().isNotEmpty && name.length <= 200);
       _require(value['createdAt'] is String &&

@@ -17,3 +17,8 @@ abstract interface class RoutingProvider {
     BRouterProfile profile = BRouterProfile.trekking,
   });
 }
+
+/// Relaxed exploration keeps the standard route/navigation response contract.
+abstract interface class DiscoveryRoutingProvider {
+  Future<CycleRoute> routeDiscovery(List<LatLng> coordinates);
+}

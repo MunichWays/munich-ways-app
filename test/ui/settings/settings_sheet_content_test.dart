@@ -284,6 +284,7 @@ void main() {
           .toList(),
       [
         RouteRecommendation.standard,
+        RouteRecommendation.discovery,
         RouteRecommendation.aloneAfterDark,
         RouteRecommendation.hotWeather,
         RouteRecommendation.snowAndMud,
@@ -293,11 +294,20 @@ void main() {
       ],
     );
     expect(standardRecommendation, findsOneWidget);
+    expect(recommendation('Entdeckertour (entspannt)'), findsOneWidget);
     expect(recommendation('Trekking'), findsOneWidget);
     expect(recommendation('Rennrad (schnell)'), findsOneWidget);
     expect(recommendation('Allein im Dunkeln (Beta)'), findsOneWidget);
     expect(recommendation('Bei Hitze (Beta)'), findsOneWidget);
     expect(recommendation('Bei Schnee und Matsch (Beta)'), findsOneWidget);
+
+    final discovery = recommendation('Entdeckertour (entspannt)');
+    await tester.ensureVisible(discovery);
+    await tester.tap(discovery);
+    await tester.pump();
+    expect(model.routeRecommendation, RouteRecommendation.discovery);
+    expect(model.routingMode, RoutingMode.automatic);
+    expect(model.bRouterProfile, BRouterProfile.trekking);
 
     final aloneAfterDark = recommendation('Allein im Dunkeln (Beta)');
     await tester.ensureVisible(aloneAfterDark);
