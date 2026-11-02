@@ -15,7 +15,11 @@ import 'api_exception.dart';
 // see https://github.com/MunichWays/munichways-radlnavi for the routing profile
 // is based on https://github.com/Project-OSRM/osrm-backend, checkout their docs for api
 class RadlNaviApi
-    implements RoutingProvider, RouteComfortProvider, DirectRoutingProvider {
+    implements
+        RoutingProvider,
+        RouteComfortProvider,
+        DirectRoutingProvider,
+        DiscoveryRoutingProvider {
   Client? _client;
   final String baseUrl;
   final String variant;
@@ -96,6 +100,11 @@ class RadlNaviApi
     }
     return _directApi!.route(coordinates);
   }
+
+  @override
+  Future<CycleRoute> routeDiscovery(List<LatLng> coordinates) =>
+      RadlNaviApi(baseUrl: baseUrl, variant: 'discovery', client: _client)
+          .route(coordinates);
 
   static const String RADLNAVI_URL = "api.radlnavi.munichways.de";
 

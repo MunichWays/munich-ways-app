@@ -10,6 +10,13 @@ Map<String, dynamic> fixture() => jsonDecode(
         File('test_resources/routing/route-transfer.json').readAsStringSync())
     as Map<String, dynamic>;
 void main() {
+  test('Discovery snapshots preserve native routing variant on import', () {
+    final data = fixture()..['variant'] = 'discovery';
+    final snapshot = RouteTransfer.fromJson(data);
+    expect(snapshot.native!['variant'], 'discovery');
+    expect(snapshot.route.analysisContext!.variant, 'discovery');
+  });
+
   test('GPX parser reports the actual structural or coordinate failure', () {
     const prefix =
         '<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1">';

@@ -341,9 +341,8 @@ class _RoutePlannerSheetState extends State<_RoutePlannerSheet> {
                 _destination!
               ],
               widget.model.selectedSavedRoute?.name ?? 'MunichWays-Route',
-              widget.model.temporaryShortestRouteEnabled
-                  ? 'direct'
-                  : 'standard');
+              current.analysisContext?.variant ??
+                  widget.model.selectedRouteVariant.name);
       final box = context.findRenderObject() as RenderBox?;
       await RouteTransferIo.export(transfer,
           origin:

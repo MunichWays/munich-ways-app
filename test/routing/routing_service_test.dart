@@ -13,6 +13,40 @@ void main() {
   const rosenheim = LatLng(47.856, 12.128);
   const berlin = LatLng(52.52, 13.405);
 
+  test(
+      'Discovery falls back on failure, recovers, and yields to explicit Direct',
+      () async {
+    final api = _DiscoveryProvider();
+    final fallback = _FakeProvider();
+    final service = RoutingService(
+        radlNavi: api,
+        bRouter: fallback,
+        radlNaviCoverage: _FakeCoverage({munich, rosenheim}));
+    Future<CycleRoute> request({bool direct = false}) =>
+        service.route(const [munich, rosenheim],
+            mode: RoutingMode.automatic,
+            bRouterProfile: BRouterProfile.trekking,
+            discovery: true,
+            direct: direct);
+    expect((await request()).analysisContext!.variant, 'discovery');
+    expect(api.calls, 0);
+    api.failDiscovery = true;
+    await request();
+    expect(fallback.calls, 1);
+    expect(fallback.lastProfile, BRouterProfile.trekking);
+    api.failDiscovery = false;
+    expect((await request()).analysisContext!.variant, 'discovery');
+    await request(direct: true);
+    expect(api.directCalls, 1);
+    expect(api.discoveryCalls, 3);
+    await service.route(const [munich, berlin],
+        mode: RoutingMode.automatic,
+        bRouterProfile: BRouterProfile.trekking,
+        discovery: true);
+    expect(api.discoveryCalls, 3);
+    expect(fallback.calls, 2);
+  });
+
   test('automatic mode uses RadlNavi when all coordinates are covered',
       () async {
     final radlNavi = _FakeProvider();
@@ -279,5 +313,18 @@ class _DirectProvider extends _FakeProvider implements DirectRoutingProvider {
     if (fail) throw StateError('unavailable');
     if (result != null) return result!;
     return CycleRoute(coordinates, 100, 20);
+  }
+}
+
+class _DiscoveryProvider extends _DirectProvider
+    implements DiscoveryRoutingProvider {
+  int discoveryCalls = 0;
+  bool failDiscovery = false;
+  @override
+  Future<CycleRoute> routeDiscovery(List<LatLng> coordinates) async {
+    discoveryCalls++;
+    if (failDiscovery) throw StateError('Discovery unavailable');
+    return CycleRoute(coordinates, 120, 30,
+        analysisContext: RouteAnalysisContext(const [], variant: 'discovery'));
   }
 }

@@ -34,6 +34,8 @@ class AppLocalizations {
       isEnglish ? 'Route recommendation' : 'Routenwunsch';
   String get standardRoute =>
       isEnglish ? 'Standard (recommended)' : 'Standard (empfohlen)';
+  String get discoveryRoute =>
+      isEnglish ? 'Discovery tour (relaxed)' : 'Entdeckertour (entspannt)';
   String get aloneAfterDark =>
       isEnglish ? 'Alone after dark (Beta)' : 'Allein im Dunkeln (Beta)';
   String get hotWeather =>
@@ -42,6 +44,9 @@ class AppLocalizations {
       isEnglish ? 'In snow and mud (Beta)' : 'Bei Schnee und Matsch (Beta)';
   String routeRecommendationInfo(RouteRecommendation recommendation) =>
       switch (recommendation) {
+        RouteRecommendation.discovery => isEnglish
+            ? 'Prefers relaxed cycling routes and green surroundings, accepting longer detours and suitable gravel sections. Please check the route before setting off.'
+            : 'Bevorzugt entspannte Radstrecken und grüne Wege, nimmt dafür größere Umwege und geeignete Schotterabschnitte in Kauf. Bitte prüfe die Route vor der Fahrt.',
         RouteRecommendation.standard => isEnglish
             ? 'Returns to the balanced automatic route recommendation used by default.'
             : 'Kehrt zur ausgewogenen automatischen Routenempfehlung zurück, die standardmäßig verwendet wird.',

@@ -85,6 +85,37 @@ void main() {
         },
       );
 
+  test('Discovery routing and later comfort retain the selected variant',
+      () async {
+    final api = RadlNaviApi(client: MockClient((request) async {
+      if (request.method == 'POST') {
+        expect(jsonDecode(request.body)['variant'], 'discovery');
+        return _response({
+          'ok': true,
+          'comfort': {
+            'index': 80,
+            'coverage': 100,
+            'sufficientCoverage': true,
+            'distribution': {
+              'black': 0,
+              'red': 0,
+              'yellow': 20,
+              'green': 80,
+              'unrated': 0
+            },
+          }
+        });
+      }
+      expect(request.url.queryParameters['variant'], 'discovery');
+      expect(request.url.queryParameters['steps'], 'true');
+      return routeResponse();
+    }));
+    final route = await api.routeDiscovery(_points);
+    expect(route.analysisContext!.variant, 'discovery');
+    expect(route.supportsVoiceGuidance, isTrue);
+    expect((await api.analyzeComfort(route.analysisContext!)).index, 80);
+  });
+
   test('header starts direct while standard comfort remains pending', () async {
     final comfortStarted = Completer<void>();
     final comfortResponse = Completer<Response>();

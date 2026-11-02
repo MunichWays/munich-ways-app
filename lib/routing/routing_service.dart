@@ -28,6 +28,7 @@ class RoutingService {
   final Duration comfortRequestTimeout;
 
   bool get supportsVariants => radlNavi is DirectRoutingProvider;
+  bool get supportsDiscovery => radlNavi is DiscoveryRoutingProvider;
 
   bool canAnalyzeComfort(CycleRoute route) =>
       route.analysisContext != null && radlNavi is RouteComfortProvider;
@@ -49,6 +50,7 @@ class RoutingService {
     required RoutingMode mode,
     required BRouterProfile bRouterProfile,
     bool direct = false,
+    bool discovery = false,
   }) async {
     if (coordinates.length < 2) {
       throw ArgumentError.value(
@@ -62,8 +64,11 @@ class RoutingService {
     final useDirect = direct ||
         (mode == RoutingMode.bRouterEverywhere &&
             bRouterProfile == BRouterProfile.shortest);
-    final fallbackProfile =
-        useDirect ? BRouterProfile.fastBike : bRouterProfile;
+    final fallbackProfile = useDirect
+        ? BRouterProfile.fastBike
+        : discovery
+            ? BRouterProfile.trekking
+            : bRouterProfile;
     if ((!useDirect && mode == RoutingMode.bRouterEverywhere) ||
         !await _allCoordinatesCovered(coordinates)) {
       return _routeWithBRouter(coordinates, fallbackProfile);
@@ -74,10 +79,19 @@ class RoutingService {
       return _routeWithBRouter(coordinates, fallbackProfile);
     }
 
+    if (!useDirect && discovery && provider is! DiscoveryRoutingProvider) {
+      return _routeWithBRouter(coordinates, BRouterProfile.trekking);
+    }
+
     try {
       if (useDirect) {
         return await (provider as DirectRoutingProvider)
             .routeDirect(coordinates)
+            .timeout(directRequestTimeout);
+      }
+      if (discovery) {
+        return await (provider as DiscoveryRoutingProvider)
+            .routeDiscovery(coordinates)
             .timeout(directRequestTimeout);
       }
       return await provider.route(coordinates).timeout(requestTimeout);

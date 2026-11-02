@@ -1,3 +1,4 @@
+import 'package:munich_ways/routing/routing_preferences.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,31 +19,40 @@ class RouteVariantComparison extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _VariantCard(model: model, direct: false),
-        _VariantCard(model: model, direct: true),
+        _VariantCard(model: model, variant: RouteVariant.standard),
+        _VariantCard(model: model, variant: RouteVariant.discovery),
+        _VariantCard(model: model, variant: RouteVariant.direct),
       ],
     );
   }
 }
 
 class _VariantCard extends StatelessWidget {
-  const _VariantCard({required this.model, required this.direct});
+  const _VariantCard({required this.model, required this.variant});
 
   final MapScreenViewModel model;
-  final bool direct;
+  final RouteVariant variant;
+  bool get direct => variant == RouteVariant.direct;
+  String get keySuffix => switch (variant) {
+        RouteVariant.standard => 'false',
+        RouteVariant.discovery => 'discovery',
+        RouteVariant.direct => 'true',
+      };
 
   @override
   Widget build(BuildContext context) {
     final english = context.l10n.isEnglish;
-    final variant = model.routeVariant(direct);
-    final route = variant?.route;
+    final state = model.routeVariantFor(variant);
+    final route = state?.route;
     final comfort = route?.comfort;
-    final selected = model.temporaryShortestRouteEnabled == direct;
+    final selected = model.selectedRouteVariant == variant;
     final title = direct
         ? (english ? 'Direct route' : 'Direkte Route')
-        : (english ? 'Standard route' : 'Standard Route');
-    final loading = variant?.comfortState == RouteComfortState.loading;
-    final comfortError = variant?.comfortState == RouteComfortState.error;
+        : variant == RouteVariant.discovery
+            ? (english ? 'Discovery tour' : 'Entdeckertour')
+            : (english ? 'Standard route' : 'Standard Route');
+    final loading = state?.comfortState == RouteComfortState.loading;
+    final comfortError = state?.comfortState == RouteComfortState.error;
     final hasIndex =
         comfort?.sufficientCoverage == true && comfort?.index != null;
     final comfortText = comfort != null
@@ -64,7 +74,7 @@ class _VariantCard extends StatelessWidget {
     final detailStyle = direct ? theme.textTheme.bodySmall : null;
 
     return Card(
-      key: ValueKey('route-variant-card-$direct'),
+      key: ValueKey('route-variant-card-$keySuffix'),
       margin: EdgeInsets.symmetric(vertical: direct ? 2 : 3),
       elevation: direct ? 0 : 1,
       color: selected
@@ -90,9 +100,9 @@ class _VariantCard extends StatelessWidget {
               checked: selected,
               inMutuallyExclusiveGroup: true,
               child: InkWell(
-                key: ValueKey('route-variant-$direct'),
+                key: ValueKey('route-variant-$keySuffix'),
                 onTap: () => unawaited(
-                  model.setTemporaryShortestRouteEnabled(direct),
+                  model.selectRouteVariant(variant),
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 48),
@@ -117,7 +127,7 @@ class _VariantCard extends StatelessWidget {
                       ),
                       if (comfort != null)
                         IconButton(
-                          key: ValueKey('variant-comfort-info-$direct'),
+                          key: ValueKey('variant-comfort-info-$keySuffix'),
                           tooltip: english
                               ? 'About the cycling comfort index'
                               : 'Erläuterung zum Radl-Komfort-Index',
@@ -137,7 +147,7 @@ class _VariantCard extends StatelessWidget {
                               ? 'Retry comfort analysis'
                               : 'Komfort erneut laden',
                           onPressed: () =>
-                              model.retryRouteComfort(direct: direct),
+                              model.retryRouteComfort(variant: variant),
                           icon: const Icon(Icons.refresh),
                         ),
                     ],
@@ -149,7 +159,7 @@ class _VariantCard extends StatelessWidget {
               Text(coverageText, style: theme.textTheme.bodySmall),
             if (comfort != null)
               Padding(
-                key: ValueKey('variant-comfort-bar-$direct'),
+                key: ValueKey('variant-comfort-bar-$keySuffix'),
                 padding: EdgeInsets.only(
                   top: coverageText == null ? 1 : 3,
                   bottom: direct ? 4 : 6,
@@ -173,14 +183,14 @@ class _VariantCard extends StatelessWidget {
                 ),
             ] else
               Text(
-                variant?.state == MapRouteState.LOADING
+                state?.state == MapRouteState.LOADING
                     ? (english ? 'Calculating…' : 'Wird berechnet…')
                     : (english
                         ? 'Tap to calculate / retry'
                         : 'Zum Berechnen / Wiederholen antippen'),
                 style: detailStyle,
               ),
-            if (model.pendingRouteVariant == direct)
+            if (model.pendingRouteType == variant)
               Text(
                 english ? 'Switching when ready…' : 'Wechsel, sobald bereit…',
                 style: detailStyle,

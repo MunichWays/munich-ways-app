@@ -5,6 +5,7 @@ enum RoutingMode {
 
 enum RouteRecommendation {
   standard,
+  discovery,
   aloneAfterDark,
   hotWeather,
   snowAndMud,
@@ -22,3 +23,6 @@ enum BRouterProfile {
 
   final String apiName;
 }
+
+/// Route-scoped alternatives in the planner; independent of saved wishes.
+enum RouteVariant { standard, discovery, direct }
