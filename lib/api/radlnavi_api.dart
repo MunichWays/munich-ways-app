@@ -23,9 +23,10 @@ class RadlNaviApi
   Client? _client;
   final String baseUrl;
   final String variant;
-  RadlNaviApi? _directApi;
-  Future<RadlNaviApi>? _directDiscovery;
-  int _directConfigurationRevision = 0;
+  final _variantEndpoints = {
+    'direct': _VariantEndpoint(),
+    'discovery': _VariantEndpoint(),
+  };
 
   static Uri _endpoint(String base, String path, [Map<String, String>? query]) {
     final uri = Uri.parse(base.contains('://') ? base : 'https://$base');
@@ -40,71 +41,83 @@ class RadlNaviApi
     return uri.replace(path: '$prefix/$path', queryParameters: query);
   }
 
-  Future<RadlNaviApi> _discoverDirect() async {
+  Future<RadlNaviApi> _discoverVariant(String requested) async {
     final response = await _client!
         .get(_endpoint(baseUrl, 'routing_variants'))
         .timeout(const Duration(seconds: 3));
     if (response.statusCode != 200)
-      throw ApiException('Direct routing unavailable');
-    final direct = response.jsonBody()['direct'];
-    if (direct is! Map ||
-        direct['available'] != true ||
-        direct['base_url'] is! String) {
-      throw ApiException('Direct routing unavailable');
+      throw ApiException('$requested routing unavailable');
+    final capability = response.jsonBody()[requested];
+    if (capability is! Map ||
+        capability['available'] != true ||
+        capability['base_url'] is! String) {
+      throw ApiException('$requested routing unavailable');
     }
-    final url = direct['base_url'] as String;
+    final url = capability['base_url'] as String;
     _endpoint(
         url, 'route'); // Validate before caching, including local HTTP/port.
-    return RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
+    return RadlNaviApi(baseUrl: url, variant: requested, client: _client);
   }
 
-  // Optional metadata must never invalidate the standard route. An empty
-  // header clears a previously advertised endpoint; older APIs omit it.
-  void _rememberDirectEndpoint(Response response) {
+  // Optional metadata must never invalidate the standard route. Each variant
+  // owns its cache/revision; late capability replies cannot replace new headers.
+  void _rememberVariantEndpoints(Response response) {
     if (variant != 'standard') return;
-    final url = response.headers['x-direct-api-url'];
-    if (url == null) return;
-    _directConfigurationRevision++;
-    _directApi = null;
-    _directDiscovery = null;
-    try {
-      if (url.trim().isEmpty) return;
-      _endpoint(url, 'route');
-      _directApi =
-          RadlNaviApi(baseUrl: url, variant: 'direct', client: _client);
-    } catch (_) {
-      // Invalid optional metadata falls back to the existing discovery path.
+    for (final entry in _variantEndpoints.entries) {
+      final url = response.headers['x-${entry.key}-api-url'];
+      if (url == null) continue;
+      final state = entry.value;
+      state.revision++;
+      state.api = null;
+      state.pending = null;
+      try {
+        if (url.trim().isEmpty) continue;
+        _endpoint(url, 'route');
+        state.api =
+            RadlNaviApi(baseUrl: url, variant: entry.key, client: _client);
+      } catch (_) {
+        // Invalid optional metadata leaves capability discovery available.
+      }
     }
+  }
+
+  Future<CycleRoute> _routeVariant(
+      String requested, List<LatLng> coordinates) async {
+    if (variant == requested) return route(coordinates);
+    final state = _variantEndpoints[requested]!;
+    if (state.api == null) {
+      final revision = state.revision;
+      final pending = state.pending ??= _discoverVariant(requested);
+      try {
+        final discovered = await pending;
+        if (revision == state.revision) state.api ??= discovered;
+      } catch (_) {
+        if (revision == state.revision) {
+          // Older/internal-only deployments still support Discovery through
+          // the Standard gateway. Metadata failure must not remove that path.
+          if (requested == 'discovery') {
+            return RadlNaviApi(
+                    baseUrl: baseUrl, variant: requested, client: _client)
+                .route(coordinates);
+          }
+          rethrow;
+        }
+      } finally {
+        if (identical(state.pending, pending)) state.pending = null;
+      }
+      if (revision != state.revision)
+        return _routeVariant(requested, coordinates);
+    }
+    return state.api!.route(coordinates);
   }
 
   @override
-  Future<CycleRoute> routeDirect(List<LatLng> coordinates) async {
-    if (variant == 'direct') return route(coordinates);
-    if (_directApi == null) {
-      final revision = _directConfigurationRevision;
-      final discovery = _directDiscovery ??= _discoverDirect();
-      try {
-        final discovered = await discovery;
-        if (revision == _directConfigurationRevision) {
-          _directApi ??= discovered;
-        }
-      } catch (_) {
-        if (revision == _directConfigurationRevision) rethrow;
-      } finally {
-        // A late discovery must not overwrite or clear newer configuration.
-        if (identical(_directDiscovery, discovery)) _directDiscovery = null;
-      }
-      if (revision != _directConfigurationRevision) {
-        return routeDirect(coordinates);
-      }
-    }
-    return _directApi!.route(coordinates);
-  }
+  Future<CycleRoute> routeDirect(List<LatLng> coordinates) =>
+      _routeVariant('direct', coordinates);
 
   @override
   Future<CycleRoute> routeDiscovery(List<LatLng> coordinates) =>
-      RadlNaviApi(baseUrl: baseUrl, variant: 'discovery', client: _client)
-          .route(coordinates);
+      _routeVariant('discovery', coordinates);
 
   static const String RADLNAVI_URL = "api.radlnavi.munichways.de";
 
@@ -154,7 +167,7 @@ class RadlNaviApi
     switch (response.statusCode) {
       case 200:
         var json = response.jsonBody();
-        _rememberDirectEndpoint(response);
+        _rememberVariantEndpoints(response);
         return parseResponse(json, coordinates);
       default:
         throw ApiException("Error retrieving route: " + response.body);
@@ -593,4 +606,11 @@ class _DestinationAccess {
   final List<LatLng> route;
   final List<LatLng> connector;
   final LatLng? walkingStart;
+}
+
+/// One authoritative resolution state for each independently deployed variant.
+class _VariantEndpoint {
+  RadlNaviApi? api;
+  Future<RadlNaviApi>? pending;
+  int revision = 0;
 }

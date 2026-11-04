@@ -558,11 +558,7 @@ class VoiceGuidance {
       previousManeuverDistance = projection.distanceAlongRoute;
       projectedManeuvers.add(
         _GuidanceManeuver(
-          _adjustTurnModifierFromGeometry(
-            guidanceRoute.points,
-            maneuver,
-            projection.distanceAlongRoute,
-          ),
+          maneuver,
           projection.distanceAlongRoute,
         ),
       );
@@ -1325,7 +1321,7 @@ class VoiceGuidance {
       }
       final second = maneuvers[index + 1];
       final gap = second.routeDistance - first.routeDistance;
-      if (!_areOppositeSlightTurns(first.maneuver, second.maneuver) ||
+      if (!_areOppositeSlightTurns(route, first, second) ||
           gap <= 0 ||
           gap > maximumGapMeters) {
         result.add(first);
@@ -1357,16 +1353,22 @@ class VoiceGuidance {
     return result;
   }
 
-  static bool _areOppositeSlightTurns(
-      RouteManeuver first, RouteManeuver second) {
+  static bool _areOppositeSlightTurns(List<LatLng> route,
+      _GuidanceManeuver firstTarget, _GuidanceManeuver secondTarget) {
+    final first = firstTarget.maneuver;
+    final second = secondTarget.maneuver;
+    bool isLeft(RouteManeuver maneuver) =>
+        maneuver.modifier == 'left' || maneuver.modifier == 'slight left';
+    bool isRight(RouteManeuver maneuver) =>
+        maneuver.modifier == 'right' || maneuver.modifier == 'slight right';
     return first.type == 'turn' &&
         second.type == 'turn' &&
         first.enteringWayType == null &&
         second.enteringWayType == null &&
-        ((first.modifier == 'slight left' &&
-                second.modifier == 'slight right') ||
-            (first.modifier == 'slight right' &&
-                second.modifier == 'slight left'));
+        ((isLeft(first) && isRight(second)) ||
+            (isRight(first) && isLeft(second))) &&
+        _isShallowOffsetTurn(route, firstTarget) &&
+        _isShallowOffsetTurn(route, secondTarget);
   }
 
   static LatLng _pointAlongRoute(List<LatLng> route, double targetDistance) {
@@ -1412,21 +1414,17 @@ class VoiceGuidance {
         .abs();
   }
 
-  /// OSRM occasionally labels a shallow transition onto an offset cycle path
-  /// as a normal turn. Use the actual route geometry to avoid directing riders
-  /// into a nearby cross street.
-  static RouteManeuver _adjustTurnModifierFromGeometry(
-    List<LatLng> route,
-    RouteManeuver maneuver,
-    double routeDistance,
-  ) {
-    if (maneuver.type != 'turn' ||
-        (maneuver.modifier != 'right' && maneuver.modifier != 'left') ||
-        routeDistance < 8) {
-      return maneuver;
-    }
+  /// Geometry only identifies offset straight crossings for suppression. It
+  /// must not soften a normal turn in spoken or displayed guidance.
+  static bool _isShallowOffsetTurn(
+      List<LatLng> route, _GuidanceManeuver target) {
+    final maneuver = target.maneuver;
+    if (maneuver.modifier == 'slight left' ||
+        maneuver.modifier == 'slight right') return true;
+    final routeDistance = target.routeDistance;
+    if (routeDistance < 8) return false;
     final totalDistance = _routeLength(route);
-    if (totalDistance - routeDistance < 8) return maneuver;
+    if (totalDistance - routeDistance < 8) return false;
 
     const sampleDistance = 12.0;
     final before = _pointAlongRoute(
@@ -1439,19 +1437,7 @@ class VoiceGuidance {
       min(totalDistance, routeDistance + sampleDistance),
     );
     final turnDegrees = _angleBetweenSegments(before, at, at, after);
-    // Do not reinterpret tests/routes whose maneuver is not represented in the
-    // overview geometry (near 0 degrees), or genuine turns above 50 degrees.
-    if (turnDegrees < 15 || turnDegrees > 50) return maneuver;
-
-    return RouteManeuver(
-      location: maneuver.location,
-      type: maneuver.type,
-      modifier: maneuver.modifier == 'right' ? 'slight right' : 'slight left',
-      roadName: maneuver.roadName,
-      exit: maneuver.exit,
-      enteringWayType: maneuver.enteringWayType,
-      wayType: maneuver.wayType,
-    );
+    return turnDegrees >= 15 && turnDegrees <= 50;
   }
 
   static double _routeLength(List<LatLng> route) {

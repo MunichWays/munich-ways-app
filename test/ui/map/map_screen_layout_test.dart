@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
+import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -313,6 +315,20 @@ void main() {
       ..locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await model.startNavigation();
     await tester.pump();
+    await tester.pump(); // Apply the measured guidance height.
+    final guidance = find.byWidgetPredicate(
+        (widget) => widget is MapNavigationHeaderBar && widget.guidanceOnly);
+    final attributionButton = find.byTooltip('Kartenquellen');
+    expect(tester.getRect(attributionButton).top,
+        greaterThan(tester.getRect(guidance).bottom));
+    await tester.tap(attributionButton);
+    await tester.pump();
+    expect(tester.getRect(find.byType(MapAttribution)).top,
+        greaterThan(tester.getRect(guidance).bottom));
+    expect(tester.getRect(attributionButton).top,
+        greaterThan(tester.getRect(guidance).bottom));
+    await tester.tap(attributionButton);
+    await tester.pump();
     final map = find.byType(MapLibreMap);
     final gesture = await tester
         .startGesture(tester.getTopLeft(map) + const Offset(25, 180));
@@ -329,6 +345,9 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Navigation pausieren'));
     await tester.pump();
     expect(model.navigationPaused, isTrue);
+    await tester.pump();
+    expect(tester.getRect(attributionButton).top,
+        greaterThan(tester.getRect(guidance).bottom));
     expect(find.text('Pause'), findsOneWidget);
     expect(find.bySemanticsLabel('Fortsetzen'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());

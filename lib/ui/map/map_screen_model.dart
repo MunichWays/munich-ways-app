@@ -150,6 +150,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void setRoutingMode(RoutingMode value) {
     if (_routingMode == value) return;
+    _routingPreferencesEdited = true;
     _routingMode = value;
     _routeRecommendation = null;
     _clearTemporaryShortestRoute();
@@ -167,6 +168,7 @@ class MapScreenViewModel extends ChangeNotifier {
 
   void setBRouterProfile(BRouterProfile value) {
     if (_bRouterProfile == value) return;
+    _routingPreferencesEdited = true;
     _bRouterProfile = value;
     _routeRecommendation = null;
     _clearTemporaryShortestRoute();
@@ -230,7 +232,13 @@ class MapScreenViewModel extends ChangeNotifier {
         _editedMapPreferences.contains(_MapPreference.perspective)
             ? _map3dEnabled
             : data.map3dEnabled;
-    final routingMode = data.routingMode;
+    final routingMode =
+        _routingPreferencesEdited ? _routingMode : data.routingMode;
+    final profile =
+        _routingPreferencesEdited ? _bRouterProfile : data.bRouterProfile;
+    final recommendation = _routingPreferencesEdited
+        ? _routeRecommendation
+        : data.routeRecommendation;
     if (map3dEnabled == _map3dEnabled &&
         showZoomButtons == _showZoomButtons &&
         background == _mapBackground &&
@@ -241,8 +249,8 @@ class MapScreenViewModel extends ChangeNotifier {
         data.voiceGuidanceEnabled == _voiceGuidanceEnabled &&
         data.automaticReroutingEnabled == _automaticReroutingEnabled &&
         routingMode == _routingMode &&
-        data.bRouterProfile == _bRouterProfile &&
-        data.routeRecommendation == _routeRecommendation) {
+        profile == _bRouterProfile &&
+        recommendation == _routeRecommendation) {
       return;
     }
     _map3dEnabled = map3dEnabled;
@@ -256,8 +264,8 @@ class MapScreenViewModel extends ChangeNotifier {
     _voiceGuidanceEnabled = data.voiceGuidanceEnabled;
     _automaticReroutingEnabled = data.automaticReroutingEnabled;
     _routingMode = routingMode;
-    _bRouterProfile = data.bRouterProfile;
-    _routeRecommendation = data.routeRecommendation;
+    _bRouterProfile = profile;
+    _routeRecommendation = recommendation;
     notifyListeners();
   }
 
@@ -371,6 +379,7 @@ class MapScreenViewModel extends ChangeNotifier {
       _automaticReroutingEnabled && !_originalRoute;
   bool get voiceGuidanceAvailable =>
       route.route?.supportsVoiceGuidance ?? false;
+  bool _routingPreferencesEdited = false;
   RoutingMode _routingMode = RoutingMode.automatic;
   RoutingMode get routingMode => _routingMode;
   BRouterProfile _bRouterProfile = BRouterProfile.trekking;
@@ -1136,6 +1145,7 @@ class MapScreenViewModel extends ChangeNotifier {
         enabled ? RoutingMode.bRouterEverywhere : RoutingMode.automatic;
     final profile = enabled ? BRouterProfile.shortest : BRouterProfile.trekking;
     if (_routingMode == routingMode && _bRouterProfile == profile) return;
+    _routingPreferencesEdited = true;
     _routingMode = routingMode;
     _bRouterProfile = profile;
     _routeRecommendation =
@@ -1186,6 +1196,7 @@ class MapScreenViewModel extends ChangeNotifier {
         _bRouterProfile == profile) {
       return;
     }
+    _routingPreferencesEdited = true;
     _clearTemporaryShortestRoute();
     _routeRecommendation = recommendation;
     _routingMode = routingMode;
@@ -1480,14 +1491,24 @@ class MapScreenViewModel extends ChangeNotifier {
     // Every refresh has a new generation, including two overlapping GPS fixes.
     final revision = ++_routePlanRevision;
     _invalidateVariants();
-    // Freeze this trip's choice before any asynchronous work. Late settings
-    // restoration must not change which pending route is allowed to activate.
-    _routeVariantOverride ??= _preferredRouteVariant;
-    final variant = selectedRouteVariant;
     // Retain the usable plan and its pending comfort metadata during approach
     // calculation. The navigation start button already shows the pending work.
     if (!keepShownRoute) route = MapRoute(null, MapRouteState.LOADING);
     notifyListeners();
+    // A trip without an explicit planner choice starts with the saved wish,
+    // including when planning begins before settings restoration finishes.
+    // Bound a stalled disk read; a late reply cannot change the active trip.
+    if (_routeVariantOverride == null) {
+      try {
+        await _settingsLoaded.timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        log.w('Routing settings load timed out; using current preferences');
+      }
+    }
+    if (_disposed || destination != to || revision != _routePlanRevision)
+      return false;
+    _routeVariantOverride ??= _preferredRouteVariant;
+    final variant = selectedRouteVariant;
     final customStart = routeStart;
     final plannedStops = List<Place>.of(waypoints);
     Position? from = startPosition;
@@ -1519,8 +1540,11 @@ class MapScreenViewModel extends ChangeNotifier {
     final ready = await _calculateVariant(variant, revision,
         activate: true, keepShownRouteOnFailure: keepShownRoute);
     if (_disposed || revision != _routePlanRevision) return false;
-    // Start the alternative only after the requested route is already usable.
+    // Preload comparisons while planning, after the selected route is usable.
+    // Navigation switches always recalculate from live GPS; preloading both
+    // alternatives on every reroute only creates work that cannot be reused.
     if (ready &&
+        !navigationStarted &&
         canSelectTemporaryShortestRoute &&
         _routingService.supportsVariants) {
       for (final alternative in [

@@ -211,7 +211,7 @@ void main() {
     });
   }
 
-  test('preserves street name and type when geometry softens a turn', () {
+  test('preserves normal turn, street name and type on shallow geometry', () {
     const entry = LatLng(48.138692, 11.517890);
     final guidance = VoiceGuidance()
       ..setRoute(CycleRoute(
@@ -234,7 +234,7 @@ void main() {
         ],
       ));
     expect(guidance.update(const LatLng(48.138215, 11.517741), english: false),
-        'In 50 Metern leicht rechts halten, in Teststraße.');
+        'In 50 Metern rechts abbiegen, in Teststraße.');
   });
 
   test('close pair omits outgoing street names', () async {
@@ -263,7 +263,7 @@ void main() {
         'In 60 Metern links, danach sofort rechts.');
   });
 
-  test('keeps a way-type change when geometry softens a turn', () {
+  test('keeps normal turn and way-type change on shallow geometry', () {
     const entry = LatLng(48.138692, 11.517890);
     final guidance = VoiceGuidance()
       ..setRoute(CycleRoute(
@@ -285,7 +285,7 @@ void main() {
         ],
       ));
     expect(guidance.update(const LatLng(48.138215, 11.517741), english: false),
-        'In 50 Metern leicht rechts halten, auf Radweg.');
+        'In 50 Metern rechts abbiegen, auf Radweg.');
   });
 
   test('does not suppress slight offset turns with a way-type change', () {

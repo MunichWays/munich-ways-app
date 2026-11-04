@@ -1223,6 +1223,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             });
           }
 
+          // Attribution belongs below the measured guidance card, including
+          // when its text grows or navigation is paused.
+          final attributionTop =
+              model.navigationStarted && model.destination != null
+                  ? 8 + _guidanceHeight + 8
+                  : 0.0;
+
           final content = ScaffoldMessenger(
             key: scaffoldMessengerKey,
             child: Scaffold(
@@ -1469,6 +1476,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
+                          if (model.destination != null &&
+                              _styleLoaded &&
+                              _mapController != null)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: MapDestinationOffScreenOverlay(
+                                  mapLayerKey: _mapLibreViewKey,
+                                  controller: _mapController,
+                                  destination: model.destination!,
+                                  bottomActionRowPadding:
+                                      bottomActionRowPadding,
+                                ),
+                              ),
+                            ),
                           if (model.navigationStarted &&
                               model.destination != null)
                             Positioned(
@@ -1507,22 +1528,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
-                          if (model.destination != null &&
-                              _styleLoaded &&
-                              _mapController != null)
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: MapDestinationOffScreenOverlay(
-                                  mapLayerKey: _mapLibreViewKey,
-                                  controller: _mapController,
-                                  destination: model.destination!,
-                                  bottomActionRowPadding:
-                                      bottomActionRowPadding,
-                                ),
-                              ),
-                            ),
                           Positioned(
-                            top: 0,
+                            top: attributionTop,
                             left: 0,
                             right: 72,
                             child: IgnorePointer(
@@ -1582,7 +1589,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             },
                           ),
                           Positioned(
-                            top: _mapAttributionExpanded ? 0 : 28,
+                            top: attributionTop +
+                                (_mapAttributionExpanded ? 0 : 28),
                             right: 12,
                             child: MapOverlayButton(
                               tooltip: context.l10n.isEnglish
@@ -1609,7 +1617,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                           if (energySaving)
                             Positioned(
-                              top: _mapAttributionExpanded ? 56 : 84,
+                              top: attributionTop +
+                                  (_mapAttributionExpanded ? 56 : 84),
                               right: 12,
                               child: IconButton.filled(
                                 style: IconButton.styleFrom(
@@ -4224,13 +4233,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return data!.buffer.asUint8List();
   }
 
-  Future<Uint8List> _createPoiIconImage(IconData icon) async {
+  Future<Uint8List> _createPoiIconImage(IconData icon,
+      {Color backgroundColor = AppColors.mapRouteColor}) async {
     const size = 72.0;
     const center = ui.Offset(size / 2, size / 2);
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
     canvas.drawCircle(center, 34, ui.Paint()..color = Colors.white);
-    canvas.drawCircle(center, 30, ui.Paint()..color = AppColors.mapRouteColor);
+    canvas.drawCircle(center, 30, ui.Paint()..color = backgroundColor);
     final painter = TextPainter(
       text: TextSpan(
         text: String.fromCharCode(icon.codePoint),
@@ -5280,7 +5290,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         final layers = await controller.getLayerIds();
         if (!isCurrent()) return;
         if (!layers.contains(_kSecretTipsLayerId)) {
-          final image = await _createPoiIconImage(Icons.diamond);
+          final image = await _createPoiIconImage(Icons.diamond,
+              backgroundColor: AppColors.mapGreen);
           if (!isCurrent()) return;
           await controller.addImage(
             _kSecretTipsImageId,
