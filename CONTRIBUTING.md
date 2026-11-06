@@ -738,3 +738,24 @@ On Android and iOS, start a route and check portrait/landscape and large text:
   recover. Existing voice prompts, remaining distance and controls still work.
 - Finish/end navigation and plan another route. The map returns to its usual
   centered view; route overview, zoom and destination selection still work.
+
+### Preferred route first
+
+When planning immediately after startup, the saved route recommendation is
+loaded before choosing the primary variant. A stalled settings read is bounded;
+a later reply cannot replace the active trip. Alternatives start only after the
+primary route is usable and never wait for its optional comfort analysis.
+Discovery and Direct use their advertised worker URLs and keep comfort analysis
+bound to each route's origin. Discovery retains its Standard gateway fallback
+when older deployments do not advertise a public worker URL.
+
+Phone: persist Discovery, restart and plan immediately. Discovery must appear
+first, with the other types loading independently. Repeat with Standard,
+intermediate stops, quick plan changes, network failure/retry and rerouting.
+
+During navigation a refresh/reroute recalculates only the active route type and
+its optional comfort data. Cached alternatives from the old position are
+invalidated and are calculated on explicit selection from the latest GPS fix.
+Planning before navigation still preloads both alternatives. Phone: with each
+of Standard, Discovery and Direct active, trigger rerouting after a stop; check
+that the active type/remaining stops persist, then switch to an unloaded type.

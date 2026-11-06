@@ -76,18 +76,28 @@ void main() {
       'distance': [5]
     },
   ];
-  Response routeResponse({String? directUrl}) => Response(
+  Response routeResponse({String? directUrl, String? discoveryUrl}) => Response(
         jsonEncode(_routePayload(annotations)),
         200,
         headers: {
           'content-type': 'application/json',
           if (directUrl != null) 'x-direct-api-url': directUrl,
+          if (discoveryUrl != null) 'x-discovery-api-url': discoveryUrl,
         },
       );
 
   test('Discovery routing and later comfort retain the selected variant',
       () async {
     final api = RadlNaviApi(client: MockClient((request) async {
+      if (request.url.path == '/routing_variants') {
+        return _response({
+          'discovery': {
+            'available': true,
+            'base_url': 'https://discovery.example'
+          }
+        });
+      }
+      expect(request.url.host, 'discovery.example');
       if (request.method == 'POST') {
         expect(jsonDecode(request.body)['variant'], 'discovery');
         return _response({
@@ -112,8 +122,130 @@ void main() {
     }));
     final route = await api.routeDiscovery(_points);
     expect(route.analysisContext!.variant, 'discovery');
+    expect(route.analysisContext!.baseUrl, 'https://discovery.example');
     expect(route.supportsVoiceGuidance, isTrue);
     expect((await api.analyzeComfort(route.analysisContext!)).index, 80);
+  });
+
+  test('Discovery capability requests join and cannot block Standard',
+      () async {
+    final capability = Completer<Response>();
+    var resolutions = 0;
+    final hosts = <String>[];
+    final api = RadlNaviApi(client: MockClient((request) async {
+      if (request.url.path == '/routing_variants') {
+        resolutions++;
+        return capability.future;
+      }
+      hosts.add(request.url.host);
+      return routeResponse();
+    }));
+    final first = api.routeDiscovery(_points);
+    final second = api.routeDiscovery(_points);
+    expect((await api.route(_points)).distance, 43193);
+    expect(capability.isCompleted, isFalse);
+    capability.complete(_response({
+      'discovery': {'available': true, 'base_url': 'https://discovery.example'}
+    }));
+    await Future.wait([first, second]);
+    await api.routeDiscovery(_points);
+    expect(resolutions, 1);
+    expect(hosts, [
+      'api.radlnavi.munichways.de',
+      'discovery.example',
+      'discovery.example',
+      'discovery.example'
+    ]);
+  });
+
+  test(
+      'Discovery resolves from route headers and retains analysis origin after changes',
+      () async {
+    var url = 'http://localhost:8082/discovery/';
+    final routingHosts = <String>[];
+    final api = RadlNaviApi(client: MockClient((request) async {
+      expect(request.url.path, isNot('/routing_variants'));
+      if (request.method == 'POST') {
+        expect(request.url.host, 'localhost');
+        expect(request.url.port, 8082);
+        expect(request.url.path, '/discovery/tag_distribution');
+        expect(jsonDecode(request.body)['variant'], 'discovery');
+        return _response({}, 503);
+      }
+      if (request.url.queryParameters['variant'] == 'standard') {
+        return routeResponse(discoveryUrl: url);
+      }
+      routingHosts.add(request.url.host);
+      return routeResponse();
+    }));
+    await api.route(_points);
+    final retained = await api.routeDiscovery(_points);
+    url = 'https://new-discovery.example';
+    await api.route(_points);
+    await api.routeDiscovery(_points);
+    expect(routingHosts, ['localhost', 'new-discovery.example']);
+    await expectLater(api.analyzeComfort(retained.analysisContext!),
+        throwsA(isA<ApiException>()));
+  });
+
+  test(
+      'missing Discovery metadata keeps the gateway fallback and resolution recovers',
+      () async {
+    var resolutions = 0;
+    final hosts = <String>[];
+    final api = RadlNaviApi(client: MockClient((request) async {
+      if (request.url.path == '/routing_variants') {
+        resolutions++;
+        return resolutions == 1
+            ? _response({}, 503)
+            : _response({
+                'discovery': {
+                  'available': true,
+                  'base_url': 'https://recovered.example'
+                }
+              });
+      }
+      expect(request.url.queryParameters['variant'], 'discovery');
+      hosts.add(request.url.host);
+      return routeResponse();
+    }));
+    expect((await api.routeDiscovery(_points)).analysisContext!.baseUrl,
+        'api.radlnavi.munichways.de');
+    expect((await api.routeDiscovery(_points)).analysisContext!.baseUrl,
+        'https://recovered.example');
+    await api.routeDiscovery(_points);
+    expect(resolutions, 2);
+    expect(hosts, [
+      'api.radlnavi.munichways.de',
+      'recovered.example',
+      'recovered.example'
+    ]);
+  });
+
+  test('late Discovery capabilities cannot overwrite newer endpoint headers',
+      () async {
+    for (final status in [200, 503]) {
+      final started = Completer<void>();
+      final pending = Completer<Response>();
+      final api = RadlNaviApi(client: MockClient((request) async {
+        if (request.url.path == '/routing_variants') {
+          started.complete();
+          return pending.future;
+        }
+        if (request.url.queryParameters['variant'] == 'standard') {
+          return routeResponse(discoveryUrl: 'https://current.example');
+        }
+        expect(request.url.host, 'current.example');
+        return routeResponse();
+      }));
+      final route = api.routeDiscovery(_points);
+      await started.future;
+      await api.route(_points);
+      pending.complete(_response({
+        'discovery': {'available': true, 'base_url': 'https://stale.example'}
+      }, status));
+      expect((await route).analysisContext!.baseUrl, 'https://current.example');
+    }
   });
 
   test('header starts direct while standard comfort remains pending', () async {

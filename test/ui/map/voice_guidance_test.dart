@@ -824,43 +824,88 @@ void main() {
     expect(guidance.update(startOnCyclePath, english: false), isNull);
   });
 
-  test('treats the shallow Lautensackstrasse cycle-path entry as slight right',
-      () {
-    const routeStart = LatLng(48.138215, 11.517741);
-    const cyclePathEntry = LatLng(48.138692, 11.517890);
-    final guidance = VoiceGuidance()
-      ..setRoute(CycleRoute(
-        const [
-          routeStart,
-          LatLng(48.138620, 11.517868),
-          cyclePathEntry,
-          LatLng(48.138733, 11.517973),
-          LatLng(48.138905, 11.518033),
-          LatLng(48.139006, 11.518223),
-          LatLng(48.139153, 11.518281),
-          LatLng(48.139328, 11.518345),
-          LatLng(48.139556, 11.518421),
-        ],
-        162.6,
-        35.9,
-        maneuvers: const [
-          RouteManeuver(
-            location: cyclePathEntry,
-            type: 'turn',
-            modifier: 'right',
-          ),
-        ],
-      ));
+  for (final direction in ['right', 'left']) {
+    test('keeps shallow $direction turns normal in speech, display and preview',
+        () {
+      const routeStart = LatLng(48.138215, 11.517741);
+      LatLng reflect(LatLng point) => direction == 'right'
+          ? point
+          : LatLng(point.latitude, 2 * routeStart.longitude - point.longitude);
+      final cyclePathEntry = reflect(const LatLng(48.138692, 11.517890));
+      final germanDirection = direction == 'right' ? 'rechts' : 'links';
+      final guidance = VoiceGuidance()
+        ..setRoute(CycleRoute(
+          const [
+            routeStart,
+            LatLng(48.138620, 11.517868),
+            LatLng(48.138692, 11.517890),
+            LatLng(48.138733, 11.517973),
+            LatLng(48.138905, 11.518033),
+            LatLng(48.139006, 11.518223),
+            LatLng(48.139153, 11.518281),
+            LatLng(48.139328, 11.518345),
+            LatLng(48.139556, 11.518421),
+          ].map(reflect).toList(),
+          162.6,
+          35.9,
+          maneuvers: [
+            RouteManeuver(
+              location: cyclePathEntry,
+              type: 'turn',
+              modifier: direction,
+            ),
+          ],
+        ));
 
-    expect(
-      guidance.display(routeStart, english: false)?.text,
-      'In 50 m leicht rechts',
-    );
-    expect(
-      guidance.display(cyclePathEntry, english: false)?.text,
-      'Hier leicht rechts halten',
-    );
-  });
+      expect(
+        guidance.display(routeStart, english: false)?.text,
+        'In 50 m $germanDirection',
+      );
+      expect(guidance.startPreview(english: false),
+          'In 50 Metern $germanDirection abbiegen.');
+      expect(guidance.startPreview(english: true),
+          'In 50 meters, turn $direction.');
+      expect(guidance.update(routeStart, english: false),
+          'In 50 Metern $germanDirection abbiegen.');
+      expect(guidance.display(cyclePathEntry, english: false)?.modifier,
+          direction);
+      expect(
+        guidance.display(cyclePathEntry, english: false)?.text,
+        'Hier $germanDirection abbiegen',
+      );
+      expect(guidance.update(cyclePathEntry, english: false),
+          'Hier $germanDirection abbiegen.');
+      expect(guidance.display(cyclePathEntry, english: true)?.text,
+          'Turn $direction here');
+    });
+  }
+
+  for (final direction in ['left', 'right']) {
+    for (final type in ['turn', 'fork']) {
+      test('preserves routed slight $direction $type as keeping guidance', () {
+        final germanDirection = direction == 'left' ? 'links' : 'rechts';
+        final guidance = VoiceGuidance()
+          ..setRoute(routeWith(RouteManeuver(
+              location: turn, type: type, modifier: 'slight $direction')));
+        expect(guidance.display(turn, english: false)?.text,
+            'Hier leicht $germanDirection halten');
+        expect(guidance.update(turn, english: false),
+            'Hier leicht $germanDirection halten.');
+        expect(guidance.display(turn, english: false)?.modifier,
+            'slight $direction');
+      });
+    }
+    test('preserves sharp $direction turns', () {
+      final germanDirection = direction == 'left' ? 'links' : 'rechts';
+      final guidance = VoiceGuidance()
+        ..setRoute(routeWith(RouteManeuver(
+            location: turn, type: 'turn', modifier: 'sharp $direction')));
+      expect(guidance.display(turn, english: false)?.text,
+          'Hier scharf $germanDirection abbiegen');
+      expect(guidance.update(turn, english: false),
+          'Hier scharf $germanDirection abbiegen.');
+    });
+  }
 
   test('announces arrival independently of route progress projection', () {
     final guidance = VoiceGuidance();

@@ -69,17 +69,79 @@ void main() {
     expect(h.model.route.route!.analysisContext!.variant, 'discovery');
   });
 
-  test('late saved settings cannot change a pending trip selection', () async {
+  test('saved Discovery is first; alternatives wait for its usable route',
+      () async {
+    final loaded = Completer<SettingsData>();
+    final h = Harness(store: MemorySettings()..loadReply = loaded.future);
+    h.api.discoveryReply = Completer<CycleRoute>();
+    final calculation = h.model.refreshRoute();
+    await flush();
+    expect(h.api.standardCalls, 0);
+    expect(h.api.discoveryCalls, 0);
+    loaded.complete(SettingsData.defaults
+        .copyWith(routeRecommendation: RouteRecommendation.discovery));
+    await flush();
+    expect(h.api.discoveryCalls, 1);
+    expect(h.api.standardCalls, 0);
+    expect(h.api.direct, isEmpty);
+    h.api.discoveryReply!.complete(CycleRoute(points, 50000, 10000,
+        analysisContext: RouteAnalysisContext(const [
+          [1, 2]
+        ], variant: 'discovery')));
+    expect(await calculation, isTrue);
+    expect(h.model.route.state, MapRouteState.SHOWN);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+    await flush();
+    expect(h.api.standardCalls, 1);
+    expect(h.api.direct, hasLength(1));
+    expect(h.api.analyses['discovery']!.single.isCompleted, isFalse);
+    expect(h.model.selectedRouteVariant, RouteVariant.discovery);
+  });
+
+  test('an early edited routing wish survives stale saved settings', () async {
+    final loaded = Completer<SettingsData>();
+    final h = Harness(store: MemorySettings()..loadReply = loaded.future);
+    h.model.destination = null;
+    h.model.setRouteRecommendation(RouteRecommendation.discovery);
+    loaded.complete(SettingsData.defaults);
+    await flush();
+    expect(h.model.routeRecommendation, RouteRecommendation.discovery);
+    h.model.destination = Place('Ziel', points.last);
+    expect(await h.model.refreshRoute(), isTrue);
+    expect(h.model.route.route!.analysisContext!.variant, 'discovery');
+  });
+
+  testWidgets(
+      'stalled settings terminate and cannot change the active trip later',
+      (tester) async {
     final loaded = Completer<SettingsData>();
     final h = Harness(store: MemorySettings()..loadReply = loaded.future);
     final calculation = h.model.refreshRoute();
+    await tester.pump(const Duration(seconds: 4));
+    expect(await calculation, isTrue);
+    expect(h.model.selectedRouteVariant, RouteVariant.standard);
     loaded.complete(SettingsData.defaults
         .copyWith(routeRecommendation: RouteRecommendation.discovery));
-    expect(await calculation, isTrue);
-    expect(h.model.route.state, MapRouteState.SHOWN);
-    expect(h.model.route.route!.analysisContext!.variant, 'standard');
+    await tester.pump();
     expect(h.model.selectedRouteVariant, RouteVariant.standard);
-    expect(h.model.routeRecommendation, RouteRecommendation.discovery);
+    expect(h.model.route.route!.analysisContext!.variant, 'standard');
+    await h.finishPending(tester);
+  });
+
+  test(
+      'replacement plan while settings load only requests the latest destination',
+      () async {
+    final loaded = Completer<SettingsData>();
+    final h = Harness(store: MemorySettings()..loadReply = loaded.future);
+    final first = h.model.refreshRoute();
+    h.model.setDestination(Place('New target', points[1]));
+    loaded.complete(SettingsData.defaults
+        .copyWith(routeRecommendation: RouteRecommendation.discovery));
+    expect(await first, isFalse);
+    await flush();
+    expect(h.api.discoveryCalls, 1);
+    expect(h.api.discoveryRequests.single.last, points[1]);
+    expect(h.model.selectedRouteVariant, RouteVariant.discovery);
   });
 
   test('three planner variants retain independent routes and comfort contexts',
@@ -149,12 +211,12 @@ void main() {
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
     final active = h.model.route.route;
-    h.model.gpsReply = Future.error(StateError('no location'));
+    h.model.gpsError = StateError('no location');
     expect(await h.model.selectRouteVariant(RouteVariant.discovery), isFalse);
     expect(h.model.route.route, same(active));
     expect(h.model.pendingRouteType, isNull);
     expect(h.model.navigationStarted, isTrue);
-    h.model.gpsReply = null;
+    h.model.gpsError = null;
     expect(await h.model.selectRouteVariant(RouteVariant.discovery), isTrue);
     expect(h.model.route.route!.analysisContext!.variant, 'discovery');
     await h.model.refreshRoute();
@@ -196,12 +258,11 @@ void main() {
     h.model.routeStart = null;
     h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
     await h.model.startNavigation();
-    h.model.gpsReply =
-        Future.error(StateError('GPS and cached position unavailable'));
+    h.model.gpsError = StateError('GPS and cached position unavailable');
     expect(await h.model.refreshRoute(), isFalse);
     expect(h.model.route.state, MapRouteState.ERROR);
     expect(h.model.navigationStarted, isTrue);
-    h.model.gpsReply = null;
+    h.model.gpsError = null;
     expect(await h.model.refreshRoute(), isTrue);
     expect(h.model.route.state, MapRouteState.SHOWN);
     expect(h.model.navigationStarted, isTrue);
@@ -371,6 +432,65 @@ void main() {
     expect(h.model.navigationStarted, isTrue);
   });
 
+  for (final selected in RouteVariant.values) {
+    test(
+        'navigation refresh only requests the active ${selected.name} route and comfort',
+        () async {
+      final h = Harness();
+      await h.model.refreshRoute();
+      await h.api.waitForDirect(1);
+      h.api.direct.single.complete(result(true));
+      await flush();
+      if (selected != RouteVariant.standard) {
+        expect(await h.model.selectRouteVariant(selected), isTrue);
+      }
+      h.model.routeStart = null;
+      h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+      await h.model.startNavigation();
+      final standard = h.api.standardCalls;
+      final discovery = h.api.discoveryCalls;
+      final direct = h.api.direct.length;
+      final analyses = {
+        for (final entry in h.api.analyses.entries)
+          entry.key: entry.value.length
+      };
+      final refresh = h.model.refreshRoute();
+      await flush();
+      if (selected == RouteVariant.direct) {
+        h.api.direct.last.complete(result(true, h.api.requests.last));
+      }
+      expect(await refresh, isTrue);
+      await flush();
+      expect(h.api.standardCalls,
+          standard + (selected == RouteVariant.standard ? 1 : 0));
+      expect(h.api.discoveryCalls,
+          discovery + (selected == RouteVariant.discovery ? 1 : 0));
+      expect(h.api.direct.length,
+          direct + (selected == RouteVariant.direct ? 1 : 0));
+      expect(h.model.route.route!.analysisContext!.variant, selected.name);
+      expect(h.model.navigationActive, isTrue);
+      for (final variant in RouteVariant.values) {
+        expect(h.api.analyses[variant.name]!.length,
+            analyses[variant.name]! + (variant == selected ? 1 : 0));
+        if (variant != selected)
+          expect(h.model.routeVariantFor(variant), isNull);
+      }
+      // Explicitly selecting an unloaded type still recalculates from current GPS.
+      final next = selected == RouteVariant.direct
+          ? RouteVariant.discovery
+          : RouteVariant.direct;
+      final switching = h.model.selectRouteVariant(next);
+      await flush();
+      if (next == RouteVariant.direct) {
+        h.api.direct.last.complete(result(true, h.api.requests.last));
+      }
+      expect(await switching, isTrue);
+      expect(h.model.route.route!.points.first, const LatLng(48.11, 11.60));
+      expect(h.model.route.route!.analysisContext!.variant, next.name);
+      expect(h.model.navigationActive, isTrue);
+    });
+  }
+
   test('direct navigation reroutes from GPS with only remaining stops',
       () async {
     final h = Harness();
@@ -410,9 +530,10 @@ void main() {
       final remainingStops =
           distanceMeters < 35 ? [points[2]] : [points[1], points[2]];
       expect(await h.model.refreshRoute(), isTrue);
-      await h.api.waitForDirect(2);
+      await flush();
+      expect(h.api.direct, hasLength(1));
       expect(h.model.waypoints.map((stop) => stop.latLng), remainingStops);
-      expect(h.api.requests.last,
+      expect(h.api.standardRequests.last,
           [const LatLng(48.11, 11.60), ...remainingStops, points.last]);
     });
   }
@@ -869,6 +990,7 @@ class VariantApi
         RouteComfortProvider,
         DiscoveryRoutingProvider {
   int standardCalls = 0;
+  final standardRequests = <List<LatLng>>[];
   final direct = <Completer<CycleRoute>>[];
   final _requestWaiters = <Completer<void>>[];
   Future<void> waitForDirect(int count) async {
@@ -900,6 +1022,7 @@ class VariantApi
   Future<CycleRoute> route(List<LatLng> coordinates,
       {BRouterProfile profile = BRouterProfile.trekking}) async {
     standardCalls++;
+    standardRequests.add(coordinates);
     return result(false, coordinates);
   }
 
@@ -938,8 +1061,12 @@ class Fallback implements RoutingProvider {
 class TestModel extends MapScreenViewModel {
   TestModel({required super.store, required super.routingService});
   Future<Position?>? gpsReply;
+  Object? gpsError;
   @override
   Future<Position?> resolveRouteStartPosition() async {
+    // Deliver a GPS failure when called, as the real provider does, rather
+    // than creating an unhandled failed future before settings have loaded.
+    if (gpsError != null) throw gpsError!;
     if (gpsReply != null) return gpsReply;
     return Position(
         latitude: 48.11,

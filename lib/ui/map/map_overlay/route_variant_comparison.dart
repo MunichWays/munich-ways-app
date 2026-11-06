@@ -216,7 +216,7 @@ class _VariantCard extends StatelessWidget {
                     ? (english ? 'Calculating…' : 'Wird berechnet…')
                     : (english
                         ? 'Tap to calculate / retry'
-                        : 'Zum Berechnen / Wiederholen antippen'),
+                        : 'Zum Berechnen antippen'),
                 style: detailStyle,
               ),
             if (model.pendingRouteType == variant)
