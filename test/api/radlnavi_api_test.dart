@@ -20,7 +20,7 @@ void main() {
       expect(req.url.path,
           "/route/v1/bike/11.578090968904041,48.142439149231784;11.588108539581299,48.14585899848997");
       expect(req.url.query,
-          "alternatives=false&steps=true&annotations=nodes%2Cdistance&variant=standard&geometries=geojson&overview=full&continue_straight=default");
+          "alternatives=false&steps=true&annotations=nodes%2Cdistance&variant=standard&geometries=geojson&overview=full&continue_straight=default&junction_guidance=true");
       expect(req.headers['Accept'], "application/json");
       expect(req.headers['User-Agent'], "com.munichways.app/flutter");
 

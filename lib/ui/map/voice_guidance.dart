@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'big_junction_guidance.dart';
 
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
@@ -320,11 +321,42 @@ class VoiceGuidance {
   final int offRouteUpdatesBeforeWarning;
   final bool announceOffRouteWarning;
 
+  final BigJunctionGuidance _bigJunction = BigJunctionGuidance();
+
+  bool get inBigJunction => _bigJunction.quiet;
+
+  void updateBigJunctionPosition(LatLng position,
+      {required DateTime fixTime, required double horizontalAccuracyMeters}) {
+    if (_trackingRoute?.bigJunctions.isEmpty ?? true) return;
+    final active = _bigJunction.active;
+    final projection = active == null
+        ? _projectionAtCurrentProgress(position)
+        : _projectOntoRoute(_trackingRoute!.points, position,
+            minimumDistanceAlongRoute: max(0, active.entryDistance - 15),
+            maximumDistanceAlongRoute: active.exitDistance + 120);
+    final exit = _bigJunction.observe(position,
+        fixTime: fixTime,
+        accuracy: horizontalAccuracyMeters,
+        progress: projection.distanceAlongRoute,
+        distanceFromRoute: projection.distanceFromRoute);
+    if (_bigJunction.quiet) {
+      _wrongDirection = false;
+      _wrongDirectionSpoken = false;
+      _offRouteUpdates = 0;
+      _offRouteWarningSpoken = false;
+    }
+    if (exit != null) {
+      _routeProgress = max(_routeProgress, exit);
+      _advancePastManeuvers(_routeProgress);
+      _routeRecoveryPending = false;
+    }
+  }
+
   bool isOffRoute(
     LatLng position, {
     double horizontalAccuracyMeters = 0,
   }) {
-    if (_finalDestinationReached) return false;
+    if (_finalDestinationReached || _bigJunction.quiet) return false;
     final route = _trackingRoute;
     if (route == null) return false;
     final accuracyAllowance = horizontalAccuracyMeters.isFinite
@@ -349,14 +381,15 @@ class VoiceGuidance {
     LatLng position, {
     double horizontalAccuracyMeters = 0,
   }) =>
-      isOffRoute(
-        position,
-        horizontalAccuracyMeters: horizontalAccuracyMeters,
-      ) &&
-      !isOnRouteAnywhere(
-        position,
-        horizontalAccuracyMeters: horizontalAccuracyMeters,
-      );
+      _bigJunction.wrongExit ||
+      (isOffRoute(
+            position,
+            horizontalAccuracyMeters: horizontalAccuracyMeters,
+          ) &&
+          !isOnRouteAnywhere(
+            position,
+            horizontalAccuracyMeters: horizontalAccuracyMeters,
+          ));
 
   /// Whether [position] is close to any part of the route. This deliberately
   /// ignores the current guidance progress and is used only to recover after
@@ -406,6 +439,7 @@ class VoiceGuidance {
       {LatLng? movementStart, bool directionConfirmed = true}) {
     final route = _route;
     if (route == null ||
+        _bigJunction.quiet ||
         _finalDestinationReached ||
         movementBearing == null ||
         !movementBearing.isFinite) return;
@@ -485,6 +519,7 @@ class VoiceGuidance {
   /// Null guidance is legitimate only on the final, correctly matched straight.
   /// A stale progress window or exhausted maneuvers away from the route is not.
   bool hasHealthyMapProgress(LatLng position) {
+    if (_bigJunction.quiet) return true;
     if (_route == null || _finalDestinationReached || _wrongDirection)
       return false;
     final projection = _projectionAtCurrentProgress(position);
@@ -518,6 +553,7 @@ class VoiceGuidance {
   }) {
     if (identical(route, _trackingRoute)) return false;
     _trackingRoute = route;
+    _bigJunction.reset(route?.bigJunctions ?? const []);
     final guidanceRoute = route?.supportsVoiceGuidance == true ? route : null;
     _route = guidanceRoute;
     _index = 0;
@@ -566,10 +602,49 @@ class VoiceGuidance {
     final routedManeuvers = projectedManeuvers
         .where((maneuver) => _isRelevant(maneuver.maneuver))
         .toList();
+    bool coveredByJunction(_GuidanceManeuver target) {
+      if (target.maneuver.bigJunction != null) return false;
+      return guidanceRoute.bigJunctions.any((junction) {
+        if (target.routeDistance >= junction.entryDistance - .5 &&
+            target.routeDistance <= junction.exitDistance + .5) return true;
+        final maneuver = target.maneuver;
+        final gap = junction.entryDistance - target.routeDistance;
+        final slightOffset = maneuver.type == 'turn' &&
+            const {'slight left', 'slight right'}.contains(maneuver.modifier);
+        final straightContinuation =
+            maneuver.type == 'continue' && maneuver.modifier == 'straight';
+        if (gap <= .5 ||
+            gap > 30 ||
+            maneuver.enteringWayType != null ||
+            !(slightOffset || straightContinuation)) return false;
+        // A kerb offset immediately before the reviewed boundary must not
+        // queue ahead of the macro. Preserve real turns, forks, way changes
+        // and approaches that do not resume the same direction.
+        return _angleBetweenSegments(
+              _pointAlongRoute(
+                  guidanceRoute.points, max(0, target.routeDistance - 12)),
+              _pointAlongRoute(guidanceRoute.points, target.routeDistance),
+              _pointAlongRoute(
+                  guidanceRoute.points, max(0, junction.entryDistance - 10)),
+              _pointAlongRoute(guidanceRoute.points, junction.entryDistance),
+            ) <=
+            25;
+      });
+    }
+
     final sortedManeuvers = [
       ...routedManeuvers,
       ..._geometryTurns(guidanceRoute, routedManeuvers),
-    ]..sort((a, b) => a.routeDistance.compareTo(b.routeDistance));
+      for (final junction in guidanceRoute.bigJunctions)
+        _GuidanceManeuver(
+            RouteManeuver(
+                location: junction.entry,
+                type: 'big junction',
+                modifier: junction.modifier,
+                bigJunction: junction),
+            junction.entryDistance),
+    ].where((target) => !coveredByJunction(target)).toList()
+      ..sort((a, b) => a.routeDistance.compareTo(b.routeDistance));
     _maneuvers = _withoutStraightOffsetPairs(
       guidanceRoute.points,
       sortedManeuvers,
@@ -614,6 +689,7 @@ class VoiceGuidance {
   /// normal approach/turn announcements or changing position matching.
   String? startPreview({required bool english}) {
     final turns = _maneuvers
+        .takeWhile((target) => target.maneuver.bigJunction == null)
         .where((target) {
           final maneuver = target.maneuver;
           if (maneuver.type == 'exit roundabout' ||
@@ -637,6 +713,7 @@ class VoiceGuidance {
     if (turns.isEmpty) return null;
 
     final first = turns.first;
+    if (first.maneuver.bigJunction != null) return null;
     final action = _startPreviewAction(first.maneuver, english);
     final String preview;
     if (first.routeDistance <= nowDistanceMeters) {
@@ -737,6 +814,12 @@ class VoiceGuidance {
       );
     }
     _remainingEstimate = null;
+    if (_bigJunction.active case final junction?) {
+      return VoiceGuidanceDisplay(
+          text: junction.sentenceAction(english),
+          type: 'turn',
+          modifier: junction.modifier);
+    }
     final projection = _projectionAtCurrentProgress(position);
     _remainingEstimate = _estimateRemaining(projection);
     if (projection.isAmbiguous &&
@@ -838,7 +921,8 @@ class VoiceGuidance {
     bool repeat = false,
   }) {
     final route = _route;
-    if (route == null || _finalDestinationReached) return null;
+    if (route == null || _finalDestinationReached || _bigJunction.quiet)
+      return null;
     final projection = _projectionAtCurrentProgress(position);
     if (projection.isAmbiguous ||
         projection.distanceFromRoute > maximumRouteDistanceMeters ||
@@ -862,6 +946,11 @@ class VoiceGuidance {
 
     final target = _maneuvers[_index];
     final remaining = target.routeDistance - travelled;
+    if (target.maneuver.bigJunction case final junction?) {
+      return _bigJunction.announce(
+          junction, junction.entryDistance - projection.distanceAlongRoute,
+          english: english, repeat: repeat);
+    }
     if (remaining < -5 || target.maneuver.type == 'arrive') return null;
     if (remaining <= nowDistanceMeters) {
       if (_nowSpoken && !repeat) return null;
@@ -894,7 +983,7 @@ class VoiceGuidance {
     double speedMetersPerSecond = 0,
   }) {
     final route = _route;
-    if (route == null) return null;
+    if (route == null || _bigJunction.quiet) return null;
     if (_finalDestinationReached) {
       final finalIndex = _arrivals.length - 1;
       if (finalIndex >= 0 && _spokenArrivals.add(finalIndex)) {
@@ -981,6 +1070,11 @@ class VoiceGuidance {
 
     final target = _maneuvers[_index];
     final remaining = target.routeDistance - travelled;
+    if (target.maneuver.bigJunction case final junction?) {
+      return _bigJunction.announce(
+          junction, junction.entryDistance - projection.distanceAlongRoute,
+          english: english);
+    }
     if (!_nowSpoken && remaining >= -5 && remaining <= nowDistanceMeters) {
       _nowSpoken = true;
       return _formatSpokenManeuver(
@@ -1536,6 +1630,12 @@ class VoiceGuidance {
     int? distanceMeters,
     bool compact = false,
   }) {
+    if (maneuver.bigJunction case final junction?) {
+      if (now) return '${junction.sentenceAction(english)}.';
+      return english
+          ? 'In $distanceMeters meters, ${junction.action(true)}.'
+          : 'In $distanceMeters Metern ${junction.action(false)}.';
+    }
     if (maneuver.type == 'arrive') {
       return english
           ? 'You have reached your destination.'
@@ -1557,6 +1657,12 @@ class VoiceGuidance {
     required bool english,
     required double remainingMeters,
   }) {
+    if (maneuver.bigJunction case final junction?) {
+      final action = junction.action(english);
+      return remainingMeters <= 0
+          ? junction.sentenceAction(english)
+          : 'In ${_roundedDistance(remainingMeters)} m $action';
+    }
     if (remainingMeters <= 15) {
       final action = _action(maneuver, english);
       return english ? '${_sentenceCase(action)} here' : 'Hier $action';

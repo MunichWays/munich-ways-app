@@ -9,6 +9,7 @@ import 'package:munich_ways/routing/routing_preferences.dart';
 import 'package:munich_ways/routing/routing_provider.dart';
 
 import '../model/route.dart';
+import '../model/big_junction.dart';
 import 'api_exception.dart';
 
 // routing api based on munichways weights
@@ -23,6 +24,7 @@ class RadlNaviApi
   Client? _client;
   final String baseUrl;
   final String variant;
+  final bool bigJunctionGuidance;
   final _variantEndpoints = {
     'direct': _VariantEndpoint(),
     'discovery': _VariantEndpoint(),
@@ -124,6 +126,7 @@ class RadlNaviApi
   RadlNaviApi(
       {this.baseUrl = RADLNAVI_URL,
       this.variant = 'standard',
+      this.bigJunctionGuidance = bigJunctionGuidanceEnabled,
       Client? client = null}) {
     if (client == null) {
       _client = Client();
@@ -154,6 +157,8 @@ class RadlNaviApi
       'geometries': 'geojson',
       'overview': 'full',
       'continue_straight': 'default',
+      if (bigJunctionGuidance && variant == 'standard')
+        'junction_guidance': 'true',
     };
 
     Uri uri =
@@ -265,6 +270,9 @@ class RadlNaviApi
       distance.toDouble(),
       duration.toDouble(),
       maneuvers: spokenManeuvers,
+      bigJunctions: bigJunctionGuidance && variant == 'standard'
+          ? RouteBigJunction.parse(firstRoute['guidance'], access.route)
+          : const [],
       transferResponse: {
         'code': 'Ok',
         'routes': [firstRoute],

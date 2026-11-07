@@ -1,5 +1,7 @@
 param(
     [switch]$PrepareOnly,
+    [switch]$BigJunctionPilot, # Compatibility with the previous pilot command.
+    [switch]$DisableBigJunctionGuidance,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$FlutterArguments
 )
@@ -22,7 +24,13 @@ if (Test-Path -LiteralPath $counterFile) {
 }
 
 $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
-$defines = @{ LOCAL_TEST_BUILD = [string]$testBuild } | ConvertTo-Json
+if ($BigJunctionPilot -and $DisableBigJunctionGuidance) {
+    throw 'BigJunctionPilot und DisableBigJunctionGuidance widersprechen sich.'
+}
+$defineValues = @{ LOCAL_TEST_BUILD = [string]$testBuild }
+if ($DisableBigJunctionGuidance) { $defineValues.BIG_JUNCTION_GUIDANCE = 'false' }
+if ($BigJunctionPilot) { $defineValues.BIG_JUNCTION_GUIDANCE = 'true' }
+$defines = $defineValues | ConvertTo-Json
 [System.IO.File]::WriteAllText($definesFile, $defines, $utf8WithoutBom)
 [System.IO.File]::WriteAllText($counterFile, [string]$testBuild, $utf8WithoutBom)
 

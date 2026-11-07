@@ -2210,6 +2210,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             english: context.l10n.isEnglish));
       }
     }
+    _voiceGuidance.updateBigJunctionPosition(rawPosition,
+        fixTime: position.timestamp,
+        horizontalAccuracyMeters: position.accuracy);
     _voiceGuidance.updateTravelDirection(
       rawPosition,
       _navigationMotion.bearingAt(DateTime.now()),
@@ -2431,6 +2434,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     Position gpsPosition,
   ) {
     if (!model.navigationActive || _automaticRerouteInFlight) return;
+    if (_voiceGuidance.inBigJunction) {
+      _cancelAutomaticRerouting(resetAttempts: false);
+      return;
+    }
     // Deliver an elapsed warning before considering a resumed recalculation.
     _offRouteAnnouncement.retryIfDue();
     // A committed off-route timer may expire during a stop or GPS outage.
@@ -2602,6 +2609,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
     if (_automaticRerouteInFlight ||
         !model.navigationActive ||
+        _voiceGuidance.inBigJunction ||
         _voiceGuidance.finalDestinationReached ||
         !model.automaticReroutingEnabled ||
         !_hasFreshNavigationFix ||
