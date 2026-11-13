@@ -33,6 +33,78 @@ class _RoutesStore extends SavedRoutesStore {
 }
 
 void main() {
+  testWidgets('scrolls past unnamed recent destinations to saved routes',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    Object? selected;
+    final route = SavedRoute(
+      name: 'Gespeicherte Testroute mit einem sehr langen Namen bis zum Ziel',
+      start: null,
+      stops: const [],
+      destination: Place('Ziel', const LatLng(48.2, 11.6)),
+    );
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: Stack(children: [
+      MapHomeDestinationSheet(
+        searchCenter: null,
+        onSelected: (value) => selected = value,
+        onPlanRoute: () {},
+        onNearbySelected: (_) async {},
+        onSelectOnMap: () {},
+        onShowInfo: () {},
+        onToggleAttribution: () {},
+        onShowSettings: () {},
+        attributionExpanded: false,
+        favoritesStore: _PlacesStore(List.generate(
+            3, (i) => Place('Favorit $i', LatLng(48.1 + i * .001, 11.5)))),
+        recentSearchesStore: _PlacesStore(List.generate(
+            40,
+            (i) => Place(
+                i == 38
+                    ? null
+                    : i == 39
+                        ? '  '
+                        : 'Letztes Ziel $i',
+                LatLng(48.2 + i * .001, 11.5)))),
+        savedRoutesStore: _RoutesStore([
+          for (var i = 0; i < 15; i++) route.copyWith(name: 'Weitere Route $i'),
+          route,
+        ]),
+      ),
+    ]))));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const ValueKey('map-destination-search-field')));
+    await tester.pumpAndSettle();
+    tester.testTextInput.hide();
+    await tester.pumpAndSettle();
+    final listScrollable = find
+        .descendant(
+            of: find.byType(ListView), matching: find.byType(Scrollable))
+        .first;
+    for (final coordinates in ['48.23800, 11.50000', '48.23900, 11.50000']) {
+      await tester.scrollUntilVisible(find.text(coordinates), 300,
+          scrollable: listScrollable, maxScrolls: 30);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.scrollUntilVisible(find.text(route.name), 300,
+        scrollable: find
+            .descendant(
+                of: find.byType(ListView), matching: find.byType(Scrollable))
+            .first,
+        maxScrolls: 30);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ErrorWidget), findsNothing);
+    await tester.tap(find.text(route.name));
+    await tester.pumpAndSettle();
+    expect(selected, same(route));
+  });
+
   testWidgets('keeps minimal map mode across unrelated parent rebuilds',
       (tester) async {
     late StateSetter rebuildParent;

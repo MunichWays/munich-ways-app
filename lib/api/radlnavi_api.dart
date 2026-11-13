@@ -58,7 +58,11 @@ class RadlNaviApi
     final url = capability['base_url'] as String;
     _endpoint(
         url, 'route'); // Validate before caching, including local HTTP/port.
-    return RadlNaviApi(baseUrl: url, variant: requested, client: _client);
+    return RadlNaviApi(
+        baseUrl: url,
+        variant: requested,
+        client: _client,
+        bigJunctionGuidance: bigJunctionGuidance);
   }
 
   // Optional metadata must never invalidate the standard route. Each variant
@@ -75,8 +79,11 @@ class RadlNaviApi
       try {
         if (url.trim().isEmpty) continue;
         _endpoint(url, 'route');
-        state.api =
-            RadlNaviApi(baseUrl: url, variant: entry.key, client: _client);
+        state.api = RadlNaviApi(
+            baseUrl: url,
+            variant: entry.key,
+            client: _client,
+            bigJunctionGuidance: bigJunctionGuidance);
       } catch (_) {
         // Invalid optional metadata leaves capability discovery available.
       }
@@ -99,7 +106,10 @@ class RadlNaviApi
           // the Standard gateway. Metadata failure must not remove that path.
           if (requested == 'discovery') {
             return RadlNaviApi(
-                    baseUrl: baseUrl, variant: requested, client: _client)
+                    baseUrl: baseUrl,
+                    variant: requested,
+                    client: _client,
+                    bigJunctionGuidance: bigJunctionGuidance)
                 .route(coordinates);
           }
           rethrow;
@@ -157,8 +167,7 @@ class RadlNaviApi
       'geometries': 'geojson',
       'overview': 'full',
       'continue_straight': 'default',
-      if (bigJunctionGuidance && variant == 'standard')
-        'junction_guidance': 'true',
+      if (bigJunctionGuidance) 'junction_guidance': 'true',
     };
 
     Uri uri =
@@ -270,7 +279,7 @@ class RadlNaviApi
       distance.toDouble(),
       duration.toDouble(),
       maneuvers: spokenManeuvers,
-      bigJunctions: bigJunctionGuidance && variant == 'standard'
+      bigJunctions: bigJunctionGuidance
           ? RouteBigJunction.parse(firstRoute['guidance'], access.route)
           : const [],
       transferResponse: {

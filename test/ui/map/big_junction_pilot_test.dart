@@ -40,7 +40,119 @@ LatLng at(CycleRoute route, double station) {
   return route.points.last;
 }
 
+String spokenJunction(RouteBigJunction junction, bool english) {
+  final action = junction.action(english);
+  return '${action[0].toUpperCase()}${action.substring(1)}.';
+}
+
 void main() {
+  test('variant endpoint resolution preserves junction opt-in and opt-out',
+      () async {
+    const points = [LatLng(48.15, 11.51), LatLng(48.151, 11.52)];
+    for (final enabled in [false, true]) {
+      for (final variant in ['direct', 'discovery']) {
+        for (final source in ['capability', 'headers', 'fallback']) {
+          if (source == 'fallback' && variant != 'discovery') continue;
+          var variantCalls = 0;
+          final api = RadlNaviApi(
+            bigJunctionGuidance: enabled,
+            client: MockClient((request) async {
+              if (request.url.path == '/routing_variants') {
+                return Response(
+                    source == 'fallback'
+                        ? '{}'
+                        : jsonEncode({
+                            variant: {
+                              'available': true,
+                              'base_url': 'https://variant.example'
+                            }
+                          }),
+                    source == 'fallback' ? 404 : 200,
+                    headers: {'content-type': 'application/json'});
+              }
+              expect(request.url.queryParameters['junction_guidance'],
+                  enabled ? 'true' : isNull);
+              if (request.url.queryParameters['variant'] == variant)
+                variantCalls++;
+              return Response(jsonEncode(fixture()), 200, headers: {
+                'content-type': 'application/json',
+                if (source == 'headers')
+                  'x-$variant-api-url': 'https://variant.example',
+              });
+            }),
+          );
+          if (source == 'headers') await api.route(points);
+          final route = variant == 'direct'
+              ? await api.routeDirect(points)
+              : await api.routeDiscovery(points);
+          expect(variantCalls, 1, reason: '$variant $source enabled=$enabled');
+          expect(route.bigJunctions.isNotEmpty, enabled);
+        }
+      }
+    }
+  });
+
+  for (final movement in ['left', 'straight']) {
+    for (final english in [false, true]) {
+      test('compact $movement junction display preserves speech ($english)',
+          () {
+        final data = fixture();
+        data['routes'][0]['guidance']['junctions'][0]['movement'] = movement;
+        final route = parse(value: data), j = route.bigJunctions.single;
+        final voice = VoiceGuidance()..setRoute(route);
+        final direction = movement == 'straight'
+            ? (english ? 'straight' : 'geradeaus')
+            : (english ? 'left' : 'links');
+        final action = english
+            ? 'large junction $direction'
+            : 'gro\u00dfe Kreuzung $direction';
+        final approach = at(route, j.entryDistance - 140);
+        voice.display(approach, english: english);
+        voice.update(approach, english: english);
+        final position = at(route, j.entryDistance - 99.5);
+        expect(
+            voice.display(position, english: english)?.text, '100 m $action');
+        expect(voice.update(position, english: english),
+            spokenJunction(j, english));
+      });
+    }
+  }
+
+  for (final movement in ['left', 'straight']) {
+    for (final english in [false, true]) {
+      test('first $movement junction is spoken on start and reroute ($english)',
+          () {
+        final data = fixture();
+        data['routes'][0]['guidance']['junctions'][0]['movement'] = movement;
+        final route = parse(value: data), j = route.bigJunctions.single;
+        final voice = VoiceGuidance()..setRoute(route);
+        expect(
+            voice.startPreview(english: english), contains(j.action(english)));
+        final distant = at(route, j.entryDistance - 140);
+        expect(voice.announceCurrentManeuver(distant, english: english),
+            contains(j.action(english)));
+        expect(
+            voice.announceCurrentManeuver(distant, english: english), isNull);
+        expect(
+            voice.announceCurrentManeuver(distant,
+                english: english, repeat: true),
+            contains(j.action(english)));
+        for (final distance in [119.5, 39.5]) {
+          final point = at(route, j.entryDistance - distance);
+          voice.display(point, english: english);
+          expect(voice.update(point, english: english),
+              spokenJunction(j, english));
+          expect(voice.update(point, english: english), isNull);
+        }
+        // A recalculated route resets the initial announcement independently.
+        final recalculated = parse(value: data);
+        voice.setRoute(recalculated);
+        expect(voice.announceCurrentManeuver(distant, english: english),
+            contains(j.action(english)));
+      });
+    }
+  }
+
   for (final sample in [
     (type: 'turn', modifier: 'slight left', entering: null, absorbed: true),
     (type: 'turn', modifier: 'slight right', entering: null, absorbed: true),
@@ -71,7 +183,7 @@ void main() {
       voice.update(at(route, j.entryDistance - 140), english: false);
       voice.display(at(route, j.entryDistance - 99.5), english: false);
       expect(voice.update(at(route, j.entryDistance - 99.5), english: false),
-          sample.absorbed ? 'In 100 Metern ${j.action(false)}.' : isNull);
+          sample.absorbed ? spokenJunction(j, false) : isNull);
     });
   }
 
@@ -104,7 +216,7 @@ void main() {
     voice.update(at(route, j.entryDistance - 140), english: false);
     voice.display(at(route, j.entryDistance - 99.5), english: false);
     expect(voice.update(at(route, j.entryDistance - 99.5), english: false),
-        'In 100 Metern an der gro\u00dfen Kreuzung geradeaus fahren.');
+        'An der gro\u00dfen Kreuzung geradeaus fahren.');
     var time = DateTime.utc(2026);
     for (final distance in [j.entryDistance - 20, j.entryDistance + 5]) {
       time = time.add(const Duration(seconds: 1));
@@ -114,7 +226,7 @@ void main() {
     final display =
         voice.display(at(route, j.entryDistance + 5), english: false);
     expect(display?.modifier, 'straight');
-    expect(display?.text, 'An der gro\u00dfen Kreuzung geradeaus fahren');
+    expect(display?.text, 'gro\u00dfe Kreuzung geradeaus');
     expect(
         voice.update(at(route, j.entryDistance + 20), english: false), isNull);
     expect(voice.startPreview(english: false), isNull);
@@ -170,22 +282,22 @@ void main() {
   });
 
   test(
-      'only pilot standard requests opt in; normal and direct requests remain unchanged',
+      'all routing variants opt in and parse junction metadata only when enabled',
       () async {
     for (final enabled in [false, true]) {
-      for (final variant in ['standard', 'direct']) {
+      for (final variant in ['standard', 'direct', 'discovery']) {
         final api = RadlNaviApi(
             variant: variant,
             bigJunctionGuidance: enabled,
             client: MockClient((request) async {
               expect(request.url.queryParameters['junction_guidance'],
-                  enabled && variant == 'standard' ? 'true' : isNull);
+                  enabled ? 'true' : isNull);
               return Response(jsonEncode(fixture()), 200,
                   headers: {'content-type': 'application/json'});
             }));
         final route = await api
             .route([const LatLng(48.15, 11.51), const LatLng(48.151, 11.52)]);
-        expect(route.bigJunctions.isNotEmpty, enabled && variant == 'standard');
+        expect(route.bigJunctions.isNotEmpty, enabled);
       }
     }
   });
@@ -274,21 +386,22 @@ void main() {
     }
   });
 
-  test('100 and 60 metre announcements occur once, no here or catch-up pair',
+  test('120 and 40 metre announcements occur once, no here or catch-up pair',
       () {
     final j = parse().bigJunctions.single;
     final state = BigJunctionGuidance()..reset([j]);
-    expect(state.announce(j, 110, english: false), isNull);
-    expect(state.announce(j, 99.5, english: false),
-        'In 100 Metern an der großen Kreuzung links abbiegen.');
+    expect(state.announce(j, 130, english: false), isNull);
+    expect(state.announce(j, 119.5, english: false),
+        'An der großen Kreuzung links abbiegen.');
     expect(state.announce(j, 85, english: false), isNull);
-    expect(state.announce(j, 59.5, english: false),
-        'In 60 Metern an der großen Kreuzung links abbiegen.');
-    expect(state.announce(j, 60, english: false), isNull);
+    expect(state.announce(j, 59.5, english: false), isNull);
+    expect(state.announce(j, 39.5, english: false),
+        'An der großen Kreuzung links abbiegen.');
+    expect(state.announce(j, 40, english: false), isNull);
     expect(state.announce(j, 10, english: false), isNull);
     state.reset([j]);
-    expect(state.announce(j, 55, english: true), contains('large junction'));
-    expect(state.announce(j, 50, english: true), isNull);
+    expect(state.announce(j, 35, english: true), contains('large junction'));
+    expect(state.announce(j, 30, english: true), isNull);
   });
 
   test(
@@ -370,12 +483,12 @@ void main() {
       return voice.update(point, english: false);
     }
 
-    expect(voice.startPreview(english: false), isNull);
+    expect(voice.startPreview(english: false), contains(j.action(false)));
     expect(tick(at(route, j.entryDistance - 140)), isNull);
-    expect(tick(at(route, j.entryDistance - 99.5)),
-        contains('In 100 Metern an der großen Kreuzung'));
-    expect(tick(at(route, j.entryDistance - 59.5)),
-        contains('In 60 Metern an der großen Kreuzung'));
+    expect(tick(at(route, j.entryDistance - 119.5)),
+        contains('An der großen Kreuzung'));
+    expect(tick(at(route, j.entryDistance - 39.5)),
+        contains('An der großen Kreuzung'));
     expect(tick(at(route, j.entryDistance + 5)), isNull);
     expect(voice.inBigJunction, isTrue);
     final alternativeInside = const LatLng(48.15035, 11.52005);
@@ -383,7 +496,7 @@ void main() {
     expect(voice.isOffRouteForRerouting(alternativeInside), isFalse);
     expect(voice.hasHealthyMapProgress(alternativeInside), isTrue);
     expect(voice.display(alternativeInside, english: false)?.text,
-        'An der großen Kreuzung links abbiegen');
+        'gro\u00dfe Kreuzung links');
     expect(tick(at(route, j.exitDistance - 3)), isNull);
     expect(tick(at(route, j.exitDistance + 20)), isNull);
     tick(at(route, j.exitDistance + 25));

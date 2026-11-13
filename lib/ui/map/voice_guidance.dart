@@ -688,6 +688,14 @@ class VoiceGuidance {
   /// Previews the first two turns from the route start without consuming their
   /// normal approach/turn announcements or changing position matching.
   String? startPreview({required bool english}) {
+    if (_bigJunction.quiet) return null;
+    if (_maneuvers.isNotEmpty &&
+        _maneuvers.first.maneuver.bigJunction != null) {
+      final first = _maneuvers.first;
+      return _formatSpokenManeuver(first,
+          english: english,
+          distanceMeters: max(10, _roundedDistance(first.routeDistance)));
+    }
     final turns = _maneuvers
         .takeWhile((target) => target.maneuver.bigJunction == null)
         .where((target) {
@@ -816,7 +824,7 @@ class VoiceGuidance {
     _remainingEstimate = null;
     if (_bigJunction.active case final junction?) {
       return VoiceGuidanceDisplay(
-          text: junction.sentenceAction(english),
+          text: junction.displayAction(english),
           type: 'turn',
           modifier: junction.modifier);
     }
@@ -947,8 +955,16 @@ class VoiceGuidance {
     final target = _maneuvers[_index];
     final remaining = target.routeDistance - travelled;
     if (target.maneuver.bigJunction case final junction?) {
-      return _bigJunction.announce(
-          junction, junction.entryDistance - projection.distanceAlongRoute,
+      final distance = junction.entryDistance - projection.distanceAlongRoute;
+      // Start/reroute guidance may precede the regular 120/40 metre prompts.
+      // Do not consume either threshold when announcing this distant target.
+      if (distance > BigJunctionGuidance.firstAnnouncementDistanceMeters) {
+        if (_approachSpoken && !repeat) return null;
+        _approachSpoken = true;
+        return _formatSpokenManeuver(target,
+            english: english, distanceMeters: _roundedDistance(distance));
+      }
+      return _bigJunction.announce(junction, distance,
           english: english, repeat: repeat);
     }
     if (remaining < -5 || target.maneuver.type == 'arrive') return null;
@@ -1658,10 +1674,10 @@ class VoiceGuidance {
     required double remainingMeters,
   }) {
     if (maneuver.bigJunction case final junction?) {
-      final action = junction.action(english);
+      final action = junction.displayAction(english);
       return remainingMeters <= 0
-          ? junction.sentenceAction(english)
-          : 'In ${_roundedDistance(remainingMeters)} m $action';
+          ? action
+          : '${_roundedDistance(remainingMeters)} m $action';
     }
     if (remainingMeters <= 15) {
       final action = _action(maneuver, english);

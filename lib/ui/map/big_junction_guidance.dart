@@ -5,8 +5,13 @@ import '../../common/logger_setup.dart';
 
 /// Optional crossing state. Route progress remains owned by VoiceGuidance.
 class BigJunctionGuidance {
+  static const firstAnnouncementDistanceMeters = 120.0;
+  static const secondAnnouncementDistanceMeters = 40.0;
   List<RouteBigJunction> _junctions = const [];
-  final Set<String> _armed = {}, _completed = {}, _hundred = {}, _sixty = {};
+  final Set<String> _armed = {},
+      _completed = {},
+      _firstAnnounced = {},
+      _secondAnnounced = {};
   RouteBigJunction? _active;
   DateTime? _lastFix;
   LatLng? _lastInside;
@@ -20,8 +25,8 @@ class BigJunctionGuidance {
     _junctions = junctions;
     _armed.clear();
     _completed.clear();
-    _hundred.clear();
-    _sixty.clear();
+    _firstAnnounced.clear();
+    _secondAnnounced.clear();
     _active = null;
     _lastFix = null;
     _lastInside = null;
@@ -113,20 +118,19 @@ class BigJunctionGuidance {
         wrongExit ||
         _completed.contains(junction.occurrenceId) ||
         remaining < 0 ||
-        remaining > 100) return null;
+        remaining > firstAnnouncementDistanceMeters) return null;
     final id = junction.occurrenceId;
     if (!repeat) {
-      if (remaining <= 60) {
-        if (!_sixty.add(id)) return null;
-        _hundred.add(id);
-      } else if (!_hundred.add(id)) {
+      if (remaining <= secondAnnouncementDistanceMeters) {
+        if (!_secondAnnounced.add(id)) return null;
+        _firstAnnounced.add(id);
+      } else if (!_firstAnnounced.add(id)) {
         return null;
       }
     }
     final rounded = max(10, (remaining / 10).round() * 10);
     log.i('Big junction: advance ${rounded}m $id');
-    return english
-        ? 'In $rounded meters, ${junction.action(true)}.'
-        : 'In $rounded Metern ${junction.action(false)}.';
+    final action = junction.action(english);
+    return '${action[0].toUpperCase()}${action.substring(1)}.';
   }
 }

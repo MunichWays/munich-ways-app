@@ -1,5 +1,5 @@
 // Real catalog v2/v3 references; v3 from RadlNavi commit 31ba185.
-// Only the approach is extended synthetically to exercise 100/60 m speech.
+// Only the approach is extended synthetically to exercise 120/40 m speech.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -76,8 +76,22 @@ void main() {
         tick(station);
       }
       tick(j.entryDistance - 140);
-      expect(tick(j.entryDistance - 99.5), 'In 100 Metern ${j.action(false)}.');
-      expect(tick(j.entryDistance - 59.5), 'In 60 Metern ${j.action(false)}.');
+      final action = j.action(false);
+      final expected = '${action[0].toUpperCase()}${action.substring(1)}.';
+      expect(tick(j.entryDistance - 119.5), expected);
+      expect(tick(j.entryDistance - 59.5), isNull);
+      // Real references can have a vertex at 40 m. Progress matching may
+      // retain that vertex briefly for continuity; replay the approach rather
+      // than assuming sub-metre precision from one synthetic GPS fix.
+      final secondPrompts = <String>[];
+      for (var remaining = 45.0; remaining >= 30; remaining -= 1) {
+        final spoken = tick(j.entryDistance - remaining);
+        if (spoken != null) {
+          expect(remaining, lessThanOrEqualTo(40));
+          secondPrompts.add(spoken);
+        }
+      }
+      expect(secondPrompts, [expected]);
       expect(tick(j.entryDistance + 5), isNull);
       expect(voice.inBigJunction, isTrue);
       expect(

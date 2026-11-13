@@ -200,6 +200,17 @@ class RouteBigJunction {
     return area.abs() >= 1e-12;
   }
 
+  String displayAction(bool english) {
+    final direction = switch (movement) {
+      'straight' => english ? 'straight' : 'geradeaus',
+      'right' => english ? 'right' : 'rechts',
+      _ => english ? 'left' : 'links',
+    };
+    return english
+        ? 'large junction $direction'
+        : 'gro\u00dfe Kreuzung $direction';
+  }
+
   String action(bool english) => movement == 'straight'
       ? (english
           ? 'continue straight at the large junction'
