@@ -188,6 +188,25 @@ class FailureTests(unittest.TestCase):
         self.assertNotIn("SECRET", str(caught.exception))
         self.assertNotIn("secret", str(caught.exception))
 
+    def test_apple_forbidden_identifies_stage_without_response_details(self):
+        for path, stage in (("apps", "app lookup"), ("builds", "build lookup")):
+            body = json.dumps({"errors": [{"code": "FORBIDDEN_ERROR", "detail": "SECRET-KEY"},
+                                           {"code": "SECRET-TOKEN"}]}).encode()
+            error = HTTPError(guard.APPLE + "/v1/" + path, 403, "SECRET", {}, io.BytesIO(body))
+            with patch.object(guard, "urlopen", side_effect=error):
+                with self.assertRaises(ValueError) as caught:
+                    guard.request_json("GET", guard.APPLE + "/v1/" + path + "?secret=SECRET", "SECRET")
+            self.assertIn(stage, str(caught.exception))
+            self.assertIn("FORBIDDEN_ERROR", str(caught.exception))
+            self.assertNotIn("SECRET", str(caught.exception))
+
+    def test_apple_non_json_forbidden_still_aborts_safely(self):
+        error = HTTPError(guard.APPLE + "/v1/apps", 403, "SECRET", {}, io.BytesIO(b"SECRET"))
+        with patch.object(guard, "urlopen", side_effect=error):
+            with self.assertRaisesRegex(ValueError, "HTTP 403.*app lookup") as caught:
+                guard.request_json("GET", guard.APPLE + "/v1/apps", "SECRET")
+        self.assertNotIn("SECRET", str(caught.exception))
+
     def test_credential_exception_is_sanitized_and_fails(self):
         errors = io.StringIO()
         with patch.dict(os.environ, {"STORE_PLATFORM": "ios", "UPLOAD_ENABLED": "true"}), \

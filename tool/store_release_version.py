@@ -62,8 +62,24 @@ def request_json(method, url, token=None, body=None, form=None):
             raw = response.read()
             return json.loads(raw) if raw else {}
     except HTTPError as error:
-        # Do not print response bodies, credentials or tokens.
-        raise ValueError(f"Store request failed (HTTP {error.code}); upload has not been authorized.") from None
+        # Expose only fixed endpoint labels and known Apple error codes.
+        # Raw messages/response bodies may contain credentials or request data.
+        context = ""
+        parsed = urlparse(url)
+        if parsed.scheme == "https" and parsed.netloc == urlparse(APPLE).netloc:
+            stage = {"/v1/apps": "app lookup", "/v1/builds": "build lookup"}.get(parsed.path)
+            if stage:
+                context = f"; App Store Connect {stage}"
+                try:
+                    payload = json.loads(error.read(8192))
+                    allowed = {"FORBIDDEN_ERROR", "NOT_FOUND", "PARAMETER_ERROR", "INVALID_TOKEN", "UNAUTHORIZED"}
+                    codes = sorted({item.get("code") for item in payload.get("errors", [])
+                                    if isinstance(item, dict) and item.get("code") in allowed})
+                    if codes:
+                        context += ": " + ", ".join(codes)
+                except (ValueError, TypeError, AttributeError, OSError):
+                    pass
+        raise ValueError(f"Store request failed (HTTP {error.code}{context}); upload has not been authorized.") from None
     except (URLError, TimeoutError):
         raise ValueError("Store request failed; check connectivity and retry. Upload has not been authorized.") from None
 
