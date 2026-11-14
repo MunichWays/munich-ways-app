@@ -16,19 +16,19 @@ void main() {
     motion.update(at(0), 5, now: now);
     now = start.add(const Duration(seconds: 5));
     motion.update(at(20), 5, now: now);
-    announcement.schedule(const Duration(seconds: 12), () {
+    announcement.schedule(const Duration(seconds: 10), () {
       if (!motion.isMovingAt(now)) return false;
       warnings++;
       return true;
     });
 
     // The timer fires between GPS fixes, after moving state has expired.
-    now = start.add(const Duration(seconds: 17));
-    await tester.pump(const Duration(seconds: 12));
+    now = start.add(const Duration(seconds: 15));
+    await tester.pump(const Duration(seconds: 10));
     expect(warnings, 0);
 
-    // A fresh, plausible moving fix must not require another 12-second delay.
-    now = start.add(const Duration(seconds: 18));
+    // A fresh, plausible moving fix must not require another 10-second delay.
+    now = start.add(const Duration(seconds: 16));
     motion.update(at(60), 5, now: now);
     announcement.retryIfDue();
     expect(warnings, 1);
@@ -42,11 +42,11 @@ void main() {
     final announcement = OffRouteAnnouncement();
     addTearDown(announcement.cancel);
     var warnings = 0;
-    announcement.schedule(const Duration(seconds: 12), () {
+    announcement.schedule(const Duration(seconds: 10), () {
       warnings++;
       return true;
     });
-    for (var second = 0; second < 11; second++) {
+    for (var second = 0; second < 9; second++) {
       await tester.pump(const Duration(seconds: 1));
       announcement.retryIfDue();
     }
@@ -62,7 +62,7 @@ void main() {
     var moving = false;
     var fresh = false;
     var warnings = 0;
-    announcement.schedule(const Duration(seconds: 12), () {
+    announcement.schedule(const Duration(seconds: 10), () {
       if (!moving || !fresh) return false;
       warnings++;
       return true;
@@ -87,12 +87,12 @@ void main() {
       final announcement = OffRouteAnnouncement();
       var ready = false;
       var warnings = 0;
-      announcement.schedule(const Duration(seconds: 12), () {
+      announcement.schedule(const Duration(seconds: 10), () {
         if (!ready) return false;
         warnings++;
         return true;
       });
-      if (elapsed) await tester.pump(const Duration(seconds: 12));
+      if (elapsed) await tester.pump(const Duration(seconds: 10));
       announcement.cancel();
       ready = true;
       announcement.retryIfDue();
@@ -106,19 +106,19 @@ void main() {
     addTearDown(announcement.cancel);
     var oldAttempts = 0;
     var newWarnings = 0;
-    announcement.schedule(const Duration(seconds: 12), () {
+    announcement.schedule(const Duration(seconds: 10), () {
       oldAttempts++;
       return false;
     });
-    await tester.pump(const Duration(seconds: 12));
+    await tester.pump(const Duration(seconds: 10));
     expect(oldAttempts, 1);
-    announcement.schedule(const Duration(seconds: 12), () {
+    announcement.schedule(const Duration(seconds: 10), () {
       newWarnings++;
       return true;
     });
     announcement.retryIfDue();
     expect(newWarnings, 0);
-    await tester.pump(const Duration(seconds: 12));
+    await tester.pump(const Duration(seconds: 10));
     expect(newWarnings, 1);
     expect(oldAttempts, 1);
   });

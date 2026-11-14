@@ -1,0 +1,689 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    37
+                  ],
+                  "location": [
+                    11.502754,
+                    48.143536
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    30,
+                    135,
+                    210,
+                    285
+                  ],
+                  "location": [
+                    11.502878,
+                    48.143648
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "tunnel",
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    195
+                  ],
+                  "location": [
+                    11.503114,
+                    48.143893
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "tunnel",
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.50312,
+                    48.144591
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "tunnel",
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503121,
+                    48.144657
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    180
+                  ],
+                  "location": [
+                    11.503142,
+                    48.145639
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503123,
+                    48.145954
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503103,
+                    48.146229
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503091,
+                    48.146437
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503083,
+                    48.146649
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180
+                  ],
+                  "location": [
+                    11.503092,
+                    48.14701
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503091,
+                    48.147077
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.502754,
+                    48.143536
+                  ],
+                  [
+                    11.502878,
+                    48.143648
+                  ],
+                  [
+                    11.502916,
+                    48.143682
+                  ],
+                  [
+                    11.503069,
+                    48.143831
+                  ],
+                  [
+                    11.503099,
+                    48.143862
+                  ],
+                  [
+                    11.503114,
+                    48.143893
+                  ],
+                  [
+                    11.50312,
+                    48.144591
+                  ],
+                  [
+                    11.503121,
+                    48.144652
+                  ],
+                  [
+                    11.503121,
+                    48.144657
+                  ],
+                  [
+                    11.503142,
+                    48.145639
+                  ],
+                  [
+                    11.503134,
+                    48.145819
+                  ],
+                  [
+                    11.503123,
+                    48.145954
+                  ],
+                  [
+                    11.503115,
+                    48.146095
+                  ],
+                  [
+                    11.503103,
+                    48.146229
+                  ],
+                  [
+                    11.503091,
+                    48.146437
+                  ],
+                  [
+                    11.503083,
+                    48.146649
+                  ],
+                  [
+                    11.503092,
+                    48.14701
+                  ],
+                  [
+                    11.503091,
+                    48.147077
+                  ],
+                  [
+                    11.503079,
+                    48.147152
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 37,
+                "bearing_before": 0,
+                "location": [
+                  11.502754,
+                  48.143536
+                ],
+                "type": "depart"
+              },
+              "name": "Wotanstra\u00dfe",
+              "mode": "cycling",
+              "weight": 205.4,
+              "duration": 93.4,
+              "distance": 410.6
+            },
+            {
+              "intersections": [
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.503079,
+                    48.147152
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.503079,
+                    48.147152
+                  ],
+                  [
+                    11.503298,
+                    48.147142
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 92,
+                "bearing_before": 352,
+                "location": [
+                  11.503079,
+                  48.147152
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Margarethe-Danzi-Stra\u00dfe",
+              "mode": "cycling",
+              "weight": 36.5,
+              "duration": 2.9,
+              "distance": 16.3
+            },
+            {
+              "intersections": [
+                {
+                  "out": 1,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 3,
+                  "entry": [
+                    true,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.503298,
+                    48.147142
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.503298,
+                    48.147142
+                  ],
+                  [
+                    11.503435,
+                    48.147136
+                  ],
+                  [
+                    11.503549,
+                    48.147132
+                  ],
+                  [
+                    11.50394,
+                    48.147119
+                  ],
+                  [
+                    11.504046,
+                    48.147113
+                  ],
+                  [
+                    11.50425,
+                    48.1471
+                  ],
+                  [
+                    11.504814,
+                    48.147044
+                  ],
+                  [
+                    11.504913,
+                    48.147033
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 92,
+                "bearing_before": 92,
+                "location": [
+                  11.503298,
+                  48.147142
+                ],
+                "modifier": "straight",
+                "type": "new name"
+              },
+              "name": "Winfriedstra\u00dfe",
+              "mode": "cycling",
+              "weight": 74.1,
+              "duration": 38.7,
+              "distance": 121
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    279
+                  ],
+                  "location": [
+                    11.504913,
+                    48.147033
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.504913,
+                    48.147033
+                  ],
+                  [
+                    11.504913,
+                    48.147033
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 99,
+                "location": [
+                  11.504913,
+                  48.147033
+                ],
+                "type": "arrive"
+              },
+              "name": "Winfriedstra\u00dfe",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ],
+          "weight": 316,
+          "summary": "Wotanstra\u00dfe, Winfriedstra\u00dfe",
+          "duration": 135,
+          "distance": 547.9
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.502754,
+            48.143536
+          ],
+          [
+            11.502878,
+            48.143648
+          ],
+          [
+            11.502916,
+            48.143682
+          ],
+          [
+            11.503069,
+            48.143831
+          ],
+          [
+            11.503099,
+            48.143862
+          ],
+          [
+            11.503114,
+            48.143893
+          ],
+          [
+            11.50312,
+            48.144591
+          ],
+          [
+            11.503121,
+            48.144652
+          ],
+          [
+            11.503121,
+            48.144657
+          ],
+          [
+            11.503142,
+            48.145639
+          ],
+          [
+            11.503134,
+            48.145819
+          ],
+          [
+            11.503123,
+            48.145954
+          ],
+          [
+            11.503115,
+            48.146095
+          ],
+          [
+            11.503103,
+            48.146229
+          ],
+          [
+            11.503091,
+            48.146437
+          ],
+          [
+            11.503083,
+            48.146649
+          ],
+          [
+            11.503092,
+            48.14701
+          ],
+          [
+            11.503091,
+            48.147077
+          ],
+          [
+            11.503079,
+            48.147152
+          ],
+          [
+            11.503298,
+            48.147142
+          ],
+          [
+            11.503435,
+            48.147136
+          ],
+          [
+            11.503549,
+            48.147132
+          ],
+          [
+            11.50394,
+            48.147119
+          ],
+          [
+            11.504046,
+            48.147113
+          ],
+          [
+            11.50425,
+            48.1471
+          ],
+          [
+            11.504814,
+            48.147044
+          ],
+          [
+            11.504913,
+            48.147033
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 316,
+      "duration": 135,
+      "distance": 547.9
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "KSYBgP0rAIAhAAAARQAAACIAAAAAAAAAqHnvQHEHeEF_RfhAAAAAAA8AAAAfAAAAEAAAAAAAAAC9AgAAooSvALCc3gKfhK8AspzeAgIATwIAAAAA",
+      "location": [
+        11.502754,
+        48.143536
+      ],
+      "name": "Wotanstra\u00dfe",
+      "distance": 0.3151725019
+    },
+    {
+      "hint": "sQIsgAgDLIACAAAAEgAAAAAAAACdAAAAXXmkPzMR70AAAAAAYM5mQgIAAAAOAAAAAAAAAGcAAAC9AgAAEY2vAFmq3gIRja8AWareAgAAfxEAAAAA",
+      "location": [
+        11.504913,
+        48.147033
+      ],
+      "name": "Winfriedstra\u00dfe",
+      "distance": 0
+    }
+  ]
+}

@@ -1,0 +1,884 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "annotation": {
+            "nodes": [
+              12060897299,
+              320494607,
+              32677340,
+              389437823,
+              513729142,
+              1449321597,
+              3485156178,
+              410302526,
+              13730348446,
+              13730348445,
+              414571043,
+              268859341,
+              348055679,
+              1475180440,
+              251744191,
+              1449321596,
+              1472238046,
+              1449321591,
+              3908048755,
+              1472238043,
+              251744192,
+              2659898517
+            ],
+            "distance": [
+              6.203888604,
+              32.24738026,
+              22.84111758,
+              26.91369186,
+              0.6712971531,
+              7.752553374,
+              5.474637643,
+              3.886463887,
+              1.958501304,
+              4.181483323,
+              11.34771047,
+              15.4605048,
+              16.17086285,
+              1.563802593,
+              6.824454052,
+              5.436961022,
+              9.877677165,
+              5.389008654,
+              4.208450683,
+              6.49845133,
+              19.25479985
+            ]
+          },
+          "duration": 78.6,
+          "summary": "Wilramstraße, Balanstraße",
+          "weight": 157.4,
+          "distance": 214.2,
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    275
+                  ],
+                  "location": [
+                    11.603233,
+                    48.115399
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    270
+                  ],
+                  "location": [
+                    11.602719,
+                    48.115433
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.603233,
+                    48.115399
+                  ],
+                  [
+                    11.60315,
+                    48.115404
+                  ],
+                  [
+                    11.602719,
+                    48.115433
+                  ],
+                  [
+                    11.602413,
+                    48.115448
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 275,
+                "bearing_before": 0,
+                "location": [
+                  11.603233,
+                  48.115399
+                ],
+                "type": "depart"
+              },
+              "name": "Wilramstraße",
+              "mode": "cycling",
+              "weight": 21.2,
+              "duration": 14.7,
+              "distance": 61.3
+            },
+            {
+              "intersections": [
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    90,
+                    135,
+                    180,
+                    270
+                  ],
+                  "location": [
+                    11.602413,
+                    48.115448
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    225
+                  ],
+                  "location": [
+                    11.602406,
+                    48.11569
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.602413,
+                    48.115448
+                  ],
+                  [
+                    11.602406,
+                    48.11569
+                  ],
+                  [
+                    11.602407,
+                    48.115696
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 358,
+                "bearing_before": 272,
+                "location": [
+                  11.602413,
+                  48.115448
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Balanstraße",
+              "mode": "cycling",
+              "weight": 13.3,
+              "duration": 6,
+              "distance": 27.6
+            },
+            {
+              "intersections": [
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    30,
+                    180,
+                    345
+                  ],
+                  "location": [
+                    11.602407,
+                    48.115696
+                  ]
+                },
+                {
+                  "out": 3,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    60,
+                    165,
+                    240,
+                    330
+                  ],
+                  "location": [
+                    11.602351,
+                    48.115808
+                  ]
+                },
+                {
+                  "out": 3,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    false,
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    60,
+                    150,
+                    240,
+                    330
+                  ],
+                  "location": [
+                    11.602295,
+                    48.11589
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.602407,
+                    48.115696
+                  ],
+                  [
+                    11.602384,
+                    48.115764
+                  ],
+                  [
+                    11.602351,
+                    48.115808
+                  ],
+                  [
+                    11.60233,
+                    48.11584
+                  ],
+                  [
+                    11.602319,
+                    48.115856
+                  ],
+                  [
+                    11.602295,
+                    48.11589
+                  ],
+                  [
+                    11.602226,
+                    48.115981
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 343,
+                "bearing_before": 5,
+                "location": [
+                  11.602407,
+                  48.115696
+                ],
+                "modifier": "slight left",
+                "type": "fork"
+              },
+              "name": "Balanstraße",
+              "mode": "cycling",
+              "weight": 73.2,
+              "duration": 29.7,
+              "distance": 34.6
+            },
+            {
+              "intersections": [
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    false,
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    60,
+                    150,
+                    225,
+                    315
+                  ],
+                  "location": [
+                    11.602226,
+                    48.115981
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    45,
+                    165,
+                    225,
+                    345
+                  ],
+                  "location": [
+                    11.602064,
+                    48.115894
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    45,
+                    180,
+                    345
+                  ],
+                  "location": [
+                    11.601897,
+                    48.115801
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.602226,
+                    48.115981
+                  ],
+                  [
+                    11.602064,
+                    48.115894
+                  ],
+                  [
+                    11.601897,
+                    48.115801
+                  ],
+                  [
+                    11.601899,
+                    48.115787
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 230,
+                "bearing_before": 331,
+                "location": [
+                  11.602226,
+                  48.115981
+                ],
+                "modifier": "left",
+                "type": "turn"
+              },
+              "name": "",
+              "mode": "cycling",
+              "weight": 35.1,
+              "duration": 16.7,
+              "distance": 33.2
+            },
+            {
+              "intersections": [
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    165,
+                    210
+                  ],
+                  "location": [
+                    11.601899,
+                    48.115787
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    45,
+                    225,
+                    315
+                  ],
+                  "location": [
+                    11.601797,
+                    48.115701
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    60,
+                    240
+                  ],
+                  "location": [
+                    11.60159,
+                    48.115594
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.601899,
+                    48.115787
+                  ],
+                  [
+                    11.601848,
+                    48.115736
+                  ],
+                  [
+                    11.601797,
+                    48.115701
+                  ],
+                  [
+                    11.601694,
+                    48.115645
+                  ],
+                  [
+                    11.601636,
+                    48.115616
+                  ],
+                  [
+                    11.60159,
+                    48.115594
+                  ],
+                  [
+                    11.601516,
+                    48.115563
+                  ],
+                  [
+                    11.601264,
+                    48.115524
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 216,
+                "bearing_before": 174,
+                "location": [
+                  11.601899,
+                  48.115787
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Werinherstraße",
+              "mode": "cycling",
+              "weight": 14.6,
+              "duration": 11.5,
+              "distance": 57.5
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    77
+                  ],
+                  "location": [
+                    11.601264,
+                    48.115524
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.601264,
+                    48.115524
+                  ],
+                  [
+                    11.601264,
+                    48.115524
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 257,
+                "location": [
+                  11.601264,
+                  48.115524
+                ],
+                "type": "arrive"
+              },
+              "name": "Werinherstraße",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ]
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.603233,
+            48.115399
+          ],
+          [
+            11.60315,
+            48.115404
+          ],
+          [
+            11.602719,
+            48.115433
+          ],
+          [
+            11.602413,
+            48.115448
+          ],
+          [
+            11.602406,
+            48.11569
+          ],
+          [
+            11.602407,
+            48.115696
+          ],
+          [
+            11.602384,
+            48.115764
+          ],
+          [
+            11.602351,
+            48.115808
+          ],
+          [
+            11.60233,
+            48.11584
+          ],
+          [
+            11.602319,
+            48.115856
+          ],
+          [
+            11.602295,
+            48.11589
+          ],
+          [
+            11.602226,
+            48.115981
+          ],
+          [
+            11.602064,
+            48.115894
+          ],
+          [
+            11.601897,
+            48.115801
+          ],
+          [
+            11.601899,
+            48.115787
+          ],
+          [
+            11.601848,
+            48.115736
+          ],
+          [
+            11.601797,
+            48.115701
+          ],
+          [
+            11.601694,
+            48.115645
+          ],
+          [
+            11.601636,
+            48.115616
+          ],
+          [
+            11.60159,
+            48.115594
+          ],
+          [
+            11.601516,
+            48.115563
+          ],
+          [
+            11.601264,
+            48.115524
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 157.4,
+      "duration": 78.6,
+      "distance": 214.2,
+      "guidance": {
+        "version": "big-junctions-v2",
+        "catalogVersion": "munich-big-junctions-sequences-proposed",
+        "junctions": [
+          {
+            "id": "thomasiusplatz",
+            "occurrenceId": "thomasiusplatz:wilram-entry-5-exit-4:leg:0:visit:0",
+            "legIndex": 0,
+            "movement": "left",
+            "entryArm": "wilram",
+            "exitArm": "west",
+            "entry": {
+              "location": [
+                11.602629753066232,
+                48.1154373748497
+              ],
+              "geometrySegmentIndex": 2,
+              "segmentFraction": 0.2916566463035023,
+              "distanceAlongLegMeters": 44.98844540286059,
+              "distanceAlongRouteMeters": 44.98844540286059
+            },
+            "exit": {
+              "location": [
+                11.601795601471741,
+                48.115700239635125
+              ],
+              "geometrySegmentIndex": 16,
+              "segmentFraction": 0.013577944255955899,
+              "distanceAlongLegMeters": 168.81954019790908,
+              "distanceAlongRouteMeters": 168.81954019790908
+            },
+            "polygon": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.601789457954938,
+                    48.115728635106
+                  ],
+                  [
+                    11.601791357954937,
+                    48.115714635106
+                  ],
+                  [
+                    11.601812257954938,
+                    48.115643735106005
+                  ],
+                  [
+                    11.601896557954937,
+                    48.115440135106006
+                  ],
+                  [
+                    11.601940957954938,
+                    48.115433035106
+                  ],
+                  [
+                    11.60222,
+                    48.1154
+                  ],
+                  [
+                    11.60236,
+                    48.11536
+                  ],
+                  [
+                    11.6026,
+                    48.11536
+                  ],
+                  [
+                    11.602629767,
+                    48.11543712
+                  ],
+                  [
+                    11.602607386648065,
+                    48.115846458359044
+                  ],
+                  [
+                    11.6026,
+                    48.11596
+                  ],
+                  [
+                    11.602381931,
+                    48.116041248
+                  ],
+                  [
+                    11.602333842045063,
+                    48.116053264894
+                  ],
+                  [
+                    11.602118557954938,
+                    48.116053264894
+                  ],
+                  [
+                    11.601956057954938,
+                    48.115966064893996
+                  ],
+                  [
+                    11.601789457954938,
+                    48.115872364893995
+                  ],
+                  [
+                    11.601789457954938,
+                    48.115728635106
+                  ]
+                ]
+              ]
+            },
+            "suppressedStepIndices": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "sequence": {
+              "version": 1,
+              "advance": {
+                "de": "rechts, danach an der großen Kreuzung links abbiegen",
+                "en": "turn right, then turn left at the large junction"
+              },
+              "display": {
+                "de": "rechts, dann Kreuzung links",
+                "en": "right, then junction left"
+              },
+              "checkpoints": [
+                {
+                  "id": "turn-1",
+                  "instruction": {
+                    "de": "Hier rechts.",
+                    "en": "Turn right here."
+                  },
+                  "modifier": "right",
+                  "anchor": {
+                    "location": [
+                      11.602413,
+                      48.115448
+                    ],
+                    "geometrySegmentIndex": 2,
+                    "segmentFraction": 1,
+                    "distanceAlongLegMeters": 61.12294199101668,
+                    "distanceAlongRouteMeters": 61.12294199101668
+                  },
+                  "incomingBearing": 274.19929834511083,
+                  "outgoingBearing": 358.8936606130091
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "-y8ZgDIwGYANAAAAzgAAAAAAAAA1AAAAQYbGQJEXtkIAAAAAYkO9QQsAAACkAAAAAAAAACsAAAC9AgAAIQ2xAMcu3gIhDbEAxy7eAgAA_wUAAAAA",
+      "location": [
+        11.603233,
+        48.115399
+      ],
+      "name": "Wilramstraße",
+      "distance": 0
+    },
+    {
+      "hint": "e24ZgP___38wAAAAUAAAABAAAAAAAAAA1QmaQXAQS0FQ889AAAAAACYAAABAAAAADQAAAAAAAAC9AgAAcAWxAEQv3gJwBbEARC_eAgIADxAAAAAA",
+      "location": [
+        11.601264,
+        48.115524
+      ],
+      "name": "Werinherstraße",
+      "distance": 0
+    }
+  ]
+}

@@ -4,10 +4,37 @@ import 'package:latlong2/latlong.dart';
 const bigJunctionGuidanceEnabled =
     bool.fromEnvironment('BIG_JUNCTION_GUIDANCE', defaultValue: true);
 
+class JunctionCheckpoint {
+  const JunctionCheckpoint(
+      {required this.id,
+      required this.location,
+      required this.distance,
+      required this.incomingBearing,
+      required this.outgoingBearing,
+      required this.modifier,
+      required this.instruction,
+      this.alignedInstruction});
+  final String id, modifier;
+  final LatLng location;
+  final double distance, incomingBearing, outgoingBearing;
+  final Map<String, String> instruction;
+  final Map<String, String>? alignedInstruction;
+}
+
+class JunctionSequence {
+  const JunctionSequence(
+      {required this.advance,
+      required this.display,
+      required this.checkpoints});
+  final Map<String, String> advance, display;
+  final List<JunctionCheckpoint> checkpoints;
+}
+
 /// Backend-approved catalog occurrence; distances use the guidance projection.
 class RouteBigJunction {
   const RouteBigJunction(
-      {required this.occurrenceId,
+      {this.sequence,
+      required this.occurrenceId,
       required this.movement,
       required this.entry,
       required this.exit,
@@ -16,6 +43,7 @@ class RouteBigJunction {
       required this.exitDistance,
       required this.outgoing});
   final String occurrenceId, movement;
+  final JunctionSequence? sequence;
   String get modifier => movement;
   String sentenceAction(bool english) {
     final text = action(english);
@@ -29,7 +57,8 @@ class RouteBigJunction {
   static List<RouteBigJunction> parse(Object? value, List<LatLng> route) {
     try {
       if (value is! Map ||
-          value['version'] != 'big-junctions-v1' ||
+          !const ['big-junctions-v1', 'big-junctions-v2']
+              .contains(value['version']) ||
           value['catalogVersion'] is! String ||
           (value['catalogVersion'] as String).isEmpty ||
           (value['catalogVersion'] as String).length > 128 ||
@@ -78,12 +107,12 @@ class RouteBigJunction {
         if (item is! Map ||
             item['id'] is! String ||
             (item['id'] as String).isEmpty ||
-            !const ['left', 'straight'].contains(item['movement']) ||
+            !const ['left', 'straight', 'uturn'].contains(item['movement']) ||
             item['entryArm'] is! String ||
             (item['entryArm'] as String).isEmpty ||
             item['exitArm'] is! String ||
             (item['exitArm'] as String).isEmpty ||
-            item['entryArm'] == item['exitArm'] ||
+            (item['entryArm'] == item['exitArm'] && item['sequence'] == null) ||
             item['occurrenceId'] is! String ||
             (item['occurrenceId'] as String).isEmpty ||
             item['legIndex'] is! int ||
@@ -114,7 +143,7 @@ class RouteBigJunction {
                 const Distance().as(LengthUnit.Meter, exit.point, point) >= 2)
             .firstOrNull;
         if (outgoing == null) return const [];
-        final parsed = RouteBigJunction(
+        var parsed = RouteBigJunction(
             occurrenceId: item['occurrenceId'],
             movement: item['movement'],
             entry: entry.point,
@@ -123,6 +152,80 @@ class RouteBigJunction {
             entryDistance: entry.distance,
             exitDistance: exit.distance,
             outgoing: outgoing);
+        if (item['sequence'] != null) {
+          if (value['version'] != 'big-junctions-v2') return const [];
+          final seq = item['sequence'];
+          if (seq is! Map ||
+              seq['version'] != 1 ||
+              seq['checkpoints'] is! List ||
+              (seq['checkpoints'] as List).isEmpty ||
+              (seq['checkpoints'] as List).length > 6) return const [];
+          Map<String, String> localized(Object? raw, int limit) {
+            if (raw is! Map ||
+                raw.length != 2 ||
+                !['de', 'en'].every((lang) =>
+                    raw[lang] is String &&
+                    (raw[lang] as String).trim().isNotEmpty &&
+                    (raw[lang] as String).length <= limit)) {
+              throw const FormatException();
+            }
+            return Map.unmodifiable(
+                {'de': raw['de'] as String, 'en': raw['en'] as String});
+          }
+
+          final advance = localized(seq['advance'], 240),
+              display = localized(seq['display'], 80);
+          final checkpoints = <JunctionCheckpoint>[];
+          final ids = <String>{};
+          for (final cp in seq['checkpoints'] as List) {
+            if (cp is! Map ||
+                cp['id'] is! String ||
+                (cp['id'] as String).isEmpty ||
+                (cp['id'] as String).length > 80 ||
+                !ids.add(cp['id']) ||
+                !const ['left', 'right', 'straight', 'uturn']
+                    .contains(cp['modifier'])) return const [];
+            final location = anchor(cp['anchor']);
+            if (location.distance < entry.distance ||
+                location.distance > exit.distance ||
+                !parsed.contains(location.point) ||
+                (checkpoints.isNotEmpty &&
+                    location.distance < checkpoints.last.distance + 5))
+              return const [];
+            for (final key in ['incomingBearing', 'outgoingBearing']) {
+              if (cp[key] is! num ||
+                  !(cp[key] as num).isFinite ||
+                  cp[key] < 0 ||
+                  cp[key] >= 360) return const [];
+            }
+            checkpoints.add(JunctionCheckpoint(
+                id: cp['id'],
+                location: location.point,
+                distance: location.distance,
+                incomingBearing: (cp['incomingBearing'] as num).toDouble(),
+                outgoingBearing: (cp['outgoingBearing'] as num).toDouble(),
+                modifier: cp['modifier'],
+                instruction: localized(cp['instruction'], 120),
+                alignedInstruction: cp['alignedInstruction'] == null
+                    ? null
+                    : localized(cp['alignedInstruction'], 120)));
+          }
+          parsed = RouteBigJunction(
+              occurrenceId: parsed.occurrenceId,
+              movement: parsed.movement,
+              entry: parsed.entry,
+              exit: parsed.exit,
+              polygon: parsed.polygon,
+              entryDistance: parsed.entryDistance,
+              exitDistance: parsed.exitDistance,
+              outgoing: parsed.outgoing,
+              sequence: JunctionSequence(
+                  advance: advance,
+                  display: display,
+                  checkpoints: List.unmodifiable(checkpoints)));
+        } else if (item['movement'] == 'uturn') {
+          return const [];
+        }
         if (parsed.boundaryDistance(entry.point) > 1 ||
             parsed.boundaryDistance(exit.point) > 1) return const [];
         if (result.any((other) =>
@@ -201,9 +304,11 @@ class RouteBigJunction {
   }
 
   String displayAction(bool english) {
+    if (sequence != null) return sequence!.display[english ? 'en' : 'de']!;
     final direction = switch (movement) {
       'straight' => english ? 'straight' : 'geradeaus',
       'right' => english ? 'right' : 'rechts',
+      'uturn' => english ? 'U-turn' : 'wenden',
       _ => english ? 'left' : 'links',
     };
     return english
@@ -211,11 +316,13 @@ class RouteBigJunction {
         : 'gro\u00dfe Kreuzung $direction';
   }
 
-  String action(bool english) => movement == 'straight'
-      ? (english
-          ? 'continue straight at the large junction'
-          : 'an der gro\u00dfen Kreuzung geradeaus fahren')
-      : (english
-          ? 'turn left at the large junction'
-          : 'an der gro\u00dfen Kreuzung links abbiegen');
+  String action(bool english) =>
+      sequence?.advance[english ? 'en' : 'de'] ??
+      (movement == 'straight'
+          ? (english
+              ? 'continue straight at the large junction'
+              : 'an der gro\u00dfen Kreuzung geradeaus fahren')
+          : (english
+              ? 'turn left at the large junction'
+              : 'an der gro\u00dfen Kreuzung links abbiegen'));
 }

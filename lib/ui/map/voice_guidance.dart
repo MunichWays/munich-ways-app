@@ -431,6 +431,12 @@ class VoiceGuidance {
   bool _wrongDirection = false;
   bool _wrongDirectionSpoken = false;
   NavigationRemaining? _remainingEstimate;
+  DateTime? _lastGuidanceFixAt;
+  DateTime? _gpsRecoveryUntil;
+  DateTime? _gpsRecoveryCandidateAt;
+  LatLng? _gpsRecoveryCandidate;
+  double? _gpsRecoveryProgress;
+  double _gpsRecoveryAccuracy = 0;
 
   /// Uses confirmed GPS displacement, never the device compass at rest.
   /// Evaluate once per fix, also after route replacement, before any guidance
@@ -566,6 +572,8 @@ class VoiceGuidance {
     _arrivals = const [];
     _intermediateArrivalCount = 0;
     _routeProgress = 0;
+    _lastGuidanceFixAt = null;
+    _clearGpsRecovery();
     _overlappingRouteIntervals = const [];
     _overlappingRouteWarningSpoken = false;
     _finalDestinationReached = false;
@@ -755,6 +763,99 @@ class VoiceGuidance {
     return action;
   }
 
+  void _clearGpsRecovery() {
+    _gpsRecoveryUntil = null;
+    _gpsRecoveryCandidateAt = null;
+    _gpsRecoveryCandidate = null;
+    _gpsRecoveryProgress = null;
+  }
+
+  /// Re-anchor only after a GPS gap and two accurate, unambiguous forward fixes.
+  /// Normal progress matching and the conservative stall fallback stay intact.
+  bool recoverAfterGpsGap(
+    LatLng position, {
+    required DateTime fixTime,
+    required double horizontalAccuracyMeters,
+    bool allowRecovery = true,
+  }) {
+    final previous = _lastGuidanceFixAt;
+    if (previous != null && !fixTime.isAfter(previous)) return false;
+    _lastGuidanceFixAt = fixTime;
+    if (!allowRecovery ||
+        _route == null ||
+        _bigJunction.quiet ||
+        _wrongDirection ||
+        _finalDestinationReached) {
+      _clearGpsRecovery();
+      return false;
+    }
+    if (previous != null &&
+        fixTime.difference(previous) >= const Duration(seconds: 15)) {
+      _clearGpsRecovery();
+      _gpsRecoveryUntil = fixTime.add(const Duration(seconds: 15));
+    }
+    final until = _gpsRecoveryUntil;
+    if (until == null) return false;
+    if (fixTime.isAfter(until)) {
+      _clearGpsRecovery();
+      return false;
+    }
+    final route = _route!;
+    final local = _projectOntoRoute(route.points, position,
+        minimumDistanceAlongRoute: _routeProgress,
+        maximumDistanceAlongRoute: _routeProgress + _maximumProgressJumpMeters,
+        preferEarlierWithinMeters: _projectionContinuityToleranceMeters);
+    if (!local.isAmbiguous &&
+        local.distanceFromRoute <= maximumRouteDistanceMeters) {
+      _clearGpsRecovery();
+      return false;
+    }
+    final global = _projectOntoRoute(route.points, position,
+        preferEarlierWithinMeters: _projectionContinuityToleranceMeters,
+        preferClosest: true);
+    if (!horizontalAccuracyMeters.isFinite ||
+        horizontalAccuracyMeters < 0 ||
+        horizontalAccuracyMeters > 20 ||
+        global.isAmbiguous ||
+        global.distanceFromRoute > 10 ||
+        global.distanceAlongRoute < _routeProgress ||
+        _isOverlappingProgress(global.distanceAlongRoute)) {
+      _gpsRecoveryCandidate = null;
+      _gpsRecoveryCandidateAt = null;
+      _gpsRecoveryProgress = null;
+      return false;
+    }
+    final candidate = _gpsRecoveryCandidate;
+    final candidateAt = _gpsRecoveryCandidateAt;
+    if (candidate != null && candidateAt != null) {
+      final seconds = fixTime.difference(candidateAt).inMilliseconds / 1000;
+      final movement =
+          const Distance().as(LengthUnit.Meter, candidate, position);
+      final progress = global.distanceAlongRoute - _gpsRecoveryProgress!;
+      final minimumMovement =
+          (max(_gpsRecoveryAccuracy, horizontalAccuracyMeters) * 1.5)
+              .clamp(8.0, 25.0);
+      if (seconds >= 1 &&
+          seconds <= 5 &&
+          movement >= minimumMovement &&
+          movement <= 12 * seconds + 10 &&
+          progress >= minimumMovement &&
+          progress <= movement * 1.5 + 10) {
+        _clearGpsRecovery();
+        return resumeAt(position,
+            horizontalAccuracyMeters: horizontalAccuracyMeters);
+      }
+      // Accumulate short movements, but never confirm an old or reversed fix.
+      if (seconds <= 5 && progress >= 0 && movement < minimumMovement)
+        return false;
+    }
+    _gpsRecoveryCandidate = position;
+    _gpsRecoveryCandidateAt = fixTime;
+    _gpsRecoveryProgress = global.distanceAlongRoute;
+    _gpsRecoveryAccuracy = horizontalAccuracyMeters;
+    return false;
+  }
+
   /// Restarts maneuver guidance at the rider's current place on the route.
   ///
   /// This is used after an off-route episode. A freshly reset guidance session
@@ -824,9 +925,10 @@ class VoiceGuidance {
     _remainingEstimate = null;
     if (_bigJunction.active case final junction?) {
       return VoiceGuidanceDisplay(
-          text: junction.displayAction(english),
+          text: _bigJunction.checkpointDisplay(english) ??
+              junction.displayAction(english),
           type: 'turn',
-          modifier: junction.modifier);
+          modifier: _bigJunction.checkpointModifier ?? junction.modifier);
     }
     final projection = _projectionAtCurrentProgress(position);
     _remainingEstimate = _estimateRemaining(projection);
@@ -998,6 +1100,8 @@ class VoiceGuidance {
     required bool english,
     double speedMetersPerSecond = 0,
   }) {
+    final checkpoint = _bigJunction.takeCheckpointInstruction(english);
+    if (checkpoint != null) return checkpoint;
     final route = _route;
     if (route == null || _bigJunction.quiet) return null;
     if (_finalDestinationReached) {
