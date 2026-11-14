@@ -188,6 +188,15 @@ class FailureTests(unittest.TestCase):
         self.assertNotIn("SECRET", str(caught.exception))
         self.assertNotIn("secret", str(caught.exception))
 
+    def test_store_requests_identify_the_release_check_client(self):
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{}'
+        with patch.object(guard, "urlopen", return_value=response) as send:
+            guard.request_json("GET", guard.APPLE + "/v1/apps", "test-token")
+        request = send.call_args.args[0]
+        self.assertEqual(request.get_header("User-agent"), "MunichWays-Store-Version-Check/1.0")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
+
     def test_apple_forbidden_identifies_stage_without_response_details(self):
         for path, stage in (("apps", "app lookup"), ("builds", "build lookup")):
             body = json.dumps({"errors": [{"code": "FORBIDDEN_ERROR", "detail": "SECRET-KEY"},

@@ -47,7 +47,7 @@ def require_newer(current, used, platform):
 
 
 def request_json(method, url, token=None, body=None, form=None):
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "User-Agent": "MunichWays-Store-Version-Check/1.0"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     data = None
