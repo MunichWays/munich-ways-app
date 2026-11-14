@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
@@ -246,6 +249,118 @@ void main() {
     expect(
         guidance.announceCurrentManeuver(at(350), english: false), isNotNull);
     expect(guidance.display(at(400), english: false)?.type, 'turn');
+  });
+
+  test('Laimer tunnel resumes promptly after two confirmed GPS fixes', () {
+    // Frozen Standard route fetched 2026-11-14 for the reported ride.
+    final data = jsonDecode(
+            File('test/fixtures/laimer_tunnel_route.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final route = RadlNaviApi().parseResponse(data, const [
+      LatLng(48.143538, 11.502751),
+      LatLng(48.147033, 11.504913),
+    ]);
+    final guidance = VoiceGuidance()..setRoute(route);
+    // Last accepted fix before the gap, then GPS resumes near the northern exit.
+    const before = LatLng(48.143893, 11.503114);
+    const after = LatLng(48.146649, 11.503083);
+    guidance.recoverAfterGpsGap(before,
+        fixTime: time(0), horizontalAccuracyMeters: 5);
+    guidance.display(before, english: false);
+    guidance.update(before, english: false);
+    expect(
+        guidance.recoverAfterGpsGap(after,
+            fixTime: time(60), horizontalAccuracyMeters: 5),
+        isFalse);
+    expect(
+        guidance.isOnRouteAnywhere(after, horizontalAccuracyMeters: 5), isTrue);
+    expect(guidance.display(after, english: false), isNull);
+    expect(guidance.update(after, english: false), isNull);
+    expect(guidance.hasHealthyMapProgress(after), isFalse);
+    const confirmed = LatLng(48.14676, 11.503086);
+    expect(
+        guidance.recoverAfterGpsGap(confirmed,
+            fixTime: time(62), horizontalAccuracyMeters: 5),
+        isTrue);
+    expect(guidance.display(confirmed, english: false)?.modifier, 'right');
+    expect(guidance.announceCurrentManeuver(confirmed, english: false),
+        contains('rechts'));
+    expect(
+        guidance.recoverAfterGpsGap(confirmed,
+            fixTime: time(63), horizontalAccuracyMeters: 5),
+        isFalse);
+  });
+
+  for (final scenario in [
+    'no gap',
+    'stationary',
+    'reverse',
+    'poor accuracy',
+    'off route',
+    'ambiguous',
+    'expired',
+    'reroute in flight',
+    'duplicate fix'
+  ]) {
+    test('GPS gap recovery rejects $scenario', () {
+      final r = scenario == 'ambiguous'
+          ? CycleRoute([at(0), at(1000), at(0)], 2000, 480,
+              maneuvers: [
+                RouteManeuver(location: at(600), type: 'turn', modifier: 'left')
+              ])
+          : route();
+      final guidance = VoiceGuidance()..setRoute(r);
+      guidance.recoverAfterGpsGap(at(0),
+          fixTime: time(0), horizontalAccuracyMeters: 5);
+      guidance.display(at(0), english: false);
+      final firstTime = scenario == 'no gap' ? 2 : 60;
+      expect(
+          guidance.recoverAfterGpsGap(at(350),
+              fixTime: time(firstTime), horizontalAccuracyMeters: 5),
+          isFalse);
+      final position = switch (scenario) {
+        'stationary' => at(350),
+        'reverse' => at(335),
+        'off route' => const LatLng(48.0033, 11.501),
+        _ => at(365),
+      };
+      expect(
+          guidance.recoverAfterGpsGap(position,
+              fixTime: time(scenario == 'expired'
+                  ? 80
+                  : scenario == 'duplicate fix'
+                      ? firstTime
+                      : firstTime + 2),
+              horizontalAccuracyMeters: scenario == 'poor accuracy' ? 40 : 5,
+              allowRecovery: scenario != 'reroute in flight'),
+          isFalse);
+    });
+  }
+
+  test(
+      'short forward fixes accumulate and route replacement clears GPS recovery',
+      () {
+    final guidance = VoiceGuidance()..setRoute(route());
+    guidance.recoverAfterGpsGap(at(0),
+        fixTime: time(0), horizontalAccuracyMeters: 5);
+    guidance.display(at(0), english: false);
+    expect(
+        guidance.recoverAfterGpsGap(at(350),
+            fixTime: time(60), horizontalAccuracyMeters: 5),
+        isFalse);
+    expect(
+        guidance.recoverAfterGpsGap(at(354),
+            fixTime: time(61), horizontalAccuracyMeters: 5),
+        isFalse);
+    expect(
+        guidance.recoverAfterGpsGap(at(359),
+            fixTime: time(62), horizontalAccuracyMeters: 5),
+        isTrue);
+    guidance.setRoute(route());
+    expect(
+        guidance.recoverAfterGpsGap(at(370),
+            fixTime: time(63), horizontalAccuracyMeters: 5),
+        isFalse);
   });
 
   test('failed re-anchor requests rerouting instead of silently giving up', () {

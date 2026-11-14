@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'big_junction.dart';
 
 class CycleRoute {
   List<LatLng> points;
@@ -8,6 +9,7 @@ class CycleRoute {
   bool supportsVoiceGuidance;
   List<LatLng> destinationConnector;
   final List<RouteDisplaySection> displaySections;
+  final List<RouteBigJunction> bigJunctions;
   RouteComfort? comfort;
   final RouteAnalysisContext? analysisContext;
   final Map<String, dynamic>? transferResponse;
@@ -25,6 +27,7 @@ class CycleRoute {
     this.supportsVoiceGuidance = true,
     this.destinationConnector = const [],
     this.displaySections = const [],
+    this.bigJunctions = const [],
     this.comfort,
     this.analysisContext,
     this.transferResponse,
@@ -118,11 +121,13 @@ class RouteManeuver {
     this.exit,
     this.enteringWayType,
     this.wayType,
+    this.bigJunction,
   });
 
   final LatLng location;
   final String type;
   final String? modifier;
+  final RouteBigJunction? bigJunction;
   final String roadName;
   final int? exit;
 

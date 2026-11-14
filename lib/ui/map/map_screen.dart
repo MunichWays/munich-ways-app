@@ -228,8 +228,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const latlong2.LatLng _stachus = latlong2.LatLng(48.14, 11.5652);
   static const _voiceSignalWarningDelay = Duration(seconds: 30);
   static const _offRouteDisplayDelay = Duration(seconds: 2);
-  static const _offRouteAnnouncementDelay = Duration(seconds: 12);
-  static const _automaticRerouteDelay = Duration(seconds: 30);
+  // Both delays start with the same confirmed off-route episode.
+  // Routing and TTS latency are additional to the recalculation delay.
+  static const _offRouteAnnouncementDelay = Duration(seconds: 10);
+  static const _automaticRerouteDelay = Duration(seconds: 20);
   static const _maximumConsecutiveReroutes = 3;
   static const _onRouteDistanceToResetReroutes = 100.0;
   static const _onRouteDurationToResetReroutes = Duration(seconds: 60);
@@ -746,6 +748,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _speak(String text, {required bool english}) async {
     if (_navigationSpeechPaused) return;
     final generation = ++_speechRequestGeneration;
+    final preparation = Stopwatch()..start();
+    log.i('Navigation speech requested: $generation, '
+        'fix age ${_latestPosition == null ? -1 : DateTime.now().difference(_latestPosition!.timestamp).inMilliseconds} ms');
     try {
       await _flutterTts.setLanguage(english ? 'en-US' : 'de-DE');
       if (generation != _speechRequestGeneration ||
@@ -769,6 +774,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 mounted &&
                 !_navigationSpeechPaused,
           )) return;
+      log.i('Navigation speech handed to TTS: $generation, '
+          'preparation ${preparation.elapsedMilliseconds} ms');
       final result = await _flutterTts.speak(text, focus: true);
       if (result != 1) {
         throw StateError('Voice guidance announcement was rejected');
@@ -2210,6 +2217,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             english: context.l10n.isEnglish));
       }
     }
+    _voiceGuidance.updateBigJunctionPosition(rawPosition,
+        fixTime: position.timestamp,
+        horizontalAccuracyMeters: position.accuracy);
+    if (_voiceGuidance.recoverAfterGpsGap(rawPosition,
+        fixTime: position.timestamp,
+        horizontalAccuracyMeters: position.accuracy,
+        allowRecovery:
+            !_automaticRerouteInFlight && !_automaticRerouteCommitted)) {
+      log.i('GPS gap: guidance re-anchored after confirmed forward fixes; '
+          'fix age ${DateTime.now().difference(position.timestamp).inMilliseconds} ms');
+      _cancelAutomaticRerouting(resetAttempts: false);
+      _resetStalledGuidanceRecovery();
+      _initialGuidanceAnnouncementPending = true;
+    }
     _voiceGuidance.updateTravelDirection(
       rawPosition,
       _navigationMotion.bearingAt(DateTime.now()),
@@ -2431,6 +2452,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     Position gpsPosition,
   ) {
     if (!model.navigationActive || _automaticRerouteInFlight) return;
+    if (_voiceGuidance.inBigJunction) {
+      _cancelAutomaticRerouting(resetAttempts: false);
+      return;
+    }
     // Deliver an elapsed warning before considering a resumed recalculation.
     _offRouteAnnouncement.retryIfDue();
     // A committed off-route timer may expire during a stop or GPS outage.
@@ -2602,6 +2627,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   Future<void> _performAutomaticReroute(MapScreenViewModel model) async {
     if (_automaticRerouteInFlight ||
         !model.navigationActive ||
+        _voiceGuidance.inBigJunction ||
         _voiceGuidance.finalDestinationReached ||
         !model.automaticReroutingEnabled ||
         !_hasFreshNavigationFix ||

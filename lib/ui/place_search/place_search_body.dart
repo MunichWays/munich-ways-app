@@ -654,6 +654,13 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     await model.renameRecentSearch(recentSearch, trimmedName);
   }
 
+  String _savedPlaceLabel(Place place) {
+    final name = place.displayName;
+    if (name != null && name.trim().isNotEmpty) return name;
+    return '${place.latLng.latitude.toStringAsFixed(5)}, '
+        '${place.latLng.longitude.toStringAsFixed(5)}';
+  }
+
   Widget _savedPlaceTile(
     BuildContext context,
     Place place, {
@@ -661,6 +668,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
     required bool compact,
     required VoidCallback onConfirm,
   }) {
+    final label = _savedPlaceLabel(place);
     final textStyle = Theme.of(context).textTheme.bodyLarge;
     final actionWidth = compact ? 32.0 : 48.0;
     final menuKey = GlobalKey<PopupMenuButtonState<_SavedPlaceAction>>();
@@ -676,7 +684,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
             final initialTextWidth =
                 constraints.maxWidth - 16 - baseTrailingWidth;
             final initialTextPainter = TextPainter(
-              text: TextSpan(text: place.displayName!, style: textStyle),
+              text: TextSpan(text: label, style: textStyle),
               maxLines: 1,
               textDirection: Directionality.of(context),
               textScaler: MediaQuery.textScalerOf(context),
@@ -703,7 +711,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            place.displayName!,
+                            label,
                             maxLines: 1,
                             overflow: TextOverflow.clip,
                             style: textStyle,
@@ -875,7 +883,7 @@ class _PlaceSearchBodyState extends State<PlaceSearchBody> {
         title: Text(
           context.l10n.isEnglish ? 'Full address' : 'Vollständige Adresse',
         ),
-        content: SelectableText(place.displayName ?? ''),
+        content: SelectableText(_savedPlaceLabel(place)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
