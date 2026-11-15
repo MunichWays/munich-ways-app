@@ -1,0 +1,560 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "annotation": {
+            "nodes": [
+              7832370184,
+              7871491372,
+              1079065379,
+              1079065413,
+              2214481329,
+              2254774702,
+              1239147736,
+              1239147715,
+              254047165,
+              2214481157,
+              1493146690,
+              4427901401,
+              11922487183,
+              11922487185,
+              11922487184
+            ],
+            "distance": [
+              48.3306494,
+              9.021676043,
+              7.911865732,
+              7.342119253,
+              7.689977075,
+              4.114131883,
+              3.002204348,
+              3.224589854,
+              7.119839868,
+              8.344654773,
+              15.96110606,
+              16.05922283,
+              12.55062316,
+              17.24473418
+            ]
+          },
+          "duration": 45.9,
+          "summary": "Karl-Scharnagl-Ring, Thomas-Wimmer-Ring",
+          "weight": 69.7,
+          "distance": 167.9,
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    196
+                  ],
+                  "location": [
+                    11.584963,
+                    48.138955
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    15,
+                    105,
+                    180
+                  ],
+                  "location": [
+                    11.584785,
+                    48.138537
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584785,
+                    48.138385
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180
+                  ],
+                  "location": [
+                    11.584782,
+                    48.138319
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584775,
+                    48.13825
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584775,
+                    48.138157
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    195
+                  ],
+                  "location": [
+                    11.584772,
+                    48.138093
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    15,
+                    195,
+                    285
+                  ],
+                  "location": [
+                    11.584746,
+                    48.13802
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    15,
+                    105,
+                    195
+                  ],
+                  "location": [
+                    11.584682,
+                    48.137883
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584963,
+                    48.138955
+                  ],
+                  [
+                    11.584785,
+                    48.138537
+                  ],
+                  [
+                    11.584792,
+                    48.138456
+                  ],
+                  [
+                    11.584785,
+                    48.138385
+                  ],
+                  [
+                    11.584782,
+                    48.138319
+                  ],
+                  [
+                    11.584775,
+                    48.13825
+                  ],
+                  [
+                    11.584775,
+                    48.138213
+                  ],
+                  [
+                    11.584775,
+                    48.138186
+                  ],
+                  [
+                    11.584775,
+                    48.138157
+                  ],
+                  [
+                    11.584772,
+                    48.138093
+                  ],
+                  [
+                    11.584746,
+                    48.13802
+                  ],
+                  [
+                    11.584682,
+                    48.137883
+                  ],
+                  [
+                    11.584629,
+                    48.137743
+                  ],
+                  [
+                    11.58458,
+                    48.137635
+                  ],
+                  [
+                    11.584534,
+                    48.137483
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 196,
+                "bearing_before": 0,
+                "location": [
+                  11.584963,
+                  48.138955
+                ],
+                "type": "depart"
+              },
+              "name": "Karl-Scharnagl-Ring",
+              "mode": "cycling",
+              "weight": 69.7,
+              "duration": 45.9,
+              "distance": 167.9
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    11
+                  ],
+                  "location": [
+                    11.584534,
+                    48.137483
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584534,
+                    48.137483
+                  ],
+                  [
+                    11.584534,
+                    48.137483
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 191,
+                "location": [
+                  11.584534,
+                  48.137483
+                ],
+                "type": "arrive"
+              },
+              "name": "Thomas-Wimmer-Ring",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ]
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.584963,
+            48.138955
+          ],
+          [
+            11.584785,
+            48.138537
+          ],
+          [
+            11.584792,
+            48.138456
+          ],
+          [
+            11.584785,
+            48.138385
+          ],
+          [
+            11.584782,
+            48.138319
+          ],
+          [
+            11.584775,
+            48.13825
+          ],
+          [
+            11.584775,
+            48.138213
+          ],
+          [
+            11.584775,
+            48.138186
+          ],
+          [
+            11.584775,
+            48.138157
+          ],
+          [
+            11.584772,
+            48.138093
+          ],
+          [
+            11.584746,
+            48.13802
+          ],
+          [
+            11.584682,
+            48.137883
+          ],
+          [
+            11.584629,
+            48.137743
+          ],
+          [
+            11.58458,
+            48.137635
+          ],
+          [
+            11.584534,
+            48.137483
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 69.7,
+      "duration": 45.9,
+      "distance": 167.9,
+      "guidance": {
+        "version": "big-junctions-v3",
+        "catalogVersion": "munich-big-junctions-v10",
+        "junctions": [
+          {
+            "id": "maximilian-ring",
+            "occurrenceId": "maximilian-ring:north-south-straight-entry-1-exit-3:leg:0:visit:0",
+            "legIndex": 0,
+            "movement": "straight",
+            "entryArm": "north",
+            "exitArm": "south",
+            "entry": {
+              "location": [
+                11.584797191131784,
+                48.13856562861284
+              ],
+              "geometrySegmentIndex": 0,
+              "segmentFraction": 0.9315104955981413,
+              "distanceAlongLegMeters": 45.01043008053836,
+              "distanceAlongRouteMeters": 45.01043008053836
+            },
+            "exit": {
+              "location": [
+                11.58467937658026,
+                48.13787607021201
+              ],
+              "geometrySegmentIndex": 11,
+              "segmentFraction": 0.04949848566518375,
+              "distanceAlongLegMeters": 122.84187417068237,
+              "distanceAlongRouteMeters": 122.84187417068237
+            },
+            "polygon": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ],
+                  [
+                    11.584099121484654,
+                    48.138142770212006
+                  ],
+                  [
+                    11.584110921484655,
+                    48.137958970212004
+                  ],
+                  [
+                    11.584530621484655,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584961378515347,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584989978515345,
+                    48.138013670212004
+                  ],
+                  [
+                    11.584999978515347,
+                    48.13824157021201
+                  ],
+                  [
+                    11.584999978515347,
+                    48.138529029787996
+                  ],
+                  [
+                    11.584890378515347,
+                    48.13854882978799
+                  ],
+                  [
+                    11.584526478515347,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ]
+                ]
+              ]
+            },
+            "suppressedStepIndices": [],
+            "instruction": {
+              "version": 1,
+              "templateId": "two-way-straight-opposite",
+              "advance": {
+                "de": "An der großen Kreuzung geradeaus auf den Zweirichtungsradweg gegenüber fahren.",
+                "en": "At the large junction, continue straight onto the two-way cycle path opposite."
+              },
+              "display": {
+                "de": "große Kreuzung gegenüber geradeaus",
+                "en": "large junction straight opposite"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "Qs8ggEzPIIAdAAAAeQAAAAAAAAAAAAAAXo48QZZSQUIAAAAAAAAAABcAAABhAAAAAAAAAAAAAAC9AgAAw8WwAMuK3gLDxbAAy4reAgAAPwwAAAAA",
+      "location": [
+        11.584963,
+        48.138955
+      ],
+      "name": "Karl-Scharnagl-Ring",
+      "distance": 0
+    },
+    {
+      "hint": "zAgEgD3PIIADAAAAIwAAAA0AAAA5AAAA8L3aPzf1iUEY8stA9-DkQQMAAAAjAAAADQAAADkAAAC9AgAAFsSwAAuF3gIVxLAAC4XeAgIAvwAAAAAA",
+      "location": [
+        11.584534,
+        48.137483
+      ],
+      "name": "Thomas-Wimmer-Ring",
+      "distance": 0.0744449028
+    }
+  ]
+}

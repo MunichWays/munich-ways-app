@@ -176,7 +176,7 @@ class RadlNaviApi
 
     Response response = await _client!.get(uri, headers: {
       "Accept": "application/json",
-      if (bigJunctionGuidance) "X-Junction-Guidance-Version": "2",
+      if (bigJunctionGuidance) "X-Junction-Guidance-Version": "3",
       "User-Agent": "com.munichways.app/flutter"
     });
     switch (response.statusCode) {
