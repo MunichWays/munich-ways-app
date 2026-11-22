@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart' as geo;
+import 'package:munich_ways/ui/app_theme_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:munich_ways/ui/map/map_overlay/map_navigation_header_bar.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
@@ -36,6 +38,29 @@ class _SettingsStore extends SettingsStore {
       bool? showMapButton,
       bool? radlvorrangnetzVisible,
       bool? gesamtnetzVisible}) async {}
+}
+
+// Start speech now requires an actual fresh fix; route geometry alone is not GPS.
+class _NavigationFixGeolocator extends geo.GeolocatorPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+  @override
+  Future<geo.LocationPermission> checkPermission() async =>
+      geo.LocationPermission.whileInUse;
+  @override
+  Stream<geo.Position> getPositionStream(
+          {geo.LocationSettings? locationSettings}) =>
+      Stream.value(geo.Position(
+          latitude: 48.14,
+          longitude: 11.57,
+          timestamp: DateTime.now(),
+          accuracy: 5,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0));
 }
 
 class _MapChoiceModel extends MapScreenViewModel {
@@ -159,6 +184,9 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       stubWakelock();
+      final originalGeolocator = geo.GeolocatorPlatform.instance;
+      geo.GeolocatorPlatform.instance = _NavigationFixGeolocator();
+      addTearDown(() => geo.GeolocatorPlatform.instance = originalGeolocator);
       final originalSettings = settingsStore;
       settingsStore = _SettingsStore();
       addTearDown(() => settingsStore = originalSettings);
@@ -194,8 +222,10 @@ void main() {
       });
       await tester
           .runAsync(() => rootBundle.loadString(kOpenFreeMapLibertyStyleAsset));
-      await tester.pumpWidget(const MaterialApp(
-        home: MapScreen(startupInteractionsEnabled: false),
+      await tester.pumpWidget(ChangeNotifierProvider(
+        create: (_) => AppThemeController(),
+        child: const MaterialApp(
+            home: MapScreen(startupInteractionsEnabled: false)),
       ));
       await tester.runAsync(() async {
         await rootBundle.loadString(kOpenFreeMapLibertyStyleAsset);
@@ -237,6 +267,9 @@ void main() {
       }
       await tester.pump();
       expect(spoken, isEmpty);
+      await tester.tap(find.bySemanticsLabel('Standort'));
+      await tester.pump();
+      await tester.pump();
       await tester.tap(find.bySemanticsLabel('Starten'));
       if (scenario == 'spoken') {
         // A second tap before the next frame must not duplicate start speech.
@@ -252,23 +285,27 @@ void main() {
         await tester.pump();
       }
       expect(model.navigationActive, isTrue);
-      if (scenario == 'muted' || scenario == 'map-only') {
+      if (scenario == 'muted') {
         expect(spoken, isEmpty);
+      } else if (scenario == 'map-only') {
+        expect(spoken, [
+          'F\u00fcr diese Route sind keine Abbiegeansagen verf\u00fcgbar. Bitte Karte beachten.'
+        ]);
       } else {
         expect(spoken, [
           'In 110 Metern rechts abbiegen in Laimer Straße, danach links abbiegen.'
         ]);
       }
       await tester.pump();
-      expect(
-          spoken.length, scenario == 'muted' || scenario == 'map-only' ? 0 : 1);
+      expect(spoken.length, scenario == 'muted' ? 0 : 1);
       if (scenario == 'speech failure') {
         failSpeech = false;
         await tester.tap(find.bySemanticsLabel('Sprachansagen ausschalten'));
         await tester.pump();
         await tester.tap(find.bySemanticsLabel('Sprachansagen einschalten'));
         await tester.pump();
-        expect(spoken.last, 'Sprachansagen aktiviert.');
+        expect(spoken.last,
+            'In 110 Metern rechts abbiegen, in Laimer Stra\u00dfe.');
         expect(model.navigationActive, isTrue);
       }
       expect(tester.takeException(), isNull);

@@ -1,0 +1,373 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    300
+                  ],
+                  "location": [
+                    11.571826,
+                    48.119972
+                  ]
+                },
+                {
+                  "out": 3,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    30,
+                    120,
+                    210,
+                    300
+                  ],
+                  "location": [
+                    11.571389,
+                    48.12014
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.571826,
+                    48.119972
+                  ],
+                  [
+                    11.571389,
+                    48.12014
+                  ],
+                  [
+                    11.571211,
+                    48.120208
+                  ],
+                  [
+                    11.570923,
+                    48.120345
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 300,
+                "bearing_before": 0,
+                "location": [
+                  11.571826,
+                  48.119972
+                ],
+                "type": "depart"
+              },
+              "name": "Schyrenstraße",
+              "mode": "cycling",
+              "weight": 21.7,
+              "duration": 16.9,
+              "distance": 79.1
+            },
+            {
+              "intersections": [
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    120,
+                    270,
+                    315
+                  ],
+                  "location": [
+                    11.570923,
+                    48.120345
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    90,
+                    135,
+                    315
+                  ],
+                  "location": [
+                    11.570778,
+                    48.120354
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.570923,
+                    48.120345
+                  ],
+                  [
+                    11.570778,
+                    48.120354
+                  ],
+                  [
+                    11.570575,
+                    48.120484
+                  ],
+                  [
+                    11.570463,
+                    48.120556
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 274,
+                "bearing_before": 305,
+                "location": [
+                  11.570923,
+                  48.120345
+                ],
+                "modifier": "slight left",
+                "type": "continue"
+              },
+              "name": "Schyrenstraße",
+              "mode": "cycling",
+              "weight": 20.8,
+              "duration": 13.4,
+              "distance": 43.3
+            },
+            {
+              "intersections": [
+                {
+                  "out": 0,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    45,
+                    135,
+                    225,
+                    315
+                  ],
+                  "location": [
+                    11.570463,
+                    48.120556
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.570463,
+                    48.120556
+                  ],
+                  [
+                    11.570564,
+                    48.120617
+                  ],
+                  [
+                    11.570608,
+                    48.120645
+                  ],
+                  [
+                    11.570752,
+                    48.120733
+                  ],
+                  [
+                    11.570852,
+                    48.120784
+                  ],
+                  [
+                    11.571248,
+                    48.12099
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 47,
+                "bearing_before": 313,
+                "location": [
+                  11.570463,
+                  48.120556
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Claude-Lorrain-Straße",
+              "mode": "cycling",
+              "weight": 51.3,
+              "duration": 30.8,
+              "distance": 75.9
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    232
+                  ],
+                  "location": [
+                    11.571248,
+                    48.12099
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.571248,
+                    48.12099
+                  ],
+                  [
+                    11.571248,
+                    48.12099
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 52,
+                "location": [
+                  11.571248,
+                  48.12099
+                ],
+                "type": "arrive"
+              },
+              "name": "Claude-Lorrain-Straße",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ],
+          "weight": 93.8,
+          "summary": "Schyrenstraße, Claude-Lorrain-Straße",
+          "duration": 61.1,
+          "distance": 198.2
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.571826,
+            48.119972
+          ],
+          [
+            11.571389,
+            48.12014
+          ],
+          [
+            11.571211,
+            48.120208
+          ],
+          [
+            11.570923,
+            48.120345
+          ],
+          [
+            11.570778,
+            48.120354
+          ],
+          [
+            11.570575,
+            48.120484
+          ],
+          [
+            11.570463,
+            48.120556
+          ],
+          [
+            11.570564,
+            48.120617
+          ],
+          [
+            11.570608,
+            48.120645
+          ],
+          [
+            11.570752,
+            48.120733
+          ],
+          [
+            11.570852,
+            48.120784
+          ],
+          [
+            11.571248,
+            48.12099
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 93.8,
+      "duration": 61.1,
+      "distance": 198.2
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "RKYZgP___38DAAAAYQAAAAAAAAAAAAAAVS2-P4oOFkIAAAAAAAAAAAIAAABOAAAAAAAAAAAAAAC9AgAAcpKwAKRA3gJtkrAAnkDeAgAAvxIAAAAA",
+      "location": [
+        11.571826,
+        48.119972
+      ],
+      "name": "Schyrenstraße",
+      "distance": 0.7639691834
+    },
+    {
+      "hint": "w6UZgGymGYAEAAAAVAAAAGUBAACWAQAAFdztP_1UFUJr7c9AbCLjQQMAAABEAAAAtwAAAN4AAAC9AgAAMJCwAJ5E3gIykLAAnETeAgIAjw4AAAAA",
+      "location": [
+        11.571248,
+        48.12099
+      ],
+      "name": "Claude-Lorrain-Straße",
+      "distance": 0.2676256492
+    }
+  ]
+}

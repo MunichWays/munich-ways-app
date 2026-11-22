@@ -633,7 +633,16 @@ changes should cover most of the first group.
 - iOS: verify speaker and Bluetooth output, including interruptions from calls
   and spoken media; test with When In Use location permission
 - navigation start while stationary
+- Start while riding after passing the first planned turn; spoken turns and
+  distances must use the latest position, including after slow audio setup
+- manual/automatic recalculation while riding: pass an early turn while the
+  request runs; only upcoming maneuvers may be announced, without another
+  25 metre start gate for an ongoing navigation
+- repeat moving Start/reroute with a large junction before/behind the rider,
+  ambiguous parallel route legs, GPS loss and recovery, and a failed request
 - normal forward travel on the route
+- on sections longer than 500 metres, one midpoint straight-ahead reminder
+  before a large junction; retain its later 120/40 metre prompts without duplicates
 - short and sustained route departure
 - off-route warning and spoken warning
 - automatic recalculation and failed recalculation
@@ -759,3 +768,16 @@ invalidated and are calculated on explicit selection from the latest GPS fix.
 Planning before navigation still preloads both alternatives. Phone: with each
 of Standard, Discovery and Direct active, trigger rerouting after a stop; check
 that the active type/remaining stops persist, then switch to an unloaded type.
+
+
+### US308: mittlere Abbiegefolgen testen
+
+- Setzbergstrasse nach Firstalmstrasse am Weissenseepark, auch umgekehrt:
+  erste Abbiegung mit Strassenname und Zusatz danach rechts; die zweite
+  Abbiegung wird bereits vorab genannt und ihr eigener Hinweis folgt rechtzeitig.
+- Freibadstrasse nach Claude-Lorrain-Strasse: leicht links, danach rechts.
+- Kobellstrasse nach Kapuzinerstrasse: rechts in Herzog-Heinrich-Strasse,
+  danach an der grossen Kreuzung geradeaus. Keine sofortige doppelte
+  Kreuzungsansage; innerhalb der Kreuzung gelten die bisherigen Ruhe-Regeln.
+- Kurze Kombinationen bis 35 m behalten danach sofort. Bei 36 bis 75 m
+  folgt danach ohne sofort; ab groesserem Abstand bleiben getrennte Hinweise.

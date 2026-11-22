@@ -1,0 +1,445 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "annotation": {
+            "nodes": [
+              18290985,
+              6816832595,
+              254082320,
+              1239147711,
+              2214481132,
+              1079065335,
+              13713929984,
+              11922487182,
+              254082862
+            ],
+            "distance": [
+              31.41390506,
+              10.63164364,
+              1.694265062,
+              11.19972797,
+              7.788440755,
+              18.22494929,
+              1.82649001,
+              22.43889894
+            ]
+          },
+          "duration": 56.9,
+          "summary": "Maximilianstraße, Karl-Scharnagl-Ring",
+          "weight": 107.5,
+          "distance": 105.2,
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    106
+                  ],
+                  "location": [
+                    11.583772,
+                    48.138391
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.583772,
+                    48.138391
+                  ],
+                  [
+                    11.584178,
+                    48.138314
+                  ],
+                  [
+                    11.584315,
+                    48.138287
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 106,
+                "bearing_before": 0,
+                "location": [
+                  11.583772,
+                  48.138391
+                ],
+                "type": "depart"
+              },
+              "name": "Maximilianstraße",
+              "mode": "cycling",
+              "weight": 89.8,
+              "duration": 44,
+              "distance": 42
+            },
+            {
+              "intersections": [
+                {
+                  "out": 3,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    105,
+                    180,
+                    285,
+                    345
+                  ],
+                  "location": [
+                    11.584315,
+                    48.138287
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    15,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584293,
+                    48.138402
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    30,
+                    105,
+                    195
+                  ],
+                  "location": [
+                    11.584311,
+                    48.138471
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    15,
+                    210,
+                    285
+                  ],
+                  "location": [
+                    11.584413,
+                    48.13862
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584315,
+                    48.138287
+                  ],
+                  [
+                    11.584311,
+                    48.138302
+                  ],
+                  [
+                    11.584293,
+                    48.138402
+                  ],
+                  [
+                    11.584311,
+                    48.138471
+                  ],
+                  [
+                    11.584413,
+                    48.13862
+                  ],
+                  [
+                    11.584423,
+                    48.138635
+                  ],
+                  [
+                    11.584506,
+                    48.138829
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 351,
+                "bearing_before": 105,
+                "location": [
+                  11.584315,
+                  48.138287
+                ],
+                "modifier": "left",
+                "type": "turn"
+              },
+              "name": "",
+              "mode": "cycling",
+              "weight": 17.7,
+              "duration": 12.9,
+              "distance": 63.2
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    196
+                  ],
+                  "location": [
+                    11.584506,
+                    48.138829
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584506,
+                    48.138829
+                  ],
+                  [
+                    11.584506,
+                    48.138829
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 16,
+                "location": [
+                  11.584506,
+                  48.138829
+                ],
+                "type": "arrive"
+              },
+              "name": "Karl-Scharnagl-Ring",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ]
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.583772,
+            48.138391
+          ],
+          [
+            11.584178,
+            48.138314
+          ],
+          [
+            11.584315,
+            48.138287
+          ],
+          [
+            11.584311,
+            48.138302
+          ],
+          [
+            11.584293,
+            48.138402
+          ],
+          [
+            11.584311,
+            48.138471
+          ],
+          [
+            11.584413,
+            48.13862
+          ],
+          [
+            11.584423,
+            48.138635
+          ],
+          [
+            11.584506,
+            48.138829
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 107.5,
+      "duration": 56.9,
+      "distance": 105.2,
+      "guidance": {
+        "version": "big-junctions-v3",
+        "catalogVersion": "munich-big-junctions-v10",
+        "junctions": [
+          {
+            "id": "maximilian-ring",
+            "occurrenceId": "maximilian-ring:west-north-left-entry-4-exit-6:leg:0:visit:0",
+            "legIndex": 0,
+            "movement": "left",
+            "entryArm": "west",
+            "exitArm": "north",
+            "entry": {
+              "location": [
+                11.584095721484655,
+                48.138329604546016
+              ],
+              "geometrySegmentIndex": 0,
+              "segmentFraction": 0.7973435582636859,
+              "distanceAlongLegMeters": 24.972776385435857,
+              "distanceAlongRouteMeters": 24.972776385435857
+            },
+            "exit": {
+              "location": [
+                11.58440918683473,
+                48.13861442978799
+              ],
+              "geometrySegmentIndex": 5,
+              "segmentFraction": 0.9626160267735726,
+              "distanceAlongLegMeters": 80.13553793803503,
+              "distanceAlongRouteMeters": 80.13553793803503
+            },
+            "polygon": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ],
+                  [
+                    11.584099121484654,
+                    48.138142770212006
+                  ],
+                  [
+                    11.584110921484655,
+                    48.137958970212004
+                  ],
+                  [
+                    11.584530621484655,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584961378515347,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584989978515345,
+                    48.138013670212004
+                  ],
+                  [
+                    11.584999978515347,
+                    48.13824157021201
+                  ],
+                  [
+                    11.584999978515347,
+                    48.138529029787996
+                  ],
+                  [
+                    11.584890378515347,
+                    48.13854882978799
+                  ],
+                  [
+                    11.584526478515347,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ]
+                ]
+              ]
+            },
+            "suppressedStepIndices": [
+              1
+            ],
+            "instruction": {
+              "version": 1,
+              "templateId": "two-way-left-near",
+              "advance": {
+                "de": "An der großen Kreuzung vorne links auf den Zweirichtungsradweg abbiegen.",
+                "en": "At the large junction, turn left onto the two-way cycle path on this side."
+              },
+              "display": {
+                "de": "große Kreuzung vorne links",
+                "en": "large junction near left"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "pQgEgMEIBICQAAAAfgAAAAAAAACBAQAAWJYQQq1P-0EAAAAANhsqQUEAAAA5AAAAAAAAAL4AAAC9AgAAHMGwAJeI3gIcwbAAl4jeAgAAnwYAAAAA",
+      "location": [
+        11.583772,
+        48.138391
+      ],
+      "name": "Maximilianstraße",
+      "distance": 0
+    },
+    {
+      "hint": "zwgEgHzPIIARAAAALgAAAGIAAAAEAAAAZoQOQd2Cs0HYXkRCbcrpPxEAAAAuAAAAYgAAAAQAAAC9AgAA-sOwAE2K3gL7w7AATYreAgoAPwwAAAAA",
+      "location": [
+        11.584506,
+        48.138829
+      ],
+      "name": "Karl-Scharnagl-Ring",
+      "distance": 0.07444490293
+    }
+  ]
+}

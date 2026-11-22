@@ -1,0 +1,379 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    288
+                  ],
+                  "location": [
+                    11.587909,
+                    48.108897
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.587909,
+                    48.108897
+                  ],
+                  [
+                    11.58771,
+                    48.108941
+                  ],
+                  [
+                    11.587647,
+                    48.108955
+                  ],
+                  [
+                    11.587431,
+                    48.109002
+                  ],
+                  [
+                    11.587226,
+                    48.109054
+                  ],
+                  [
+                    11.586955,
+                    48.109123
+                  ],
+                  [
+                    11.586728,
+                    48.109182
+                  ],
+                  [
+                    11.586536,
+                    48.109238
+                  ],
+                  [
+                    11.585814,
+                    48.109446
+                  ],
+                  [
+                    11.585491,
+                    48.109541
+                  ],
+                  [
+                    11.585286,
+                    48.109601
+                  ],
+                  [
+                    11.585158,
+                    48.109641
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 288,
+                "bearing_before": 0,
+                "location": [
+                  11.587909,
+                  48.108897
+                ],
+                "type": "depart"
+              },
+              "name": "Setzbergstraße",
+              "mode": "cycling",
+              "weight": 64.7,
+              "duration": 47.2,
+              "distance": 221
+            },
+            {
+              "intersections": [
+                {
+                  "out": 2,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    30,
+                    120,
+                    210
+                  ],
+                  "location": [
+                    11.585158,
+                    48.109641
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.585158,
+                    48.109641
+                  ],
+                  [
+                    11.584834,
+                    48.109265
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 209,
+                "bearing_before": 293,
+                "location": [
+                  11.585158,
+                  48.109641
+                ],
+                "modifier": "left",
+                "type": "turn"
+              },
+              "name": "Untersbergstraße",
+              "mode": "cycling",
+              "weight": 21.4,
+              "duration": 12.6,
+              "distance": 48.3
+            },
+            {
+              "intersections": [
+                {
+                  "out": 3,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    true,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    30,
+                    120,
+                    210,
+                    300,
+                    345
+                  ],
+                  "location": [
+                    11.584834,
+                    48.109265
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584834,
+                    48.109265
+                  ],
+                  [
+                    11.584683,
+                    48.109314
+                  ],
+                  [
+                    11.584498,
+                    48.109371
+                  ],
+                  [
+                    11.584121,
+                    48.109487
+                  ],
+                  [
+                    11.583142,
+                    48.109791
+                  ],
+                  [
+                    11.582964,
+                    48.109846
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 295,
+                "bearing_before": 209,
+                "location": [
+                  11.584834,
+                  48.109265
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Firstalmstraße",
+              "mode": "cycling",
+              "weight": 27.7,
+              "duration": 27.7,
+              "distance": 153.5
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    115
+                  ],
+                  "location": [
+                    11.582964,
+                    48.109846
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.582964,
+                    48.109846
+                  ],
+                  [
+                    11.582964,
+                    48.109846
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 295,
+                "location": [
+                  11.582964,
+                  48.109846
+                ],
+                "type": "arrive"
+              },
+              "name": "Firstalmstraße",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ],
+          "weight": 113.8,
+          "summary": "Setzbergstraße, Firstalmstraße",
+          "duration": 87.5,
+          "distance": 422.8
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.587909,
+            48.108897
+          ],
+          [
+            11.58771,
+            48.108941
+          ],
+          [
+            11.587647,
+            48.108955
+          ],
+          [
+            11.587431,
+            48.109002
+          ],
+          [
+            11.587226,
+            48.109054
+          ],
+          [
+            11.586955,
+            48.109123
+          ],
+          [
+            11.586728,
+            48.109182
+          ],
+          [
+            11.586536,
+            48.109238
+          ],
+          [
+            11.585814,
+            48.109446
+          ],
+          [
+            11.585491,
+            48.109541
+          ],
+          [
+            11.585286,
+            48.109601
+          ],
+          [
+            11.585158,
+            48.109641
+          ],
+          [
+            11.584834,
+            48.109265
+          ],
+          [
+            11.584683,
+            48.109314
+          ],
+          [
+            11.584498,
+            48.109371
+          ],
+          [
+            11.584121,
+            48.109487
+          ],
+          [
+            11.583142,
+            48.109791
+          ],
+          [
+            11.582964,
+            48.109846
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 113.8,
+      "duration": 87.5,
+      "distance": 422.8
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "n34ZgAB_GYBdAAAAIwAAAAAAAAAAAAAA8HklQsCfeUEAAAAAAAAAAEoAAAAdAAAAAAAAAAAAAAC9AgAARdGwAGEV3gJB0bAAWhXeAgAADxIAAAAA",
+      "location": [
+        11.587909,
+        48.108897
+      ],
+      "name": "Setzbergstraße",
+      "distance": 0.8333668404
+    },
+    {
+      "hint": "foEZgBOCGYAOAAAAGwAAAAAAAADkAAAASRoBQWiCaUEAAAAAUMb8Qg4AAAAbAAAAAAAAAOQAAAC9AgAA9L2wABYZ3gLuvbAADhneAgAALwcAAAAA",
+      "location": [
+        11.582964,
+        48.109846
+      ],
+      "name": "Firstalmstraße",
+      "distance": 0.9953886618
+    }
+  ]
+}

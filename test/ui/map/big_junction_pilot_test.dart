@@ -232,6 +232,31 @@ void main() {
     expect(voice.startPreview(english: false), isNull);
   });
 
+  test('new route aligns before a junction and preserves both regular prompts',
+      () {
+    final route = parse(), junction = route.bigJunctions.single;
+    final position = at(route, junction.entryDistance - 140);
+    final voice = VoiceGuidance()..setRoute(route, initialPosition: position);
+    expect(voice.startPreview(english: false, position: position),
+        contains(junction.action(false)));
+    for (final distance in [119.5, 39.5]) {
+      final point = at(route, junction.entryDistance - distance);
+      expect(
+          voice.update(point, english: false), spokenJunction(junction, false));
+      expect(voice.update(point, english: false), isNull);
+    }
+  });
+
+  test('delayed calculation never announces a junction already passed', () {
+    final route = parse(), junction = route.bigJunctions.single;
+    final position = at(route, junction.exitDistance + 30);
+    final voice = VoiceGuidance()..setRoute(route, initialPosition: position);
+    expect(voice.startPreview(english: false, position: position) ?? '',
+        isNot(contains('Kreuzung')));
+    expect(voice.announceCurrentManeuver(position, english: false) ?? '',
+        isNot(contains('Kreuzung')));
+  });
+
   test('multiple distinct catalog crossings parse with route-wide anchors', () {
     final data = fixture(), raw = data['routes'][0];
     final coordinates = raw['geometry']['coordinates'] as List;

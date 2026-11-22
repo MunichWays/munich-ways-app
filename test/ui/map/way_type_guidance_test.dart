@@ -59,7 +59,13 @@ Future<CycleRoute> _parse(List<Map<String, Object?>> steps) async {
 void main() {
   for (final entry in {
     'Landsberger Straße': 'in',
-    'Birketweg': 'in',
+    'Birketweg': 'auf',
+    'Bavariaring': 'auf',
+    'Georg-Brauchle-Ring': 'auf',
+    'Donnersbergerbrücke': 'auf',
+    'Isardamm': 'auf',
+    'Landshuter Allee': 'in',
+    'Rosengasse': 'in',
     'Maximiliansplatz': 'auf',
     'Karlsplatz': 'auf',
   }.entries) {

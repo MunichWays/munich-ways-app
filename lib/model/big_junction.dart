@@ -30,10 +30,17 @@ class JunctionSequence {
   final List<JunctionCheckpoint> checkpoints;
 }
 
+/// A backend-selected advance/display template without internal checkpoints.
+class JunctionInstruction {
+  const JunctionInstruction({required this.advance, required this.display});
+  final Map<String, String> advance, display;
+}
+
 /// Backend-approved catalog occurrence; distances use the guidance projection.
 class RouteBigJunction {
   const RouteBigJunction(
       {this.sequence,
+      this.instruction,
       required this.occurrenceId,
       required this.movement,
       required this.entry,
@@ -44,6 +51,7 @@ class RouteBigJunction {
       required this.outgoing});
   final String occurrenceId, movement;
   final JunctionSequence? sequence;
+  final JunctionInstruction? instruction;
   String get modifier => movement;
   String sentenceAction(bool english) {
     final text = action(english);
@@ -57,7 +65,7 @@ class RouteBigJunction {
   static List<RouteBigJunction> parse(Object? value, List<LatLng> route) {
     try {
       if (value is! Map ||
-          !const ['big-junctions-v1', 'big-junctions-v2']
+          !const ['big-junctions-v1', 'big-junctions-v2', 'big-junctions-v3']
               .contains(value['version']) ||
           value['catalogVersion'] is! String ||
           (value['catalogVersion'] as String).isEmpty ||
@@ -103,6 +111,19 @@ class RouteBigJunction {
         return (point: point, distance: distance, index: index);
       }
 
+      Map<String, String> localized(Object? raw, int limit) {
+        if (raw is! Map ||
+            raw.length != 2 ||
+            !['de', 'en'].every((lang) =>
+                raw[lang] is String &&
+                (raw[lang] as String).trim().isNotEmpty &&
+                (raw[lang] as String).length <= limit)) {
+          throw const FormatException();
+        }
+        return Map.unmodifiable(
+            {'de': raw['de'] as String, 'en': raw['en'] as String});
+      }
+
       for (final item in raw) {
         if (item is! Map ||
             item['id'] is! String ||
@@ -143,7 +164,26 @@ class RouteBigJunction {
                 const Distance().as(LengthUnit.Meter, exit.point, point) >= 2)
             .firstOrNull;
         if (outgoing == null) return const [];
+        JunctionInstruction? instruction;
+        if (item['instruction'] != null) {
+          final prompt = item['instruction'];
+          final expected = switch (item['movement']) {
+            'left' => 'two-way-left-near',
+            'straight' => 'two-way-straight-opposite',
+            _ => null,
+          };
+          if (value['version'] != 'big-junctions-v3' ||
+              item['sequence'] != null ||
+              prompt is! Map ||
+              prompt['version'] != 1 ||
+              expected == null ||
+              prompt['templateId'] != expected) return const [];
+          instruction = JunctionInstruction(
+              advance: localized(prompt['advance'], 240),
+              display: localized(prompt['display'], 80));
+        }
         var parsed = RouteBigJunction(
+            instruction: instruction,
             occurrenceId: item['occurrenceId'],
             movement: item['movement'],
             entry: entry.point,
@@ -153,26 +193,14 @@ class RouteBigJunction {
             exitDistance: exit.distance,
             outgoing: outgoing);
         if (item['sequence'] != null) {
-          if (value['version'] != 'big-junctions-v2') return const [];
+          if (!const ['big-junctions-v2', 'big-junctions-v3']
+              .contains(value['version'])) return const [];
           final seq = item['sequence'];
           if (seq is! Map ||
               seq['version'] != 1 ||
               seq['checkpoints'] is! List ||
               (seq['checkpoints'] as List).isEmpty ||
               (seq['checkpoints'] as List).length > 6) return const [];
-          Map<String, String> localized(Object? raw, int limit) {
-            if (raw is! Map ||
-                raw.length != 2 ||
-                !['de', 'en'].every((lang) =>
-                    raw[lang] is String &&
-                    (raw[lang] as String).trim().isNotEmpty &&
-                    (raw[lang] as String).length <= limit)) {
-              throw const FormatException();
-            }
-            return Map.unmodifiable(
-                {'de': raw['de'] as String, 'en': raw['en'] as String});
-          }
-
           final advance = localized(seq['advance'], 240),
               display = localized(seq['display'], 80);
           final checkpoints = <JunctionCheckpoint>[];
@@ -304,6 +332,8 @@ class RouteBigJunction {
   }
 
   String displayAction(bool english) {
+    if (instruction != null)
+      return instruction!.display[english ? 'en' : 'de']!;
     if (sequence != null) return sequence!.display[english ? 'en' : 'de']!;
     final direction = switch (movement) {
       'straight' => english ? 'straight' : 'geradeaus',
@@ -317,6 +347,8 @@ class RouteBigJunction {
   }
 
   String action(bool english) =>
+      instruction?.advance[english ? 'en' : 'de']
+          ?.replaceFirst(RegExp(r'[.!?]+$'), '') ??
       sequence?.advance[english ? 'en' : 'de'] ??
       (movement == 'straight'
           ? (english

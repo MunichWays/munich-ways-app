@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:munich_ways/api/radlnavi_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/model/route.dart';
@@ -57,6 +62,71 @@ void main() {
             startsWith(english ? 'Continue straight.' : 'Weiter geradeaus.'));
       });
     }
+  }
+
+  for (final english in [false, true]) {
+    test('reported Balan route reminds once before Thomasiusplatz ($english)',
+        () {
+      final data = jsonDecode(
+          File('test/fixtures/balan-thomasius-straight-reminder.json')
+              .readAsStringSync()) as Map<String, dynamic>;
+      final route = RadlNaviApi().parseResponse(data, const [
+        LatLng(48.127695, 11.594441),
+        LatLng(48.113126, 11.602699),
+      ]);
+      final junction = route.bigJunctions.single;
+      expect(junction.entryDistance, closeTo(1428, 2));
+      LatLng at(double station) {
+        final mx = 111320 * cos(route.points.first.latitude * pi / 180);
+        for (var i = 0; i < route.points.length - 1; i++) {
+          final a = route.points[i], b = route.points[i + 1];
+          final dx = (b.longitude - a.longitude) * mx;
+          final dy = (b.latitude - a.latitude) * 111320;
+          final length = sqrt(dx * dx + dy * dy);
+          if (station <= length) {
+            final t = station / length;
+            return LatLng(a.latitude + (b.latitude - a.latitude) * t,
+                a.longitude + (b.longitude - a.longitude) * t);
+          }
+          station -= length;
+        }
+        return route.points.last;
+      }
+
+      final guidance = VoiceGuidance()..setRoute(route);
+      final reminders = <String>[];
+      for (var meters = 0.0;
+          meters < junction.entryDistance - 130;
+          meters += 10) {
+        final text = guidance.update(at(meters), english: english);
+        if (text != null) reminders.add(text);
+      }
+      expect(reminders, hasLength(1));
+      expect(
+          reminders.single,
+          startsWith(english
+              ? 'Continue straight. In 710 meters'
+              : 'Weiter geradeaus. In 710 Metern'));
+      expect(
+          reminders.single, contains(english ? 'large junction' : 'Kreuzung'));
+      // Leave room for the continuity match on curved real geometry; exact
+      // 120/40 metre thresholds are covered by the straight fixture tests.
+      for (final distance in [110.0, 30.0]) {
+        final position = at(junction.entryDistance - distance);
+        final prompt = guidance.update(position, english: english);
+        expect(prompt, contains(junction.sentenceAction(english)),
+            reason:
+                'remaining=$distance, display=${guidance.display(position, english: english)?.text}');
+        expect(prompt, isNot(contains(english ? 'meters' : 'Metern')));
+        expect(guidance.update(position, english: english), isNull);
+      }
+      final repeated = VoiceGuidance()..setRoute(route);
+      final midpoint = at(junction.entryDistance / 2 + 1);
+      expect(repeated.resumeAt(midpoint), isTrue);
+      expect(repeated.announceCurrentManeuver(midpoint, english: english),
+          isNotNull);
+      expect(repeated.update(midpoint, english: english), isNull);
+    });
   }
 
   CycleRoute routeToTurn(double latitudeDelta) {

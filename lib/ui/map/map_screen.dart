@@ -745,7 +745,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _speak(String text, {required bool english}) async {
+  Future<void> _speak(String text,
+      {required bool english, String? Function()? resolveText}) async {
     if (_navigationSpeechPaused) return;
     final generation = ++_speechRequestGeneration;
     final preparation = Stopwatch()..start();
@@ -774,6 +775,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 mounted &&
                 !_navigationSpeechPaused,
           )) return;
+      // A start preview can await native audio setup while the rider moves.
+      // Select its turns again immediately before handing them to TTS.
+      if (resolveText != null) {
+        final currentText = resolveText();
+        if (currentText == null) return;
+        text = currentText;
+      }
       log.i('Navigation speech handed to TTS: $generation, '
           'preparation ${preparation.elapsedMilliseconds} ms');
       final result = await _flutterTts.speak(text, focus: true);
@@ -2171,6 +2179,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     MapScreenViewModel model,
     Position position,
   ) {
+    // Map rendering may still be draining an older fix after routing finishes.
+    final latest = _latestPosition;
+    if (latest != null && latest.timestamp.isAfter(position.timestamp)) {
+      position = latest;
+    }
     if (!mounted ||
         model.navigationPaused ||
         !position.latitude.isFinite ||
@@ -2200,10 +2213,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     final guidanceRouteChanged = _voiceGuidance.setRoute(
       model.navigationStarted ? model.route.route : null,
+      initialPosition: rawPosition,
       intermediateDestinationNames:
           model.waypoints.map((place) => place.displayName).toList(),
     );
     if (guidanceRouteChanged) {
+      // Discard old-route speech still waiting for native audio setup.
+      _stopVoiceGuidance();
+      _initialGuidanceAnnouncementPending = model.navigationStarted;
       _resetStalledGuidanceRecovery();
       if (model.navigationStarted &&
           model.voiceGuidanceEnabled &&
@@ -2431,18 +2448,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   bool _announceNavigationStartPreview(MapScreenViewModel model) {
-    if (!model.navigationActive ||
-        !model.voiceGuidanceEnabled ||
-        !model.voiceGuidanceAvailable) return false;
-    _voiceGuidance.setRoute(
-      model.route.route,
-      intermediateDestinationNames:
-          model.waypoints.map((place) => place.displayName).toList(),
-    );
+    final route = model.route.route;
     final english = context.l10n.isEnglish;
-    final preview = _voiceGuidance.startPreview(english: english);
+    String? currentPreview() {
+      if (!_hasFreshNavigationFix ||
+          !model.navigationActive ||
+          !model.voiceGuidanceEnabled ||
+          !model.voiceGuidanceAvailable ||
+          !identical(route, model.route.route)) return null;
+      final position = _latestPosition!;
+      final current = latlong2.LatLng(position.latitude, position.longitude);
+      _voiceGuidance.setRoute(
+        route,
+        initialPosition: current,
+        intermediateDestinationNames:
+            model.waypoints.map((place) => place.displayName).toList(),
+      );
+      _voiceGuidance.updateBigJunctionPosition(current,
+          fixTime: position.timestamp,
+          horizontalAccuracyMeters: position.accuracy);
+      return _voiceGuidance.startPreview(english: english, position: current);
+    }
+
+    final preview = currentPreview();
     if (preview == null) return false;
-    unawaited(_speak(preview, english: english));
+    unawaited(_speak(preview, english: english, resolveText: currentPreview));
     return true;
   }
 
@@ -2870,6 +2900,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     bool announceStartPreview = true,
   }) async {
     if (model.navigationStartPending) return;
+    final wasNavigating = model.navigationStarted;
     _navigationRemaining.clear();
     _appReviewPrompt.cancel();
     // Reserve the existing start request synchronously, before any style await,
@@ -2891,16 +2922,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _navigationTiltGesture = false;
     _resetStalledGuidanceRecovery();
     final initialPosition = _latestPosition;
-    _navigationStartGate.reset(
-      initialPosition == null ||
-              !initialPosition.latitude.isFinite ||
-              !initialPosition.longitude.isFinite
-          ? null
-          : latlong2.LatLng(
-              initialPosition.latitude,
-              initialPosition.longitude,
-            ),
-    );
+    if (wasNavigating) {
+      _navigationStartGate.release();
+    } else {
+      _navigationStartGate.reset(
+        initialPosition == null ||
+                !initialPosition.latitude.isFinite ||
+                !initialPosition.longitude.isFinite
+            ? null
+            : latlong2.LatLng(
+                initialPosition.latitude,
+                initialPosition.longitude,
+              ),
+      );
+    }
     _initialGuidanceAnnouncementPending = true;
     final previewAnnounced =
         announceStartPreview && _announceNavigationStartPreview(model);

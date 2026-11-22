@@ -247,7 +247,7 @@ void main() {
                 e.key.toLowerCase(): e.value
             };
             expect(
-                headers['x-junction-guidance-version'], enabled ? '2' : isNull);
+                headers['x-junction-guidance-version'], enabled ? '3' : isNull);
             expect(
                 request.url.queryParameters
                     .containsKey('junction_guidance_version'),

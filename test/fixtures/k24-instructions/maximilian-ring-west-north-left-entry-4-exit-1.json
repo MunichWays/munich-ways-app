@@ -1,0 +1,562 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "annotation": {
+            "nodes": [
+              18290985,
+              6816832595,
+              254082320,
+              398732,
+              1769726936,
+              21263453,
+              254047165,
+              1239147715,
+              1239147736,
+              2254774702,
+              2214481329,
+              1079065413,
+              1079065379,
+              7871491372,
+              7832370184
+            ],
+            "distance": [
+              51.55213733,
+              10.63164364,
+              11.86849373,
+              5.139398684,
+              9.403842962,
+              11.08499941,
+              3.224589854,
+              3.002204348,
+              4.114131883,
+              7.689977075,
+              7.342119253,
+              7.911865732,
+              9.021676043,
+              48.3306494
+            ]
+          },
+          "duration": 77.2,
+          "summary": "Maximilianstraße, Karl-Scharnagl-Ring",
+          "weight": 152.4,
+          "distance": 190.3,
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    106
+                  ],
+                  "location": [
+                    11.583512,
+                    48.138441
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 3,
+                  "entry": [
+                    false,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584468,
+                    48.138257
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 3,
+                  "entry": [
+                    false,
+                    true,
+                    false,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    195,
+                    285
+                  ],
+                  "location": [
+                    11.584633,
+                    48.138187
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.583512,
+                    48.138441
+                  ],
+                  [
+                    11.584178,
+                    48.138314
+                  ],
+                  [
+                    11.584315,
+                    48.138287
+                  ],
+                  [
+                    11.584468,
+                    48.138257
+                  ],
+                  [
+                    11.584527,
+                    48.138233
+                  ],
+                  [
+                    11.584633,
+                    48.138187
+                  ],
+                  [
+                    11.584775,
+                    48.138157
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 106,
+                "bearing_before": 0,
+                "location": [
+                  11.583512,
+                  48.138441
+                ],
+                "type": "depart"
+              },
+              "name": "Maximilianstraße",
+              "mode": "cycling",
+              "weight": 112.5,
+              "duration": 53,
+              "distance": 99.7
+            },
+            {
+              "intersections": [
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 3,
+                  "entry": [
+                    true,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584775,
+                    48.138157
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    false,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584775,
+                    48.13825
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    105,
+                    180
+                  ],
+                  "location": [
+                    11.584782,
+                    48.138319
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    0,
+                    180,
+                    285
+                  ],
+                  "location": [
+                    11.584785,
+                    48.138385
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    15,
+                    105,
+                    180
+                  ],
+                  "location": [
+                    11.584785,
+                    48.138537
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584775,
+                    48.138157
+                  ],
+                  [
+                    11.584775,
+                    48.138186
+                  ],
+                  [
+                    11.584775,
+                    48.138213
+                  ],
+                  [
+                    11.584775,
+                    48.13825
+                  ],
+                  [
+                    11.584782,
+                    48.138319
+                  ],
+                  [
+                    11.584785,
+                    48.138385
+                  ],
+                  [
+                    11.584792,
+                    48.138456
+                  ],
+                  [
+                    11.584785,
+                    48.138537
+                  ],
+                  [
+                    11.584963,
+                    48.138955
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 106,
+                "location": [
+                  11.584775,
+                  48.138157
+                ],
+                "modifier": "left",
+                "type": "turn"
+              },
+              "name": "",
+              "mode": "cycling",
+              "weight": 39.9,
+              "duration": 24.2,
+              "distance": 90.6
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    196
+                  ],
+                  "location": [
+                    11.584963,
+                    48.138955
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.584963,
+                    48.138955
+                  ],
+                  [
+                    11.584963,
+                    48.138955
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 16,
+                "location": [
+                  11.584963,
+                  48.138955
+                ],
+                "type": "arrive"
+              },
+              "name": "Karl-Scharnagl-Ring",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ]
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.583512,
+            48.138441
+          ],
+          [
+            11.584178,
+            48.138314
+          ],
+          [
+            11.584315,
+            48.138287
+          ],
+          [
+            11.584468,
+            48.138257
+          ],
+          [
+            11.584527,
+            48.138233
+          ],
+          [
+            11.584633,
+            48.138187
+          ],
+          [
+            11.584775,
+            48.138157
+          ],
+          [
+            11.584775,
+            48.138186
+          ],
+          [
+            11.584775,
+            48.138213
+          ],
+          [
+            11.584775,
+            48.13825
+          ],
+          [
+            11.584782,
+            48.138319
+          ],
+          [
+            11.584785,
+            48.138385
+          ],
+          [
+            11.584792,
+            48.138456
+          ],
+          [
+            11.584785,
+            48.138537
+          ],
+          [
+            11.584963,
+            48.138955
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 152.4,
+      "duration": 77.2,
+      "distance": 190.3,
+      "guidance": {
+        "version": "big-junctions-v1",
+        "catalogVersion": "munich-big-junctions-v10",
+        "junctions": [
+          {
+            "id": "maximilian-ring",
+            "occurrenceId": "maximilian-ring:west-north-left-entry-4-exit-1:leg:0:visit:0",
+            "legIndex": 0,
+            "movement": "left",
+            "entryArm": "west",
+            "exitArm": "north",
+            "entry": {
+              "location": [
+                11.584095721484655,
+                48.13832968974692
+              ],
+              "geometrySegmentIndex": 0,
+              "segmentFraction": 0.8764586856680857,
+              "distanceAlongLegMeters": 45.048300203739494,
+              "distanceAlongRouteMeters": 45.048300203739494
+            },
+            "exit": {
+              "location": [
+                11.584797191131784,
+                48.13856562861284
+              ],
+              "geometrySegmentIndex": 13,
+              "segmentFraction": 0.06848950440185858,
+              "distanceAlongLegMeters": 145.01015697990292,
+              "distanceAlongRouteMeters": 145.01015697990292
+            },
+            "polygon": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ],
+                  [
+                    11.584099121484654,
+                    48.138142770212006
+                  ],
+                  [
+                    11.584110921484655,
+                    48.137958970212004
+                  ],
+                  [
+                    11.584530621484655,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584961378515347,
+                    48.13787607021201
+                  ],
+                  [
+                    11.584989978515345,
+                    48.138013670212004
+                  ],
+                  [
+                    11.584999978515347,
+                    48.13824157021201
+                  ],
+                  [
+                    11.584999978515347,
+                    48.138529029787996
+                  ],
+                  [
+                    11.584890378515347,
+                    48.13854882978799
+                  ],
+                  [
+                    11.584526478515347,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.13861442978799
+                  ],
+                  [
+                    11.584095721484655,
+                    48.138326970212006
+                  ]
+                ]
+              ]
+            },
+            "suppressedStepIndices": [
+              1
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "pQgEgMEIBIBAAAAAzgAAAAAAAACBAQAArxGAQWM1TkIAAAAANhsqQRwAAABeAAAAAAAAAL4AAAC9AgAAGMCwAMmI3gIYwLAAyIjeAgAAnwYAAAAA",
+      "location": [
+        11.583512,
+        48.138441
+      ],
+      "name": "Maximilianstraße",
+      "distance": 0.1111927533
+    },
+    {
+      "hint": "Qs8ggEzPIIAdAAAAeQAAAAAAAAAAAAAAXo48QZZSQUIAAAAAAAAAABcAAABhAAAAAAAAAAAAAAC9AgAAw8WwAMuK3gLDxbAAy4reAgAAPwwAAAAA",
+      "location": [
+        11.584963,
+        48.138955
+      ],
+      "name": "Karl-Scharnagl-Ring",
+      "distance": 0
+    }
+  ]
+}

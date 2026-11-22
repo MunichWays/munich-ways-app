@@ -1,0 +1,438 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    170
+                  ],
+                  "location": [
+                    11.566629,
+                    48.125329
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.566629,
+                    48.125329
+                  ],
+                  [
+                    11.566735,
+                    48.124944
+                  ],
+                  [
+                    11.566782,
+                    48.124767
+                  ],
+                  [
+                    11.566787,
+                    48.124741
+                  ],
+                  [
+                    11.566995,
+                    48.123937
+                  ],
+                  [
+                    11.567019,
+                    48.123878
+                  ],
+                  [
+                    11.567097,
+                    48.123838
+                  ],
+                  [
+                    11.567167,
+                    48.123779
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 170,
+                "bearing_before": 0,
+                "location": [
+                  11.566629,
+                  48.125329
+                ],
+                "type": "depart"
+              },
+              "name": "Baldestraße",
+              "mode": "cycling",
+              "weight": 49.6,
+              "duration": 36.9,
+              "distance": 179.7
+            },
+            {
+              "intersections": [
+                {
+                  "out": 3,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 4,
+                  "entry": [
+                    false,
+                    true,
+                    false,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    45,
+                    150,
+                    180,
+                    225,
+                    315
+                  ],
+                  "location": [
+                    11.567167,
+                    48.123779
+                  ]
+                },
+                {
+                  "out": 2,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    false,
+                    true
+                  ],
+                  "bearings": [
+                    45,
+                    150,
+                    240
+                  ],
+                  "location": [
+                    11.567014,
+                    48.123699
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.567167,
+                    48.123779
+                  ],
+                  [
+                    11.567014,
+                    48.123699
+                  ],
+                  [
+                    11.566961,
+                    48.123673
+                  ],
+                  [
+                    11.566788,
+                    48.123586
+                  ],
+                  [
+                    11.566744,
+                    48.123563
+                  ],
+                  [
+                    11.566602,
+                    48.123488
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 230,
+                "bearing_before": 137,
+                "location": [
+                  11.567167,
+                  48.123779
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Auenstraße",
+              "mode": "cycling",
+              "weight": 109.6,
+              "duration": 38.6,
+              "distance": 53.1
+            },
+            {
+              "intersections": [
+                {
+                  "out": 3,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 0,
+                  "entry": [
+                    false,
+                    false,
+                    true,
+                    true,
+                    true,
+                    true
+                  ],
+                  "bearings": [
+                    45,
+                    90,
+                    105,
+                    150,
+                    225,
+                    300
+                  ],
+                  "location": [
+                    11.566602,
+                    48.123488
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.566602,
+                    48.123488
+                  ],
+                  [
+                    11.566606,
+                    48.123484
+                  ],
+                  [
+                    11.566615,
+                    48.123476
+                  ],
+                  [
+                    11.566624,
+                    48.123459
+                  ],
+                  [
+                    11.566638,
+                    48.123429
+                  ],
+                  [
+                    11.566654,
+                    48.123411
+                  ],
+                  [
+                    11.56668,
+                    48.123393
+                  ],
+                  [
+                    11.566724,
+                    48.123355
+                  ],
+                  [
+                    11.566782,
+                    48.123323
+                  ],
+                  [
+                    11.56684,
+                    48.123292
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 154,
+                "bearing_before": 230,
+                "location": [
+                  11.566602,
+                  48.123488
+                ],
+                "modifier": "left",
+                "type": "turn"
+              },
+              "name": "Kapuzinerstraße",
+              "mode": "cycling",
+              "weight": 7.1,
+              "duration": 5.7,
+              "distance": 28.7
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    309
+                  ],
+                  "location": [
+                    11.56684,
+                    48.123292
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.56684,
+                    48.123292
+                  ],
+                  [
+                    11.56684,
+                    48.123292
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 129,
+                "location": [
+                  11.56684,
+                  48.123292
+                ],
+                "type": "arrive"
+              },
+              "name": "Kapuzinerstraße",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ],
+          "weight": 166.3,
+          "summary": "Baldestraße, Auenstraße",
+          "duration": 81.2,
+          "distance": 261.5
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.566629,
+            48.125329
+          ],
+          [
+            11.566735,
+            48.124944
+          ],
+          [
+            11.566782,
+            48.124767
+          ],
+          [
+            11.566787,
+            48.124741
+          ],
+          [
+            11.566995,
+            48.123937
+          ],
+          [
+            11.567019,
+            48.123878
+          ],
+          [
+            11.567097,
+            48.123838
+          ],
+          [
+            11.567167,
+            48.123779
+          ],
+          [
+            11.567014,
+            48.123699
+          ],
+          [
+            11.566961,
+            48.123673
+          ],
+          [
+            11.566788,
+            48.123586
+          ],
+          [
+            11.566744,
+            48.123563
+          ],
+          [
+            11.566602,
+            48.123488
+          ],
+          [
+            11.566606,
+            48.123484
+          ],
+          [
+            11.566615,
+            48.123476
+          ],
+          [
+            11.566624,
+            48.123459
+          ],
+          [
+            11.566638,
+            48.123429
+          ],
+          [
+            11.566654,
+            48.123411
+          ],
+          [
+            11.56668,
+            48.123393
+          ],
+          [
+            11.566724,
+            48.123355
+          ],
+          [
+            11.566782,
+            48.123323
+          ],
+          [
+            11.56684,
+            48.123292
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 166.3,
+      "duration": 81.2,
+      "distance": 261.5
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "s7cggFW4IIAXAAAAYgAAADoAAAAAAAAAy1wmQSsfLkIIptBBAAAAABIAAABPAAAALwAAAAAAAAC9AgAAJX6wAJFV3gItfrAAklXeAg4AnwoAAAAA",
+      "location": [
+        11.566629,
+        48.125329
+      ],
+      "name": "Baldestraße",
+      "distance": 0.605850325
+    },
+    {
+      "hint": "rrcggP___38NAAAAGQAAADoAAAAAAAAAZMywQKQVk0CFoblBAAAAAAoAAAAUAAAALwAAAAAAAAC9AgAA-H6wAJxN3gL5frAAnU3eAhAADwgAAAAA",
+      "location": [
+        11.56684,
+        48.123292
+      ],
+      "name": "Kapuzinerstraße",
+      "distance": 0.1338128244
+    }
+  ]
+}
