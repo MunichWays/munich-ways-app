@@ -20,6 +20,8 @@ class NavigationStartGate {
   bool _released = false;
   double _distanceFromStartMeters = 0;
 
+  void release() => _released = true;
+
   bool get released => _released;
   double get distanceFromStartMeters => _distanceFromStartMeters;
 
@@ -304,6 +306,7 @@ class VoiceGuidance {
     this.speechLeadSeconds = 1,
     this.maximumSpeechLookAheadMeters = 30,
     this.closeManeuverDistanceMeters = 35,
+    this.linkedManeuverDistanceMeters = 75,
     this.offRouteUpdatesBeforeWarning = 10,
     this.announceOffRouteWarning = true,
   });
@@ -318,6 +321,7 @@ class VoiceGuidance {
   final double speechLeadSeconds;
   final double maximumSpeechLookAheadMeters;
   final double closeManeuverDistanceMeters;
+  final double linkedManeuverDistanceMeters;
   final int offRouteUpdatesBeforeWarning;
   final bool announceOffRouteWarning;
 
@@ -428,6 +432,7 @@ class VoiceGuidance {
   bool _overlappingRouteWarningSpoken = false;
   bool _finalDestinationReached = false;
   bool _routeRecoveryPending = false;
+  bool _initialRoutePositionPending = false;
   bool _wrongDirection = false;
   bool _wrongDirectionSpoken = false;
   NavigationRemaining? _remainingEstimate;
@@ -556,6 +561,7 @@ class VoiceGuidance {
   bool setRoute(
     CycleRoute? route, {
     List<String?> intermediateDestinationNames = const [],
+    LatLng? initialPosition,
   }) {
     if (identical(route, _trackingRoute)) return false;
     _trackingRoute = route;
@@ -572,6 +578,7 @@ class VoiceGuidance {
     _arrivals = const [];
     _intermediateArrivalCount = 0;
     _routeProgress = 0;
+    _initialRoutePositionPending = initialPosition != null;
     _lastGuidanceFixAt = null;
     _clearGpsRecovery();
     _overlappingRouteIntervals = const [];
@@ -686,6 +693,7 @@ class VoiceGuidance {
       );
     }
     _arrivals = arrivals.take(expectedArrivalCount).toList(growable: false);
+    if (initialPosition != null) _projectionAtCurrentProgress(initialPosition);
     return true;
   }
 
@@ -693,18 +701,30 @@ class VoiceGuidance {
     setRoute(null);
   }
 
-  /// Previews the first two turns from the route start without consuming their
-  /// normal approach/turn announcements or changing position matching.
-  String? startPreview({required bool english}) {
-    if (_bigJunction.quiet) return null;
-    if (_maneuvers.isNotEmpty &&
-        _maneuvers.first.maneuver.bigJunction != null) {
-      final first = _maneuvers.first;
+  /// Previews the next two turns from the current position without consuming
+  /// their normal approach/turn announcements.
+  String? startPreview({required bool english, LatLng? position}) {
+    if (_bigJunction.quiet || _finalDestinationReached) return null;
+    var progress = _routeProgress;
+    if (position != null) {
+      final projection = _projectionAtCurrentProgress(position);
+      if (projection.isAmbiguous ||
+          projection.distanceFromRoute > maximumRouteDistanceMeters ||
+          _isOverlappingProgress(projection.distanceAlongRoute)) return null;
+      progress = max(progress, projection.distanceAlongRoute);
+    }
+    final upcoming = _maneuvers
+        .skip(_index)
+        .where((target) => target.routeDistance >= progress - 5)
+        .toList();
+    if (upcoming.isNotEmpty && upcoming.first.maneuver.bigJunction != null) {
+      final first = upcoming.first;
       return _formatSpokenManeuver(first,
           english: english,
-          distanceMeters: max(10, _roundedDistance(first.routeDistance)));
+          distanceMeters:
+              max(10, _roundedDistance(first.routeDistance - progress)));
     }
-    final turns = _maneuvers
+    final turns = upcoming
         .takeWhile((target) => target.maneuver.bigJunction == null)
         .where((target) {
           final maneuver = target.maneuver;
@@ -732,10 +752,10 @@ class VoiceGuidance {
     if (first.maneuver.bigJunction != null) return null;
     final action = _startPreviewAction(first.maneuver, english);
     final String preview;
-    if (first.routeDistance <= nowDistanceMeters) {
+    if (first.routeDistance - progress <= nowDistanceMeters) {
       preview = english ? '${_sentenceCase(action)} here' : 'Hier $action';
     } else {
-      final distance = _roundedDistance(first.routeDistance);
+      final distance = _roundedDistance(first.routeDistance - progress);
       preview = english
           ? 'In $distance meters, $action'
           : 'In $distance Metern $action';
@@ -987,15 +1007,16 @@ class VoiceGuidance {
       projection.distanceAlongRoute,
       speedMetersPerSecond,
     );
-    _advancePastManeuvers(travelled);
+    _advancePastManeuvers(travelled,
+        measuredDistance: projection.distanceAlongRoute);
     if (_index >= _maneuvers.length) return null;
 
     final target = _maneuvers[_index];
     final remaining = target.routeDistance - travelled;
     if (remaining < -5) return null;
     return VoiceGuidanceDisplay(
-      text: _formatDisplay(
-        target.maneuver,
+      text: _formatLinkedDisplay(
+        target,
         english: english,
         remainingMeters: remaining,
       ),
@@ -1051,7 +1072,8 @@ class VoiceGuidance {
       additionalSeconds: speechLeadSeconds,
       maximumMeters: maximumSpeechLookAheadMeters,
     );
-    _advancePastManeuvers(travelled);
+    _advancePastManeuvers(travelled,
+        measuredDistance: projection.distanceAlongRoute);
     if (_index >= _maneuvers.length) return null;
 
     final target = _maneuvers[_index];
@@ -1063,6 +1085,9 @@ class VoiceGuidance {
       if (distance > BigJunctionGuidance.firstAnnouncementDistanceMeters) {
         if (_approachSpoken && !repeat) return null;
         _approachSpoken = true;
+        // An explicit current instruction also covers a due midpoint reminder.
+        _straightReminder(travelled, target.routeDistance, 'maneuver:$_index',
+            english: english, target: target);
         return _formatSpokenManeuver(target,
             english: english, distanceMeters: _roundedDistance(distance));
       }
@@ -1165,7 +1190,8 @@ class VoiceGuidance {
       additionalSeconds: speechLeadSeconds,
       maximumMeters: maximumSpeechLookAheadMeters,
     );
-    _advancePastManeuvers(travelled);
+    _advancePastManeuvers(travelled,
+        measuredDistance: projection.distanceAlongRoute);
     int? nextArrivalIndex;
     for (var index = 0; index < _arrivals.length; index++) {
       if (!_spokenArrivals.contains(index) &&
@@ -1192,8 +1218,10 @@ class VoiceGuidance {
     final remaining = target.routeDistance - travelled;
     if (target.maneuver.bigJunction case final junction?) {
       return _bigJunction.announce(
-          junction, junction.entryDistance - projection.distanceAlongRoute,
-          english: english);
+              junction, junction.entryDistance - projection.distanceAlongRoute,
+              english: english) ??
+          _straightReminder(travelled, target.routeDistance, 'maneuver:$_index',
+              english: english, target: target);
     }
     if (!_nowSpoken && remaining >= -5 && remaining <= nowDistanceMeters) {
       _nowSpoken = true;
@@ -1250,7 +1278,10 @@ class VoiceGuidance {
         _straightReminderSpoken.contains(key) ||
         travelled < halfway ||
         travelled > halfway + _maximumProgressJumpMeters ||
-        remaining <= approachDistanceMeters) {
+        remaining <=
+            (target?.maneuver.bigJunction == null
+                ? approachDistanceMeters
+                : BigJunctionGuidance.firstAnnouncementDistanceMeters)) {
       return null;
     }
     _straightReminderSpoken.add(key);
@@ -1285,6 +1316,21 @@ class VoiceGuidance {
     final route = _trackingRoute;
     if (route == null) {
       return const _RouteProjection(0, double.infinity);
+    }
+    if (_initialRoutePositionPending) {
+      // Route calculation can finish after the rider has passed early turns.
+      // Match once across the new route, but never guess between nearby legs.
+      final initial = _projectOntoRoute(route.points, position,
+          preferEarlierWithinMeters: _projectionContinuityToleranceMeters);
+      if (initial.isAmbiguous ||
+          initial.distanceFromRoute > maximumRouteDistanceMeters)
+        return initial;
+      _initialRoutePositionPending = false;
+      _routeProgress = initial.distanceAlongRoute;
+      while (_index < _maneuvers.length &&
+          _maneuvers[_index].routeDistance < _routeProgress - 5) {
+        _next();
+      }
     }
     if (_wrongDirection) {
       return _projectOntoRoute(route.points, position,
@@ -1420,7 +1466,13 @@ class VoiceGuidance {
     final gap = next == null
         ? double.infinity
         : next.routeDistance - target.routeDistance;
-    final closeNext = gap > 0 && gap <= closeManeuverDistanceMeters;
+    final linkedNext = target.maneuver.bigJunction == null &&
+        gap > 0 &&
+        gap <= linkedManeuverDistanceMeters + 0.01;
+    final nextJunction = next?.maneuver.bigJunction;
+    final closeNext = linkedNext &&
+        nextJunction == null &&
+        gap <= closeManeuverDistanceMeters + 0.01;
     final first = formatManeuver(
       target.maneuver,
       english: english,
@@ -1441,12 +1493,20 @@ class VoiceGuidance {
           ? '${first.substring(0, first.length - 1)}, then continue straight for $distance kilometers.'
           : '${first.substring(0, first.length - 1)}, danach $distance Kilometer geradeaus weiterfahren.';
     }
-    if (!closeNext) return first;
+    if (!linkedNext) return first;
 
-    final nextAction = _action(next.maneuver, english, compact: true);
-    return english
-        ? '${first.substring(0, first.length - 1)}, then immediately $nextAction.'
-        : '${first.substring(0, first.length - 1)}, danach sofort $nextAction.';
+    if (nextJunction != null) {
+      // The combined sentence is an actual advance prompt. Consume its current
+      // threshold so the next GPS fix does not interrupt it with the same text.
+      _bigJunction.announce(
+          nextJunction, nextJunction.entryDistance - _routeProgress,
+          english: english);
+    }
+    final nextAction = _followingAction(next.maneuver, english);
+    final connector = closeNext
+        ? (english ? 'then immediately' : 'danach sofort')
+        : (english ? 'then' : 'danach');
+    return '${first.substring(0, first.length - 1)}, $connector $nextAction.';
   }
 
   void _next() {
@@ -1455,9 +1515,49 @@ class VoiceGuidance {
     _nowSpoken = false;
   }
 
-  void _advancePastManeuvers(double travelled) {
-    while (_index < _maneuvers.length &&
-        travelled > _maneuvers[_index].routeDistance + 25) {
+  static String _followingAction(RouteManeuver maneuver, bool english) {
+    final junction = maneuver.bigJunction;
+    if (junction == null) return _action(maneuver, english, compact: true);
+    final text = junction.action(english).replaceFirst(RegExp(r'[.!?]+$'), '');
+    return text[0].toLowerCase() + text.substring(1);
+  }
+
+  String _formatLinkedDisplay(_GuidanceManeuver target,
+      {required bool english, required double remainingMeters}) {
+    final first = _formatDisplay(target.maneuver,
+        english: english, remainingMeters: remainingMeters);
+    if (target.maneuver.bigJunction != null || _index + 1 >= _maneuvers.length)
+      return first;
+    final next = _maneuvers[_index + 1];
+    final gap = next.routeDistance - target.routeDistance;
+    if (gap <= 0 || gap > linkedManeuverDistanceMeters + 0.01) return first;
+    final immediately = next.maneuver.bigJunction == null &&
+        gap <= closeManeuverDistanceMeters + 0.01;
+    final connector = immediately
+        ? (english ? 'then immediately' : 'danach sofort')
+        : (english ? 'then' : 'danach');
+    final following = next.maneuver.bigJunction?.displayAction(english) ??
+        _followingAction(next.maneuver, english);
+    return '$first, $connector $following';
+  }
+
+  void _advancePastManeuvers(double travelled, {double? measuredDistance}) {
+    while (_index < _maneuvers.length) {
+      final target = _maneuvers[_index];
+      final next =
+          _index + 1 < _maneuvers.length ? _maneuvers[_index + 1] : null;
+      final gap = next == null
+          ? double.infinity
+          : next.routeDistance - target.routeDistance;
+      // Once spoken, a closely followed ordinary turn can hand over after a
+      // measured 5m pass. Prediction alone must never skip it before the turn.
+      final passedLinkedTurn = _nowSpoken &&
+          target.maneuver.bigJunction == null &&
+          gap > 0 &&
+          gap <= linkedManeuverDistanceMeters + 0.01 &&
+          measuredDistance != null &&
+          measuredDistance > target.routeDistance + 5;
+      if (travelled <= target.routeDistance + 25 && !passedLinkedTurn) break;
       _next();
     }
   }
@@ -1816,7 +1916,10 @@ class VoiceGuidance {
 
   static String _roadNamePreposition(String roadName, bool english) {
     if (english) return 'onto';
-    return roadName.toLowerCase().endsWith('platz') ? 'auf' : 'in';
+    return RegExp(r'(ring|platz|weg|brücke|damm)$', caseSensitive: false)
+            .hasMatch(roadName.trim())
+        ? 'auf'
+        : 'in';
   }
 
   static String _action(RouteManeuver maneuver, bool english,

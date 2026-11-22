@@ -35,7 +35,7 @@ void main() {
             name: 'Birketweg', wayType: RouteWayType.road),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 30 Metern rechts abbiegen in Schloßschmidstraße, danach links abbiegen in Birketweg.');
+        'In 30 Metern rechts abbiegen in Schloßschmidstraße, danach links abbiegen auf Birketweg.');
     expect(guidance.startPreview(english: true),
         'In 30 meters, turn right onto Schloßschmidstraße, then turn left onto Birketweg.');
   });
@@ -50,7 +50,7 @@ void main() {
         _maneuver(324, 'turn', 'straight'),
       ]));
     expect(guidance.startPreview(english: false),
-        'In 290 Metern links weiterfahren in Birketweg, danach rechts abbiegen auf Radweg.');
+        'In 290 Metern links weiterfahren auf Birketweg, danach rechts abbiegen auf Radweg.');
     expect(guidance.startPreview(english: true),
         'In 290 meters, keep left onto Birketweg, then turn right onto the cycle path.');
   });
@@ -164,6 +164,127 @@ void main() {
     guidance.setRoute(_route([_maneuver(100, 'turn', 'right')],
         supportsVoiceGuidance: false));
     expect(guidance.startPreview(english: false), isNull);
+  });
+
+  for (final english in [false, true]) {
+    test(
+        'moving start uses current distance and skips a passed turn ($english)',
+        () {
+      final guidance = VoiceGuidance()
+        ..setRoute(
+            _route([
+              _maneuver(20, 'turn', 'right'),
+              _maneuver(150, 'turn', 'left'),
+              _maneuver(300, 'turn', 'right'),
+            ]),
+            initialPosition: _at(50));
+      final preview =
+          guidance.startPreview(english: english, position: _at(50));
+      expect(
+          preview,
+          startsWith(english
+              ? 'In 100 meters, turn left'
+              : 'In 100 Metern links abbiegen'));
+      // Native audio preparation completes after another 30 metres of travel.
+      expect(guidance.startPreview(english: english, position: _at(80)),
+          startsWith(english ? 'In 70 meters' : 'In 70 Metern'));
+      expect(guidance.announceCurrentManeuver(_at(80), english: english),
+          contains(english ? 'left' : 'links'));
+      expect(guidance.update(_at(80), english: english), isNull);
+      expect(
+          guidance.startPreview(english: english, position: _at(180)),
+          startsWith(english
+              ? 'In 120 meters, turn right'
+              : 'In 120 Metern rechts abbiegen'));
+    });
+  }
+
+  test('new-route alignment skips a turn passed less than 25 metres ago', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+          _route([
+            _maneuver(40, 'turn', 'right'),
+            _maneuver(150, 'turn', 'left'),
+          ]),
+          initialPosition: _at(50));
+    expect(guidance.display(_at(50), english: false)?.modifier, 'left');
+    expect(guidance.announceCurrentManeuver(_at(50), english: false),
+        contains('links'));
+  });
+
+  test('delayed calculation aligns beyond the normal 120 metre window', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+          _route([
+            _maneuver(20, 'turn', 'right'),
+            _maneuver(600, 'turn', 'left'),
+          ]),
+          initialPosition: _at(350));
+    expect(guidance.display(_at(350), english: false)?.modifier, 'left');
+    expect(guidance.startPreview(english: false, position: _at(350)),
+        'In 250 Metern links abbiegen.');
+  });
+
+  test('reroute replaces consumed instructions using the latest fix', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(_route([
+        _maneuver(50, 'turn', 'left'),
+      ]));
+    guidance.announceCurrentManeuver(_at(0), english: false);
+    final rerouted = _route([
+      _maneuver(10, 'turn', 'right'),
+      _maneuver(200, 'turn', 'left'),
+    ]);
+    guidance.setRoute(rerouted, initialPosition: _at(60));
+    expect(guidance.announceCurrentManeuver(_at(60), english: false),
+        startsWith('In 140 Metern links'));
+    expect(guidance.update(_at(60), english: false), isNull);
+    // Reobserving the identical route must not reset speech or progress.
+    expect(guidance.setRoute(rerouted, initialPosition: _at(0)), isFalse);
+  });
+
+  test('off-route initial fix stays silent and recovers on the route', () {
+    final guidance = VoiceGuidance()
+      ..setRoute(
+          _route([
+            _maneuver(20, 'turn', 'right'),
+            _maneuver(600, 'turn', 'left'),
+          ]),
+          initialPosition: const LatLng(48.14, 11.58));
+    expect(
+        guidance.startPreview(
+            english: false, position: const LatLng(48.14, 11.58)),
+        isNull);
+    expect(guidance.announceCurrentManeuver(_at(350), english: false),
+        startsWith('In 250 Metern links'));
+  });
+
+  test('ambiguous initial match stays silent until a unique fix returns', () {
+    final route = CycleRoute(
+        [
+          _at(0),
+          _at(600),
+          LatLng(_at(600).latitude, 11.57005),
+          LatLng(_at(100).latitude, 11.57005),
+        ],
+        1100,
+        300,
+        maneuvers: [_maneuver(400, 'turn', 'left')]);
+    final guidance = VoiceGuidance()
+      ..setRoute(route, initialPosition: _at(350));
+    expect(guidance.startPreview(english: false, position: _at(350)), isNull);
+    expect(guidance.announceCurrentManeuver(_at(350), english: false), isNull);
+    expect(guidance.startPreview(english: false, position: _at(50)),
+        'In 350 Metern links abbiegen.');
+  });
+
+  test('manual recalculation releases the start gate without more travel', () {
+    final gate = NavigationStartGate()..reset(_at(0));
+    expect(gate.isWaiting(_at(0)), isTrue);
+    gate.release();
+    expect(gate.isWaiting(_at(0)), isFalse);
+    gate.reset(_at(100));
+    expect(gate.isWaiting(_at(100)), isTrue);
   });
 
   test('ending and starting a new route replaces the preview', () {

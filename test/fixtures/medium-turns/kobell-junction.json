@@ -1,0 +1,511 @@
+{
+  "code": "Ok",
+  "routes": [
+    {
+      "legs": [
+        {
+          "steps": [
+            {
+              "intersections": [
+                {
+                  "classes": [
+                    "road"
+                  ],
+                  "out": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    119
+                  ],
+                  "location": [
+                    11.554508,
+                    48.128838
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.554508,
+                    48.128838
+                  ],
+                  [
+                    11.554585,
+                    48.128809
+                  ],
+                  [
+                    11.554754,
+                    48.128745
+                  ],
+                  [
+                    11.554995,
+                    48.128681
+                  ],
+                  [
+                    11.555313,
+                    48.128627
+                  ],
+                  [
+                    11.555659,
+                    48.12861
+                  ],
+                  [
+                    11.555754,
+                    48.128606
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 119,
+                "bearing_before": 0,
+                "location": [
+                  11.554508,
+                  48.128838
+                ],
+                "type": "depart"
+              },
+              "name": "Kobellstraße",
+              "mode": "cycling",
+              "weight": 26.4,
+              "duration": 19.8,
+              "distance": 97.7
+            },
+            {
+              "intersections": [
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    false,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    0,
+                    150,
+                    270
+                  ],
+                  "location": [
+                    11.555754,
+                    48.128606
+                  ]
+                },
+                {
+                  "out": 1,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 3,
+                  "entry": [
+                    true,
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    60,
+                    150,
+                    240,
+                    330
+                  ],
+                  "location": [
+                    11.555937,
+                    48.128378
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "cycleway"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    135,
+                    180,
+                    330
+                  ],
+                  "location": [
+                    11.556068,
+                    48.128252
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 1,
+                  "entry": [
+                    true,
+                    false
+                  ],
+                  "bearings": [
+                    135,
+                    315
+                  ],
+                  "location": [
+                    11.556249,
+                    48.128106
+                  ]
+                },
+                {
+                  "out": 0,
+                  "classes": [
+                    "road"
+                  ],
+                  "in": 2,
+                  "entry": [
+                    true,
+                    false,
+                    false
+                  ],
+                  "bearings": [
+                    135,
+                    270,
+                    315
+                  ],
+                  "location": [
+                    11.556395,
+                    48.127993
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.555754,
+                    48.128606
+                  ],
+                  [
+                    11.555787,
+                    48.128536
+                  ],
+                  [
+                    11.555845,
+                    48.128461
+                  ],
+                  [
+                    11.555937,
+                    48.128378
+                  ],
+                  [
+                    11.556037,
+                    48.128281
+                  ],
+                  [
+                    11.556068,
+                    48.128252
+                  ],
+                  [
+                    11.556082,
+                    48.128241
+                  ],
+                  [
+                    11.556249,
+                    48.128106
+                  ],
+                  [
+                    11.556395,
+                    48.127993
+                  ],
+                  [
+                    11.556446,
+                    48.127949
+                  ],
+                  [
+                    11.556532,
+                    48.127875
+                  ],
+                  [
+                    11.556695,
+                    48.127725
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 156,
+                "bearing_before": 91,
+                "location": [
+                  11.555754,
+                  48.128606
+                ],
+                "modifier": "right",
+                "type": "turn"
+              },
+              "name": "Herzog-Heinrich-Straße",
+              "mode": "cycling",
+              "weight": 141.1,
+              "duration": 62.2,
+              "distance": 121.1
+            },
+            {
+              "intersections": [
+                {
+                  "in": 0,
+                  "entry": [
+                    true
+                  ],
+                  "bearings": [
+                    324
+                  ],
+                  "location": [
+                    11.556695,
+                    48.127725
+                  ]
+                }
+              ],
+              "driving_side": "right",
+              "geometry": {
+                "coordinates": [
+                  [
+                    11.556695,
+                    48.127725
+                  ],
+                  [
+                    11.556695,
+                    48.127725
+                  ]
+                ],
+                "type": "LineString"
+              },
+              "maneuver": {
+                "bearing_after": 0,
+                "bearing_before": 144,
+                "location": [
+                  11.556695,
+                  48.127725
+                ],
+                "type": "arrive"
+              },
+              "name": "Kapuzinerstraße",
+              "mode": "cycling",
+              "weight": 0,
+              "duration": 0,
+              "distance": 0
+            }
+          ],
+          "weight": 167.5,
+          "summary": "Herzog-Heinrich-Straße, Kapuzinerstraße",
+          "duration": 82,
+          "distance": 218.7
+        }
+      ],
+      "weight_name": "cyclability",
+      "geometry": {
+        "coordinates": [
+          [
+            11.554508,
+            48.128838
+          ],
+          [
+            11.554585,
+            48.128809
+          ],
+          [
+            11.554754,
+            48.128745
+          ],
+          [
+            11.554995,
+            48.128681
+          ],
+          [
+            11.555313,
+            48.128627
+          ],
+          [
+            11.555659,
+            48.12861
+          ],
+          [
+            11.555754,
+            48.128606
+          ],
+          [
+            11.555787,
+            48.128536
+          ],
+          [
+            11.555845,
+            48.128461
+          ],
+          [
+            11.555937,
+            48.128378
+          ],
+          [
+            11.556037,
+            48.128281
+          ],
+          [
+            11.556068,
+            48.128252
+          ],
+          [
+            11.556082,
+            48.128241
+          ],
+          [
+            11.556249,
+            48.128106
+          ],
+          [
+            11.556395,
+            48.127993
+          ],
+          [
+            11.556446,
+            48.127949
+          ],
+          [
+            11.556532,
+            48.127875
+          ],
+          [
+            11.556695,
+            48.127725
+          ]
+        ],
+        "type": "LineString"
+      },
+      "weight": 167.5,
+      "duration": 82,
+      "distance": 218.7,
+      "guidance": {
+        "version": "big-junctions-v1",
+        "catalogVersion": "munich-big-junctions-v20",
+        "junctions": [
+          {
+            "id": "lane-candidate-1955354",
+            "occurrenceId": "lane-candidate-1955354:north-south-straight-entry-5-exit-2:leg:0:visit:0",
+            "legIndex": 0,
+            "movement": "straight",
+            "entryArm": "north",
+            "exitArm": "south",
+            "entry": {
+              "location": [
+                11.55580482873006,
+                48.12851294560768
+              ],
+              "geometrySegmentIndex": 7,
+              "segmentFraction": 0.3073918975954057,
+              "distanceAlongLegMeters": 108.4450398753579,
+              "distanceAlongRouteMeters": 108.4450398753579
+            },
+            "exit": {
+              "location": [
+                11.556055904647682,
+                48.12826331500701
+              ],
+              "geometrySegmentIndex": 10,
+              "segmentFraction": 0.6098273445825736,
+              "distanceAlongLegMeters": 141.93416642335583,
+              "distanceAlongRouteMeters": 141.93416642335583
+            },
+            "polygon": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.555991987800443,
+                    48.12858412180584
+                  ],
+                  [
+                    11.556110820228376,
+                    48.12858819905292
+                  ],
+                  [
+                    11.556187405568654,
+                    48.128534359521545
+                  ],
+                  [
+                    11.556236844201216,
+                    48.128461723284346
+                  ],
+                  [
+                    11.556251217213974,
+                    48.12839896983711
+                  ],
+                  [
+                    11.556168474971788,
+                    48.1283151898787
+                  ],
+                  [
+                    11.5559342687657,
+                    48.12820726252763
+                  ],
+                  [
+                    11.555764853754203,
+                    48.128152316083266
+                  ],
+                  [
+                    11.555662719188204,
+                    48.128202604478666
+                  ],
+                  [
+                    11.555604006077468,
+                    48.128267919621514
+                  ],
+                  [
+                    11.55556233199878,
+                    48.12833544088897
+                  ],
+                  [
+                    11.5555980986457,
+                    48.12838688155914
+                  ],
+                  [
+                    11.555641934373398,
+                    48.128431340931584
+                  ],
+                  [
+                    11.555709865076896,
+                    48.128476831131465
+                  ],
+                  [
+                    11.555991987800443,
+                    48.12858412180584
+                  ]
+                ]
+              ]
+            },
+            "suppressedStepIndices": []
+          }
+        ]
+      }
+    }
+  ],
+  "waypoints": [
+    {
+      "hint": "Vf0ggG39IIAMAAAADwAAAAAAAAAAAAAAqaW0QK120kAAAAAAAAAAAAoAAAAMAAAAAAAAAAAAAAC9AgAAzE6wAEZj3gLITrAAQWPeAgAAfwcAAAAA",
+      "location": [
+        11.554508,
+        48.128838
+      ],
+      "name": "Kobellstraße",
+      "distance": 0.6306888365
+    },
+    {
+      "hint": "hxAEgI8PBIBdAAAAlQAAAAAAAABLAAAAH7VOQRcCpUEAAAAASc8mQRcAAAAlAAAAAAAAABMAAAC9AgAAV1ewAO1e3gJSV7AA617eAgAAPxQAAAAA",
+      "location": [
+        11.556695,
+        48.127725
+      ],
+      "name": "Kapuzinerstraße",
+      "distance": 0.4335970509
+    }
+  ]
+}

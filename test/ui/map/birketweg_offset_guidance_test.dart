@@ -100,7 +100,7 @@ void main() {
       final originalManeuvers = List<RouteManeuver>.of(route.maneuvers);
       final guidance = VoiceGuidance()..setRoute(route);
       expect(guidance.display(route.points.first, english: false)?.text,
-          'In 50 m links');
+          'In 50 m links, danach sofort rechts');
       expect(guidance.update(route.points.first, english: false),
           'In 50 Metern links, danach sofort rechts.');
       expect(guidance.update(route.points.first, english: false), isNull);
