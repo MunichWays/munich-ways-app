@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:battery_plus/battery_plus.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 

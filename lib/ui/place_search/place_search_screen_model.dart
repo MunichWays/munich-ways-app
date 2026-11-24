@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/geoapify_api.dart';
 import 'package:munich_ways/api/munich_street_corrector.dart';

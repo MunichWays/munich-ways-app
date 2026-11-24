@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Permanent list and first-run selection share one set of tip content.
 const orderedAppTips = [

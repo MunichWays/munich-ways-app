@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
@@ -27,9 +26,7 @@ Future<void> _pumpHeader(WidgetTester tester, MapScreenViewModel model,
     locale: Locale(english ? 'en' : 'de'),
     localizationsDelegates: const [
       AppLocalizations.delegate,
-      GlobalMaterialLocalizations.delegate,
-      GlobalCupertinoLocalizations.delegate,
-      GlobalWidgetsLocalizations.delegate,
+      ...GlobalMaterialLocalizations.delegates,
     ],
     supportedLocales: AppLocalizations.supportedLocales,
     home: MediaQuery(

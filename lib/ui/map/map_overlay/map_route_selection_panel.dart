@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/ui/map/route_planner_sheet.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';

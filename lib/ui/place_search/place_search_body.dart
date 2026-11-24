@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/place.dart';
 import 'package:munich_ways/model/saved_route.dart';

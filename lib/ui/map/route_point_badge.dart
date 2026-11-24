@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 /// The same visual language for every position in a route plan.

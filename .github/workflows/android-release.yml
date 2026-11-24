@@ -51,7 +51,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.6'
+          flutter-version: '3.50.1'
           channel: stable
       - name: Restore Release Keystore from secrets
         run: |

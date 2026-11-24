@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
@@ -115,9 +114,7 @@ class MunichWaysApp extends StatelessWidget {
             },
             localizationsDelegates: const [
               AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
+              ...GlobalMaterialLocalizations.delegates,
             ],
             onGenerateRoute: (settings) => MaterialPageRoute(
               settings: RouteSettings(name: settings.name),

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/model/poi_details.dart';
 import 'package:munich_ways/ui/theme.dart';

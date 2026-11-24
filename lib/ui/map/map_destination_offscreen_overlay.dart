@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:ui' as ui show Image;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/model/place.dart';

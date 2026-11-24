@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/ui/map/map_attribution.dart';
 import 'package:munich_ways/model/map_background.dart';

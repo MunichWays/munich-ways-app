@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:http/http.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/json_body_extension.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Rounded grey panel containing [MenuGroupItem]s separated by [MenuGroupDivider].
 class MenuGroup extends StatelessWidget {
