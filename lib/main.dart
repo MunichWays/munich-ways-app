@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/localization/app_locale_controller.dart';
@@ -15,9 +14,6 @@ import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Use Android's TextureView backing to bypass VirtualDisplay buffer loss
-  // after screen unlock (flutter/flutter#172641). Ignored on iOS and web.
-  MapLibreMap.useHybridComposition = true;
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Decide before settings/camera writes can make a fresh install look like an
   // update. Only small local files are touched; network POIs stay independent.

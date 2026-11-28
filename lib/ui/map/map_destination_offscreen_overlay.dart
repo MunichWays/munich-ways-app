@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:ui' as ui show Image;
 
@@ -119,16 +118,10 @@ class _MapDestinationOffScreenOverlayState
         ),
       );
       if (!mounted) return;
-      // toScreenLocation() returns physical pixels on Android but logical
-      // pixels on iOS. Flutter layout (RenderBox) works in logical pixels, so
-      // divide by the device pixel ratio on Android only.
-      final double scale =
-          Platform.isAndroid ? MediaQuery.devicePixelRatioOf(context) : 1.0;
+      // toScreenLocation() returns logical pixels on every platform (since
+      // maplibre_gl 0.28), matching Flutter layout (RenderBox) coordinates.
       setState(() {
-        _destinationMapLocal = Offset(
-          p.x.toDouble() / scale,
-          p.y.toDouble() / scale,
-        );
+        _destinationMapLocal = Offset(p.x.toDouble(), p.y.toDouble());
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _recomputeOverlayCoords();

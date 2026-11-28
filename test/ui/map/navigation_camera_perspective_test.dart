@@ -52,7 +52,18 @@ class _CameraPlatform extends MapLibrePlatform {
   Completer<void>? holdNext;
   bool failNext = false;
   bool acknowledgeAnimationBeforeIdle = false;
+  bool failGeoJsonUpdates = false;
+  int geoJsonUpdateFailures = 0;
   CameraUpdate? _animation;
+
+  @override
+  Future<void> setGeoJsonSource(
+      String sourceId, Map<String, dynamic> geojson) async {
+    if (!failGeoJsonUpdates) return;
+    geoJsonUpdateFailures++;
+    // maplibre_gl 0.28 Android throws for a source the style dropped.
+    throw PlatformException(code: 'SOURCE_NOT_FOUND');
+  }
 
   @override
   Widget buildView(
@@ -99,7 +110,7 @@ class _CameraPlatform extends MapLibrePlatform {
     if (!acknowledgeAnimationBeforeIdle) return _update(cameraUpdate);
     updates.add(cameraUpdate.toJson() as List<dynamic>);
     _animation = cameraUpdate;
-    onCameraMoveStartedPlatform(null);
+    onCameraMoveStartedPlatform(CameraMoveReason.programmatic);
     return null;
   }
 
@@ -274,6 +285,38 @@ void main() {
     await state.renderLocation(h.model, position);
     expect(h.platform.camera.zoom, 16);
     expect(h.platform.camera.tilt, 50);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('a failing position dot update keeps the camera following',
+      (tester) async {
+    final h = await _open(tester);
+    h.model.locationState = LocationState.FOLLOW_AND_ROTATE_MAP;
+    final dynamic state = tester.state(find.byType(MapScreen));
+    await h.model.startNavigation();
+    await _frames(tester);
+    geo.Position fix(double longitude) => geo.Position(
+        latitude: 48.14,
+        longitude: longitude,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 90,
+        headingAccuracy: 1,
+        speed: 3,
+        speedAccuracy: 1);
+    // The first fix creates the dot; later fixes only update its source.
+    await state.renderLocation(h.model, fix(11.57));
+    h.platform.failGeoJsonUpdates = true;
+    await state.renderLocation(h.model, fix(11.58));
+    expect(h.platform.geoJsonUpdateFailures, greaterThan(0));
+    expect(h.platform.camera.target.longitude, closeTo(11.58, 1e-9));
+    // The dot is re-created on the next fix and following continues.
+    h.platform.failGeoJsonUpdates = false;
+    await state.renderLocation(h.model, fix(11.59));
+    expect(h.platform.camera.target.longitude, closeTo(11.59, 1e-9));
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
