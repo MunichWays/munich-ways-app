@@ -2,16 +2,13 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:http/http.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/common/json_body_extension.dart';
-import 'package:munich_ways/common/logging_interceptor.dart';
 import 'package:munich_ways/ui/map/munichways_api.dart';
 
 import '../../lib/common/logger_setup.dart';
 
 class MapillaryApi {
   final String clientId;
-  Client _client = InterceptedClient.build(interceptors: [
-    LoggingInterceptor(),
-  ]);
+  Client _client = Client();
   final String _searchImgsUrl = "https://a.mapillary.com/v3/images";
 
   MapillaryApi({@required this.clientId});
