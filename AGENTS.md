@@ -30,6 +30,13 @@ and automatic rerouting as critical paths.
 - For the first change after a production release, also increase the patch
   version (for example, 3.2.1+88 becomes 3.2.2+89). Do not increase it again
   for every subsequent change in the same release cycle.
+- After any store upload (Google Play on any track, or App Store Connect /
+  TestFlight), increase the build number with the first subsequent change,
+  before or together with it, even within the same release cycle. Stores
+  reject a build number that is not higher than the highest uploaded one, and
+  one build number must identify one code state. The same uploaded build may
+  still go once to the other store; build-only runs without upload do not use
+  up a number. Check the last upload runs when unsure.
 - Preparation changes only version metadata and requested agent documentation;
   functional implementation waits for the user's instruction.
 - Create a concise initial user story for the agreed scope. Add it to
