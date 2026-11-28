@@ -2,7 +2,7 @@ import 'package:munich_ways/api/route_transfer_io.dart';
 import 'package:munich_ways/model/route_transfer.dart';
 import 'package:munich_ways/ui/map/route_import_dialog.dart';
 import 'package:munich_ways/ui/map/route_import_source_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';
 import 'package:munich_ways/common/logger_setup.dart';

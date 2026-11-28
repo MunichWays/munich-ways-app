@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/ui/place_search/place_search_sheet.dart';
 import 'package:munich_ways/ui/widgets/bottom_sheet.dart';

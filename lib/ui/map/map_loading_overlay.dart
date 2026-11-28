@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 /// Branded hand-off between the native launch screen and the interactive map.

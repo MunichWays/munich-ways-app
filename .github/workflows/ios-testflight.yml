@@ -37,7 +37,7 @@ jobs:
   beta:
     needs: check_version
     if: ${{ !inputs.version_check_only }}
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 45
 
     steps:
@@ -46,12 +46,24 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.0.1'
+          xcode-version: '27.1'
+
+      - name: Verify App Store SDK requirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "Selected iOS SDK: ${sdk_version}"
+          if [[ "${sdk_version%%.*}" -lt 27 ]]; then
+            echo "::error::App Store uploads require the iOS 27 SDK or later starting April 2027."
+            exit 1
+          fi
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.6'
+          flutter-version: '3.50.1'
           channel: stable
 
       - name: Set up Ruby (fastlane/CocoaPods)

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/localization/app_locale_controller.dart';
 import 'package:munich_ways/localization/app_localizations.dart';
 import 'package:munich_ways/routing/routing_preferences.dart';

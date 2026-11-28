@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/ui/theme.dart';
 
 /// Translucent map control: [child] is typically an [Icon].

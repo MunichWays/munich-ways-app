@@ -4,11 +4,29 @@ This folder contains the Fastlane setup for building and uploading the iOS app t
 
 ## Prerequisites
 
-- Xcode (including Command Line Tools). If needed: `xcode-select --install`
+- Xcode 27.1 (including the iOS 27.1 SDK and Command Line Tools) for release builds.
+  Select it with `sudo xcode-select --switch /Applications/Xcode_27.1.app/Contents/Developer`
+  (adjust the path to your installation).
 - Ruby and [Bundler](https://bundler.io/) on your machine
 - Apple Developer Program access for the app’s team and bundle identifier
 
 Official Fastlane install overview: [Installing fastlane](https://docs.fastlane.tools/#installing-fastlane)
+
+The iOS TestFlight workflow uses GitHub's `xcode-27` runner and explicitly selects
+Xcode 27.1. It logs the selected Xcode and iOS SDK versions and rejects SDKs older
+than iOS 27 before building. This addresses Apple's April 2027 upload requirement
+([issue #310](https://github.com/MunichWays/munich-ways-app/issues/310)).
+The app's minimum supported iOS version remains 15.0.
+GitHub currently labels this runner image as a public preview; see the
+[runner announcement](https://github.com/actions/runner-images/issues/14404)
+and [installed software](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md).
+
+Before releasing this toolchain upgrade, run the workflow with
+`upload_to_testflight=false` to verify compilation, signing, archive and export.
+Then upload a new build to TestFlight and check cold start, map display, location
+permission, routing, spoken navigation, background/foreground recovery and GPX
+route links on an iPhone. Confirm App Store Connect processes the binary without
+the ITMS-90725 SDK warning.
 
 ## First-time setup
 

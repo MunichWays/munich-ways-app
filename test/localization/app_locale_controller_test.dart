@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:munich_ways/api/settings_store.dart';
 import 'package:munich_ways/localization/app_locale_controller.dart';

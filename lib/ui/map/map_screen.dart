@@ -10,7 +10,7 @@ import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -303,8 +303,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   CameraUpdate? _pendingCameraUpdate;
   bool _pendingCameraAnimated = true;
   bool _cameraPerspectiveSyncPending = false;
-  // iOS acknowledges animateCamera before its native animation has finished.
-  // Only perspective-only work waits for idle; normal camera actions still run.
+  // Perspective-only work waits for camera idle after an animation; normal
+  // camera actions still run. Since maplibre_gl 0.28, animateCamera completes
+  // on arrival on every platform (older iOS versions only acknowledged it).
   bool _cameraAnimationPending = false;
   bool _initialContentReady = false;
   bool _mapReadyNotified = false;
@@ -1286,6 +1287,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         key: _mapLibreViewKey,
                         child: MapLibreMap(
                           key: ValueKey(mapStyleGeneration),
+                          // Use Android's TextureView backing to bypass
+                          // VirtualDisplay buffer loss after screen unlock
+                          // (flutter/flutter#172641). Ignored on iOS and web.
+                          androidView: const AndroidMapView(
+                            surface: AndroidMapSurface.textureView,
+                          ),
                           styleString: _mapStyleString!,
                           initialCameraPosition: _savedInitialCamera ??
                               CameraPosition(
@@ -1857,9 +1864,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// On Android the widget-property update for tracking mode may race with the
   /// platform channel; calling the controller directly guarantees it is applied.
   Future<void> _applyNativeLocationTracking(MapScreenViewModel model) async {
-    await _mapController?.updateMyLocationTrackingMode(
-      _trackingModeFor(model.locationState),
-    );
+    try {
+      await _mapController?.updateMyLocationTrackingMode(
+        _trackingModeFor(model.locationState),
+      );
+    } catch (error, stackTrace) {
+      // A map being replaced (style switch, dispose) must not stop callers
+      // from starting the location stream afterwards.
+      log.d(
+        'native location tracking update skipped',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   LocationSettings _locationSettings({
@@ -2042,6 +2059,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     try {
       await _mapRenderDiagnostics.track('position layer',
           () => _showCurrentLocation(controller, mapPosition));
+    } catch (error, stackTrace) {
+      // Since maplibre_gl 0.28 a missing source throws on Android instead of
+      // being skipped. Re-create the dot on the next fix, but keep following
+      // the rider with the camera below.
+      _currentLocationGeoJsonReady = false;
+      log.d(
+        'position layer update skipped while map is updating',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (!mounted || !identical(controller, _mapController)) return;
+    try {
       final state = model.locationState;
       if (state != LocationState.FOLLOW &&
           state != LocationState.FOLLOW_AND_ROTATE_MAP) {
@@ -2131,7 +2161,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       ],
     };
     if (!_currentLocationGeoJsonReady) {
-      await controller.addGeoJsonSource(_kCurrentLocationSourceId, geoJson);
+      // Check native state so a partially failed setup recovers instead of
+      // failing every fix with a duplicate source.
+      final sources = await controller.getSourceIds();
+      if (sources.contains(_kCurrentLocationSourceId)) {
+        await controller.setGeoJsonSource(_kCurrentLocationSourceId, geoJson);
+      } else {
+        await controller.addGeoJsonSource(_kCurrentLocationSourceId, geoJson);
+      }
+      final layers = await controller.getLayerIds();
+      if (layers.contains(_kCurrentLocationLayerId)) {
+        _currentLocationGeoJsonReady = true;
+        return;
+      }
       await controller.addCircleLayer(
         _kCurrentLocationSourceId,
         _kCurrentLocationLayerId,
@@ -3273,14 +3315,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final overlayState = Overlay.of(context, rootOverlay: true);
     final overlay = overlayState.context.findRenderObject();
     if (mapBox is! RenderBox || overlay is! RenderBox) return null;
-    // Android's native MapLibre callback reports physical pixels, while
-    // Flutter positions overlays in logical pixels. iOS reports UIKit points
-    // already, so only Android needs the density conversion.
-    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
-    final logicalPoint =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-            ? Offset(screenPoint.x / pixelRatio, screenPoint.y / pixelRatio)
-            : Offset(screenPoint.x, screenPoint.y);
+    // MapLibre reports logical pixels on every platform (since maplibre_gl
+    // 0.28), matching Flutter's overlay coordinates.
+    final logicalPoint = Offset(screenPoint.x, screenPoint.y);
     final boundedPoint = Offset(
       logicalPoint.dx.clamp(0.0, mapBox.size.width),
       logicalPoint.dy.clamp(0.0, mapBox.size.height),
@@ -3764,9 +3801,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         await controller.updateContentInsets(insets, false);
         _appliedNavigationInsets = insets;
       }
-      // Apply before a queued animation, never immediately after it: on iOS
-      // the returned Future is only an acknowledgement, and a tiltTo would
-      // cancel the zoom/target animation before it reaches its destination.
+      // Apply before a queued animation, never immediately after it: a tiltTo
+      // would cancel the zoom/target animation before it reaches its
+      // destination.
       // A full camera position already carries its intended tilt. Applying a
       // separate tilt first would snap the map before a north-up animation.
       final updateData = update?.toJson();

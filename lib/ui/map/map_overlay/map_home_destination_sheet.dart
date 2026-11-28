@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:munich_ways/api/recent_searches_store.dart';
 import 'package:munich_ways/api/saved_routes_store.dart';

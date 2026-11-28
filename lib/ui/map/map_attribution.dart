@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/common/logger_setup.dart';
 import 'package:munich_ways/model/map_background.dart';
 import 'package:munich_ways/ui/map/aerial_map_style.dart';

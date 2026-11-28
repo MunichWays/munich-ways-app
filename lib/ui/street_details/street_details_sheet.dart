@@ -1,6 +1,6 @@
 import 'dart:io' show Platform;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/api/mapillary/mapillary_service.dart';
 import 'package:munich_ways/api/mapillary/mapillary_thumb_data_model.dart';
 import 'package:munich_ways/common/logger_setup.dart';

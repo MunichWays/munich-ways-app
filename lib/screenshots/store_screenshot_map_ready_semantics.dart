@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:munich_ways/screenshots/store_screenshot_config.dart';
 
 /// [Semantics] markers for store-screenshot integration tests.
